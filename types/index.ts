@@ -8,6 +8,9 @@ export type OrderStatus =
   | "paid"
   | "in_progress"
   | "completed"
+  | "disputed"
+  | "payout_pending"
+  | "paid_out"
   | "cancelled"
 
 export type PaymentStatus = "unpaid" | "paid" | "refunded" | "partially_refunded"
@@ -54,6 +57,19 @@ export interface StudentProfile {
   target_country: string
   target_major: string
   goals: string
+}
+
+export interface ChatMessage {
+  id: number
+  sender_id: number
+  sender_role: Role
+  content: string
+  created_at: string
+}
+
+export interface ChatInquiry {
+  messages: ChatMessage[]
+  messages_remaining: number  // до 5, потом нужна оплата
 }
 
 export interface Order {
