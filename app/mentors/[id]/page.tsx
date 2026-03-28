@@ -2,11 +2,12 @@ import { fetchMentor } from "@/lib/api"
 import { notFound } from "next/navigation"
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function MentorPage({ params }: Props) {
-  const mentor = await fetchMentor(Number(params.id)).catch(() => null)
+  const { id } = await params
+  const mentor = await fetchMentor(Number(id)).catch(() => null)
   if (!mentor) notFound()
 
   return (
