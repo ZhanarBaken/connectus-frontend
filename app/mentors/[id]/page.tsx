@@ -1,5 +1,6 @@
 import { fetchMentor } from "@/lib/api"
 import { notFound } from "next/navigation"
+import ChatInquiry from "@/components/ChatInquiry"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -67,6 +68,8 @@ export default async function MentorPage({ params }: Props) {
           </div>
         ))}
       </div>
+
+      <ChatInquiry mentorName={mentor.full_name} />
     </main>
   )
 }
