@@ -1,101 +1,146 @@
-import { Mentor, MentorService } from "@/types"
+import { MentorCard, MentorService, Order, StudentProfile } from "@/types"
 
 // ─── Mock data — replace with real API calls when backend is ready ───────────
-// Formats match API.md exactly
+// Formats match current backend API
 
-export const MOCK_MENTORS: Mentor[] = [
+const mockServices: Record<number, MentorService[]> = {
+  1: [
+    {
+      id: 1,
+      title: "Консультация 30 минут",
+      description: "Разбираем твою ситуацию и составляем план поступления",
+      price: "30.00",
+      currency: "USD",
+      duration_minutes: 30,
+      payout_category: "consultation",
+      is_consultation: true,
+      is_active: true,
+    },
+    {
+      id: 2,
+      title: "Проверка документов",
+      description: "Проверяю и правлю essay, CV, рекомендательные письма",
+      price: "80.00",
+      currency: "USD",
+      duration_minutes: 60,
+      payout_category: "delivery",
+      is_consultation: false,
+      is_active: true,
+    },
+  ],
+  2: [
+    {
+      id: 3,
+      title: "Гайд по стипендиям",
+      description: "Помогаю найти и подать на стипендии под твой профиль",
+      price: "50.00",
+      currency: "USD",
+      duration_minutes: 60,
+      payout_category: "consultation",
+      is_consultation: false,
+      is_active: true,
+    },
+  ],
+  3: [
+    {
+      id: 4,
+      title: "Консультация 60 минут",
+      description: "Полный разбор поступления в Германию",
+      price: "45.00",
+      currency: "USD",
+      duration_minutes: 60,
+      payout_category: "consultation",
+      is_consultation: true,
+      is_active: true,
+    },
+  ],
+}
+
+export const MOCK_MENTORS: MentorCard[] = [
   {
     id: 1,
     full_name: "Назгуль Ахметова",
     country: "USA",
-    school: "MIT",
+    school_or_university: "MIT",
     major: "Computer Science",
     grant_or_scholarship: "Болашак",
-    gpa: "3.9",
-    exam_results: "IELTS 7.5, SAT 1450",
-    expertise_areas: ["admission", "scholarships"],
+    expertise_areas: [{ area: "admission" }, { area: "scholarships" }],
     detailed_bio: "Помогаю поступить в топ университеты США. Прошла путь от НИШ до MIT.",
-    linkedin_url: "https://linkedin.com/in/mock",
     profile_photo: null,
-    is_active: true,
-    services: [
-      {
-        id: 1,
-        service_type: "consultation_30min",
-        title: "Консультация 30 минут",
-        description: "Разбираем твою ситуацию и составляем план поступления",
-        price: "30.00",
-        currency: "USD",
-        duration_minutes: 30,
-        is_active: true,
-      },
-      {
-        id: 2,
-        service_type: "documents_review",
-        title: "Проверка документов",
-        description: "Проверяю и правлю essay, CV, рекомендательные письма",
-        price: "80.00",
-        currency: "USD",
-        duration_minutes: 60,
-        is_active: true,
-      },
-    ],
+    is_verified: true,
+    is_accepting_bookings: true,
   },
   {
     id: 2,
     full_name: "Айдана Сейткали",
     country: "UK",
-    school: "University of Edinburgh",
+    school_or_university: "University of Edinburgh",
     major: "Economics",
     grant_or_scholarship: "Chevening",
-    gpa: "3.7",
-    exam_results: "IELTS 8.0",
-    expertise_areas: ["scholarships", "visa", "documents"],
+    expertise_areas: [{ area: "scholarships" }, { area: "visa" }, { area: "documents" }],
     detailed_bio: "Chevening scholar. Помогаю с грантами и визой в Великобританию.",
-    linkedin_url: "https://linkedin.com/in/mock2",
     profile_photo: null,
-    is_active: true,
-    services: [
-      {
-        id: 3,
-        service_type: "scholarship_guidance",
-        title: "Гайд по стипендиям",
-        description: "Помогаю найти и подать на стипендии под твой профиль",
-        price: "50.00",
-        currency: "USD",
-        duration_minutes: 60,
-        is_active: true,
-      },
-    ],
+    is_verified: true,
+    is_accepting_bookings: true,
   },
   {
     id: 3,
     full_name: "Ерлан Жаксыбеков",
     country: "Germany",
-    school: "TU Munich",
+    school_or_university: "TU Munich",
     major: "Engineering",
     grant_or_scholarship: "DAAD",
-    gpa: "3.6",
-    exam_results: "IELTS 7.0, TestDaF C1",
-    expertise_areas: ["admission", "visa"],
+    expertise_areas: [{ area: "admission" }, { area: "visa" }],
     detailed_bio: "Помогаю поступить в немецкие университеты. DAAD стипендиат.",
-    linkedin_url: "",
     profile_photo: null,
-    is_active: true,
-    services: [
-      {
-        id: 4,
-        service_type: "consultation_60min",
-        title: "Консультация 60 минут",
-        description: "Полный разбор поступления в Германию",
-        price: "45.00",
-        currency: "USD",
-        duration_minutes: 60,
-        is_active: true,
-      },
-    ],
+    is_verified: false,
+    is_accepting_bookings: true,
   },
 ]
 
-export const getMockMentor = (id: number): Mentor | undefined =>
+export const MOCK_ORDERS: Order[] = [
+  {
+    id: 1,
+    mentor_service: 1,
+    service_title: "Консультация 30 минут",
+    student_info: { id: 1, full_name: "Айгерим Бекова", email: "student@example.com" },
+    mentor_email: "nazgul@example.com",
+    total_price: "30.00",
+    platform_fee: "4.50",
+    mentor_payout_amount: "25.50",
+    payment_status: "unpaid",
+    order_status: "pending_payment",
+    payment_instructions: {
+      account_details: "Kaspi: +7 777 123 45 67, Иван Иванов",
+      whatsapp_link: "https://wa.me/77771234567?text=Order 1 receipt",
+    },
+    created_at: "2026-04-01T10:00:00Z",
+  },
+  {
+    id: 2,
+    mentor_service: 3,
+    service_title: "Гайд по стипендиям",
+    student_info: { id: 1, full_name: "Айгерим Бекова", email: "student@example.com" },
+    mentor_email: "aidana@example.com",
+    total_price: "50.00",
+    platform_fee: "7.50",
+    mentor_payout_amount: "42.50",
+    payment_status: "paid",
+    order_status: "in_progress",
+    payment_instructions: null,
+    created_at: "2026-03-20T14:00:00Z",
+  },
+]
+
+export const MOCK_STUDENT_PROFILE: StudentProfile = {
+  id: 1,
+  full_name: "Айгерим Бекова",
+  age: 18,
+  current_school: "НИШ Алматы",
+}
+
+export const getMockMentor = (id: number): MentorCard | undefined =>
   MOCK_MENTORS.find((m) => m.id === id)
+
+export const getMockServices = (mentorId: number): MentorService[] =>
+  mockServices[mentorId] ?? []

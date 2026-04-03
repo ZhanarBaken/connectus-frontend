@@ -19,23 +19,28 @@ export default async function HomePage() {
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-lg font-semibold">{mentor.full_name}</h2>
-                <p className="text-gray-500 text-sm">{mentor.school} · {mentor.country}</p>
+                <p className="text-gray-500 text-sm">{mentor.school_or_university} · {mentor.country}</p>
                 <div className="flex gap-2 mt-2 flex-wrap">
                   {mentor.expertise_areas.map((area) => (
                     <span
-                      key={area}
+                      key={area.area}
                       className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"
                     >
-                      {area}
+                      {area.area}
                     </span>
                   ))}
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-400">от</p>
-                <p className="font-bold text-lg">
-                  ${mentor.services[0]?.price ?? "—"}
-                </p>
+                {mentor.is_accepting_bookings ? (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                    Принимает записи
+                  </span>
+                ) : (
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                    Не принимает
+                  </span>
+                )}
               </div>
             </div>
           </Link>
