@@ -1,23 +1,29 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchStudentProfile, fetchOrders } from "@/lib/api"
 import { StudentProfile, Order } from "@/types"
 
 export default function StudentDashboardPage() {
+  const router = useRouter()
   const [profile, setProfile] = useState<StudentProfile | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const role = localStorage.getItem("role")
+    if (!role) { router.replace("/auth/login"); return }
+    if (role !== "student") { router.replace("/mentors/dashboard"); return }
+
     Promise.all([fetchStudentProfile(), fetchOrders()])
       .then(([p, o]) => {
         setProfile(p)
         setOrders(o)
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [router])
 
   if (loading) {
     return (
@@ -35,8 +41,8 @@ export default function StudentDashboardPage() {
     <main className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">{profile?.full_name || "Мой кабинет"}</h1>
-        {profile?.current_school && (
-          <p className="text-gray-500 text-sm mt-1">{profile.current_school}</p>
+        {profile?.current_school_or_university && (
+          <p className="text-gray-500 text-sm mt-1">{profile.current_school_or_university}</p>
         )}
       </div>
 

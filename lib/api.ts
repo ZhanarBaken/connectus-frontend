@@ -154,7 +154,13 @@ export async function createOrder(mentorServiceId: number): Promise<import("@/ty
 // ─── Student profile ──────────────────────────────────────────────────────────
 
 export async function fetchStudentProfile(): Promise<StudentProfile> {
-  if (USE_MOCKS) return MOCK_STUDENT_PROFILE
+  if (USE_MOCKS) {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("student_profile")
+      if (saved) return JSON.parse(saved)
+    }
+    return MOCK_STUDENT_PROFILE
+  }
 
   const res = await fetch(`${BASE_URL}/students/profile/me/`, {
     headers: { Authorization: `Bearer ${getToken()}` },
@@ -164,7 +170,13 @@ export async function fetchStudentProfile(): Promise<StudentProfile> {
 }
 
 export async function updateStudentProfile(data: Partial<StudentProfile>): Promise<StudentProfile> {
-  if (USE_MOCKS) return { ...MOCK_STUDENT_PROFILE, ...data }
+  if (USE_MOCKS) {
+    const profile = { ...MOCK_STUDENT_PROFILE, ...data }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("student_profile", JSON.stringify(profile))
+    }
+    return profile
+  }
 
   const res = await fetch(`${BASE_URL}/students/profile/me/`, {
     method: "PATCH",

@@ -1,21 +1,27 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentorProfile, submitMentorProfile } from "@/lib/api"
 import { MentorProfile } from "@/types"
 
 export default function MentorDashboardPage() {
+  const router = useRouter()
   const [profile, setProfile] = useState<MentorProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
 
   useEffect(() => {
+    const role = localStorage.getItem("role")
+    if (!role) { router.replace("/auth/login"); return }
+    if (role !== "mentor") { router.replace("/students/dashboard"); return }
+
     fetchMentorProfile()
       .then(setProfile)
       .finally(() => setLoading(false))
-  }, [])
+  }, [router])
 
   const handleSubmit = async () => {
     setSubmitting(true)

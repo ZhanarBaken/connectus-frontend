@@ -16,7 +16,7 @@ export default function ProfilePage() {
       setProfile(p)
       setFullName(p.full_name ?? "")
       setAge(p.age != null ? String(p.age) : "")
-      setCurrentSchool(p.current_school ?? "")
+      setCurrentSchool(p.current_school_or_university ?? "")
     })
   }, [])
 
@@ -25,7 +25,7 @@ export default function ProfilePage() {
     const updated = await updateStudentProfile({
       full_name: fullName,
       age: Number(age),
-      current_school: currentSchool,
+      current_school_or_university: currentSchool,
     })
     setProfile(updated)
     setSaved(true)

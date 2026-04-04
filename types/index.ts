@@ -101,7 +101,7 @@ export interface StudentProfile {
   id: number
   full_name: string
   age: number
-  current_school: string
+  current_school_or_university: string
 }
 
 export interface ChatMessage {

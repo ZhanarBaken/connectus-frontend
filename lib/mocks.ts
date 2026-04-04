@@ -103,7 +103,7 @@ export const MOCK_ORDERS: Order[] = [
     id: 1,
     mentor_service: 1,
     service_title: "Консультация 30 минут",
-    student_info: { id: 1, full_name: "Айгерим Бекова", email: "student@example.com" },
+    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
     mentor_email: "nazgul@example.com",
     total_price: "30.00",
     platform_fee: "4.50",
@@ -120,7 +120,7 @@ export const MOCK_ORDERS: Order[] = [
     id: 2,
     mentor_service: 3,
     service_title: "Гайд по стипендиям",
-    student_info: { id: 1, full_name: "Айгерим Бекова", email: "student@example.com" },
+    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
     mentor_email: "aidana@example.com",
     total_price: "50.00",
     platform_fee: "7.50",
@@ -136,7 +136,7 @@ export const MOCK_STUDENT_PROFILE: StudentProfile = {
   id: 1,
   full_name: "Айгерим Бекова",
   age: 18,
-  current_school: "НИШ Алматы",
+  current_school_or_university: "НИШ Алматы",
 }
 
 export const getMockMentor = (id: number): MentorCard | undefined =>

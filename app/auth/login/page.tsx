@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { login, fetchMe } from "@/lib/api"
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
@@ -27,9 +27,9 @@ export default function LoginPage() {
       if (next) {
         router.push(next)
       } else if (me.role === "mentor") {
-        router.push("/mentors/dashboard")
+        router.push("/mentor/dashboard")
       } else {
-        router.push("/students/dashboard")
+        router.push("/student/dashboard")
       }
     } catch {
       setError("Неверный email или пароль")
@@ -39,40 +39,77 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="max-w-sm mx-auto px-4 py-20">
-      <h1 className="text-2xl font-bold mb-6">Войти</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Пароль"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-          required
-        />
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition disabled:opacity-50"
-        >
-          {loading ? "Вход..." : "Войти"}
-        </button>
-      </form>
-      <p className="text-sm text-gray-500 mt-4 text-center">
-        Нет аккаунта?{" "}
-        <Link href="/auth/register" className="underline text-black">
-          Зарегистрироваться
-        </Link>
-      </p>
-    </main>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 justify-center">
+            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold">C</span>
+            </div>
+            <span className="text-xl font-bold text-gray-900">Connectus</span>
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-2">Добро пожаловать</h1>
+          <p className="text-gray-500 text-sm">Войдите в свой аккаунт</p>
+        </div>
+
+        {/* Card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Пароль</label>
+              <input
+                type="password"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              {loading ? "Входим..." : "Войти"}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-sm text-gray-500 mt-6 text-center">
+          Нет аккаунта?{" "}
+          <Link href="/auth/register" className="text-indigo-600 font-medium hover:underline">
+            Зарегистрироваться
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { fetchOrders } from "@/lib/api"
 import { Order } from "@/types"
 
@@ -15,116 +16,90 @@ const STATUS_LABEL: Record<Order["order_status"], string> = {
   cancelled: "Отменён",
 }
 
-const STATUS_COLOR: Record<Order["order_status"], string> = {
-  pending_payment: "bg-amber-100 text-amber-800",
-  paid: "bg-blue-100 text-blue-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-  disputed: "bg-red-100 text-red-800",
-  payout_pending: "bg-gray-100 text-gray-700",
-  paid_out: "bg-green-100 text-green-800",
-  cancelled: "bg-gray-100 text-gray-500",
+const STATUS_STYLE: Record<Order["order_status"], string> = {
+  pending_payment: "bg-yellow-50 text-yellow-700",
+  paid: "bg-blue-50 text-blue-700",
+  in_progress: "bg-indigo-50 text-indigo-700",
+  completed: "bg-green-50 text-green-700",
+  disputed: "bg-red-50 text-red-700",
+  payout_pending: "bg-gray-100 text-gray-500",
+  paid_out: "bg-green-50 text-green-700",
+  cancelled: "bg-gray-100 text-gray-400",
 }
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
   const [role, setRole] = useState<string | null>(null)
   const [accepted, setAccepted] = useState<number[]>([])
 
   useEffect(() => {
     setRole(localStorage.getItem("role"))
+    const stored = localStorage.getItem("accepted_orders")
+    setAccepted(stored ? JSON.parse(stored) : [])
     fetchOrders()
       .then(setOrders)
-      .catch(() => setError("Не удалось загрузить заказы"))
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
-      <main className="max-w-3xl mx-auto px-4 py-20 text-center text-gray-400">
-        Загрузка...
-      </main>
-    )
-  }
-
-  if (error) {
-    return (
-      <main className="max-w-3xl mx-auto px-4 py-20 text-center text-red-500">
-        {error}
-      </main>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
     )
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold mb-6">Мои заказы</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-3xl mx-auto px-4 py-10">
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">Мои заказы</h1>
 
-        {orders.length === 0 && (
-          <p className="text-gray-500">Заказов пока нет.</p>
-        )}
-
-        <div className="flex flex-col gap-4">
-          {orders.map((order) => (
-            <div key={order.id} className="border rounded-xl p-5">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <p className="font-semibold">{order.service_title}</p>
-                  {role === "mentor" ? (
-                    <p className="text-sm text-gray-500">
-                      {order.student_info.full_name}
-                      {order.student_info.current_school_or_university
-                        ? ` · ${order.student_info.current_school_or_university}`
-                        : ""}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-500">{order.mentor_email}</p>
-                  )}
+        {orders.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+            <div className="text-5xl mb-4">📋</div>
+            <h3 className="font-semibold text-gray-900 mb-2">Заказов пока нет</h3>
+            <p className="text-sm text-gray-400 mb-6">
+              {role === "mentor" ? "Заказы появятся когда студенты запишутся к тебе" : "Найди ментора и запишись на консультацию"}
+            </p>
+            {role !== "mentor" && (
+              <Link href="/mentors" className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+                Найти ментора
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {orders.map((order) => (
+              <Link
+                key={order.id}
+                href={`/orders/${order.id}`}
+                className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start justify-between gap-4 hover:border-indigo-100 hover:shadow-sm transition-all group block"
+              >
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
+                    {order.service_title}
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    {role === "mentor"
+                      ? order.student_info?.full_name
+                      : "Открыть заказ →"}
+                  </p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLOR[order.order_status]}`}>
-                  {STATUS_LABEL[order.order_status]}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <div className="flex gap-6">
-                  <span>Сумма: <span className="font-semibold text-black">${order.total_price}</span></span>
-                  <span className="text-gray-400">
-                    {new Date(order.created_at).toLocaleDateString("ru-RU")}
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[order.order_status]}`}>
+                    {STATUS_LABEL[order.order_status]}
                   </span>
+                  <span className="text-lg font-bold text-gray-900">${order.total_price}</span>
                 </div>
-                {role === "mentor" && order.order_status === "in_progress" && (
-                  accepted.includes(order.id) ? (
-                    <span className="text-xs text-green-700 font-medium">Принято</span>
-                  ) : (
-                    <button
-                      onClick={() => setAccepted((prev) => [...prev, order.id])}
-                      className="bg-black text-white text-sm px-4 py-1.5 rounded-lg hover:bg-gray-800 transition"
-                    >
-                      Принять
-                    </button>
-                  )
-                )}
-              </div>
-
-              {role !== "mentor" && order.payment_instructions && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm mt-3">
-                  <p className="font-semibold text-amber-900 mb-1">Как оплатить</p>
-                  <p className="text-amber-800 mb-2">{order.payment_instructions.account_details}</p>
-                  <a
-                    href={order.payment_instructions.whatsapp_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block bg-green-600 text-white text-xs px-4 py-1.5 rounded-lg hover:bg-green-700 transition"
-                  >
-                    Отправить чек в WhatsApp
-                  </a>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-    </main>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
