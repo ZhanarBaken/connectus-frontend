@@ -3,8 +3,15 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder } from "@/lib/api"
-import { Order, ChatMessage } from "@/types"
+import { fetchOrder, fetchMentor, completeOrder } from "@/lib/api"
+import { Order, Mentor } from "@/types"
+import {
+  getOrderMessages,
+  addMessage,
+  markOrderRead,
+  MESSAGES_KEY,
+  type StoredMessage,
+} from "@/lib/messages"
 import ReviewForm from "@/components/ReviewForm"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -25,31 +32,6 @@ const STATUS_STYLE: Record<string, string> = {
   cancelled: "bg-gray-50 text-gray-500 border-gray-200",
 }
 
-// Mock chat messages for UI preview
-const MOCK_CHAT: ChatMessage[] = [
-  {
-    id: 1,
-    sender_id: 99,
-    sender_role: "mentor",
-    content: "Привет! Спасибо за заказ. Когда тебе удобно провести консультацию?",
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-  },
-  {
-    id: 2,
-    sender_id: 1,
-    sender_role: "student",
-    content: "Привет! Мне удобно в субботу после 14:00 по Алматы.",
-    created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-  },
-  {
-    id: 3,
-    sender_id: 99,
-    sender_role: "mentor",
-    content: "Отлично, договорились! В субботу в 14:00. Я пришлю ссылку на Zoom за час до встречи.",
-    created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-  },
-]
-
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -58,11 +40,14 @@ export default function OrderPage({ params }: Props) {
   const { id } = use(params)
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
+  const [mentor, setMentor] = useState<Mentor | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<StoredMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [sending, setSending] = useState(false)
+  const [completing, setCompleting] = useState(false)
+  const [completeError, setCompleteError] = useState("")
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -72,16 +57,46 @@ export default function OrderPage({ params }: Props) {
     setRole(r)
 
     fetchOrder(Number(id))
-      .then((found) => {
+      .then(async (found) => {
         setOrder(found)
-        // Load chat only if order is paid/in_progress/completed
         if (["paid", "in_progress", "completed"].includes(found.order_status)) {
-          setMessages(MOCK_CHAT)
+          setMessages(getOrderMessages(found.id))
+          markOrderRead(found.id, r === "mentor" ? "mentor" : "student")
+        }
+        // Student needs the mentor's name (Order has only id + email)
+        if (r !== "mentor") {
+          try {
+            const m = await fetchMentor(found.mentor)
+            setMentor(m)
+          } catch {
+            // ignore — fallback name will be used
+          }
         }
       })
       .catch(() => router.replace("/orders"))
       .finally(() => setLoading(false))
   }, [id, router])
+
+  // Live sync — refresh messages when another tab writes to localStorage
+  useEffect(() => {
+    if (!order) return
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === MESSAGES_KEY) {
+        setMessages(getOrderMessages(order.id))
+        markOrderRead(order.id, role === "mentor" ? "mentor" : "student")
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    // Also poll every 2s as fallback (storage event doesn't fire in same tab)
+    const interval = setInterval(() => {
+      const fresh = getOrderMessages(order.id)
+      setMessages((prev) => (prev.length !== fresh.length ? fresh : prev))
+    }, 2000)
+    return () => {
+      window.removeEventListener("storage", onStorage)
+      clearInterval(interval)
+    }
+  }, [order, role])
 
   useEffect(() => {
     if (chatRef.current) {
@@ -89,19 +104,31 @@ export default function OrderPage({ params }: Props) {
     }
   }, [messages])
 
+  const handleComplete = async () => {
+    if (!order) return
+    if (!confirm("Отметить услугу выполненной? Студент сможет оставить отзыв, а ты получишь выплату после окончания периода споров.")) return
+    setCompleting(true)
+    setCompleteError("")
+    try {
+      const updated = await completeOrder(order.id)
+      setOrder(updated)
+    } catch (e: unknown) {
+      setCompleteError(e instanceof Error ? e.message : "Не удалось завершить заказ")
+    } finally {
+      setCompleting(false)
+    }
+  }
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() || !order) return
     setSending(true)
-    // Optimistic update — real API call goes here when backend ready
-    const msg: ChatMessage = {
-      id: Date.now(),
-      sender_id: 1,
-      sender_role: role === "mentor" ? "mentor" : "student",
+    const saved = addMessage({
+      orderId: order.id,
+      senderRole: role === "mentor" ? "mentor" : "student",
       content: newMessage.trim(),
-      created_at: new Date().toISOString(),
-    }
-    setMessages((prev) => [...prev, msg])
+    })
+    setMessages((prev) => [...prev, saved])
     setNewMessage("")
     setSending(false)
   }
@@ -166,7 +193,7 @@ export default function OrderPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Counterpart info */}
+            {/* Counterpart info — only name shown, no contacts */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
               <h2 className="text-sm font-semibold text-gray-900 mb-3">
                 {role === "mentor" ? "Студент" : "Ментор"}
@@ -175,22 +202,62 @@ export default function OrderPage({ params }: Props) {
                 <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
                   <span className="text-indigo-600 font-bold text-sm">
                     {role === "mentor"
-                      ? (order.student_info?.full_name?.charAt(0) || "С")
-                      : (order.mentor_email?.charAt(0).toUpperCase() || "М")}
+                      ? (order.student_info?.full_name?.trim().charAt(0).toUpperCase() || "С")
+                      : (mentor?.full_name?.trim().charAt(0).toUpperCase() || "М")}
                   </span>
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">
-                    {role === "mentor" ? order.student_info?.full_name : "Ментор"}
+                    {role === "mentor"
+                      ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент")
+                      : (mentor?.full_name || "Ментор")}
                   </p>
                   <p className="text-xs text-gray-400 truncate">
-                    {role === "mentor"
-                      ? (order.student_info?.current_school_or_university || "")
-                      : order.mentor_email}
+                    Общение только в чате
                   </p>
                 </div>
               </div>
             </div>
+
+            {/* Mentor: complete service */}
+            {role === "mentor" && order.order_status === "in_progress" && (
+              <div className="bg-white border border-indigo-100 rounded-2xl p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Завершить услугу</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  Когда работа со студентом закончена, отметь услугу выполненной. Студент получит возможность оставить отзыв, а выплата уйдёт после периода споров (48ч).
+                </p>
+                {completeError && (
+                  <p className="text-xs text-red-600 mb-3">{completeError}</p>
+                )}
+                <button
+                  onClick={handleComplete}
+                  disabled={completing}
+                  className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {completing ? "Завершаем..." : "✓ Услуга выполнена"}
+                </button>
+              </div>
+            )}
+
+            {/* Mentor: completed banner */}
+            {role === "mentor" && order.order_status === "completed" && (
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
+                <h3 className="font-semibold text-green-800 mb-1 text-sm">✓ Услуга завершена</h3>
+                <p className="text-xs text-green-700 leading-relaxed">
+                  После периода споров (48ч) выплата автоматически уйдёт на твой счёт.
+                </p>
+              </div>
+            )}
+
+            {/* Student: in progress notice */}
+            {role !== "mentor" && order.order_status === "in_progress" && (
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+                <h3 className="font-semibold text-blue-800 mb-1 text-sm">🔵 В работе</h3>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Ментор работает над твоим заказом. Когда работа будет закончена, услуга станет завершённой и ты сможешь оставить отзыв.
+                </p>
+              </div>
+            )}
 
             {/* Payment pending notice */}
             {order.order_status === "pending_payment" && role !== "mentor" && (
@@ -202,15 +269,16 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Review form — student only, after payment */}
-            {role !== "mentor" && ["paid", "in_progress", "completed"].includes(order.order_status) && (
+            {/* Review form — student only, after order is completed */}
+            {role !== "mentor" && order.order_status === "completed" && (
               <ReviewForm
                 orderId={order.id}
                 mentorId={order.mentor}
-                mentorName={order.mentor_email}
-                authorName={order.student_info?.full_name || "Студент"}
+                mentorName="Ментор"
+                authorName={order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
               />
             )}
+
           </div>
 
           {/* Chat */}
@@ -236,14 +304,14 @@ export default function OrderPage({ params }: Props) {
                       </div>
                     )}
                     {messages.map((msg) => {
-                      const isOwn = (role === "mentor" && msg.sender_role === "mentor") ||
-                                    (role !== "mentor" && msg.sender_role === "student")
+                      const isOwn = (role === "mentor" && msg.senderRole === "mentor") ||
+                                    (role !== "mentor" && msg.senderRole === "student")
                       return (
                         <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[75%] ${isOwn ? "items-end" : "items-start"} flex flex-col gap-1`}>
                             {!isOwn && (
                               <span className="text-xs text-gray-400 px-1">
-                                {msg.sender_role === "mentor" ? "Ментор" : "Студент"}
+                                {msg.senderRole === "mentor" ? "Ментор" : "Студент"}
                               </span>
                             )}
                             <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
@@ -253,7 +321,7 @@ export default function OrderPage({ params }: Props) {
                             }`}>
                               {msg.content}
                             </div>
-                            <span className="text-xs text-gray-300 px-1">{formatTime(msg.created_at)}</span>
+                            <span className="text-xs text-gray-300 px-1">{formatTime(msg.createdAt)}</span>
                           </div>
                         </div>
                       )

@@ -84,7 +84,7 @@ export default function OrdersPage() {
                   </h3>
                   <p className="text-sm text-gray-400 mt-0.5">
                     {role === "mentor"
-                      ? order.student_info?.full_name
+                      ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент")
                       : "Открыть заказ →"}
                   </p>
                   <p className="text-xs text-gray-300 mt-1">

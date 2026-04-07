@@ -214,7 +214,7 @@ export default function MentorDashboard() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 truncate">{order.service_title}</h3>
                         <p className="text-sm text-gray-400 mt-0.5">
-                          {order.student_info?.full_name || "Студент"}
+                          {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
                         </p>
                         <p className="text-xs text-gray-300 mt-1">
                           {new Date(order.created_at).toLocaleDateString("ru-RU", {

@@ -197,6 +197,18 @@ export async function confirmOrderPayment(id: number): Promise<Order> {
   return res.json()
 }
 
+export async function completeOrder(id: number): Promise<Order> {
+  const res = await fetch(`${BASE_URL}/orders/${id}/complete/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || "Failed to complete order")
+  }
+  return res.json()
+}
+
 // ─── Student profile ──────────────────────────────────────────────────────────
 
 export async function fetchStudentProfile(): Promise<StudentProfile> {

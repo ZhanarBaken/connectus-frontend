@@ -121,7 +121,7 @@ export default function StudentDashboard() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 truncate">{order.service_title}</h3>
-                        <p className="text-sm text-gray-400 mt-0.5">{order.mentor_email}</p>
+                        <p className="text-sm text-gray-400 mt-0.5">Ваш ментор</p>
                         <p className="text-xs text-gray-300 mt-1">
                           {new Date(order.created_at).toLocaleDateString("ru-RU", {
                             day: "numeric", month: "long", year: "numeric",
