@@ -102,6 +102,16 @@ export default function MentorPage({ params }: Props) {
       ? "none"
       : (consultationOrder.order_status as "draft" | "in_progress")
 
+  // Paid services are unlocked whenever there's an open Conversation with this mentor.
+  // Backend creates a Conversation when the mentor confirms a free consultation,
+  // and gates new orders on `closed_at IS NULL`. The frontend approximates this
+  // by checking that at least one order with this mentor has a conversation_id
+  // (the mentor can still close it server-side, in which case POST /orders/ will
+  // surface a clear error and we display orderError).
+  const hasOpenChat = orders.some(
+    (o) => o.mentor === mentor.id && o.conversation_id !== null
+  )
+
   // Track which paid services have already been ordered
   const orderedPaidIds = new Set(
     orders
@@ -259,14 +269,14 @@ export default function MentorPage({ params }: Props) {
             {paidServices.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">Платные услуги</h2>
-                <p className="text-sm text-gray-400 mb-4">
-                  {consultationStatus === "in_progress"
-                    ? "Закажи нужную услугу"
+                <p className="text-sm text-gray-500 mb-4">
+                  {hasOpenChat
+                    ? "Закажи нужную услугу — оплата откроется после подтверждения админом"
                     : "Сначала пройди бесплатную консультацию, чтобы заказать платную услугу"}
                 </p>
                 <div className="space-y-3">
                   {paidServices.map((service) => {
-                    const isLocked = consultationStatus !== "in_progress"
+                    const isLocked = !hasOpenChat
                     const isOrdered = orderedPaidIds.has(service.id)
                     return (
                       <div

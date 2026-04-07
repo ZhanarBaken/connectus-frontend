@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchOrder, fetchMentor, completeOrder } from "@/lib/api"
-import { fetchChatMessages, connectChat, type ChatConnection } from "@/lib/chat"
+import { fetchChatMessages, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
@@ -44,6 +44,9 @@ export default function OrderPage({ params }: Props) {
   const [wsConnected, setWsConnected] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState("")
+  const [chatClosed, setChatClosed] = useState(false)
+  const [closingChat, setClosingChat] = useState(false)
+  const [closeError, setCloseError] = useState("")
   const chatRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<ChatConnection | null>(null)
 
@@ -97,10 +100,16 @@ export default function OrderPage({ params }: Props) {
         // ignore — chat will still try to open
       })
 
+    // Reset closed state when (re)opening — backend reopens chat on new accept
+    setChatClosed(false)
+
     const conn = connectChat(order.conversation_id, {
       onOpen: () => setWsConnected(true),
       onClose: () => setWsConnected(false),
       onError: () => setWsConnected(false),
+      onServerError: (err) => {
+        if (err.toLowerCase().includes("closed")) setChatClosed(true)
+      },
       onMessage: (msg) => {
         setMessages((prev) => {
           // De-dupe in case the message also came back via REST refetch
@@ -147,6 +156,23 @@ export default function OrderPage({ params }: Props) {
     if (!text || !wsRef.current) return
     const ok = wsRef.current.send(text)
     if (ok) setNewMessage("")
+  }
+
+  const handleCloseChat = async () => {
+    if (!order?.conversation_id) return
+    if (!confirm(
+      "Закрыть чат с этим студентом? Студент больше не сможет писать или покупать у тебя услуги, пока чат не откроется снова. Чат переоткроется автоматически, если студент попросит новую консультацию и ты её примешь."
+    )) return
+    setClosingChat(true)
+    setCloseError("")
+    try {
+      await closeConversation(order.conversation_id)
+      setChatClosed(true)
+    } catch (e: unknown) {
+      setCloseError(e instanceof Error ? e.message : "Не удалось закрыть чат")
+    } finally {
+      setClosingChat(false)
+    }
   }
 
   const formatTime = (iso: string) => {
@@ -252,6 +278,38 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
+            {/* Mentor: close chat */}
+            {role === "mentor" && canChat && !chatClosed && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Закрыть чат</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  Если ты больше не работаешь с этим студентом, закрой чат. Студент больше не сможет писать тебе или покупать услуги, пока вы не начнёте новую консультацию.
+                </p>
+                {closeError && (
+                  <p className="text-xs text-red-600 mb-3">{closeError}</p>
+                )}
+                <button
+                  onClick={handleCloseChat}
+                  disabled={closingChat}
+                  className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-50"
+                >
+                  {closingChat ? "Закрываем..." : "Закрыть чат со студентом"}
+                </button>
+              </div>
+            )}
+
+            {/* Both: chat closed banner */}
+            {chatClosed && (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
+                <h3 className="font-semibold text-gray-700 mb-1 text-sm">🔒 Чат закрыт</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {role === "mentor"
+                    ? "Студент не может писать сообщения и покупать услуги. Чат откроется снова, если ты примешь новый запрос на консультацию."
+                    : "Ментор закрыл чат. Чтобы продолжить общение и заказать услуги, отправь новый запрос на бесплатную консультацию на странице ментора."}
+                </p>
+              </div>
+            )}
+
             {/* Mentor: completed banner */}
             {role === "mentor" && order.order_status === "completed" && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
@@ -302,17 +360,25 @@ export default function OrderPage({ params }: Props) {
                 <div>
                   <h2 className="font-semibold text-gray-900">Сообщения</h2>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {canChat
-                      ? "Все переговоры ведутся только на платформе"
-                      : "Чат откроется после принятия консультации ментором"}
+                    {!canChat
+                      ? "Чат откроется после принятия консультации ментором"
+                      : chatClosed
+                        ? "Чат закрыт ментором"
+                        : "Все переговоры ведутся только на платформе"}
                   </p>
                 </div>
                 {canChat && (
                   <span className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-full ${
-                    wsConnected ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"
+                    chatClosed
+                      ? "bg-gray-100 text-gray-500"
+                      : wsConnected
+                        ? "bg-green-50 text-green-600"
+                        : "bg-gray-100 text-gray-400"
                   }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? "bg-green-500" : "bg-gray-400"}`} />
-                    {wsConnected ? "В сети" : "Подключение..."}
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      chatClosed ? "bg-gray-400" : wsConnected ? "bg-green-500" : "bg-gray-400"
+                    }`} />
+                    {chatClosed ? "Закрыт" : wsConnected ? "В сети" : "Подключение..."}
                   </span>
                 )}
               </div>
@@ -345,31 +411,44 @@ export default function OrderPage({ params }: Props) {
                     })}
                   </div>
 
-                  {/* Input */}
-                  <div className="px-4 py-4 border-t border-gray-50 flex-shrink-0">
-                    <form onSubmit={handleSend} className="flex gap-3">
-                      <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Написать сообщение..."
-                        className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                        disabled={!wsConnected}
-                      />
-                      <button
-                        type="submit"
-                        disabled={!wsConnected || !newMessage.trim()}
-                        className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-40 flex-shrink-0"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                      </button>
-                    </form>
-                    <p className="text-xs text-gray-300 mt-2 text-center">
-                      Запрещено передавать личные контакты — нарушение правил платформы
-                    </p>
-                  </div>
+                  {/* Input or closed banner */}
+                  {chatClosed ? (
+                    <div className="px-4 py-5 border-t border-gray-50 flex-shrink-0 bg-gray-50/60">
+                      <p className="text-center text-sm text-gray-500 font-medium">
+                        🔒 Чат закрыт
+                      </p>
+                      <p className="text-center text-xs text-gray-400 mt-1 leading-relaxed">
+                        {role === "mentor"
+                          ? "Чат снова откроется, если ты примешь новый запрос на консультацию от этого студента."
+                          : "Запроси новую бесплатную консультацию у этого ментора, чтобы возобновить общение."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-4 border-t border-gray-50 flex-shrink-0">
+                      <form onSubmit={handleSend} className="flex gap-3">
+                        <input
+                          type="text"
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Написать сообщение..."
+                          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                          disabled={!wsConnected}
+                        />
+                        <button
+                          type="submit"
+                          disabled={!wsConnected || !newMessage.trim()}
+                          className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-40 flex-shrink-0"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                        </button>
+                      </form>
+                      <p className="text-xs text-gray-300 mt-2 text-center">
+                        Запрещено передавать личные контакты — нарушение правил платформы
+                      </p>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center">

@@ -12,6 +12,18 @@ import { ChatMessage } from "@/types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
+export async function closeConversation(conversationId: number): Promise<{ closed_at: string }> {
+  const res = await fetch(`${API_BASE}/chat/${conversationId}/close/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось закрыть чат")
+  }
+  return res.json()
+}
+
 function deriveWsBase(): string {
   // Convert HTTP API base → WS origin (drop /api/v1 suffix)
   const u = new URL(API_BASE)
@@ -78,6 +90,7 @@ export function connectChat(
     onOpen?: () => void
     onClose?: (code: number) => void
     onError?: () => void
+    onServerError?: (err: string) => void
   },
 ): ChatConnection {
   const token = getToken()
@@ -90,13 +103,19 @@ export function connectChat(
 
   ws.onmessage = (event) => {
     try {
-      const data: WsMessageEvent = JSON.parse(event.data)
+      const data = JSON.parse(event.data)
+      // Backend may send {error: '...'} when the message is rejected (e.g. closed chat)
+      if (data && typeof data.error === "string") {
+        handlers.onServerError?.(data.error)
+        return
+      }
+      const msg = data as WsMessageEvent
       handlers.onMessage({
-        id: data.id,
-        sender: data.sender_id,
-        sender_email: data.sender_email,
-        text: data.text,
-        created_at: data.created_at,
+        id: msg.id,
+        sender: msg.sender_id,
+        sender_email: msg.sender_email,
+        text: msg.text,
+        created_at: msg.created_at,
       })
     } catch {
       // ignore malformed payloads
