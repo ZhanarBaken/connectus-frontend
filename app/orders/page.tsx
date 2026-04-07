@@ -6,6 +6,7 @@ import { fetchOrders } from "@/lib/api"
 import { Order } from "@/types"
 
 const STATUS_LABEL: Record<Order["order_status"], string> = {
+  draft: "Черновик",
   pending_payment: "Ожидает оплаты",
   paid: "Оплачен",
   in_progress: "В работе",
@@ -17,6 +18,7 @@ const STATUS_LABEL: Record<Order["order_status"], string> = {
 }
 
 const STATUS_STYLE: Record<Order["order_status"], string> = {
+  draft: "bg-gray-50 text-gray-500",
   pending_payment: "bg-yellow-50 text-yellow-700",
   paid: "bg-blue-50 text-blue-700",
   in_progress: "bg-indigo-50 text-indigo-700",

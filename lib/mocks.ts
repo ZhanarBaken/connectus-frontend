@@ -101,10 +101,12 @@ export const MOCK_MENTORS: MentorCard[] = [
 export const MOCK_ORDERS: Order[] = [
   {
     id: 1,
+    student: 1,
+    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
+    mentor: 1,
+    mentor_email: "nazgul@example.com",
     mentor_service: 1,
     service_title: "Консультация 30 минут",
-    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
-    mentor_email: "nazgul@example.com",
     total_price: "30.00",
     platform_fee: "4.50",
     mentor_payout_amount: "25.50",
@@ -115,13 +117,16 @@ export const MOCK_ORDERS: Order[] = [
       whatsapp_link: "https://wa.me/77771234567?text=Order 1 receipt",
     },
     created_at: "2026-04-01T10:00:00Z",
+    updated_at: "2026-04-01T10:00:00Z",
   },
   {
     id: 2,
+    student: 1,
+    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
+    mentor: 2,
+    mentor_email: "aidana@example.com",
     mentor_service: 3,
     service_title: "Гайд по стипендиям",
-    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
-    mentor_email: "aidana@example.com",
     total_price: "50.00",
     platform_fee: "7.50",
     mentor_payout_amount: "42.50",
@@ -129,6 +134,7 @@ export const MOCK_ORDERS: Order[] = [
     order_status: "in_progress",
     payment_instructions: null,
     created_at: "2026-03-20T14:00:00Z",
+    updated_at: "2026-03-20T14:00:00Z",
   },
 ]
 

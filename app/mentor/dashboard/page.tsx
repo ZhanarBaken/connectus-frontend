@@ -42,7 +42,9 @@ export default function MentorDashboard() {
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
+    const role = localStorage.getItem("role")
     if (!token) { router.replace("/auth/login"); return }
+    if (role === "student") { router.replace("/student/dashboard"); return }
 
     Promise.all([fetchMentorProfile(), fetchMentorServices(), fetchOrders()])
       .then(([p, s, o]) => { setProfile(p); setServices(s); setOrders(o) })

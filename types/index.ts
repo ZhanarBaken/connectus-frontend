@@ -5,6 +5,7 @@ export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 export type PayoutCategory = "consultation" | "delivery" | "milestone"
 
 export type OrderStatus =
+  | "draft"
   | "pending_payment"
   | "paid"
   | "in_progress"
@@ -78,6 +79,7 @@ export interface MentorCard {
   is_accepting_bookings: boolean
 }
 
+// Matches backend MentorProfilePublicSerializer
 export interface Mentor {
   id: number
   full_name: string
@@ -91,8 +93,7 @@ export interface Mentor {
   detailed_bio: string
   linkedin_url: string
   profile_photo: string | null
-  is_active: boolean
-  is_verified: boolean
+  is_public: boolean
   is_accepting_bookings: boolean
   services: MentorService[]
 }
@@ -129,10 +130,12 @@ export interface OrderStudentInfo {
 
 export interface Order {
   id: number
+  student: number
+  student_info: OrderStudentInfo
+  mentor: number
+  mentor_email: string
   mentor_service: number
   service_title: string
-  student_info: OrderStudentInfo
-  mentor_email: string
   total_price: string
   platform_fee: string
   mentor_payout_amount: string
@@ -140,4 +143,5 @@ export interface Order {
   order_status: OrderStatus
   payment_instructions: PaymentInstructions | null
   created_at: string
+  updated_at: string
 }

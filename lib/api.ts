@@ -27,7 +27,7 @@ export async function fetchMentor(id: number): Promise<Mentor> {
       gpa: "",
       exam_results: "",
       linkedin_url: "",
-      is_active: true,
+      is_public: true,
       services,
     }
   }
@@ -147,6 +147,38 @@ export async function createOrder(mentorServiceId: number): Promise<import("@/ty
     const err = await res.json()
     const first = Object.values(err)[0]
     throw new Error(Array.isArray(first) ? first[0] : String(first))
+  }
+  return res.json()
+}
+
+export async function fetchOrder(id: number): Promise<Order> {
+  const res = await fetch(`${BASE_URL}/orders/${id}/`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) throw new Error("Failed to fetch order")
+  return res.json()
+}
+
+export async function cancelOrder(id: number): Promise<Order> {
+  const res = await fetch(`${BASE_URL}/orders/${id}/cancel/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || "Failed to cancel order")
+  }
+  return res.json()
+}
+
+export async function confirmOrderPayment(id: number): Promise<Order> {
+  const res = await fetch(`${BASE_URL}/orders/${id}/confirm_payment/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || "Failed to confirm payment")
   }
   return res.json()
 }

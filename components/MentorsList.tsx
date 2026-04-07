@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
 
 const EXPERTISE_LABELS: Record<string, string> = {
@@ -32,10 +33,21 @@ interface Props {
 }
 
 export default function MentorsList({ mentors }: Props) {
+  const router = useRouter()
+  const [authChecked, setAuthChecked] = useState(false)
   const [search, setSearch] = useState("")
   const [country, setCountry] = useState("")
   const [expertise, setExpertise] = useState("")
   const [onlyAccepting, setOnlyAccepting] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    if (!token) {
+      router.replace("/auth/login?next=/mentors")
+      return
+    }
+    setAuthChecked(true)
+  }, [router])
 
   const countries = useMemo(
     () => Array.from(new Set(mentors.map((m) => m.country))),
@@ -57,6 +69,14 @@ export default function MentorsList({ mentors }: Props) {
   }, [mentors, search, country, expertise, onlyAccepting])
 
   const hasFilters = search || country || expertise || onlyAccepting
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white min-h-screen">
@@ -119,14 +139,30 @@ export default function MentorsList({ mentors }: Props) {
 
             {/* Accepting bookings toggle */}
             <button
+              type="button"
               onClick={() => setOnlyAccepting(!onlyAccepting)}
-              className={`text-sm px-4 py-2.5 rounded-xl border font-medium transition-all ${
+              aria-pressed={onlyAccepting}
+              className={`group relative inline-flex items-center gap-2.5 text-sm px-4 py-2.5 rounded-xl border font-medium transform-gpu transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out [-webkit-tap-highlight-color:transparent] active:scale-95 ${
                 onlyAccepting
-                  ? "bg-green-50 border-green-300 text-green-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  ? "bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700 hover:border-indigo-700"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
               }`}
+              style={{ WebkitBackfaceVisibility: "hidden" }}
             >
-              ✓ Принимает записи
+              {/* Switch indicator */}
+              <span
+                className={`relative inline-flex w-8 h-[18px] rounded-full transition-colors duration-200 ${
+                  onlyAccepting ? "bg-white/30" : "bg-gray-200 group-hover:bg-indigo-100"
+                }`}
+                aria-hidden
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-[14px] h-[14px] rounded-full transform-gpu transition-[transform,background-color] duration-200 ease-out ${
+                    onlyAccepting ? "translate-x-[14px] bg-white" : "translate-x-0 bg-white shadow-sm"
+                  }`}
+                />
+              </span>
+              <span>Принимает записи</span>
             </button>
 
             {/* Clear filters */}

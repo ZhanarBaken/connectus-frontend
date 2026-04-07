@@ -30,7 +30,7 @@ export default function StudentOnboarding() {
         age: Number(age) || 0,
         current_school_or_university: school,
       })
-      router.push("/students/dashboard")
+      router.push("/student/dashboard")
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка при сохранении")
       setSaving(false)

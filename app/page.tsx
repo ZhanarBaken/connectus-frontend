@@ -1,5 +1,6 @@
 import { fetchMentors } from "@/lib/api"
 import Link from "next/link"
+import FaqList from "@/components/FaqList"
 
 const CATEGORIES = [
   { label: "США", icon: "🇺🇸", desc: "Ivy League и топ университеты" },
@@ -7,9 +8,11 @@ const CATEGORIES = [
   { label: "Германия", icon: "🇩🇪", desc: "TU Munich, LMU и другие" },
   { label: "Испания", icon: "🇪🇸", desc: "IE, ESADE, UAB" },
   { label: "Италия", icon: "🇮🇹", desc: "Bocconi, Politecnico" },
-  { label: "SAT / IELTS", icon: "📝", desc: "Подготовка к экзаменам" },
-  { label: "Эссе", icon: "✍️", desc: "Statement of purpose, CV" },
-  { label: "Виза и документы", icon: "📄", desc: "Пакет документов, апостиль" },
+  { label: "Франция", icon: "🇫🇷", desc: "Sciences Po, HEC Paris" },
+  { label: "Нидерланды", icon: "🇳🇱", desc: "TU Delft, Amsterdam" },
+  { label: "Канада", icon: "🇨🇦", desc: "Toronto, McGill, UBC" },
+  { label: "Австралия", icon: "🇦🇺", desc: "Melbourne, Sydney, ANU" },
+  { label: "Швейцария", icon: "🇨🇭", desc: "ETH Zurich, EPFL" },
 ]
 
 const STEPS = [
@@ -171,20 +174,36 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Популярные направления</h2>
-            <p className="text-gray-500 text-lg">Выбери страну или тип помощи</p>
+            <p className="text-gray-500 text-lg">Выбери страну поступления</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.label}
                 href="/mentors"
-                className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all group cursor-pointer"
+                className="relative bg-white rounded-2xl p-5 border border-gray-100 overflow-hidden group cursor-pointer transform-gpu transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:border-indigo-200 [-webkit-tap-highlight-color:transparent] [backface-visibility:hidden]"
+                style={{ WebkitBackfaceVisibility: "hidden" }}
               >
-                <div className="text-3xl mb-3">{cat.icon}</div>
-                <div className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors text-sm">
-                  {cat.label}
+                {/* Soft gradient glow on hover (opacity-only, GPU-friendly) */}
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                {/* Animated arrow */}
+                <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform-gpu">
+                  <span aria-hidden>→</span>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">{cat.desc}</div>
+
+                <div className="relative">
+                  <div className="text-4xl mb-3 leading-none transform-gpu transition-transform duration-300 ease-out group-hover:scale-110">
+                    <span className="inline-block">{cat.icon}</span>
+                  </div>
+                  <div className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300 text-sm">
+                    {cat.label}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">{cat.desc}</div>
+                </div>
+
+                {/* Bottom accent line — width animation instead of scale-x for crisper Safari rendering */}
+                <div className="absolute bottom-0 left-0 h-0.5 w-0 bg-indigo-500 group-hover:w-full transition-[width] duration-300 ease-out" />
               </Link>
             ))}
           </div>
@@ -294,15 +313,37 @@ export default async function HomePage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: "✅", title: "Верифицированные менторы", desc: "Каждый ментор проходит проверку документов и дипломов" },
-              { icon: "💬", title: "Бесплатный чат до оплаты", desc: "Задайте вопросы ментору перед покупкой — без риска" },
-              { icon: "💳", title: "Прозрачные цены", desc: "Вы видите полную стоимость заранее. Никаких скрытых комиссий" },
-              { icon: "🎓", title: "Реальный опыт", desc: "Менторы — студенты и выпускники тех же университетов" },
+              { icon: "✅", title: "Верифицированные менторы", desc: "Каждый ментор проходит проверку документов и дипломов", stat: "100%", statLabel: "проверено" },
+              { icon: "💬", title: "Бесплатный чат до оплаты", desc: "Задайте вопросы ментору перед покупкой — без риска", stat: "5", statLabel: "сообщений" },
+              { icon: "💳", title: "Прозрачные цены", desc: "Вы видите полную стоимость заранее. Никаких скрытых комиссий", stat: "0₸", statLabel: "комиссий" },
+              { icon: "🎓", title: "Реальный опыт", desc: "Менторы — студенты и выпускники тех же университетов", stat: "50+", statLabel: "менторов" },
             ].map((item) => (
-              <div key={item.title} className="bg-white/10 rounded-2xl p-6 text-white">
-                <div className="text-3xl mb-4">{item.icon}</div>
-                <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-                <p className="text-indigo-200 text-sm leading-relaxed">{item.desc}</p>
+              <div
+                key={item.title}
+                className="relative rounded-2xl p-6 text-white overflow-hidden group cursor-default transform-gpu transition-[transform,background-color] duration-300 ease-out hover:-translate-y-1 bg-white/10 hover:bg-white/15 [backface-visibility:hidden]"
+                style={{ WebkitBackfaceVisibility: "hidden" }}
+              >
+                {/* Glow blob behind icon */}
+                <div className="pointer-events-none absolute -top-10 -left-10 w-40 h-40 rounded-full bg-white/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                {/* Icon — flips to show stat on hover */}
+                <div className="relative h-12 mb-4" style={{ perspective: "600px" }}>
+                  <div className="absolute inset-0 transform-gpu transition-transform duration-500 ease-out group-hover:[transform:rotateY(180deg)]" style={{ transformStyle: "preserve-3d" }}>
+                    <div className="absolute inset-0 flex items-center text-3xl leading-none [backface-visibility:hidden]" style={{ WebkitBackfaceVisibility: "hidden" }}>
+                      <span>{item.icon}</span>
+                    </div>
+                    <div className="absolute inset-0 flex flex-col justify-center [backface-visibility:hidden]" style={{ WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+                      <div className="text-2xl font-bold leading-none">{item.stat}</div>
+                      <div className="text-[10px] text-indigo-200 uppercase tracking-wider mt-0.5">{item.statLabel}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="relative font-semibold text-lg mb-2">{item.title}</h3>
+                <p className="relative text-indigo-200 text-sm leading-relaxed">{item.desc}</p>
+
+                {/* Bottom accent line */}
+                <div className="absolute bottom-0 left-0 h-0.5 w-0 bg-white group-hover:w-full transition-[width] duration-500 ease-out" />
               </div>
             ))}
           </div>
@@ -372,14 +413,7 @@ export default async function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Частые вопросы</h2>
           </div>
-          <div className="space-y-4">
-            {FAQS.map((faq) => (
-              <div key={faq.q} className="bg-white rounded-2xl border border-gray-100 p-6">
-                <h3 className="font-semibold text-gray-900 mb-3">{faq.q}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{faq.a}</p>
-              </div>
-            ))}
-          </div>
+          <FaqList items={FAQS} />
         </div>
       </section>
 

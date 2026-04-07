@@ -32,7 +32,9 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
+    const role = localStorage.getItem("role")
     if (!token) { router.replace("/auth/login"); return }
+    if (role === "mentor") { router.replace("/mentor/dashboard"); return }
 
     Promise.all([fetchStudentProfile(), fetchOrders()])
       .then(([p, o]) => { setProfile(p); setOrders(o) })

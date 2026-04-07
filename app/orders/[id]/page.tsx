@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrders } from "@/lib/api"
+import { fetchOrder } from "@/lib/api"
 import { Order, ChatMessage } from "@/types"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -70,10 +70,8 @@ export default function OrderPage({ params }: Props) {
     if (!token) { router.replace("/auth/login"); return }
     setRole(r)
 
-    fetchOrders()
-      .then((orders) => {
-        const found = orders.find((o) => o.id === Number(id))
-        if (!found) { router.replace("/orders"); return }
+    fetchOrder(Number(id))
+      .then((found) => {
         setOrder(found)
         // Load chat only if order is paid/in_progress/completed
         if (["paid", "in_progress", "completed"].includes(found.order_status)) {

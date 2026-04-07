@@ -27,10 +27,10 @@ npm run dev
 | `/mentors/[id]` | Профиль ментора + запись на консультацию | Только авторизованные |
 | `/auth/login` | Вход | — |
 | `/auth/register` | Регистрация (студент / ментор) | — |
-| `/students/dashboard` | Кабинет студента | student |
+| `/student/dashboard` | Кабинет студента | student |
 | `/orders` | Мои заказы | student / mentor |
 | `/profile` | Профиль студента | student |
-| `/mentors/dashboard` | Кабинет ментора | mentor |
+| `/mentor/dashboard` | Кабинет ментора | mentor |
 | `/mentors/profile` | Редактировать профиль ментора | mentor |
 | `/mentors/services` | Управление услугами | mentor |
 

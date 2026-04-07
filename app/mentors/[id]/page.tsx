@@ -130,11 +130,9 @@ export default function MentorPage({ params }: Props) {
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
-                  {mentor.is_verified && (
-                    <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                      ✓ Верифицирован
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full">
+                    ✓ Верифицирован
+                  </span>
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
                   {COUNTRY_FLAGS[mentor.country] || "🌍"} {mentor.school_or_university}
