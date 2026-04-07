@@ -45,7 +45,7 @@ export default function FaqList({ items }: { items: Faq[] }) {
               }`}
             >
               <div className="overflow-hidden">
-                <p className="text-gray-500 text-sm leading-relaxed px-6 pb-6">{faq.a}</p>
+                <p className="text-gray-600 text-[15px] leading-relaxed px-6 pb-6 whitespace-pre-line">{faq.a}</p>
               </div>
             </div>
           </div>

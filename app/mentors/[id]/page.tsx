@@ -6,6 +6,7 @@ import Link from "next/link"
 import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
 import { Mentor, MentorService, Order } from "@/types"
+import BackButton from "@/components/BackButton"
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -110,14 +111,17 @@ export default function MentorPage({ params }: Props) {
 
   return (
     <div className="bg-white min-h-screen">
-      {/* Breadcrumb */}
+      {/* Breadcrumb + back */}
       <div className="border-b border-gray-100 bg-white px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/" className="hover:text-indigo-600 transition-colors">Главная</Link>
-          <span>/</span>
-          <Link href="/mentors" className="hover:text-indigo-600 transition-colors">Менторы</Link>
-          <span>/</span>
-          <span className="text-gray-600">{mentor.full_name}</span>
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-400 min-w-0">
+            <Link href="/" className="hover:text-indigo-600 transition-colors">Главная</Link>
+            <span>/</span>
+            <Link href="/mentors" className="hover:text-indigo-600 transition-colors">Менторы</Link>
+            <span>/</span>
+            <span className="text-gray-600 truncate">{mentor.full_name}</span>
+          </div>
+          <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium transition-colors group [-webkit-tap-highlight-color:transparent] flex-shrink-0" />
         </div>
       </div>
 

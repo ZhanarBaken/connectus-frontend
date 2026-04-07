@@ -7,6 +7,7 @@ import { fetchOrder, fetchMentor, completeOrder } from "@/lib/api"
 import { fetchChatMessages, connectChat, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
+import BackButton from "@/components/BackButton"
 
 const STATUS_LABEL: Record<string, string> = {
   pending_payment: "Ожидает оплаты",
@@ -173,12 +174,7 @@ export default function OrderPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-          <Link href="/orders" className="hover:text-indigo-600 transition-colors">Заказы</Link>
-          <span>/</span>
-          <span className="text-gray-600">Заказ #{order.id}</span>
-        </div>
+        <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-6 transition-colors group [-webkit-tap-highlight-color:transparent]" />
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Order info */}

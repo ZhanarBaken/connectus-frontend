@@ -449,7 +449,7 @@ export default function MentorDashboard() {
                 {[
                   { href: "/mentors/profile", icon: "👤", label: "Редактировать профиль" },
                   { href: "/mentors/services", icon: "📋", label: "Управлять услугами" },
-                  { href: "/mentors/profile", icon: "👁", label: "Предпросмотр профиля" },
+                  { href: `/mentors/${profile.id}`, icon: "👁", label: "Предпросмотр профиля" },
                 ].map((item) => (
                   <Link
                     key={item.href + item.label}

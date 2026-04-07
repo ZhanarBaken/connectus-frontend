@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
 import { getMentorReviewCount, getMentorAverageRating } from "@/lib/reviews"
+import BackButton from "@/components/BackButton"
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -94,6 +95,7 @@ export default function MentorsList({ mentors }: Props) {
       {/* Page header */}
       <div className="bg-gray-50 border-b border-gray-100 py-12 px-4">
         <div className="max-w-6xl mx-auto">
+          <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Найти ментора</h1>
           <p className="text-gray-500 text-lg">
             {mentors.length} менторов из топ университетов мира

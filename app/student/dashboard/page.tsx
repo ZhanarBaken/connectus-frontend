@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchStudentProfile, fetchOrders } from "@/lib/api"
+import { fetchStudentProfile, fetchOrders, fetchMentors } from "@/lib/api"
 import { StudentProfile, Order } from "@/types"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -28,6 +28,7 @@ export default function StudentDashboard() {
   const router = useRouter()
   const [profile, setProfile] = useState<StudentProfile | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
+  const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,8 +37,14 @@ export default function StudentDashboard() {
     if (!token) { router.replace("/auth/login"); return }
     if (role === "mentor") { router.replace("/mentor/dashboard"); return }
 
-    Promise.all([fetchStudentProfile(), fetchOrders()])
-      .then(([p, o]) => { setProfile(p); setOrders(o) })
+    Promise.all([fetchStudentProfile(), fetchOrders(), fetchMentors().catch(() => [])])
+      .then(([p, o, mentors]) => {
+        setProfile(p)
+        setOrders(o)
+        const map: Record<number, string> = {}
+        for (const m of mentors) map[m.id] = m.full_name
+        setMentorNames(map)
+      })
       .catch(() => router.replace("/auth/login"))
       .finally(() => setLoading(false))
   }, [router])
@@ -114,14 +121,15 @@ export default function StudentDashboard() {
             ) : (
               <div className="space-y-3">
                 {orders.map((order) => (
-                  <div
+                  <Link
                     key={order.id}
-                    className="bg-white rounded-2xl border border-gray-100 p-5 hover:border-indigo-100 transition-all"
+                    href={`/orders/${order.id}`}
+                    className="block bg-white rounded-2xl border border-gray-100 p-5 hover:border-indigo-100 hover:shadow-sm transition-all group"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">{order.service_title}</h3>
-                        <p className="text-sm text-gray-400 mt-0.5">Ваш ментор</p>
+                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{order.service_title}</h3>
+                        <p className="text-sm text-gray-500 mt-0.5 truncate">{mentorNames[order.mentor] || "Ментор"}</p>
                         <p className="text-xs text-gray-300 mt-1">
                           {new Date(order.created_at).toLocaleDateString("ru-RU", {
                             day: "numeric", month: "long", year: "numeric",
@@ -135,19 +143,7 @@ export default function StudentDashboard() {
                         <span className="text-lg font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                       </div>
                     </div>
-
-                    {/* Payment pending */}
-                    {order.order_status === "pending_payment" && (
-                      <div className="mt-4 pt-4 border-t border-gray-50">
-                        <Link
-                          href={`/orders/${order.id}`}
-                          className="inline-flex items-center gap-2 text-xs bg-indigo-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 transition-colors"
-                        >
-                          Перейти к заказу →
-                        </Link>
-                      </div>
-                    )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -157,23 +153,37 @@ export default function StudentDashboard() {
           <div className="space-y-6">
             {/* Profile card */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">Мой профиль</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-900">Мой профиль</h2>
+                <Link
+                  href="/students/profile"
+                  className="text-xs text-indigo-600 hover:underline font-medium"
+                >
+                  Изменить
+                </Link>
+              </div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
                   <span className="text-indigo-600 font-bold text-lg">
                     {profile?.full_name?.charAt(0) || "?"}
                   </span>
                 </div>
-                <div>
-                  <div className="font-semibold text-gray-900 text-sm">{profile?.full_name}</div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm truncate">{profile?.full_name || "Без имени"}</div>
                   {profile?.current_school_or_university && (
-                    <div className="text-xs text-gray-400">{profile.current_school_or_university}</div>
+                    <div className="text-xs text-gray-500 truncate">{profile.current_school_or_university}</div>
                   )}
-                  {profile?.age && (
-                    <div className="text-xs text-gray-400">{profile.age} лет</div>
-                  )}
+                  {profile?.age ? (
+                    <div className="text-xs text-gray-500">{profile.age} лет</div>
+                  ) : null}
                 </div>
               </div>
+              <Link
+                href="/students/profile"
+                className="block text-center w-full border border-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+              >
+                Редактировать профиль
+              </Link>
             </div>
 
             {/* CTA */}

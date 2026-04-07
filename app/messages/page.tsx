@@ -5,6 +5,31 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
+import BackButton from "@/components/BackButton"
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Запрос",
+  pending_payment: "Ожидает оплаты",
+  paid: "Оплачен",
+  in_progress: "В работе",
+  completed: "Завершён",
+  disputed: "Спор",
+  payout_pending: "Ожидает выплаты",
+  paid_out: "Выплачен",
+  cancelled: "Отменён",
+}
+
+const STATUS_STYLE: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-500",
+  pending_payment: "bg-yellow-50 text-yellow-700",
+  paid: "bg-blue-50 text-blue-700",
+  in_progress: "bg-indigo-50 text-indigo-700",
+  completed: "bg-green-50 text-green-700",
+  disputed: "bg-red-50 text-red-700",
+  payout_pending: "bg-gray-100 text-gray-500",
+  paid_out: "bg-green-50 text-green-700",
+  cancelled: "bg-gray-100 text-gray-400",
+}
 
 export default function MessagesPage() {
   const router = useRouter()
@@ -63,6 +88,7 @@ export default function MessagesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-10">
+        <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Сообщения</h1>
           <p className="text-sm text-gray-400 mt-1">
@@ -102,6 +128,9 @@ export default function MessagesPage() {
                 month: "short",
               })
 
+              const statusLabel = STATUS_LABEL[order.order_status] || order.order_status
+              const statusStyle = STATUS_STYLE[order.order_status] || "bg-gray-100 text-gray-500"
+
               return (
                 <Link
                   key={order.conversation_id ?? order.id}
@@ -120,7 +149,12 @@ export default function MessagesPage() {
                       <span className="text-xs text-gray-400 flex-shrink-0">{dateLabel}</span>
                     </div>
                     <p className="text-xs text-indigo-600 truncate mt-0.5">{order.service_title}</p>
-                    <p className="text-sm text-gray-400 truncate mt-0.5">Открыть чат →</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${statusStyle}`}>
+                        {statusLabel}
+                      </span>
+                      <span className="text-xs text-gray-400 truncate">Открыть чат →</span>
+                    </div>
                   </div>
                 </Link>
               )

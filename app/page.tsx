@@ -38,23 +38,23 @@ const STEPS = [
 const FAQS = [
   {
     q: "Кто такие менторы на Connectus?",
-    a: "Менторы — это студенты и выпускники топ университетов мира, которые прошли через процесс поступления сами и теперь помогают другим. Многие из них — стипендиаты Болашак, Chevening, DAAD и других программ.",
+    a: "Менторы — это студенты и выпускники топ университетов мира, которые прошли через процесс поступления сами и теперь помогают другим. Многие из них — стипендиаты Болашак, Chevening, DAAD и других программ. Каждый ментор проходит проверку и аутентификацию: на платформе работают только аккуратно подобранные кандидаты, которых мы проверили на компетентность.",
   },
   {
     q: "Сколько стоят услуги?",
-    a: "Цены устанавливают сами менторы. Консультации начинаются от $20. Вы видите стоимость заранее — никаких скрытых платежей.",
+    a: "Первая консультация у всех менторов всегда бесплатная — это знакомство, на котором вы обсудите цели и план. Цены на остальные услуги менторы устанавливают сами, и вы видите полную стоимость заранее. Никаких скрытых платежей.",
   },
   {
     q: "Как проходит консультация?",
-    a: "После оплаты вы договариваетесь с ментором о времени и проводите встречу в Zoom или Google Meet. Ментор сам свяжется с вами.",
+    a: "Студент отправляет ментору запрос на бесплатную консультацию. Ментор может принять или отклонить запрос — например, если у него уже много активных студентов. После принятия открывается чат прямо на платформе, и всё общение ведётся только внутри Connectus.\n\nВажно про безопасность: все переговоры должны оставаться на платформе. Если вы обменялись личными контактами (телефон, мессенджеры, email) и работали вне Connectus — мы не несём ответственности за качество работы и не сможем помочь в случае спора.",
   },
   {
     q: "Что если ментор не подошёл?",
-    a: "Вы можете задать вопросы ментору бесплатно до оплаты — у каждого есть мини-чат для знакомства. Так вы убедитесь что ментор подходит перед покупкой.",
+    a: "У каждого ментора первая консультация бесплатная — это и есть знакомство. Если вы поняли, что ментор не подходит, вы ничем не рискуете и можете выбрать другого.",
   },
   {
-    q: "Подходит ли Connectus для родителей?",
-    a: "Да. Многие родители используют Connectus чтобы разобраться в процессе поступления и помочь своим детям. Интерфейс понятен всем.",
+    q: "Зачем Connectus родителям?",
+    a: "Поступление за рубеж — это сотни деталей: выбор страны и университета, экзамены, эссе, дедлайны, гранты, виза. Разобраться во всём этом самим почти нереально, а ошибка может стоить года или мечты ребёнка.\n\nConnectus даёт вам прямой доступ к тем, кто уже прошёл этот путь — выпускникам MIT, Oxbridge, TU Munich, стипендиатам Болашак и Chevening. Они расскажут как это работает на самом деле, помогут составить план под вашего ребёнка и сэкономят вам месяцы поиска информации в интернете.\n\nПервая консультация бесплатная — вы ничем не рискуете, чтобы понять подходит ли вам платформа.",
   },
 ]
 
@@ -88,11 +88,11 @@ export default async function HomePage() {
             <span className="w-2 h-2 bg-indigo-500 rounded-full" />
             🎁 Первая консультация — бесплатно
           </div>
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 leading-tight mb-6">
+          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 leading-[1.1] tracking-tight mb-6">
             Поступи в университет<br />
             <span className="text-indigo-600">за рубежом</span> с ментором
           </h1>
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
+          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
             Connectus соединяет студентов и родителей с менторами — выпускниками
             топ университетов мира. Начни с бесплатной консультации.
           </p>
@@ -119,8 +119,8 @@ export default async function HomePage() {
               { value: "200+", label: "Студентов" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
-                <div className="text-3xl font-bold text-gray-900">{stat.value}</div>
-                <div className="text-sm text-gray-500 mt-1">{stat.label}</div>
+                <div className="text-3xl font-bold text-gray-900 tracking-tight">{stat.value}</div>
+                <div className="text-sm text-gray-600 mt-1 font-medium">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -128,20 +128,51 @@ export default async function HomePage() {
       </section>
 
       {/* ─── How it works ─────────────────────────────────────────────── */}
-      <section id="how-it-works" className="py-24 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
+      <section id="how-it-works" className="relative py-24 px-4 bg-gradient-to-b from-white via-indigo-50/30 to-white overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute top-10 -left-20 w-72 h-72 bg-indigo-200/30 rounded-full blur-3xl" />
+        <div className="pointer-events-none absolute bottom-10 -right-20 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl" />
+
+        <div className="relative max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Как это работает</h2>
-            <p className="text-gray-500 text-lg max-w-xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-white border border-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4 shadow-sm">
+              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+              Простой процесс
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">Как это работает</h2>
+            <p className="text-gray-600 text-lg max-w-xl mx-auto leading-relaxed">
               Три простых шага до начала подготовки к поступлению
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {STEPS.map((step) => (
-              <div key={step.number} className="relative p-8 rounded-2xl bg-gray-50 border border-gray-100">
-                <div className="text-5xl font-bold text-indigo-100 mb-4">{step.number}</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-500 leading-relaxed">{step.desc}</p>
+
+          <div className="relative grid md:grid-cols-3 gap-6">
+            {/* Connecting dashed line on desktop */}
+            <div className="hidden md:block absolute top-16 left-[16%] right-[16%] h-0.5 border-t-2 border-dashed border-indigo-200 pointer-events-none" />
+
+            {STEPS.map((step, i) => (
+              <div
+                key={step.number}
+                className="relative bg-white rounded-2xl border border-gray-100 p-8 transform-gpu transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-2 hover:shadow-xl hover:shadow-indigo-100/60 group [-webkit-tap-highlight-color:transparent]"
+                style={{ WebkitBackfaceVisibility: "hidden" }}
+              >
+                {/* Big circular step number */}
+                <div className="relative w-14 h-14 mb-5 mx-auto">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-lg shadow-indigo-200 transform-gpu transition-transform duration-300 ease-out group-hover:scale-110 group-hover:rotate-3" />
+                  <div className="absolute inset-0 flex items-center justify-center text-white text-lg font-bold">
+                    {step.number}
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-semibold text-gray-900 mb-3 text-center">{step.title}</h3>
+                <p className="text-gray-600 leading-relaxed text-center text-[15px]">{step.desc}</p>
+
+                {/* Bottom accent line that grows on hover */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-0 bg-gradient-to-r from-indigo-400 to-purple-400 group-hover:w-1/2 transition-[width] duration-300 ease-out" />
+
+                {/* Step index badge — sits on top of the dashed connector line */}
+                <div className="hidden md:block absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-white border border-indigo-100 rounded-full text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                  Шаг {i + 1}
+                </div>
               </div>
             ))}
           </div>
@@ -152,8 +183,8 @@ export default async function HomePage() {
       <section id="categories" className="py-24 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Популярные направления</h2>
-            <p className="text-gray-500 text-lg">Выбери страну поступления</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">Популярные направления</h2>
+            <p className="text-gray-600 text-lg">Выбери страну поступления</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {CATEGORIES.map((cat) => (
@@ -175,10 +206,10 @@ export default async function HomePage() {
                   <div className="text-4xl mb-3 leading-none transform-gpu transition-transform duration-300 ease-out group-hover:scale-110">
                     <span className="inline-block">{cat.icon}</span>
                   </div>
-                  <div className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300 text-sm">
+                  <div className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300 text-[15px]">
                     {cat.label}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">{cat.desc}</div>
+                  <div className="text-xs text-gray-500 mt-1 leading-snug">{cat.desc}</div>
                 </div>
 
                 {/* Bottom accent line — width animation instead of scale-x for crisper Safari rendering */}
@@ -194,8 +225,8 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-end mb-12">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Наши менторы</h2>
-              <p className="text-gray-500 text-lg">Выпускники топ университетов, готовые помочь</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 tracking-tight">Наши менторы</h2>
+              <p className="text-gray-600 text-lg">Выпускники топ университетов, готовые помочь</p>
             </div>
             <Link
               href="/mentors"
@@ -228,14 +259,14 @@ export default async function HomePage() {
                         <span className="text-indigo-500 flex-shrink-0" title="Верифицирован">✓</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 mt-0.5">
+                    <p className="text-sm text-gray-600 mt-0.5">
                       {COUNTRY_FLAGS[mentor.country] || "🌍"} {mentor.school_or_university}
                     </p>
                   </div>
                 </div>
 
                 {/* Bio */}
-                <p className="text-sm text-gray-500 mb-4 line-clamp-2 leading-relaxed">
+                <p className="text-[15px] text-gray-600 mb-4 line-clamp-2 leading-relaxed">
                   {mentor.detailed_bio}
                 </p>
 
@@ -254,7 +285,7 @@ export default async function HomePage() {
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                   {mentor.grant_or_scholarship && (
-                    <span className="text-xs text-gray-400">🏅 {mentor.grant_or_scholarship}</span>
+                    <span className="text-xs text-gray-500">🏅 {mentor.grant_or_scholarship}</span>
                   )}
                   <span
                     className={`text-xs font-medium px-2.5 py-1 rounded-full ml-auto ${
@@ -285,10 +316,10 @@ export default async function HomePage() {
       <section className="py-24 px-4 bg-indigo-600">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
               Почему нам доверяют
             </h2>
-            <p className="text-indigo-200 text-lg">Безопасно для студентов и родителей</p>
+            <p className="text-indigo-100 text-lg">Безопасно для студентов и родителей</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
@@ -319,7 +350,7 @@ export default async function HomePage() {
                 </div>
 
                 <h3 className="relative font-semibold text-lg mb-2">{item.title}</h3>
-                <p className="relative text-indigo-200 text-sm leading-relaxed">{item.desc}</p>
+                <p className="relative text-indigo-100 text-[15px] leading-relaxed">{item.desc}</p>
 
                 {/* Bottom accent line */}
                 <div className="absolute bottom-0 left-0 h-0.5 w-0 bg-white group-hover:w-full transition-[width] duration-500 ease-out" />
@@ -333,20 +364,100 @@ export default async function HomePage() {
       <section className="py-24 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Отзывы студентов</h2>
-            <p className="text-gray-500 text-lg">Реальные отзывы от тех, кто уже работал с менторами</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">Отзывы студентов</h2>
+            <p className="text-gray-600 text-lg">Реальные отзывы от тех, кто уже работал с менторами</p>
           </div>
           <PlatformReviews />
+        </div>
+      </section>
+
+      {/* ─── For mentors ───────────────────────────────────────────── */}
+      <section className="relative py-24 px-4 bg-gradient-to-br from-indigo-950 via-indigo-900 to-indigo-800 overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute top-20 -left-20 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl" />
+        <div className="pointer-events-none absolute bottom-20 -right-20 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl" />
+
+        <div className="relative max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 bg-white/10 text-indigo-100 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+              <span className="w-1.5 h-1.5 bg-indigo-300 rounded-full" />
+              Для менторов
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
+              Учишься за рубежом? Помогай другим
+            </h2>
+            <p className="text-indigo-100 text-lg max-w-2xl mx-auto leading-relaxed">
+              Стань ментором Connectus и поделись своим опытом с теми, кто только начинает путь
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
+            {[
+              {
+                icon: "💰",
+                title: "Зарабатывай на опыте",
+                desc: "Сам устанавливаешь цены на свои услуги. Гибкий график — работаешь когда удобно.",
+              },
+              {
+                icon: "📝",
+                title: "Простая регистрация",
+                desc: "Создай профиль за 5 минут: университет, специальность, опыт. Никаких лишних шагов.",
+              },
+              {
+                icon: "✓",
+                title: "Верификация 48 часов",
+                desc: "Мы проверяем диплом и подтверждаем университет. Только проверенные кандидаты на платформе.",
+              },
+              {
+                icon: "🔒",
+                title: "Безопасность платформы",
+                desc: "Всё общение и оплата — только на Connectus. Мы защищаем и менторов, и студентов.",
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 transform-gpu transition-[transform,background-color,border-color] duration-300 ease-out hover:-translate-y-1 hover:bg-white/10 hover:border-white/20 group"
+                style={{ WebkitBackfaceVisibility: "hidden" }}
+              >
+                {/* Soft glow on hover */}
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+
+                <div className="relative">
+                  <div className="text-3xl mb-4 leading-none transform-gpu transition-transform duration-300 group-hover:scale-110 inline-block">
+                    {card.icon}
+                  </div>
+                  <h3 className="font-semibold text-white text-lg mb-2">{card.title}</h3>
+                  <p className="text-indigo-100 text-[15px] leading-relaxed">{card.desc}</p>
+                </div>
+
+                {/* Bottom accent */}
+                <div className="absolute bottom-0 left-0 h-0.5 w-0 bg-gradient-to-r from-indigo-400 to-purple-400 group-hover:w-full transition-[width] duration-500 ease-out rounded-full" />
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/become-mentor"
+              className="inline-flex items-center gap-2 bg-white text-indigo-700 px-8 py-4 rounded-2xl text-base font-bold hover:bg-indigo-50 transition-colors shadow-lg shadow-indigo-900/50"
+            >
+              Узнать больше про менторство
+              <span aria-hidden>→</span>
+            </Link>
+            <p className="text-sm text-indigo-200 mt-4">
+              Регистрация бесплатная · 48 часов на верификацию · Никаких подписок
+            </p>
+          </div>
         </div>
       </section>
 
       {/* ─── CTA banner ───────────────────────────────────────────────── */}
       <section className="py-24 px-4 bg-white">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
             Готов начать?
           </h2>
-          <p className="text-gray-500 text-lg mb-10">
+          <p className="text-gray-600 text-lg mb-10 leading-relaxed">
             Создай профиль бесплатно и найди ментора уже сегодня
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -369,8 +480,9 @@ export default async function HomePage() {
       {/* ─── FAQ ──────────────────────────────────────────────────────── */}
       <section className="py-24 px-4 bg-gray-50">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Частые вопросы</h2>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">Частые вопросы</h2>
+            <p className="text-gray-600 text-lg">Всё, что нужно знать перед началом</p>
           </div>
           <FaqList items={FAQS} />
         </div>

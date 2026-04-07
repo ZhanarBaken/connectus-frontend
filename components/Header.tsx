@@ -23,29 +23,47 @@ export default function Header() {
   }
 
   const isMentor = role === "mentor"
+  const isStudent = role === "student"
+  const isAuthed = isMentor || isStudent
   const homeHref = isMentor ? "/mentor/dashboard" : "/"
 
-  const mentorNav = [
-    { href: "/mentor/dashboard", label: "Кабинет" },
-    { href: "/mentors/profile", label: "Профиль" },
-    { href: "/mentors/services", label: "Услуги" },
-    { href: "/orders", label: "Заказы" },
-    { href: "/messages", label: "Сообщения" },
+  interface NavLink {
+    href: string
+    label: string
+    icon?: string
+    matchPrefixes?: string[]  // additional pathname prefixes considered "active"
+  }
+
+  const mentorNav: NavLink[] = [
+    { href: "/mentor/dashboard", label: "Кабинет", icon: "📊" },
+    { href: "/mentors/profile", label: "Профиль", icon: "👤" },
+    { href: "/mentors/services", label: "Услуги", icon: "📋" },
+    { href: "/orders", label: "Заказы", icon: "📥", matchPrefixes: ["/orders"] },
+    { href: "/messages", label: "Сообщения", icon: "💬" },
   ]
 
-  const studentNav = [
-    { href: "/mentors", label: "Найти ментора" },
-    { href: "/orders", label: "Мои заказы" },
-    { href: "/messages", label: "Сообщения" },
+  const studentNav: NavLink[] = [
+    { href: "/student/dashboard", label: "Кабинет", icon: "📊" },
+    { href: "/mentors", label: "Найти ментора", icon: "🔍" },
+    { href: "/orders", label: "Мои заказы", icon: "📋", matchPrefixes: ["/orders"] },
+    { href: "/messages", label: "Сообщения", icon: "💬" },
+    { href: "/students/profile", label: "Профиль", icon: "👤" },
   ]
 
-  const guestNav = [
+  const guestNav: NavLink[] = [
     { href: "/mentors", label: "Менторы" },
     { href: "/#how-it-works", label: "Как это работает" },
     { href: "/#categories", label: "Направления" },
+    { href: "/become-mentor", label: "Стать ментором" },
   ]
 
-  const navLinks = isMentor ? mentorNav : role === "student" ? studentNav : guestNav
+  const navLinks: NavLink[] = isMentor ? mentorNav : isStudent ? studentNav : guestNav
+
+  const isActive = (link: NavLink) => {
+    if (pathname === link.href) return true
+    if (link.matchPrefixes?.some((p) => pathname.startsWith(p))) return true
+    return false
+  }
 
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
@@ -59,25 +77,46 @@ export default function Header() {
         </Link>
 
         {/* Nav links */}
-        <nav className="hidden md:flex items-center gap-8 text-sm text-gray-600">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="hover:text-indigo-600 transition-colors font-medium"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        {isAuthed ? (
+          <nav className="hidden md:flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-2xl p-1">
+            {navLinks.map((link) => {
+              const active = isActive(link)
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transform-gpu transition-[background-color,color,box-shadow] duration-200 ease-out [-webkit-tap-highlight-color:transparent] ${
+                    active
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-600 hover:text-indigo-600 hover:bg-white/60"
+                  }`}
+                >
+                  {link.icon && (
+                    <span className={`text-base leading-none transition-transform duration-200 ${active ? "" : "group-hover:scale-110"}`}>
+                      {link.icon}
+                    </span>
+                  )}
+                  <span>{link.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        ) : (
+          <nav className="hidden md:flex items-center gap-8 text-sm text-gray-600">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="hover:text-indigo-600 transition-colors font-medium"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         {/* Auth buttons */}
         <div className="hidden md:flex items-center gap-3">
-          {role === "student" && (
-            <Link href="/student/dashboard" className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
-              Мой кабинет
-            </Link>
-          )}
           {role ? (
             <button
               onClick={handleLogout}
@@ -116,16 +155,25 @@ export default function Header() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 flex flex-col gap-3">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm text-gray-600 hover:text-indigo-600 font-medium py-1"
-            >
-              {link.label}
-            </Link>
-          ))}
+        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 flex flex-col gap-1">
+          {navLinks.map((link) => {
+            const active = isAuthed && isActive(link)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMenuOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-indigo-50 text-indigo-600"
+                    : "text-gray-600 hover:text-indigo-600 hover:bg-gray-50"
+                }`}
+              >
+                {link.icon && <span className="text-base leading-none">{link.icon}</span>}
+                <span>{link.label}</span>
+              </Link>
+            )
+          })}
           {role ? (
             <button onClick={handleLogout} className="text-sm text-gray-500 text-left py-1">
               Выйти

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { fetchMentorProfile, updateMentorProfile } from "@/lib/api"
 import { MentorProfile, ExpertiseArea } from "@/types"
+import BackButton from "@/components/BackButton"
 
 const EXPERTISE_OPTIONS = [
   { value: "admission", label: "Поступление" },
@@ -115,9 +115,8 @@ export default function MentorProfilePage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <Link href="/mentor/dashboard" className="text-sm text-gray-400 hover:text-indigo-600 transition-colors flex items-center gap-1 mb-2">
-              ← Назад в кабинет
-            </Link>
+            <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-2 transition-colors group [-webkit-tap-highlight-color:transparent]" />
+
             <h1 className="text-2xl font-bold text-gray-900">Редактировать профиль</h1>
           </div>
           <div className="text-right">

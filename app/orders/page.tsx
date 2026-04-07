@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
+import BackButton from "@/components/BackButton"
 
 const STATUS_LABEL: Record<Order["order_status"], string> = {
   draft: "Черновик",
@@ -66,6 +67,7 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-10">
+        <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <h1 className="text-2xl font-bold text-gray-900 mb-8">Мои заказы</h1>
 
         {orders.length === 0 ? (
