@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
+import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
 import { Mentor } from "@/types"
 
 const EXPERTISE_LABELS: Record<string, string> = {
@@ -21,12 +22,6 @@ const COUNTRY_FLAGS: Record<string, string> = {
   Italy: "🇮🇹",
 }
 
-const MOCK_REVIEWS = [
-  { name: "Айгерим Б.", text: "Очень помогло! Ментор объяснил весь процесс поступления пошагово.", stars: 5 },
-  { name: "Данияр С.", text: "Профессиональный подход, отвечал быстро, дал много полезных советов.", stars: 5 },
-  { name: "Мадина К.", text: "Рекомендую всем кто хочет поступить за рубеж.", stars: 5 },
-]
-
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -42,6 +37,8 @@ export default function MentorPage({ params }: Props) {
   const [selectedService, setSelectedService] = useState<number | null>(null)
   const [orderingServiceId, setOrderingServiceId] = useState<number | null>(null)
   const [orderError, setOrderError] = useState("")
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [avgRating, setAvgRating] = useState<number | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -61,6 +58,8 @@ export default function MentorPage({ params }: Props) {
         )
         const alreadyBooked = m.services.find((s) => bookedIds.has(s.id))
         if (alreadyBooked) setBookedServiceId(alreadyBooked.id)
+        setReviews(getMentorReviews(m.id))
+        setAvgRating(getMentorAverageRating(m.id))
       })
       .catch(() => router.replace("/"))
       .finally(() => setLoading(false))
@@ -214,8 +213,7 @@ export default function MentorPage({ params }: Props) {
                           <p className="text-xs text-gray-400 mt-2">⏱ {service.duration_minutes} мин</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <div className="text-2xl font-bold text-gray-900">${service.price}</div>
-                          <div className="text-xs text-gray-400 mb-2">{service.currency}</div>
+                          <div className="text-2xl font-bold text-gray-900">{Number(service.price).toLocaleString("ru-RU")} ₸</div>
                           <button
                             onClick={async (e) => {
                               e.stopPropagation()
@@ -251,25 +249,44 @@ export default function MentorPage({ params }: Props) {
 
             {/* Reviews */}
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Отзывы</h2>
-              <div className="space-y-4">
-                {MOCK_REVIEWS.map((review, i) => (
-                  <div key={i} className="border border-gray-100 rounded-2xl p-5">
-                    <div className="flex items-center gap-1 mb-2">
-                      {[1,2,3,4,5].map((s) => (
-                        <span key={s} className="text-yellow-400 text-sm">★</span>
-                      ))}
-                    </div>
-                    <p className="text-gray-600 text-sm leading-relaxed mb-3">"{review.text}"</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
-                        <span className="text-gray-500 text-xs font-bold">{review.name.charAt(0)}</span>
-                      </div>
-                      <span className="text-sm text-gray-400">{review.name}</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-baseline gap-3 mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Отзывы</h2>
+                {reviews.length > 0 && (
+                  <span className="text-sm text-gray-400">
+                    {avgRating?.toFixed(1)} ★ · {reviews.length}{" "}
+                    {reviews.length === 1 ? "отзыв" : reviews.length < 5 ? "отзыва" : "отзывов"}
+                  </span>
+                )}
               </div>
+              {reviews.length === 0 ? (
+                <div className="border border-gray-100 rounded-2xl p-8 text-center">
+                  <div className="text-3xl mb-2">⭐</div>
+                  <p className="text-sm text-gray-400">У этого ментора пока нет отзывов</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="border border-gray-100 rounded-2xl p-5">
+                      <div className="flex items-center gap-1 mb-2">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <span key={s} className={`text-sm ${s <= review.rating ? "text-yellow-400" : "text-gray-200"}`}>★</span>
+                        ))}
+                      </div>
+                      <p className="text-gray-600 text-sm leading-relaxed mb-3">&ldquo;{review.text}&rdquo;</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+                          <span className="text-gray-500 text-xs font-bold">{review.authorName.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <span className="text-sm text-gray-400">{review.authorName}</span>
+                        <span className="text-xs text-gray-300">·</span>
+                        <span className="text-xs text-gray-300">
+                          {new Date(review.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -281,8 +298,8 @@ export default function MentorPage({ params }: Props) {
                   <>
                     <div className="mb-4">
                       <div className="text-3xl font-bold text-gray-900 mb-1">
-                        ${selectedServiceData.price}
-                        <span className="text-base font-normal text-gray-400 ml-1">{selectedServiceData.currency}</span>
+                        {Number(selectedServiceData.price).toLocaleString("ru-RU")}
+                        <span className="text-base font-normal text-gray-400 ml-1">₸</span>
                       </div>
                       <div className="text-sm text-gray-500">{selectedServiceData.title}</div>
                       <div className="text-xs text-gray-400 mt-1">⏱ {selectedServiceData.duration_minutes} мин</div>
@@ -302,7 +319,7 @@ export default function MentorPage({ params }: Props) {
                             }`}
                           >
                             <span className="font-medium">{s.title}</span>
-                            <span className="float-right font-bold">${s.price}</span>
+                            <span className="float-right font-bold">{Number(s.price).toLocaleString("ru-RU")} ₸</span>
                           </button>
                         ))}
                       </div>
@@ -368,7 +385,7 @@ export default function MentorPage({ params }: Props) {
               {booking
                 ? "Отправляем..."
                 : selectedServiceData
-                  ? `Записаться · $${selectedServiceData.price}`
+                  ? `Записаться · ${Number(selectedServiceData.price).toLocaleString("ru-RU")} ₸`
                   : "Записаться"}
             </button>
           )}

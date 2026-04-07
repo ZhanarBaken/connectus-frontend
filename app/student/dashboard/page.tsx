@@ -132,7 +132,7 @@ export default function StudentDashboard() {
                         <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ORDER_STATUS_STYLES[order.order_status] || "bg-gray-100 text-gray-500"}`}>
                           {ORDER_STATUS_LABELS[order.order_status] || order.order_status}
                         </span>
-                        <span className="text-lg font-bold text-gray-900">${order.total_price}</span>
+                        <span className="text-lg font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                       </div>
                     </div>
 

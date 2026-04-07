@@ -95,7 +95,7 @@ export default function OrdersPage() {
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[order.order_status]}`}>
                     {STATUS_LABEL[order.order_status]}
                   </span>
-                  <span className="text-lg font-bold text-gray-900">${order.total_price}</span>
+                  <span className="text-lg font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                 </div>
               </Link>
             ))}

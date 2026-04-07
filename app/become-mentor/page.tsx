@@ -1,4 +1,5 @@
 import Link from "next/link"
+import MentorRedirect from "@/components/MentorRedirect"
 
 const BENEFITS = [
   {
@@ -99,6 +100,7 @@ const FAQS = [
 export default function BecomeMentorPage() {
   return (
     <main className="bg-white">
+      <MentorRedirect />
       {/* ── Hero ────────────────────────────────────────────────── */}
       <section className="bg-gradient-to-b from-indigo-950 to-indigo-800 text-white pt-20 pb-28 px-4">
         <div className="max-w-4xl mx-auto text-center">

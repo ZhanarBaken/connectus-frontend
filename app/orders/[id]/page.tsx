@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchOrder } from "@/lib/api"
 import { Order, ChatMessage } from "@/types"
+import ReviewForm from "@/components/ReviewForm"
 
 const STATUS_LABEL: Record<string, string> = {
   pending_payment: "Ожидает оплаты",
@@ -150,12 +151,12 @@ export default function OrderPage({ params }: Props) {
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Сумма</span>
-                  <span className="font-bold text-gray-900">${order.total_price}</span>
+                  <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                 </div>
                 {role === "mentor" && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Выплата ментору</span>
-                    <span className="font-semibold text-green-600">${order.mentor_payout_amount}</span>
+                    <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
@@ -199,6 +200,16 @@ export default function OrderPage({ params }: Props) {
                   После подтверждения оплаты администратором откроется чат с ментором.
                 </p>
               </div>
+            )}
+
+            {/* Review form — student only, after payment */}
+            {role !== "mentor" && ["paid", "in_progress", "completed"].includes(order.order_status) && (
+              <ReviewForm
+                orderId={order.id}
+                mentorId={order.mentor}
+                mentorName={order.mentor_email}
+                authorName={order.student_info?.full_name || "Студент"}
+              />
             )}
           </div>
 

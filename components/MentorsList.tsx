@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
+import { getMentorReviewCount, getMentorAverageRating } from "@/lib/reviews"
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -40,6 +41,8 @@ export default function MentorsList({ mentors }: Props) {
   const [expertise, setExpertise] = useState("")
   const [onlyAccepting, setOnlyAccepting] = useState(false)
 
+  const [reviewStats, setReviewStats] = useState<Record<number, { count: number; avg: number | null }>>({})
+
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     if (!token) {
@@ -47,7 +50,15 @@ export default function MentorsList({ mentors }: Props) {
       return
     }
     setAuthChecked(true)
-  }, [router])
+    const stats: Record<number, { count: number; avg: number | null }> = {}
+    for (const m of mentors) {
+      stats[m.id] = {
+        count: getMentorReviewCount(m.id),
+        avg: getMentorAverageRating(m.id),
+      }
+    }
+    setReviewStats(stats)
+  }, [router, mentors])
 
   const countries = useMemo(
     () => Array.from(new Set(mentors.map((m) => m.country))),
@@ -232,6 +243,19 @@ export default function MentorsList({ mentors }: Props) {
                     {mentor.major && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate">{mentor.major}</p>
                     )}
+                    {/* Reviews */}
+                    <div className="mt-1.5 text-xs text-gray-400 flex items-center gap-1">
+                      {reviewStats[mentor.id]?.count > 0 ? (
+                        <>
+                          <span className="text-yellow-400">★</span>
+                          <span className="font-semibold text-gray-700">{reviewStats[mentor.id].avg?.toFixed(1)}</span>
+                          <span>·</span>
+                          <span>{reviewStats[mentor.id].count} {reviewStats[mentor.id].count === 1 ? "отзыв" : reviewStats[mentor.id].count < 5 ? "отзыва" : "отзывов"}</span>
+                        </>
+                      ) : (
+                        <span>Без отзывов</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

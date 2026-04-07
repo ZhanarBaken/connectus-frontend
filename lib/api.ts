@@ -113,6 +113,20 @@ export async function createMentorService(data: Partial<import("@/types").Mentor
   return res.json()
 }
 
+export async function updateMentorService(id: number, data: Partial<import("@/types").MentorService>): Promise<import("@/types").MentorService> {
+  const res = await fetch(`${BASE_URL}/mentors/services/${id}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    const first = Object.values(err)[0]
+    throw new Error(Array.isArray(first) ? first[0] : String(first))
+  }
+  return res.json()
+}
+
 export async function deleteMentorService(id: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/mentors/services/${id}/`, {
     method: "DELETE",

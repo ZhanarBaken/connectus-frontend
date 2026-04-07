@@ -2,23 +2,41 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { fetchMentorServices, createMentorService, deleteMentorService } from "@/lib/api"
+import {
+  fetchMentorServices,
+  createMentorService,
+  updateMentorService,
+  deleteMentorService,
+} from "@/lib/api"
 import { MentorService } from "@/types"
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
+
+const formatPrice = (price: string) => {
+  const n = Number(price)
+  if (Number.isNaN(n)) return `${price} ₸`
+  return `${n.toLocaleString("ru-RU")} ₸`
+}
+
+interface FormState {
+  title: string
+  description: string
+  price: string
+  duration: string
+}
+
+const EMPTY_FORM: FormState = { title: "", description: "", price: "", duration: "60" }
 
 export default function MentorServicesPage() {
   const [services, setServices] = useState<MentorService[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [showForm, setShowForm] = useState(false)
 
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [price, setPrice] = useState("")
-  const [duration, setDuration] = useState("60")
-  const [adding, setAdding] = useState(false)
-  const [addError, setAddError] = useState("")
+  // Form state — used for both create and edit
+  const [editingId, setEditingId] = useState<number | "new" | null>(null)
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState("")
 
   useEffect(() => {
     fetchMentorServices()
@@ -27,31 +45,58 @@ export default function MentorServicesPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const startCreate = () => {
+    setEditingId("new")
+    setForm(EMPTY_FORM)
+    setFormError("")
+  }
+
+  const startEdit = (service: MentorService) => {
+    setEditingId(service.id)
+    setForm({
+      title: service.title,
+      description: service.description,
+      price: service.price,
+      duration: String(service.duration_minutes),
+    })
+    setFormError("")
+  }
+
+  const cancelForm = () => {
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setFormError("")
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setAdding(true)
-    setAddError("")
+    setSubmitting(true)
+    setFormError("")
     try {
-      const created = await createMentorService({
-        title,
-        description,
-        price,
-        duration_minutes: Number(duration),
-      })
-      setServices((prev) => [created, ...prev])
-      setTitle("")
-      setDescription("")
-      setPrice("")
-      setDuration("60")
-      setShowForm(false)
+      const payload = {
+        title: form.title,
+        description: form.description,
+        price: form.price,
+        currency: "KZT",
+        duration_minutes: Number(form.duration),
+      }
+      if (editingId === "new") {
+        const created = await createMentorService(payload)
+        setServices((prev) => [created, ...prev])
+      } else if (typeof editingId === "number") {
+        const updated = await updateMentorService(editingId, payload)
+        setServices((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+      }
+      cancelForm()
     } catch (e: unknown) {
-      setAddError(e instanceof Error ? e.message : "Ошибка при добавлении")
+      setFormError(e instanceof Error ? e.message : "Ошибка при сохранении")
     } finally {
-      setAdding(false)
+      setSubmitting(false)
     }
   }
 
   const handleDelete = async (id: number) => {
+    if (!confirm("Удалить эту услугу?")) return
     await deleteMentorService(id)
     setServices((prev) => prev.filter((s) => s.id !== id))
   }
@@ -64,6 +109,8 @@ export default function MentorServicesPage() {
     )
   }
 
+  const isFormOpen = editingId !== null
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-10">
@@ -75,56 +122,97 @@ export default function MentorServicesPage() {
             </Link>
             <h1 className="text-2xl font-bold text-gray-900">Мои услуги</h1>
           </div>
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            + Добавить
-          </button>
+          {!isFormOpen && (
+            <button
+              onClick={startCreate}
+              className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              + Добавить
+            </button>
+          )}
         </div>
 
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-6">{error}</div>
         )}
 
-        {/* Add form */}
-        {showForm && (
+        {/* Form (create or edit) */}
+        {isFormOpen && (
           <div className="bg-white rounded-2xl border border-indigo-100 p-6 mb-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">Новая услуга</h2>
-            <form onSubmit={handleAdd} className="space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 mb-5">
+              {editingId === "new" ? "Новая услуга" : "Редактировать услугу"}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Название</label>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} required
-                  placeholder="Консультация 60 минут" className={inputClass} />
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  required
+                  placeholder="Консультация 60 минут"
+                  className={inputClass}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Описание</label>
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={2}
                   placeholder="Разбираем твою ситуацию, составляем план поступления..."
-                  className={`${inputClass} resize-none`} />
+                  className={`${inputClass} resize-none`}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Цена (USD)</label>
-                  <input value={price} onChange={(e) => setPrice(e.target.value)} required
-                    type="number" min="0" placeholder="50" className={inputClass} />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Цена (₸)</label>
+                  <div className="relative">
+                    <input
+                      value={form.price}
+                      onChange={(e) => setForm({ ...form, price: e.target.value })}
+                      required
+                      type="number"
+                      min="0"
+                      step="100"
+                      placeholder="25000"
+                      className={`${inputClass} pr-10`}
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">₸</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Длительность (мин)</label>
-                  <input value={duration} onChange={(e) => setDuration(e.target.value)} required
-                    type="number" min="15" step="15" className={inputClass} />
+                  <input
+                    value={form.duration}
+                    onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                    required
+                    type="number"
+                    min="15"
+                    step="15"
+                    className={inputClass}
+                  />
                 </div>
               </div>
-              {addError && (
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{addError}</div>
+              {formError && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{formError}</div>
               )}
               <div className="flex gap-3">
-                <button type="submit" disabled={adding}
-                  className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50">
-                  {adding ? "Добавляем..." : "Добавить услугу"}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {submitting
+                    ? "Сохраняем..."
+                    : editingId === "new"
+                      ? "Добавить услугу"
+                      : "Сохранить"}
                 </button>
-                <button type="button" onClick={() => setShowForm(false)}
-                  className="border border-gray-200 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors">
+                <button
+                  type="button"
+                  onClick={cancelForm}
+                  className="border border-gray-200 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                >
                   Отмена
                 </button>
               </div>
@@ -133,13 +221,13 @@ export default function MentorServicesPage() {
         )}
 
         {/* Services list */}
-        {services.length === 0 ? (
+        {services.length === 0 && !isFormOpen ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
             <div className="text-5xl mb-4">📋</div>
             <h3 className="font-semibold text-gray-900 mb-2">Услуг пока нет</h3>
             <p className="text-sm text-gray-400 mb-6">Добавь первую услугу чтобы студенты могли её заказать</p>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={startCreate}
               className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
             >
               + Добавить услугу
@@ -165,15 +253,24 @@ export default function MentorServicesPage() {
                   <div className="flex items-center gap-3 mt-2">
                     <span className="text-xs text-gray-400">⏱ {service.duration_minutes} мин</span>
                     <span className="text-xs text-gray-300">·</span>
-                    <span className="text-sm font-bold text-gray-900">${service.price}</span>
+                    <span className="text-sm font-bold text-gray-900">{formatPrice(service.price)}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(service.id)}
-                  className="text-sm text-gray-300 hover:text-red-500 transition-colors flex-shrink-0 px-2 py-1"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => startEdit(service)}
+                    className="text-xs text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 font-medium"
+                  >
+                    Изменить
+                  </button>
+                  <button
+                    onClick={() => handleDelete(service.id)}
+                    className="text-xs text-gray-300 hover:text-red-500 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50"
+                    aria-label="Удалить"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>

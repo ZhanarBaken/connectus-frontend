@@ -22,11 +22,34 @@ export default function Header() {
     router.push("/")
   }
 
+  const isMentor = role === "mentor"
+  const homeHref = isMentor ? "/mentor/dashboard" : "/"
+
+  const mentorNav = [
+    { href: "/mentor/dashboard", label: "Кабинет" },
+    { href: "/mentors/profile", label: "Профиль" },
+    { href: "/mentors/services", label: "Услуги" },
+    { href: "/orders", label: "Заказы" },
+  ]
+
+  const studentNav = [
+    { href: "/mentors", label: "Найти ментора" },
+    { href: "/orders", label: "Мои заказы" },
+  ]
+
+  const guestNav = [
+    { href: "/mentors", label: "Менторы" },
+    { href: "/#how-it-works", label: "Как это работает" },
+    { href: "/#categories", label: "Направления" },
+  ]
+
+  const navLinks = isMentor ? mentorNav : role === "student" ? studentNav : guestNav
+
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href={homeHref} className="flex items-center gap-2">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">C</span>
           </div>
@@ -35,24 +58,15 @@ export default function Header() {
 
         {/* Nav links */}
         <nav className="hidden md:flex items-center gap-8 text-sm text-gray-600">
-          <Link href="/mentors" className="hover:text-indigo-600 transition-colors font-medium">
-            Менторы
-          </Link>
-          <Link href="/#how-it-works" className="hover:text-indigo-600 transition-colors font-medium">
-            Как это работает
-          </Link>
-          <Link href="/#categories" className="hover:text-indigo-600 transition-colors font-medium">
-            Направления
-          </Link>
+          {navLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:text-indigo-600 transition-colors font-medium">
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         {/* Auth buttons */}
         <div className="hidden md:flex items-center gap-3">
-          {role === "mentor" && (
-            <Link href="/mentor/dashboard" className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
-              Мой кабинет
-            </Link>
-          )}
           {role === "student" && (
             <Link href="/student/dashboard" className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors">
               Мой кабинет
@@ -97,12 +111,11 @@ export default function Header() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 flex flex-col gap-3">
-          <Link href="/mentors" className="text-sm text-gray-600 hover:text-indigo-600 font-medium py-1">
-            Менторы
-          </Link>
-          <Link href="/#how-it-works" className="text-sm text-gray-600 hover:text-indigo-600 font-medium py-1">
-            Как это работает
-          </Link>
+          {navLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="text-sm text-gray-600 hover:text-indigo-600 font-medium py-1">
+              {link.label}
+            </Link>
+          ))}
           {role ? (
             <button onClick={handleLogout} className="text-sm text-gray-500 text-left py-1">
               Выйти

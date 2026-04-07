@@ -181,7 +181,7 @@ export default function MentorDashboard() {
           {[
             { label: "Активных заказов", value: activeOrders.length, color: "text-indigo-600" },
             { label: "Ожидают оплаты", value: pendingOrders.length, color: "text-yellow-600" },
-            { label: "Заработано ($)", value: totalEarned.toFixed(0), color: "text-green-600" },
+            { label: "Заработано (₸)", value: totalEarned.toLocaleString("ru-RU"), color: "text-green-600" },
           ].map((stat) => (
             <div key={stat.label} className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
               <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
@@ -227,7 +227,7 @@ export default function MentorDashboard() {
                           {ORDER_STATUS_LABELS[order.order_status] || order.order_status}
                         </span>
                         <span className="text-sm font-bold text-gray-900">
-                          +${order.mentor_payout_amount}
+                          +{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸
                         </span>
                       </div>
                     </div>
@@ -265,7 +265,7 @@ export default function MentorDashboard() {
                         <p className="text-sm font-medium text-gray-700 truncate">{s.title}</p>
                         <p className="text-xs text-gray-400">{s.duration_minutes} мин</p>
                       </div>
-                      <span className="text-sm font-bold text-gray-900 flex-shrink-0">${s.price}</span>
+                      <span className="text-sm font-bold text-gray-900 flex-shrink-0">{Number(s.price).toLocaleString("ru-RU")} ₸</span>
                     </div>
                   ))}
                   {services.length > 4 && (

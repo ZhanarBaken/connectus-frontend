@@ -1,6 +1,8 @@
 import { fetchMentors } from "@/lib/api"
 import Link from "next/link"
 import FaqList from "@/components/FaqList"
+import MentorRedirect from "@/components/MentorRedirect"
+import PlatformReviews from "@/components/PlatformReviews"
 
 const CATEGORIES = [
   { label: "США", icon: "🇺🇸", desc: "Ivy League и топ университеты" },
@@ -30,30 +32,6 @@ const STEPS = [
     number: "03",
     title: "Начни подготовку",
     desc: "Забронируй консультацию и получи персональный план поступления",
-  },
-]
-
-const TESTIMONIALS = [
-  {
-    name: "Айгерим Бекова",
-    role: "Студентка, поступила в UCL",
-    text: "Благодаря Connectus я нашла ментора за 1 день. Она помогла мне с эссе и подачей документов. Теперь я учусь в Лондоне!",
-    avatar: "А",
-    country: "🇬🇧",
-  },
-  {
-    name: "Данияр Сейтов",
-    role: "Студент, поступил в TU Munich",
-    text: "Ментор объяснил все требования немецких университетов. Без него я бы потратил месяцы на самостоятельный поиск информации.",
-    avatar: "Д",
-    country: "🇩🇪",
-  },
-  {
-    name: "Мадина Касымова",
-    role: "Студентка, получила Chevening",
-    text: "Мой ментор — Chevening scholar. Её советы по заявке на стипендию были бесценны. Я получила грант!",
-    avatar: "М",
-    country: "🇬🇧",
   },
 ]
 
@@ -102,6 +80,7 @@ export default async function HomePage() {
 
   return (
     <main className="bg-white">
+      <MentorRedirect />
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
       <section className="bg-gradient-to-b from-indigo-50 to-white pt-20 pb-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
@@ -354,30 +333,10 @@ export default async function HomePage() {
       <section className="py-24 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Истории успеха</h2>
-            <p className="text-gray-500 text-lg">Студенты которые уже поступили с Connectus</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Отзывы студентов</h2>
+            <p className="text-gray-500 text-lg">Реальные отзывы от тех, кто уже работал с менторами</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                <div className="flex items-center gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <span key={s} className="text-yellow-400 text-sm">★</span>
-                  ))}
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-6">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-indigo-600 font-bold text-sm">{t.avatar}</span>
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-900 text-sm">{t.name}</div>
-                    <div className="text-xs text-gray-400">{t.country} {t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <PlatformReviews />
         </div>
       </section>
 
