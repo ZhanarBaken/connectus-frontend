@@ -59,8 +59,11 @@ export default function MentorPage({ params }: Props) {
     setOrderingServiceId(serviceId)
     setOrderError("")
     try {
-      const created = await createOrder(serviceId)
-      setOrders((prev) => [...prev, created])
+      await createOrder(serviceId)
+      // POST /orders/ uses a thin create serializer that only echoes mentor_service,
+      // so refetch the full list to get the new order with its status.
+      const fresh = await fetchOrders()
+      setOrders(fresh)
     } catch (err: unknown) {
       setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
     } finally {

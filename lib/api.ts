@@ -209,6 +209,18 @@ export async function confirmConsultation(id: number): Promise<Order> {
   return res.json()
 }
 
+export async function declineConsultation(id: number): Promise<Order> {
+  const res = await fetch(`${BASE_URL}/orders/${id}/decline_consultation/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || "Failed to decline consultation")
+  }
+  return res.json()
+}
+
 export async function completeOrder(id: number): Promise<Order> {
   const res = await fetch(`${BASE_URL}/orders/${id}/complete/`, {
     method: "POST",

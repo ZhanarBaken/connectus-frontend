@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation, declineConsultation } from "@/lib/api"
+import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
 import { MentorProfile, MentorService, Order } from "@/types"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -38,10 +39,13 @@ export default function MentorDashboard() {
   const [profile, setProfile] = useState<MentorProfile | null>(null)
   const [services, setServices] = useState<MentorService[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [avgRating, setAvgRating] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [acceptingId, setAcceptingId] = useState<number | null>(null)
+  const [decliningId, setDecliningId] = useState<number | null>(null)
   const [acceptError, setAcceptError] = useState("")
 
   useEffect(() => {
@@ -51,7 +55,13 @@ export default function MentorDashboard() {
     if (role === "student") { router.replace("/student/dashboard"); return }
 
     Promise.all([fetchMentorProfile(), fetchMentorServices(), fetchOrders()])
-      .then(([p, s, o]) => { setProfile(p); setServices(s); setOrders(o) })
+      .then(([p, s, o]) => {
+        setProfile(p)
+        setServices(s)
+        setOrders(o)
+        setReviews(getMentorReviews(p.id))
+        setAvgRating(getMentorAverageRating(p.id))
+      })
       .catch(() => router.replace("/auth/login"))
       .finally(() => setLoading(false))
   }, [router])
@@ -66,6 +76,20 @@ export default function MentorDashboard() {
       setAcceptError(e instanceof Error ? e.message : "Не удалось принять запрос")
     } finally {
       setAcceptingId(null)
+    }
+  }
+
+  const handleDeclineConsultation = async (orderId: number) => {
+    if (!confirm("Отклонить запрос на консультацию? Студент будет уведомлён.")) return
+    setDecliningId(orderId)
+    setAcceptError("")
+    try {
+      const updated = await declineConsultation(orderId)
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)))
+    } catch (e: unknown) {
+      setAcceptError(e instanceof Error ? e.message : "Не удалось отклонить запрос")
+    } finally {
+      setDecliningId(null)
     }
   }
 
@@ -93,13 +117,11 @@ export default function MentorDashboard() {
 
   if (!profile) return null
 
-  const consultationServiceIds = new Set(
-    services.filter((s) => s.payout_category === "consultation").map((s) => s.id)
-  )
-  const consultationRequests = orders.filter(
-    (o) => o.order_status === "draft" && consultationServiceIds.has(o.mentor_service)
-  )
-  const otherOrders = orders.filter((o) => !(o.order_status === "draft" && consultationServiceIds.has(o.mentor_service)))
+  // Backend rule: only consultation orders are created in `draft` status
+  // (paid services go straight to `pending_payment`). So every draft order
+  // is a free consultation request waiting for accept/decline.
+  const consultationRequests = orders.filter((o) => o.order_status === "draft")
+  const otherOrders = orders.filter((o) => o.order_status !== "draft")
   const activeOrders = orders.filter((o) => ["paid", "in_progress"].includes(o.order_status))
   const pendingOrders = orders.filter((o) => o.order_status === "pending_payment")
   const totalEarned = orders
@@ -235,30 +257,50 @@ export default function MentorDashboard() {
                   </div>
                 )}
                 <div className="space-y-3">
-                  {consultationRequests.map((order) => (
-                    <div key={order.id} className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs bg-white text-indigo-600 font-semibold px-2 py-0.5 rounded-full">🎁 Бесплатно</span>
+                  {consultationRequests.map((order) => {
+                    const busy = acceptingId === order.id || decliningId === order.id
+                    return (
+                      <div key={order.id} className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                            <span className="text-indigo-600 font-bold">
+                              {order.student_info?.full_name?.trim().charAt(0).toUpperCase() || "С"}
+                            </span>
                           </div>
-                          <h3 className="font-semibold text-gray-900 truncate">
-                            {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
-                          </h3>
-                          <p className="text-xs text-gray-500 mt-1">
-                            хочет провести бесплатную консультацию · {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                              </h3>
+                              <span className="text-xs bg-white text-indigo-600 font-semibold px-2 py-0.5 rounded-full">🎁 Бесплатно</span>
+                            </div>
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                              хочет провести бесплатную консультацию
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => handleAcceptConsultation(order.id)}
-                          disabled={acceptingId === order.id}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex-shrink-0"
-                        >
-                          {acceptingId === order.id ? "Принимаем..." : "Принять"}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAcceptConsultation(order.id)}
+                            disabled={busy}
+                            className="flex-1 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                          >
+                            {acceptingId === order.id ? "Принимаем..." : "✓ Принять"}
+                          </button>
+                          <button
+                            onClick={() => handleDeclineConsultation(order.id)}
+                            disabled={busy}
+                            className="flex-1 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            {decliningId === order.id ? "Отклоняем..." : "Отклонить"}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -314,6 +356,54 @@ export default function MentorDashboard() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Reviews */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-900">Отзывы</h2>
+                {reviews.length > 0 && (
+                  <span className="text-xs text-gray-500 font-medium">
+                    <span className="text-yellow-400">★</span> {avgRating?.toFixed(1)} · {reviews.length}
+                  </span>
+                )}
+              </div>
+              {reviews.length === 0 ? (
+                <div className="text-center py-4">
+                  <div className="text-2xl mb-2">⭐</div>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    Отзывы появятся после того как студенты завершат заказы
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.slice(0, 3).map((review) => (
+                    <div key={review.id} className="border-b border-gray-50 last:border-0 pb-4 last:pb-0">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <span key={s} className={`text-xs ${s <= review.rating ? "text-yellow-400" : "text-gray-200"}`}>★</span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-600 leading-relaxed mb-2 line-clamp-3">
+                        &ldquo;{review.text}&rdquo;
+                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-gray-400 truncate">
+                          {review.authorName}
+                        </span>
+                        <span className="text-xs text-gray-300 flex-shrink-0">
+                          {new Date(review.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {reviews.length > 3 && (
+                    <p className="text-xs text-gray-400 text-center pt-1">
+                      и ещё {reviews.length - 3}{reviews.length - 3 === 1 ? " отзыв" : reviews.length - 3 < 5 ? " отзыва" : " отзывов"}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Services */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
