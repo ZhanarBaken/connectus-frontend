@@ -12,6 +12,25 @@ import { ChatMessage } from "@/types"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
+export interface Conversation {
+  id: number
+  mentor: number
+  student: number
+  created_at: string
+  closed_at: string | null
+  is_active: boolean
+}
+
+export async function fetchConversation(conversationId: number): Promise<Conversation> {
+  const res = await fetch(`${API_BASE}/chat/${conversationId}/`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    throw new Error("Не удалось загрузить чат")
+  }
+  return res.json()
+}
+
 export async function closeConversation(conversationId: number): Promise<{ closed_at: string }> {
   const res = await fetch(`${API_BASE}/chat/${conversationId}/close/`, {
     method: "POST",

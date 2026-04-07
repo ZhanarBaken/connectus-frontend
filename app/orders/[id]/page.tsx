@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchOrder, fetchMentor, completeOrder } from "@/lib/api"
-import { fetchChatMessages, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
+import { fetchChatMessages, fetchConversation, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
@@ -100,8 +100,15 @@ export default function OrderPage({ params }: Props) {
         // ignore — chat will still try to open
       })
 
-    // Reset closed state when (re)opening — backend reopens chat on new accept
-    setChatClosed(false)
+    // Honest source of truth: ask the backend whether the conversation is closed.
+    fetchConversation(order.conversation_id)
+      .then((conv) => {
+        if (!cancelled) setChatClosed(!conv.is_active)
+      })
+      .catch(() => {
+        // If we can't load it, assume open and let WS error handler correct us.
+        if (!cancelled) setChatClosed(false)
+      })
 
     const conn = connectChat(order.conversation_id, {
       onOpen: () => setWsConnected(true),
