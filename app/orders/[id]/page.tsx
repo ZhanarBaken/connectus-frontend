@@ -4,14 +4,8 @@ import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchOrder, fetchMentor, completeOrder } from "@/lib/api"
-import { Order, Mentor } from "@/types"
-import {
-  getOrderMessages,
-  addMessage,
-  markOrderRead,
-  MESSAGES_KEY,
-  type StoredMessage,
-} from "@/lib/messages"
+import { fetchChatMessages, connectChat, type ChatConnection } from "@/lib/chat"
+import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -41,14 +35,16 @@ export default function OrderPage({ params }: Props) {
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
-  const [messages, setMessages] = useState<StoredMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
-  const [sending, setSending] = useState(false)
+  const [wsConnected, setWsConnected] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState("")
   const chatRef = useRef<HTMLDivElement>(null)
+  const wsRef = useRef<ChatConnection | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -59,10 +55,6 @@ export default function OrderPage({ params }: Props) {
     fetchOrder(Number(id))
       .then(async (found) => {
         setOrder(found)
-        if (["paid", "in_progress", "completed"].includes(found.order_status)) {
-          setMessages(getOrderMessages(found.id))
-          markOrderRead(found.id, r === "mentor" ? "mentor" : "student")
-        }
         // Student needs the mentor's name (Order has only id + email)
         if (r !== "mentor") {
           try {
@@ -72,32 +64,61 @@ export default function OrderPage({ params }: Props) {
             // ignore — fallback name will be used
           }
         }
+        // Resolve current user id (used to flag own messages)
+        try {
+          const meRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/auth/me/`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          )
+          if (meRes.ok) {
+            const me = await meRes.json()
+            setCurrentUserId(me.id)
+          }
+        } catch {
+          // ignore
+        }
       })
       .catch(() => router.replace("/orders"))
       .finally(() => setLoading(false))
   }, [id, router])
 
-  // Live sync — refresh messages when another tab writes to localStorage
+  // Open WebSocket + load history once we have a conversation_id
   useEffect(() => {
-    if (!order) return
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === MESSAGES_KEY) {
-        setMessages(getOrderMessages(order.id))
-        markOrderRead(order.id, role === "mentor" ? "mentor" : "student")
-      }
-    }
-    window.addEventListener("storage", onStorage)
-    // Also poll every 2s as fallback (storage event doesn't fire in same tab)
-    const interval = setInterval(() => {
-      const fresh = getOrderMessages(order.id)
-      setMessages((prev) => (prev.length !== fresh.length ? fresh : prev))
-    }, 2000)
-    return () => {
-      window.removeEventListener("storage", onStorage)
-      clearInterval(interval)
-    }
-  }, [order, role])
+    if (!order?.conversation_id) return
 
+    let cancelled = false
+
+    fetchChatMessages(order.conversation_id)
+      .then((history) => {
+        if (!cancelled) setMessages(history)
+      })
+      .catch(() => {
+        // ignore — chat will still try to open
+      })
+
+    const conn = connectChat(order.conversation_id, {
+      onOpen: () => setWsConnected(true),
+      onClose: () => setWsConnected(false),
+      onError: () => setWsConnected(false),
+      onMessage: (msg) => {
+        setMessages((prev) => {
+          // De-dupe in case the message also came back via REST refetch
+          if (prev.some((m) => m.id === msg.id)) return prev
+          return [...prev, msg]
+        })
+      },
+    })
+    wsRef.current = conn
+
+    return () => {
+      cancelled = true
+      conn.close()
+      wsRef.current = null
+      setWsConnected(false)
+    }
+  }, [order?.conversation_id])
+
+  // Auto-scroll on new messages
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -119,18 +140,12 @@ export default function OrderPage({ params }: Props) {
     }
   }
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || !order) return
-    setSending(true)
-    const saved = addMessage({
-      orderId: order.id,
-      senderRole: role === "mentor" ? "mentor" : "student",
-      content: newMessage.trim(),
-    })
-    setMessages((prev) => [...prev, saved])
-    setNewMessage("")
-    setSending(false)
+    const text = newMessage.trim()
+    if (!text || !wsRef.current) return
+    const ok = wsRef.current.send(text)
+    if (ok) setNewMessage("")
   }
 
   const formatTime = (iso: string) => {
@@ -151,7 +166,9 @@ export default function OrderPage({ params }: Props) {
 
   if (!order) return null
 
-  const canChat = ["paid", "in_progress", "completed"].includes(order.order_status)
+  // Chat is available whenever the backend has created a Conversation
+  // (happens after the mentor confirms a free consultation).
+  const canChat = order.conversation_id !== null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -285,12 +302,22 @@ export default function OrderPage({ params }: Props) {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl border border-gray-100 flex flex-col h-[540px]">
               {/* Chat header */}
-              <div className="px-6 py-4 border-b border-gray-50 flex-shrink-0">
-                <h2 className="font-semibold text-gray-900">Сообщения</h2>
-                {canChat ? (
-                  <p className="text-xs text-gray-400 mt-0.5">Все переговоры ведутся только на платформе</p>
-                ) : (
-                  <p className="text-xs text-gray-400 mt-0.5">Чат откроется после подтверждения оплаты</p>
+              <div className="px-6 py-4 border-b border-gray-50 flex-shrink-0 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold text-gray-900">Сообщения</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {canChat
+                      ? "Все переговоры ведутся только на платформе"
+                      : "Чат откроется после принятия консультации ментором"}
+                  </p>
+                </div>
+                {canChat && (
+                  <span className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-full ${
+                    wsConnected ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? "bg-green-500" : "bg-gray-400"}`} />
+                    {wsConnected ? "В сети" : "Подключение..."}
+                  </span>
                 )}
               </div>
 
@@ -304,24 +331,18 @@ export default function OrderPage({ params }: Props) {
                       </div>
                     )}
                     {messages.map((msg) => {
-                      const isOwn = (role === "mentor" && msg.senderRole === "mentor") ||
-                                    (role !== "mentor" && msg.senderRole === "student")
+                      const isOwn = currentUserId !== null && msg.sender === currentUserId
                       return (
                         <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[75%] ${isOwn ? "items-end" : "items-start"} flex flex-col gap-1`}>
-                            {!isOwn && (
-                              <span className="text-xs text-gray-400 px-1">
-                                {msg.senderRole === "mentor" ? "Ментор" : "Студент"}
-                              </span>
-                            )}
-                            <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                            <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
                               isOwn
                                 ? "bg-indigo-600 text-white rounded-br-sm"
                                 : "bg-gray-100 text-gray-800 rounded-bl-sm"
                             }`}>
-                              {msg.content}
+                              {msg.text}
                             </div>
-                            <span className="text-xs text-gray-300 px-1">{formatTime(msg.createdAt)}</span>
+                            <span className="text-xs text-gray-300 px-1">{formatTime(msg.created_at)}</span>
                           </div>
                         </div>
                       )
@@ -337,10 +358,11 @@ export default function OrderPage({ params }: Props) {
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Написать сообщение..."
                         className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                        disabled={!wsConnected}
                       />
                       <button
                         type="submit"
-                        disabled={sending || !newMessage.trim()}
+                        disabled={!wsConnected || !newMessage.trim()}
                         className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-40 flex-shrink-0"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,7 +381,7 @@ export default function OrderPage({ params }: Props) {
                     <div className="text-5xl mb-4">🔒</div>
                     <h3 className="font-semibold text-gray-900 mb-2">Чат заблокирован</h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                      Чат с ментором откроется после подтверждения оплаты администратором
+                      Чат откроется после того, как ментор примет запрос на бесплатную консультацию.
                     </p>
                   </div>
                 </div>

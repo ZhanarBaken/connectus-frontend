@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { login, fetchMe } from "@/lib/api"
+import { login, fetchMe, resendVerification } from "@/lib/api"
 
 function LoginForm() {
   const router = useRouter()
@@ -13,10 +13,15 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [needsVerification, setNeedsVerification] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setNeedsVerification(false)
+    setResent(false)
     setLoading(true)
     try {
       const data = await login(email, password)
@@ -32,10 +37,28 @@ function LoginForm() {
       } else {
         router.push("/student/dashboard")
       }
-    } catch {
-      setError("Неверный email или пароль")
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Неверный email или пароль"
+      if (msg.toLowerCase().includes("not verified") || msg.toLowerCase().includes("не подтверж")) {
+        setNeedsVerification(true)
+      } else {
+        setError("Неверный email или пароль")
+      }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    setResending(true)
+    try {
+      await resendVerification(email)
+      setResent(true)
+    } catch {
+      // resend endpoint always returns 200 — ignore
+      setResent(true)
+    } finally {
+      setResending(false)
     }
   }
 
@@ -103,6 +126,32 @@ function LoginForm() {
             {error && (
               <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
                 {error}
+              </div>
+            )}
+
+            {needsVerification && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">📬</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-yellow-800 mb-1">Email не подтверждён</p>
+                    <p className="text-xs text-yellow-700 leading-relaxed mb-3">
+                      Проверь почту — мы отправили ссылку для подтверждения.
+                    </p>
+                    {resent ? (
+                      <p className="text-xs text-green-700 font-medium">Письмо отправлено повторно ✓</p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resending}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold disabled:opacity-50 transition-colors"
+                      >
+                        {resending ? "Отправка..." : "Отправить ссылку повторно"}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

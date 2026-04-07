@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
-import { Mentor } from "@/types"
+import { Mentor, MentorService, Order } from "@/types"
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -30,11 +30,8 @@ export default function MentorPage({ params }: Props) {
   const { id } = use(params)
   const router = useRouter()
   const [mentor, setMentor] = useState<Mentor | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [booking, setBooking] = useState(false)
-  const [bookedServiceId, setBookedServiceId] = useState<number | null>(null)
-  const [bookError, setBookError] = useState("")
-  const [selectedService, setSelectedService] = useState<number | null>(null)
   const [orderingServiceId, setOrderingServiceId] = useState<number | null>(null)
   const [orderError, setOrderError] = useState("")
   const [reviews, setReviews] = useState<Review[]>([])
@@ -48,16 +45,9 @@ export default function MentorPage({ params }: Props) {
     }
 
     Promise.all([fetchMentor(Number(id)), fetchOrders()])
-      .then(([m, orders]) => {
+      .then(([m, o]) => {
         setMentor(m)
-        if (m.services.length > 0) setSelectedService(m.services[0].id)
-        const bookedIds = new Set(
-          orders
-            .filter((o) => o.order_status !== "cancelled")
-            .map((o) => o.mentor_service)
-        )
-        const alreadyBooked = m.services.find((s) => bookedIds.has(s.id))
-        if (alreadyBooked) setBookedServiceId(alreadyBooked.id)
+        setOrders(o)
         setReviews(getMentorReviews(m.id))
         setAvgRating(getMentorAverageRating(m.id))
       })
@@ -65,17 +55,16 @@ export default function MentorPage({ params }: Props) {
       .finally(() => setLoading(false))
   }, [id, router])
 
-  const handleBook = async () => {
-    if (!selectedService) return
-    setBooking(true)
-    setBookError("")
+  const handleOrder = async (serviceId: number) => {
+    setOrderingServiceId(serviceId)
+    setOrderError("")
     try {
-      await createOrder(selectedService)
-      setBookedServiceId(selectedService)
-    } catch (e: unknown) {
-      setBookError(e instanceof Error ? e.message : "Ошибка при записи")
+      const created = await createOrder(serviceId)
+      setOrders((prev) => [...prev, created])
+    } catch (err: unknown) {
+      setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
     } finally {
-      setBooking(false)
+      setOrderingServiceId(null)
     }
   }
 
@@ -90,7 +79,31 @@ export default function MentorPage({ params }: Props) {
     )
   }
 
-  const selectedServiceData = mentor.services.find((s) => s.id === selectedService)
+  // Split services
+  const consultationService: MentorService | undefined = mentor.services.find(
+    (s) => s.payout_category === "consultation"
+  )
+  const paidServices = mentor.services.filter((s) => s.payout_category !== "consultation")
+
+  // Find the student's consultation order with this mentor (if any)
+  const consultationOrder = consultationService
+    ? orders.find(
+        (o) =>
+          o.mentor_service === consultationService.id &&
+          ["draft", "in_progress"].includes(o.order_status)
+      )
+    : undefined
+  const consultationStatus: "none" | "draft" | "in_progress" =
+    !consultationOrder
+      ? "none"
+      : (consultationOrder.order_status as "draft" | "in_progress")
+
+  // Track which paid services have already been ordered
+  const orderedPaidIds = new Set(
+    orders
+      .filter((o) => o.order_status !== "cancelled")
+      .map((o) => o.mentor_service)
+  )
 
   return (
     <div className="bg-white min-h-screen">
@@ -184,59 +197,117 @@ export default function MentorPage({ params }: Props) {
               </div>
             )}
 
-            {/* Services */}
-            {mentor.services.length > 0 && (
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Услуги и цены</h2>
-                <div className="space-y-3">
-                  {mentor.services.map((service) => (
-                    <div
-                      key={service.id}
-                      onClick={() => setSelectedService(service.id)}
-                      className={`border rounded-2xl p-5 cursor-pointer transition-all ${
-                        selectedService === service.id
-                          ? "border-indigo-400 bg-indigo-50"
-                          : "border-gray-100 hover:border-indigo-200 hover:bg-gray-50"
-                      }`}
+            {/* Free consultation — hero block */}
+            {consultationService && (
+              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="relative">
+                  <div className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                    🎁 Бесплатно
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Бесплатная консультация</h2>
+                  <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-md">
+                    {consultationService.description ||
+                      "Знакомство с ментором — обсудим цели поступления и план дальнейшей работы."}
+                  </p>
+                  <div className="flex items-center gap-4 mb-5 text-xs text-indigo-200">
+                    <span>⏱ {consultationService.duration_minutes} мин</span>
+                    <span>·</span>
+                    <span>💬 Чат после принятия</span>
+                  </div>
+
+                  {consultationStatus === "in_progress" ? (
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                        className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors"
+                      >
+                        Открыть чат →
+                      </Link>
+                      <span className="text-xs text-indigo-200">Консультация активна</span>
+                    </div>
+                  ) : consultationStatus === "draft" ? (
+                    <div className="bg-white/15 rounded-xl px-4 py-3 text-sm">
+                      ⏳ Запрос отправлен. Ожидаем подтверждения от ментора.
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleOrder(consultationService.id)}
+                      disabled={orderingServiceId === consultationService.id || !mentor.is_accepting_bookings}
+                      className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900">{service.title}</h3>
-                            {service.is_consultation && (
-                              <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                                Консультация
+                      {orderingServiceId === consultationService.id
+                        ? "Отправляем..."
+                        : "Получить бесплатную консультацию"}
+                    </button>
+                  )}
+                  {!mentor.is_accepting_bookings && consultationStatus === "none" && (
+                    <p className="text-xs text-indigo-200 mt-2">Ментор сейчас не принимает запросы</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Paid services */}
+            {paidServices.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">Платные услуги</h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  {consultationStatus === "in_progress"
+                    ? "Закажи нужную услугу"
+                    : "Сначала пройди бесплатную консультацию, чтобы заказать платную услугу"}
+                </p>
+                <div className="space-y-3">
+                  {paidServices.map((service) => {
+                    const isLocked = consultationStatus !== "in_progress"
+                    const isOrdered = orderedPaidIds.has(service.id)
+                    return (
+                      <div
+                        key={service.id}
+                        className={`border rounded-2xl p-5 transition-all ${
+                          isLocked
+                            ? "border-gray-100 bg-gray-50/50"
+                            : "border-gray-100 hover:border-indigo-200"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className={`font-semibold ${isLocked ? "text-gray-500" : "text-gray-900"}`}>
+                              {service.title}
+                            </h3>
+                            {service.description && (
+                              <p className={`text-sm mt-1 ${isLocked ? "text-gray-400" : "text-gray-500"}`}>
+                                {service.description}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-400 mt-2">⏱ {service.duration_minutes} мин</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className={`text-2xl font-bold ${isLocked ? "text-gray-400" : "text-gray-900"}`}>
+                              {Number(service.price).toLocaleString("ru-RU")} ₸
+                            </div>
+                            {isOrdered ? (
+                              <span className="inline-block mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
+                                ✓ Заказано
                               </span>
+                            ) : isLocked ? (
+                              <div className="mt-1 text-xs text-gray-400 flex items-center gap-1 justify-end">
+                                🔒 <span>Заблокировано</span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleOrder(service.id)}
+                                disabled={orderingServiceId === service.id}
+                                className="mt-1 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                              >
+                                {orderingServiceId === service.id ? "Заказываем..." : "Заказать"}
+                              </button>
                             )}
                           </div>
-                          <p className="text-sm text-gray-500 mt-1">{service.description}</p>
-                          <p className="text-xs text-gray-400 mt-2">⏱ {service.duration_minutes} мин</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="text-2xl font-bold text-gray-900">{Number(service.price).toLocaleString("ru-RU")} ₸</div>
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation()
-                              setOrderingServiceId(service.id)
-                              setOrderError("")
-                              try {
-                                await createOrder(service.id)
-                                router.push("/orders")
-                              } catch (err: unknown) {
-                                setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
-                              } finally {
-                                setOrderingServiceId(null)
-                              }
-                            }}
-                            disabled={orderingServiceId === service.id}
-                            className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                          >
-                            {orderingServiceId === service.id ? "Заказываем..." : "Заказать"}
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -290,105 +361,40 @@ export default function MentorPage({ params }: Props) {
             </div>
           </div>
 
-          {/* ── Right column — sticky booking card ─────────────── */}
+          {/* ── Right column — trust card ─────────────────────── */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
-              <div className="border border-gray-100 rounded-2xl p-6 shadow-sm">
-                {selectedServiceData ? (
-                  <>
-                    <div className="mb-4">
-                      <div className="text-3xl font-bold text-gray-900 mb-1">
-                        {Number(selectedServiceData.price).toLocaleString("ru-RU")}
-                        <span className="text-base font-normal text-gray-400 ml-1">₸</span>
-                      </div>
-                      <div className="text-sm text-gray-500">{selectedServiceData.title}</div>
-                      <div className="text-xs text-gray-400 mt-1">⏱ {selectedServiceData.duration_minutes} мин</div>
-                    </div>
+              <div className="border border-gray-100 rounded-2xl p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 text-sm">Как это работает</h3>
+                <div className="space-y-4 text-sm">
+                  <div className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">1</span>
+                    <p className="text-gray-600 leading-relaxed">Запроси бесплатную консультацию</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">2</span>
+                    <p className="text-gray-600 leading-relaxed">Ментор примет запрос — откроется чат</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">3</span>
+                    <p className="text-gray-600 leading-relaxed">Обсудите план и закажи нужную платную услугу</p>
+                  </div>
+                </div>
 
-                    <div className="border-t border-gray-50 pt-4 mb-4">
-                      <p className="text-xs text-gray-400 mb-2 font-medium">Выбери услугу:</p>
-                      <div className="space-y-2">
-                        {mentor.services.map((s) => (
-                          <button
-                            key={s.id}
-                            onClick={() => setSelectedService(s.id)}
-                            className={`w-full text-left text-xs px-3 py-2 rounded-xl border transition-all ${
-                              selectedService === s.id
-                                ? "border-indigo-400 bg-indigo-50 text-indigo-700"
-                                : "border-gray-100 hover:border-gray-200 text-gray-600"
-                            }`}
-                          >
-                            <span className="font-medium">{s.title}</span>
-                            <span className="float-right font-bold">{Number(s.price).toLocaleString("ru-RU")} ₸</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {bookError && (
-                      <p className="text-red-500 text-xs mb-3 bg-red-50 rounded-lg px-3 py-2">{bookError}</p>
-                    )}
-
-                    {bookedServiceId ? (
-                      <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                        <div className="text-green-600 text-lg mb-1">✓</div>
-                        <p className="font-semibold text-green-800 text-sm">Заявка отправлена!</p>
-                        <p className="text-xs text-green-600 mt-1">Ментор свяжется с тобой</p>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleBook}
-                        disabled={booking || !mentor.is_accepting_bookings}
-                        className="w-full bg-indigo-600 text-white py-3.5 rounded-2xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {booking ? "Отправляем..." : "Записаться"}
-                      </button>
-                    )}
-
-                    {!mentor.is_accepting_bookings && (
-                      <p className="text-xs text-gray-400 text-center mt-2">Ментор сейчас не принимает записи</p>
-                    )}
-
-                    <div className="mt-4 space-y-2 text-xs text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <span>✓</span><span>Бесплатный чат до оплаты</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>✓</span><span>Прозрачные цены</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>✓</span><span>Верифицированный ментор</span>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-gray-400 text-sm text-center py-4">Услуги не найдены</p>
-                )}
+                <div className="mt-6 pt-6 border-t border-gray-50 space-y-2 text-xs text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <span>✓</span><span>Прозрачные цены в тенге</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>✓</span><span>Общение только в чате</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>✓</span><span>Верифицированный ментор</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Mobile booking button */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-40">
-          {bookError && <p className="text-red-500 text-xs mb-2">{bookError}</p>}
-          {bookedServiceId ? (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
-              <p className="font-semibold text-green-800 text-sm">✓ Заявка отправлена!</p>
-            </div>
-          ) : (
-            <button
-              onClick={handleBook}
-              disabled={booking || !mentor.is_accepting_bookings}
-              className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-            >
-              {booking
-                ? "Отправляем..."
-                : selectedServiceData
-                  ? `Записаться · ${Number(selectedServiceData.price).toLocaleString("ru-RU")} ₸`
-                  : "Записаться"}
-            </button>
-          )}
         </div>
       </div>
     </div>

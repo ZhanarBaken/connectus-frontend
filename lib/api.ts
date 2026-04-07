@@ -197,6 +197,18 @@ export async function confirmOrderPayment(id: number): Promise<Order> {
   return res.json()
 }
 
+export async function confirmConsultation(id: number): Promise<Order> {
+  const res = await fetch(`${BASE_URL}/orders/${id}/confirm_consultation/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || "Failed to confirm consultation")
+  }
+  return res.json()
+}
+
 export async function completeOrder(id: number): Promise<Order> {
   const res = await fetch(`${BASE_URL}/orders/${id}/complete/`, {
     method: "POST",
@@ -260,8 +272,45 @@ export async function login(email: string, password: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   })
-  if (!res.ok) throw new Error("Login failed")
+  if (!res.ok) {
+    let msg = "Login failed"
+    try {
+      const data = await res.json()
+      const first =
+        data.non_field_errors?.[0] ??
+        data.detail ??
+        Object.values(data)[0]
+      if (first) msg = Array.isArray(first) ? first[0] : String(first)
+    } catch {
+      // ignore parse errors, fall back to default message
+    }
+    throw new Error(msg)
+  }
   return res.json()
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/verify-email/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.token?.[0] || err.detail || "Не удалось подтвердить email")
+  }
+}
+
+export async function resendVerification(email: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/resend-verification/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.email?.[0] || err.detail || "Не удалось отправить письмо")
+  }
 }
 
 export async function register(email: string, password: string, role: string) {

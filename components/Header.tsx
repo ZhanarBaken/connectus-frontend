@@ -3,40 +3,16 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
-import { getTotalUnreadCount, UNREAD_KEY, MESSAGES_KEY } from "@/lib/messages"
 
 export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const [role, setRole] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [unread, setUnread] = useState(0)
 
   useEffect(() => {
     setRole(localStorage.getItem("role"))
   }, [pathname])
-
-  // Track unread messages count
-  useEffect(() => {
-    if (!role || role === "admin") {
-      setUnread(0)
-      return
-    }
-    const refresh = () => {
-      setUnread(getTotalUnreadCount(role === "mentor" ? "mentor" : "student"))
-    }
-    refresh()
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === UNREAD_KEY || e.key === MESSAGES_KEY) refresh()
-    }
-    window.addEventListener("storage", onStorage)
-    // Same-tab fallback poll
-    const interval = setInterval(refresh, 2000)
-    return () => {
-      window.removeEventListener("storage", onStorage)
-      clearInterval(interval)
-    }
-  }, [role, pathname])
 
   const handleLogout = () => {
     localStorage.removeItem("access_token")
@@ -84,23 +60,15 @@ export default function Header() {
 
         {/* Nav links */}
         <nav className="hidden md:flex items-center gap-8 text-sm text-gray-600">
-          {navLinks.map((link) => {
-            const isMessages = link.href === "/messages"
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="relative hover:text-indigo-600 transition-colors font-medium"
-              >
-                {link.label}
-                {isMessages && unread > 0 && (
-                  <span className="absolute -top-2 -right-4 min-w-[18px] h-[18px] px-1 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {unread > 9 ? "9+" : unread}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="hover:text-indigo-600 transition-colors font-medium"
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         {/* Auth buttons */}
@@ -149,23 +117,15 @@ export default function Header() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 flex flex-col gap-3">
-          {navLinks.map((link) => {
-            const isMessages = link.href === "/messages"
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-gray-600 hover:text-indigo-600 font-medium py-1 flex items-center gap-2"
-              >
-                <span>{link.label}</span>
-                {isMessages && unread > 0 && (
-                  <span className="min-w-[18px] h-[18px] px-1 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {unread > 9 ? "9+" : unread}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm text-gray-600 hover:text-indigo-600 font-medium py-1"
+            >
+              {link.label}
+            </Link>
+          ))}
           {role ? (
             <button onClick={handleLogout} className="text-sm text-gray-500 text-left py-1">
               Выйти

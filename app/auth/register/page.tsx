@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { register, login } from "@/lib/api"
+import { register, resendVerification } from "@/lib/api"
 
 type Role = "student" | "mentor"
 
@@ -23,7 +22,6 @@ const ROLES = [
 ]
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [step, setStep] = useState<1 | 2>(1)
   const [role, setRole] = useState<Role>("student")
   const [email, setEmail] = useState("")
@@ -32,6 +30,10 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [registered, setRegistered] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const [resendError, setResendError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,20 +41,78 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await register(email, password, role)
-      const data = await login(email, password)
-      localStorage.setItem("access_token", data.access)
-      localStorage.setItem("refresh_token", data.refresh)
-      localStorage.setItem("role", role)
-      if (role === "mentor") {
-        router.push("/onboarding/mentor")
-      } else {
-        router.push("/onboarding/student")
-      }
+      // Save role so login can route correctly later (also returned by /auth/me)
+      localStorage.setItem("pending_role", role)
+      setRegistered(true)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка при регистрации. Проверьте данные.")
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleResend = async () => {
+    setResending(true)
+    setResendError("")
+    try {
+      await resendVerification(email)
+      setResent(true)
+    } catch (e: unknown) {
+      setResendError(e instanceof Error ? e.message : "Не удалось отправить письмо")
+    } finally {
+      setResending(false)
+    }
+  }
+
+  // ─── Post-registration screen ──────────────────────────────────
+  if (registered) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center gap-2 justify-center">
+              <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold">C</span>
+              </div>
+              <span className="text-xl font-bold text-gray-900">Connectus</span>
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">📬</span>
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Проверь почту</h1>
+            <p className="text-gray-500 text-sm mb-1">
+              Мы отправили ссылку для подтверждения на
+            </p>
+            <p className="font-semibold text-gray-900 mb-6 break-all">{email}</p>
+            <p className="text-xs text-gray-400 leading-relaxed mb-6">
+              Перейди по ссылке из письма, чтобы активировать аккаунт. После этого ты сможешь войти и заполнить профиль.
+            </p>
+
+            {resent ? (
+              <p className="text-sm text-green-600 font-medium">Письмо отправлено повторно ✓</p>
+            ) : (
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50 transition-colors"
+              >
+                {resending ? "Отправляем..." : "Отправить письмо повторно"}
+              </button>
+            )}
+            {resendError && (
+              <p className="text-xs text-red-500 mt-2">{resendError}</p>
+            )}
+          </div>
+
+          <p className="text-sm text-gray-500 mt-6 text-center">
+            Письмо не приходит? Проверь папку «Спам».
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (

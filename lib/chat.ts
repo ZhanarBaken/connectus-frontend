@@ -1,0 +1,135 @@
+// ─── Real chat: REST history + WebSocket live updates ──────────────────────
+//
+// Backend contract:
+//   GET  /api/v1/chat/{conversation_id}/messages/   → cursor-paginated DRF list
+//   WS   /ws/chat/{conversation_id}/?token=<JWT>    → bidirectional
+//        send:    { text: string }
+//        recv:    { id, sender_id, sender_email, text, created_at }
+//
+// SSR-safe — only call from "use client" components.
+
+import { ChatMessage } from "@/types"
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
+
+function deriveWsBase(): string {
+  // Convert HTTP API base → WS origin (drop /api/v1 suffix)
+  const u = new URL(API_BASE)
+  u.protocol = u.protocol === "https:" ? "wss:" : "ws:"
+  u.pathname = ""
+  u.search = ""
+  return u.toString().replace(/\/$/, "")
+}
+
+function getToken(): string {
+  if (typeof window === "undefined") return ""
+  return localStorage.getItem("access_token") ?? ""
+}
+
+interface DRFListResponse<T> {
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
+/**
+ * Load chat history for a conversation. Returns messages in chronological order.
+ * Currently fetches the first page only (50 most recent). Pagination can be
+ * added later via a "load more" UI.
+ */
+export async function fetchChatMessages(conversationId: number): Promise<ChatMessage[]> {
+  const res = await fetch(`${API_BASE}/chat/${conversationId}/messages/`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    if (res.status === 404) return []
+    throw new Error("Failed to fetch chat history")
+  }
+  const data: DRFListResponse<ChatMessage> | ChatMessage[] = await res.json()
+  if (Array.isArray(data)) return data
+  return data.results ?? []
+}
+
+export interface ChatConnection {
+  send: (text: string) => boolean
+  close: () => void
+}
+
+interface WsMessageEvent {
+  id: number
+  sender_id: number
+  sender_email: string
+  text: string
+  created_at: string
+}
+
+/**
+ * Open a WebSocket to a conversation. The backend echoes every message
+ * (including the sender's own) so the UI should treat the WS as the single
+ * source of truth — don't optimistically append, just call send() and wait
+ * for onMessage to fire.
+ *
+ * Returns a connection handle. Call close() when leaving the page.
+ */
+export function connectChat(
+  conversationId: number,
+  handlers: {
+    onMessage: (msg: ChatMessage) => void
+    onOpen?: () => void
+    onClose?: (code: number) => void
+    onError?: () => void
+  },
+): ChatConnection {
+  const token = getToken()
+  const url = `${deriveWsBase()}/ws/chat/${conversationId}/?token=${encodeURIComponent(token)}`
+  let ws: WebSocket | null = new WebSocket(url)
+
+  ws.onopen = () => {
+    handlers.onOpen?.()
+  }
+
+  ws.onmessage = (event) => {
+    try {
+      const data: WsMessageEvent = JSON.parse(event.data)
+      handlers.onMessage({
+        id: data.id,
+        sender: data.sender_id,
+        sender_email: data.sender_email,
+        text: data.text,
+        created_at: data.created_at,
+      })
+    } catch {
+      // ignore malformed payloads
+    }
+  }
+
+  ws.onerror = () => {
+    handlers.onError?.()
+  }
+
+  ws.onclose = (event) => {
+    handlers.onClose?.(event.code)
+  }
+
+  return {
+    send: (text: string) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return false
+      ws.send(JSON.stringify({ text }))
+      return true
+    },
+    close: () => {
+      if (ws) {
+        // Detach handlers so a delayed close event doesn't fire callbacks
+        // after the component has unmounted.
+        ws.onopen = null
+        ws.onmessage = null
+        ws.onerror = null
+        ws.onclose = null
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+          ws.close()
+        }
+        ws = null
+      }
+    },
+  }
+}

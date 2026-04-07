@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation } from "@/lib/api"
 import { MentorProfile, MentorService, Order } from "@/types"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
+  draft: "Запрос",
   pending_payment: "Ожидает оплаты",
   paid: "Оплачен",
   in_progress: "В работе",
@@ -16,6 +17,7 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 }
 
 const ORDER_STATUS_STYLES: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-500",
   pending_payment: "bg-yellow-50 text-yellow-700",
   paid: "bg-blue-50 text-blue-700",
   in_progress: "bg-indigo-50 text-indigo-700",
@@ -39,6 +41,8 @@ export default function MentorDashboard() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
+  const [acceptingId, setAcceptingId] = useState<number | null>(null)
+  const [acceptError, setAcceptError] = useState("")
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -51,6 +55,19 @@ export default function MentorDashboard() {
       .catch(() => router.replace("/auth/login"))
       .finally(() => setLoading(false))
   }, [router])
+
+  const handleAcceptConsultation = async (orderId: number) => {
+    setAcceptingId(orderId)
+    setAcceptError("")
+    try {
+      const updated = await confirmConsultation(orderId)
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)))
+    } catch (e: unknown) {
+      setAcceptError(e instanceof Error ? e.message : "Не удалось принять запрос")
+    } finally {
+      setAcceptingId(null)
+    }
+  }
 
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -76,6 +93,13 @@ export default function MentorDashboard() {
 
   if (!profile) return null
 
+  const consultationServiceIds = new Set(
+    services.filter((s) => s.payout_category === "consultation").map((s) => s.id)
+  )
+  const consultationRequests = orders.filter(
+    (o) => o.order_status === "draft" && consultationServiceIds.has(o.mentor_service)
+  )
+  const otherOrders = orders.filter((o) => !(o.order_status === "draft" && consultationServiceIds.has(o.mentor_service)))
   const activeOrders = orders.filter((o) => ["paid", "in_progress"].includes(o.order_status))
   const pendingOrders = orders.filter((o) => o.order_status === "pending_payment")
   const totalEarned = orders
@@ -192,49 +216,100 @@ export default function MentorDashboard() {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Orders */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Входящие заказы</h2>
-              <span className="text-sm text-gray-400">{orders.length} всего</span>
-            </div>
+          <div className="lg:col-span-2 space-y-8">
 
-            {orders.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                <div className="text-5xl mb-4">📥</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Пока нет заказов</h3>
-                <p className="text-sm text-gray-400">
-                  Заказы появятся когда студенты запишутся на твои услуги
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {orders.map((order) => (
-                  <div key={order.id} className="bg-white rounded-2xl border border-gray-100 p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">{order.service_title}</h3>
-                        <p className="text-sm text-gray-400 mt-0.5">
-                          {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
-                        </p>
-                        <p className="text-xs text-gray-300 mt-1">
-                          {new Date(order.created_at).toLocaleDateString("ru-RU", {
-                            day: "numeric", month: "long",
-                          })}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ORDER_STATUS_STYLES[order.order_status] || "bg-gray-100 text-gray-500"}`}>
-                          {ORDER_STATUS_LABELS[order.order_status] || order.order_status}
-                        </span>
-                        <span className="text-sm font-bold text-gray-900">
-                          +{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸
-                        </span>
+            {/* Consultation requests */}
+            {consultationRequests.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-gray-900">Запросы на консультацию</h2>
+                    <span className="text-xs bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
+                      {consultationRequests.length}
+                    </span>
+                  </div>
+                </div>
+                {acceptError && (
+                  <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-3">
+                    {acceptError}
+                  </div>
+                )}
+                <div className="space-y-3">
+                  {consultationRequests.map((order) => (
+                    <div key={order.id} className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs bg-white text-indigo-600 font-semibold px-2 py-0.5 rounded-full">🎁 Бесплатно</span>
+                          </div>
+                          <h3 className="font-semibold text-gray-900 truncate">
+                            {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            хочет провести бесплатную консультацию · {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleAcceptConsultation(order.id)}
+                          disabled={acceptingId === order.id}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex-shrink-0"
+                        >
+                          {acceptingId === order.id ? "Принимаем..." : "Принять"}
+                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Other orders */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900">Заказы</h2>
+                <span className="text-sm text-gray-400">{otherOrders.length} всего</span>
+              </div>
+
+              {otherOrders.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                  <div className="text-5xl mb-4">📥</div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Пока нет заказов</h3>
+                  <p className="text-sm text-gray-400">
+                    Заказы появятся когда студенты запишутся на твои услуги
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {otherOrders.map((order) => (
+                    <Link
+                      key={order.id}
+                      href={`/orders/${order.id}`}
+                      className="block bg-white rounded-2xl border border-gray-100 p-5 hover:border-indigo-100 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate">{order.service_title}</h3>
+                          <p className="text-sm text-gray-400 mt-0.5">
+                            {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                          </p>
+                          <p className="text-xs text-gray-300 mt-1">
+                            {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ORDER_STATUS_STYLES[order.order_status] || "bg-gray-100 text-gray-500"}`}>
+                            {ORDER_STATUS_LABELS[order.order_status] || order.order_status}
+                          </span>
+                          <span className="text-sm font-bold text-gray-900">
+                            +{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Sidebar */}

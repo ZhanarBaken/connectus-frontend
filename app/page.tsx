@@ -20,18 +20,18 @@ const CATEGORIES = [
 const STEPS = [
   {
     number: "01",
-    title: "Создай профиль",
-    desc: "Расскажи о себе, своих целях и в какие страны хочешь поступить",
+    title: "Найди ментора",
+    desc: "Просмотри профили — выпускники топ университетов с разных стран",
   },
   {
     number: "02",
-    title: "Найди ментора",
-    desc: "Просматривай профили менторов, сравнивай услуги и цены",
+    title: "Бесплатная консультация",
+    desc: "Запроси бесплатное знакомство — обсудите цели и план",
   },
   {
     number: "03",
     title: "Начни подготовку",
-    desc: "Забронируй консультацию и получи персональный план поступления",
+    desc: "После консультации закажи нужную услугу и получи план поступления",
   },
 ]
 
@@ -86,7 +86,7 @@ export default async function HomePage() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
             <span className="w-2 h-2 bg-indigo-500 rounded-full" />
-            Более 50 менторов из 15 стран
+            🎁 Первая консультация — бесплатно
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 leading-tight mb-6">
             Поступи в университет<br />
@@ -94,14 +94,14 @@ export default async function HomePage() {
           </h1>
           <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
             Connectus соединяет студентов и родителей с менторами — выпускниками
-            топ университетов мира. Получи персональный план поступления.
+            топ университетов мира. Начни с бесплатной консультации.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/mentors"
               className="bg-indigo-600 text-white px-8 py-4 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
             >
-              Найти ментора
+              Получить бесплатную консультацию
             </Link>
             <Link
               href="/become-mentor"

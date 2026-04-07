@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { fetchOrders } from "@/lib/api"
+import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
 
 const STATUS_LABEL: Record<Order["order_status"], string> = {
@@ -31,16 +31,27 @@ const STATUS_STYLE: Record<Order["order_status"], string> = {
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
-  const [accepted, setAccepted] = useState<number[]>([])
 
   useEffect(() => {
-    setRole(localStorage.getItem("role"))
-    const stored = localStorage.getItem("accepted_orders")
-    setAccepted(stored ? JSON.parse(stored) : [])
+    const r = localStorage.getItem("role")
+    setRole(r)
     fetchOrders()
-      .then(setOrders)
+      .then(async (list) => {
+        setOrders(list)
+        if (r !== "mentor") {
+          try {
+            const mentors = await fetchMentors()
+            const map: Record<number, string> = {}
+            for (const m of mentors) map[m.id] = m.full_name
+            setMentorNames(map)
+          } catch {
+            // ignore — fallback label
+          }
+        }
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -82,10 +93,10 @@ export default function OrdersPage() {
                   <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
                     {order.service_title}
                   </h3>
-                  <p className="text-sm text-gray-400 mt-0.5">
+                  <p className="text-sm text-gray-500 mt-0.5 truncate">
                     {role === "mentor"
                       ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент")
-                      : "Открыть заказ →"}
+                      : (mentorNames[order.mentor] || "Ментор")}
                   </p>
                   <p className="text-xs text-gray-300 mt-1">
                     {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}

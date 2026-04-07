@@ -68,18 +68,28 @@ export default function MentorServicesPage() {
     setFormError("")
   }
 
+  const editingService = typeof editingId === "number"
+    ? services.find((s) => s.id === editingId)
+    : null
+  const editingConsultation = editingService?.payout_category === "consultation"
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     setFormError("")
     try {
-      const payload = {
-        title: form.title,
-        description: form.description,
-        price: form.price,
-        currency: "KZT",
-        duration_minutes: Number(form.duration),
-      }
+      const payload = editingConsultation
+        ? {
+            // Consultation: only duration is editable
+            duration_minutes: Number(form.duration),
+          }
+        : {
+            title: form.title,
+            description: form.description,
+            price: form.price,
+            currency: "KZT",
+            duration_minutes: Number(form.duration),
+          }
       if (editingId === "new") {
         const created = await createMentorService(payload)
         setServices((prev) => [created, ...prev])
@@ -140,46 +150,61 @@ export default function MentorServicesPage() {
         {isFormOpen && (
           <div className="bg-white rounded-2xl border border-indigo-100 p-6 mb-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">
-              {editingId === "new" ? "Новая услуга" : "Редактировать услугу"}
+              {editingId === "new"
+                ? "Новая услуга"
+                : editingConsultation
+                  ? "Бесплатная консультация"
+                  : "Редактировать услугу"}
             </h2>
+            {editingConsultation && (
+              <p className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 mb-4 leading-relaxed">
+                Это автоматическая бесплатная услуга. Можно изменить только длительность (минимум 15 минут).
+              </p>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Название</label>
-                <input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  required
-                  placeholder="Консультация 60 минут"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Описание</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={2}
-                  placeholder="Разбираем твою ситуацию, составляем план поступления..."
-                  className={`${inputClass} resize-none`}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Цена (₸)</label>
-                  <div className="relative">
+              {!editingConsultation && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Название</label>
                     <input
-                      value={form.price}
-                      onChange={(e) => setForm({ ...form, price: e.target.value })}
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
                       required
-                      type="number"
-                      min="0"
-                      step="100"
-                      placeholder="25000"
-                      className={`${inputClass} pr-10`}
+                      placeholder="Проверка эссе"
+                      className={inputClass}
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">₸</span>
                   </div>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Описание</label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      rows={2}
+                      placeholder="Разбираем твою ситуацию, составляем план поступления..."
+                      className={`${inputClass} resize-none`}
+                    />
+                  </div>
+                </>
+              )}
+              <div className={editingConsultation ? "" : "grid grid-cols-2 gap-4"}>
+                {!editingConsultation && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Цена (₸)</label>
+                    <div className="relative">
+                      <input
+                        value={form.price}
+                        onChange={(e) => setForm({ ...form, price: e.target.value })}
+                        required
+                        type="number"
+                        min="0"
+                        step="100"
+                        placeholder="25000"
+                        className={`${inputClass} pr-10`}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">₸</span>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Длительность (мин)</label>
                   <input
@@ -220,61 +245,102 @@ export default function MentorServicesPage() {
           </div>
         )}
 
-        {/* Services list */}
-        {services.length === 0 && !isFormOpen ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-            <div className="text-5xl mb-4">📋</div>
-            <h3 className="font-semibold text-gray-900 mb-2">Услуг пока нет</h3>
-            <p className="text-sm text-gray-400 mb-6">Добавь первую услугу чтобы студенты могли её заказать</p>
-            <button
-              onClick={startCreate}
-              className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
-            >
-              + Добавить услугу
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {services.map((service) => (
-              <div key={service.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900">{service.title}</h3>
-                    {service.is_consultation && (
-                      <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">Консультация</span>
-                    )}
-                    {!service.is_active && (
-                      <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Неактивна</span>
-                    )}
-                  </div>
-                  {service.description && (
-                    <p className="text-sm text-gray-500 mt-1">{service.description}</p>
-                  )}
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-xs text-gray-400">⏱ {service.duration_minutes} мин</span>
-                    <span className="text-xs text-gray-300">·</span>
-                    <span className="text-sm font-bold text-gray-900">{formatPrice(service.price)}</span>
+        {(() => {
+          const consultation = services.find((s) => s.payout_category === "consultation")
+          const paid = services.filter((s) => s.payout_category !== "consultation")
+
+          return (
+            <div className="space-y-6">
+              {/* Free consultation — pinned, can't delete */}
+              {consultation && (
+                <div>
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Бесплатная консультация</h2>
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-gray-900">{consultation.title}</h3>
+                        <span className="text-xs bg-white text-indigo-600 px-2 py-0.5 rounded-full font-medium">
+                          🎁 Бесплатно
+                        </span>
+                      </div>
+                      {consultation.description && (
+                        <p className="text-sm text-gray-600 mt-1">{consultation.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-xs text-gray-500">⏱ {consultation.duration_minutes} мин</span>
+                      </div>
+                      <p className="text-xs text-indigo-700 mt-3 leading-relaxed">
+                        Это автоматическая услуга — студенты используют её для первого знакомства. Удалить нельзя, но можно изменить длительность.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => startEdit(consultation)}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-white font-medium flex-shrink-0"
+                    >
+                      Изменить
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => startEdit(service)}
-                    className="text-xs text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 font-medium"
-                  >
-                    Изменить
-                  </button>
-                  <button
-                    onClick={() => handleDelete(service.id)}
-                    className="text-xs text-gray-300 hover:text-red-500 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50"
-                    aria-label="Удалить"
-                  >
-                    ✕
-                  </button>
-                </div>
+              )}
+
+              {/* Paid services */}
+              <div>
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Платные услуги</h2>
+                {paid.length === 0 && !isFormOpen ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                    <div className="text-5xl mb-4">📋</div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Платных услуг пока нет</h3>
+                    <p className="text-sm text-gray-400 mb-6">Добавь услугу чтобы студенты могли её заказать после консультации</p>
+                    <button
+                      onClick={startCreate}
+                      className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                    >
+                      + Добавить услугу
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {paid.map((service) => (
+                      <div key={service.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-gray-900">{service.title}</h3>
+                            {!service.is_active && (
+                              <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Неактивна</span>
+                            )}
+                          </div>
+                          {service.description && (
+                            <p className="text-sm text-gray-500 mt-1">{service.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-xs text-gray-400">⏱ {service.duration_minutes} мин</span>
+                            <span className="text-xs text-gray-300">·</span>
+                            <span className="text-sm font-bold text-gray-900">{formatPrice(service.price)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => startEdit(service)}
+                            className="text-xs text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 font-medium"
+                          >
+                            Изменить
+                          </button>
+                          <button
+                            onClick={() => handleDelete(service.id)}
+                            className="text-xs text-gray-300 hover:text-red-500 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50"
+                            aria-label="Удалить"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

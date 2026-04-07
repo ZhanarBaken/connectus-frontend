@@ -21,6 +21,8 @@ export interface User {
   id: number
   email: string
   role: Role
+  email_verified: boolean
+  created_at: string
 }
 
 export interface MentorService {
@@ -31,7 +33,6 @@ export interface MentorService {
   currency: string
   duration_minutes: number
   payout_category: PayoutCategory
-  is_consultation: boolean
   is_active: boolean
 }
 
@@ -105,18 +106,6 @@ export interface StudentProfile {
   current_school_or_university: string
 }
 
-export interface ChatMessage {
-  id: number
-  sender_id: number
-  sender_role: Role
-  content: string
-  created_at: string
-}
-
-export interface ChatInquiry {
-  messages: ChatMessage[]
-}
-
 export interface PaymentInstructions {
   account_details: string
   whatsapp_link: string
@@ -142,6 +131,15 @@ export interface Order {
   payment_status: PaymentStatus
   order_status: OrderStatus
   payment_instructions: PaymentInstructions | null
+  conversation_id: number | null
   created_at: string
   updated_at: string
+}
+
+export interface ChatMessage {
+  id: number
+  sender: number
+  sender_email: string
+  text: string
+  created_at: string
 }
