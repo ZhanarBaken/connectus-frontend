@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder, fetchMentor, fetchMentorProfile, completeOrder } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchMentorProfile, completeOrder, cancelOrder, createDispute } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 
 const STATUS_LABEL: Record<string, string> = {
+  draft: "Ожидает подтверждения",
   pending_payment: "Ожидает оплаты",
   paid: "Оплачен",
   in_progress: "В работе",
@@ -17,6 +18,8 @@ const STATUS_LABEL: Record<string, string> = {
   disputed: "Спор",
   cancelled: "Отменён",
 }
+
+const DISPUTE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
 const STATUS_STYLE: Record<string, string> = {
   pending_payment: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -45,6 +48,12 @@ export default function OrderPage({ params }: Props) {
   const [wsConnected, setWsConnected] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState("")
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState("")
+  const [disputeFormOpen, setDisputeFormOpen] = useState(false)
+  const [disputeReason, setDisputeReason] = useState("")
+  const [disputing, setDisputing] = useState(false)
+  const [disputeError, setDisputeError] = useState("")
   const [chatClosed, setChatClosed] = useState(false)
   const [closingChat, setClosingChat] = useState(false)
   const [closeError, setCloseError] = useState("")
@@ -167,6 +176,44 @@ export default function OrderPage({ params }: Props) {
     }
   }
 
+  const handleCancel = async () => {
+    if (!order) return
+    if (!confirm("Отменить заказ? Вернуть его потом не получится — нужно будет оформить заново.")) return
+    setCancelling(true)
+    setCancelError("")
+    try {
+      const updated = await cancelOrder(order.id)
+      setOrder(updated)
+    } catch (e: unknown) {
+      setCancelError(e instanceof Error ? e.message : "Не удалось отменить заказ")
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const handleSubmitDispute = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!order) return
+    const reason = disputeReason.trim()
+    if (reason.length < 20) {
+      setDisputeError("Опиши проблему подробнее — минимум 20 символов.")
+      return
+    }
+    setDisputing(true)
+    setDisputeError("")
+    try {
+      await createDispute(order.id, reason)
+      const refreshed = await fetchOrder(order.id)
+      setOrder(refreshed)
+      setDisputeFormOpen(false)
+      setDisputeReason("")
+    } catch (err: unknown) {
+      setDisputeError(err instanceof Error ? err.message : "Не удалось открыть спор")
+    } finally {
+      setDisputing(false)
+    }
+  }
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault()
     const text = newMessage.trim()
@@ -213,6 +260,12 @@ export default function OrderPage({ params }: Props) {
   // Chat is available whenever the backend has created a Conversation
   // (happens after the mentor confirms a free consultation).
   const canChat = order.conversation_id !== null
+
+  // Student can open a dispute only during the 7-day window after completion.
+  const disputeWindowOpen =
+    order.order_status === "completed" &&
+    order.completed_at !== null &&
+    Date.now() - new Date(order.completed_at).getTime() < DISPUTE_WINDOW_MS
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -293,7 +346,7 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Завершить услугу</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Когда работа со студентом закончена, отметь услугу выполненной. Студент получит возможность оставить отзыв, а выплата уйдёт после периода споров (48ч).
+                  Когда работа со студентом закончена, отметь услугу выполненной. Студент получит возможность оставить отзыв, а выплата уйдёт после окончания периода споров (7 дней).
                 </p>
                 {completeError && (
                   <p className="text-xs text-red-600 mb-3">{completeError}</p>
@@ -305,6 +358,16 @@ export default function OrderPage({ params }: Props) {
                 >
                   {completing ? "Завершаем..." : "✓ Услуга выполнена"}
                 </button>
+              </div>
+            )}
+
+            {/* Mentor: info banner about open chat = purchasable services */}
+            {role === "mentor" && canChat && !chatClosed && order.order_status === "in_progress" && (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                <h3 className="font-semibold text-indigo-900 mb-1 text-sm">💬 Чат открыт</h3>
+                <p className="text-xs text-indigo-800 leading-relaxed">
+                  Пока чат со студентом открыт, он может покупать у тебя другие платные услуги. Чтобы это прекратить — заверши все активные заказы и закрой чат.
+                </p>
               </div>
             )}
 
@@ -360,12 +423,55 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Payment pending notice */}
+            {/* Student: pending payment — details + cancel */}
             {order.order_status === "pending_payment" && role !== "mentor" && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5">
-                <h3 className="font-semibold text-yellow-800 mb-2">Ожидает оплаты</h3>
-                <p className="text-sm text-yellow-700 leading-relaxed">
-                  После подтверждения оплаты администратором откроется чат с ментором.
+              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
+                <div>
+                  <h3 className="font-semibold text-yellow-800 mb-1">Ожидает оплаты</h3>
+                  <p className="text-xs text-yellow-700 leading-relaxed">
+                    Переведи {Number(order.total_price).toLocaleString("ru-RU")} ₸ по реквизитам ниже. После оплаты напиши в WhatsApp администратору — после подтверждения заказ перейдёт в работу.
+                  </p>
+                </div>
+
+                {order.payment_instructions?.account_details && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-yellow-700 font-semibold mb-1">Реквизиты</p>
+                    <pre className="text-xs text-yellow-900 bg-white border border-yellow-200 rounded-xl p-3 whitespace-pre-wrap break-words select-all">
+{order.payment_instructions.account_details}
+                    </pre>
+                  </div>
+                )}
+
+                {order.payment_instructions?.whatsapp_link && (
+                  <a
+                    href={order.payment_instructions.whatsapp_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-green-500 text-white text-center py-2.5 rounded-xl text-sm font-semibold hover:bg-green-600 transition-colors"
+                  >
+                    Написать в WhatsApp
+                  </a>
+                )}
+
+                {cancelError && (
+                  <p className="text-xs text-red-600">{cancelError}</p>
+                )}
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="w-full border border-yellow-300 text-yellow-900 py-2.5 rounded-xl text-sm font-medium hover:bg-yellow-100 transition-colors disabled:opacity-50"
+                >
+                  {cancelling ? "Отменяем..." : "Отменить заказ"}
+                </button>
+              </div>
+            )}
+
+            {/* Disputed banner */}
+            {order.order_status === "disputed" && (
+              <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+                <h3 className="font-semibold text-red-800 mb-1 text-sm">⚠ Спор открыт</h3>
+                <p className="text-xs text-red-700 leading-relaxed">
+                  Администратор рассмотрит спор и свяжется с обеими сторонами. До решения статус заказа останется «спор».
                 </p>
               </div>
             )}
@@ -378,6 +484,56 @@ export default function OrderPage({ params }: Props) {
                 mentorName="Ментор"
                 authorName={order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
               />
+            )}
+
+            {/* Student: open dispute (7-day window) */}
+            {role !== "mentor" && order.order_status === "completed" && disputeWindowOpen && (
+              <div className="bg-white border border-red-100 rounded-2xl p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Что-то пошло не так?</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  Если услуга не была оказана или выполнена с нарушениями, открой спор в течение 7 дней после завершения. Администратор разберётся и примет решение.
+                </p>
+                {!disputeFormOpen ? (
+                  <button
+                    onClick={() => setDisputeFormOpen(true)}
+                    className="w-full border border-red-200 text-red-600 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+                  >
+                    Открыть спор
+                  </button>
+                ) : (
+                  <form onSubmit={handleSubmitDispute} className="space-y-3">
+                    <textarea
+                      value={disputeReason}
+                      onChange={(e) => setDisputeReason(e.target.value)}
+                      placeholder="Опиши проблему подробно — минимум 20 символов"
+                      rows={4}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400"
+                    />
+                    {disputeError && (
+                      <p className="text-xs text-red-600">{disputeError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={disputing}
+                        className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {disputing ? "Отправляем..." : "Подать спор"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDisputeFormOpen(false)
+                          setDisputeError("")
+                        }}
+                        className="flex-1 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             )}
 
           </div>

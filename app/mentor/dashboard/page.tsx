@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation, declineConsultation } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
 import { MentorProfile, MentorService, Order } from "@/types"
 
@@ -45,7 +45,6 @@ export default function MentorDashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [acceptingId, setAcceptingId] = useState<number | null>(null)
-  const [decliningId, setDecliningId] = useState<number | null>(null)
   const [acceptError, setAcceptError] = useState("")
 
   useEffect(() => {
@@ -76,20 +75,6 @@ export default function MentorDashboard() {
       setAcceptError(e instanceof Error ? e.message : "Не удалось принять запрос")
     } finally {
       setAcceptingId(null)
-    }
-  }
-
-  const handleDeclineConsultation = async (orderId: number) => {
-    if (!confirm("Отклонить запрос на консультацию? Студент будет уведомлён.")) return
-    setDecliningId(orderId)
-    setAcceptError("")
-    try {
-      const updated = await declineConsultation(orderId)
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)))
-    } catch (e: unknown) {
-      setAcceptError(e instanceof Error ? e.message : "Не удалось отклонить запрос")
-    } finally {
-      setDecliningId(null)
     }
   }
 
@@ -279,7 +264,7 @@ export default function MentorDashboard() {
                 )}
                 <div className="space-y-3">
                   {consultationRequests.map((order) => {
-                    const busy = acceptingId === order.id || decliningId === order.id
+                    const busy = acceptingId === order.id
                     return (
                       <div key={order.id} className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
                         <div className="flex items-start gap-4 mb-4">
@@ -303,22 +288,13 @@ export default function MentorDashboard() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAcceptConsultation(order.id)}
-                            disabled={busy}
-                            className="flex-1 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                          >
-                            {acceptingId === order.id ? "Принимаем..." : "✓ Принять"}
-                          </button>
-                          <button
-                            onClick={() => handleDeclineConsultation(order.id)}
-                            disabled={busy}
-                            className="flex-1 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-50"
-                          >
-                            {decliningId === order.id ? "Отклоняем..." : "Отклонить"}
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleAcceptConsultation(order.id)}
+                          disabled={busy}
+                          className="w-full bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        >
+                          {acceptingId === order.id ? "Принимаем..." : "✓ Принять"}
+                        </button>
                       </div>
                     )
                   })}

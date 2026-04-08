@@ -2,7 +2,7 @@
 // Switch USE_MOCKS to false when backend is ready
 
 import { MOCK_MENTORS, getMockMentor, getMockServices, MOCK_ORDERS, MOCK_STUDENT_PROFILE } from "./mocks"
-import { Mentor, MentorCard, MentorProfile, Order, StudentProfile } from "@/types"
+import { Dispute, Mentor, MentorCard, MentorProfile, Order, StudentProfile } from "@/types"
 
 const USE_MOCKS = false
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -210,18 +210,6 @@ export async function confirmConsultation(id: number): Promise<Order> {
   return res.json()
 }
 
-export async function declineConsultation(id: number): Promise<Order> {
-  const res = await fetch(`${BASE_URL}/orders/${id}/decline_consultation/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
-  if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.detail || "Failed to decline consultation")
-  }
-  return res.json()
-}
-
 export async function completeOrder(id: number): Promise<Order> {
   const res = await fetch(`${BASE_URL}/orders/${id}/complete/`, {
     method: "POST",
@@ -230,6 +218,23 @@ export async function completeOrder(id: number): Promise<Order> {
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to complete order")
+  }
+  return res.json()
+}
+
+export async function createDispute(orderId: number, reason: string): Promise<Dispute> {
+  const res = await fetch(`${BASE_URL}/orders/${orderId}/dispute/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const reasonErr = Array.isArray(err.reason) ? err.reason[0] : undefined
+    throw new Error(err.detail || reasonErr || "Failed to open dispute")
   }
   return res.json()
 }

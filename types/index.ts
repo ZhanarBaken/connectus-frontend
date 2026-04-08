@@ -135,8 +135,17 @@ export interface Order {
   order_status: OrderStatus
   payment_instructions: PaymentInstructions | null
   conversation_id: number | null
+  completed_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface Dispute {
+  id: number
+  order: number
+  reason: string
+  opened_at: string
+  resolution: string | null
 }
 
 export interface ChatMessage {
