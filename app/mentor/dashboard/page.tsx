@@ -251,6 +251,27 @@ export default function MentorDashboard() {
                     </span>
                   </div>
                 </div>
+                {profile.consultation && (
+                  <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-3">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🎁</span>
+                        <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                          Что увидят студенты
+                        </h3>
+                      </div>
+                      <Link
+                        href="/mentors/profile"
+                        className="text-xs text-indigo-600 hover:underline font-medium flex-shrink-0"
+                      >
+                        Изменить
+                      </Link>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed line-clamp-3 whitespace-pre-line">
+                      {profile.consultation}
+                    </p>
+                  </div>
+                )}
                 {acceptError && (
                   <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-3">
                     {acceptError}

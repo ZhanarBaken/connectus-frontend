@@ -63,6 +63,8 @@ export interface MentorProfile {
   is_submitted: boolean
   is_public: boolean
   is_accepting_bookings: boolean
+  has_pending_review: boolean
+  pending_changes: Partial<MentorProfile> | null
   created_at: string
   updated_at: string
 }

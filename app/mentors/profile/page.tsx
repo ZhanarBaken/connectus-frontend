@@ -46,6 +46,8 @@ export default function MentorProfilePage() {
   const [linkedin, setLinkedin] = useState("")
   const [expertiseAreas, setExpertiseAreas] = useState<string[]>([])
   const [payoutDetails, setPayoutDetails] = useState("")
+  const [isApproved, setIsApproved] = useState(false)
+  const [hasPending, setHasPending] = useState(false)
 
   const CONSULTATION_MIN = 80
   const CONSULTATION_MAX = 2000
@@ -53,18 +55,28 @@ export default function MentorProfilePage() {
   useEffect(() => {
     fetchMentorProfile()
       .then((p: MentorProfile) => {
-        setFullName(p.full_name ?? "")
-        setCountry(p.country ?? "")
-        setSchool(p.school_or_university ?? "")
-        setMajor(p.major ?? "")
-        setGrant(p.grant_or_scholarship ?? "")
-        setGpa(p.gpa ?? "")
-        setExamResults(p.exam_results ?? "")
-        setBio(p.detailed_bio ?? "")
-        setConsultation(p.consultation ?? "")
-        setLinkedin(p.linkedin_url ?? "")
-        setExpertiseAreas(p.expertise_areas.map((e) => e.area))
-        setPayoutDetails(p.payout_details ?? "")
+        // For approved mentors with pending changes, show the pending values
+        // in the form so they edit on top of what they previously submitted.
+        const pending = p.has_pending_review && p.pending_changes ? p.pending_changes : null
+        setFullName(pending?.full_name ?? p.full_name ?? "")
+        setCountry(pending?.country ?? p.country ?? "")
+        setSchool(pending?.school_or_university ?? p.school_or_university ?? "")
+        setMajor(pending?.major ?? p.major ?? "")
+        setGrant(pending?.grant_or_scholarship ?? p.grant_or_scholarship ?? "")
+        setGpa(pending?.gpa ?? p.gpa ?? "")
+        setExamResults(pending?.exam_results ?? p.exam_results ?? "")
+        setBio(pending?.detailed_bio ?? p.detailed_bio ?? "")
+        setConsultation(pending?.consultation ?? p.consultation ?? "")
+        setLinkedin(pending?.linkedin_url ?? p.linkedin_url ?? "")
+        const pendingExpertise = (pending?.expertise_areas as unknown as string[] | undefined)
+        setExpertiseAreas(
+          pendingExpertise && Array.isArray(pendingExpertise)
+            ? pendingExpertise
+            : p.expertise_areas.map((e) => e.area)
+        )
+        setPayoutDetails(pending?.payout_details ?? p.payout_details ?? "")
+        setIsApproved(p.is_approved)
+        setHasPending(p.has_pending_review)
       })
       .catch(() => setError("Не удалось загрузить профиль"))
       .finally(() => setLoading(false))
@@ -97,7 +109,7 @@ export default function MentorProfilePage() {
         payout_details: payoutDetails,
       })
       setSaved(true)
-      setTimeout(() => router.push("/mentor/dashboard"), 1000)
+      setTimeout(() => router.push("/mentor/dashboard"), isApproved ? 1500 : 1000)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка при сохранении")
       setSaving(false)
@@ -132,9 +144,37 @@ export default function MentorProfilePage() {
         </div>
 
         {/* Progress */}
-        <div className="h-2 bg-gray-100 rounded-full mb-8 overflow-hidden">
+        <div className="h-2 bg-gray-100 rounded-full mb-6 overflow-hidden">
           <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${completionPercent}%` }} />
         </div>
+
+        {/* Pending review notice — for already-approved mentors */}
+        {isApproved && (
+          <div className={`rounded-2xl p-5 mb-6 ${
+            hasPending ? "bg-amber-50 border border-amber-200" : "bg-blue-50 border border-blue-100"
+          }`}>
+            <div className="flex items-start gap-3">
+              <span className="text-xl flex-shrink-0">{hasPending ? "⏳" : "ℹ️"}</span>
+              <div className="text-sm leading-relaxed">
+                {hasPending ? (
+                  <>
+                    <p className="font-semibold text-amber-900 mb-1">Изменения на проверке</p>
+                    <p className="text-amber-800 text-xs">
+                      Ты уже отправил правки администратору. Они появятся на твоей публичной странице после одобрения. Сейчас ты можешь дополнить или поправить их — после сохранения отправится новая версия.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-blue-900 mb-1">Профиль одобрен</p>
+                    <p className="text-blue-800 text-xs">
+                      Твой профиль уже опубликован. Любые правки уйдут на проверку администратору и появятся на сайте только после одобрения.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic info */}
@@ -262,7 +302,9 @@ export default function MentorProfilePage() {
 
           {saved && (
             <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-700">
-              ✓ Профиль сохранён! Перенаправляем...
+              {isApproved
+                ? "✓ Изменения отправлены на проверку администратору. Появятся на сайте после одобрения."
+                : "✓ Профиль сохранён! Перенаправляем..."}
             </div>
           )}
 
@@ -271,7 +313,11 @@ export default function MentorProfilePage() {
             disabled={saving}
             className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
           >
-            {saving ? "Сохраняем..." : "Сохранить профиль"}
+            {saving
+              ? "Сохраняем..."
+              : isApproved
+                ? "Отправить изменения на проверку"
+                : "Сохранить профиль"}
           </button>
         </form>
       </div>

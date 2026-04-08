@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder, fetchMentor, completeOrder } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchMentorProfile, completeOrder } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -36,6 +36,7 @@ export default function OrderPage({ params }: Props) {
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
+  const [consultationText, setConsultationText] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
@@ -59,13 +60,22 @@ export default function OrderPage({ params }: Props) {
     fetchOrder(Number(id))
       .then(async (found) => {
         setOrder(found)
-        // Student needs the mentor's name (Order has only id + email)
+        // Student needs the mentor's name + consultation text
         if (r !== "mentor") {
           try {
             const m = await fetchMentor(found.mentor)
             setMentor(m)
+            if (m.consultation) setConsultationText(m.consultation)
           } catch {
             // ignore — fallback name will be used
+          }
+        } else {
+          // Mentor sees their own consultation text via own profile
+          try {
+            const own = await fetchMentorProfile()
+            if (own.consultation) setConsultationText(own.consultation)
+          } catch {
+            // ignore
           }
         }
         // Resolve current user id (used to flag own messages)
@@ -264,6 +274,19 @@ export default function OrderPage({ params }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* Consultation description — visible to both sides */}
+            {consultationText && (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">🎁</span>
+                  <h3 className="text-sm font-semibold text-indigo-900">О консультации</h3>
+                </div>
+                <p className="text-xs text-indigo-800 leading-relaxed whitespace-pre-line">
+                  {consultationText}
+                </p>
+              </div>
+            )}
 
             {/* Mentor: complete service */}
             {role === "mentor" && order.order_status === "in_progress" && (
