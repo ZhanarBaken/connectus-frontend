@@ -186,20 +186,6 @@ export default function StudentDashboard() {
               </Link>
             </div>
 
-            {/* CTA */}
-            <div className="bg-indigo-600 rounded-2xl p-6 text-white">
-              <div className="text-2xl mb-3">🎓</div>
-              <h3 className="font-semibold mb-2">Найди своего ментора</h3>
-              <p className="text-indigo-200 text-xs mb-4 leading-relaxed">
-                Более 50 менторов из топ университетов готовы помочь с поступлением
-              </p>
-              <Link
-                href="/mentors"
-                className="block text-center bg-white text-indigo-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition-colors"
-              >
-                Смотреть менторов
-              </Link>
-            </div>
           </div>
         </div>
 

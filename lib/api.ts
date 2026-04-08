@@ -27,6 +27,7 @@ export async function fetchMentor(id: number): Promise<Mentor> {
       gpa: "",
       exam_results: "",
       linkedin_url: "",
+      consultation: null,
       is_public: true,
       services,
     }

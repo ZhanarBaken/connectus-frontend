@@ -50,6 +50,7 @@ export interface MentorProfile {
   gpa: string
   exam_results: string
   detailed_bio: string
+  consultation: string
   linkedin_url: string
   profile_photo: string | null
   expertise_areas: MentorExpertise[]
@@ -92,6 +93,8 @@ export interface Mentor {
   exam_results: string
   expertise_areas: MentorExpertise[]
   detailed_bio: string
+  // null when the mentor is not accepting bookings — frontend should hide the section
+  consultation: string | null
   linkedin_url: string
   profile_photo: string | null
   is_public: boolean
