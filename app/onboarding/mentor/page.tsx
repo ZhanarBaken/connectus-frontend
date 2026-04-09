@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateMentorProfile } from "@/lib/api"
 import { ExpertiseArea } from "@/types"
+import Icon from "@/components/Icon"
 
 const STEPS = ["О себе", "Университет", "Экспертиза"]
 
@@ -15,10 +16,10 @@ const COUNTRY_LABELS: Record<string, string> = {
 }
 
 const EXPERTISE_OPTIONS = [
-  { value: "admission", label: "Поступление", icon: "🎯" },
-  { value: "scholarships", label: "Стипендии", icon: "🏅" },
-  { value: "documents", label: "Документы", icon: "📄" },
-  { value: "visa", label: "Виза", icon: "🛂" },
+  { value: "admission", label: "Поступление", icon: "flag" },
+  { value: "scholarships", label: "Стипендии", icon: "military_tech" },
+  { value: "documents", label: "Документы", icon: "article" },
+  { value: "visa", label: "Виза", icon: "flight_takeoff" },
 ]
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
@@ -249,7 +250,12 @@ export default function MentorOnboarding() {
                         : "border-gray-100 hover:border-gray-200"
                     }`}
                   >
-                    <span className="text-2xl">{opt.icon}</span>
+                    <Icon
+                      name={opt.icon}
+                      size={24}
+                      filled={expertise.includes(opt.value)}
+                      className={expertise.includes(opt.value) ? "text-indigo-600" : "text-gray-400"}
+                    />
                     <span className={`text-sm font-medium ${expertise.includes(opt.value) ? "text-indigo-700" : "text-gray-700"}`}>
                       {opt.label}
                     </span>

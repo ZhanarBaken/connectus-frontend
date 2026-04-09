@@ -7,6 +7,7 @@ import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
 import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
+import Icon from "@/components/Icon"
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -156,7 +157,8 @@ export default function MentorPage({ params }: Props) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
                   <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                    ✓ Верифицирован
+                    <Icon name="verified" size={14} className="text-indigo-600" filled />
+                    Верифицирован
                   </span>
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
@@ -164,7 +166,10 @@ export default function MentorPage({ params }: Props) {
                   {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
                 </p>
                 {mentor.grant_or_scholarship && (
-                  <p className="text-sm text-gray-400 mt-1">🏅 {mentor.grant_or_scholarship}</p>
+                  <p className="text-sm text-gray-400 mt-1 inline-flex items-center gap-1.5">
+                    <Icon name="military_tech" size={16} />
+                    {mentor.grant_or_scholarship}
+                  </p>
                 )}
                 <div className="flex flex-wrap gap-2 mt-3">
                   {mentor.expertise_areas.map((e) => (
@@ -216,7 +221,8 @@ export default function MentorPage({ params }: Props) {
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="relative">
                   <div className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
-                    🎁 Бесплатно
+                    <Icon name="redeem" size={14} className="text-white" />
+                    Бесплатно
                   </div>
                   <h2 className="text-2xl font-bold mb-2">Бесплатная консультация</h2>
                   <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line">
@@ -225,18 +231,25 @@ export default function MentorPage({ params }: Props) {
                       "Знакомство с ментором — обсудим цели поступления и план дальнейшей работы."}
                   </p>
                   <div className="flex items-center gap-4 mb-5 text-xs text-indigo-200">
-                    <span>⏱ {consultationService.duration_minutes} мин</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Icon name="schedule" size={14} />
+                      {consultationService.duration_minutes} мин
+                    </span>
                     <span>·</span>
-                    <span>💬 Чат после принятия</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Icon name="chat" size={14} />
+                      Чат после принятия
+                    </span>
                   </div>
 
                   {consultationStatus === "in_progress" ? (
                     <div className="flex items-center gap-3">
                       <Link
                         href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
-                        className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors"
+                        className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
                       >
-                        Открыть чат →
+                        Открыть чат
+                        <Icon name="arrow_forward" size={16} />
                       </Link>
                       <span className="text-xs text-indigo-200">Консультация активна</span>
                     </div>
@@ -294,19 +307,24 @@ export default function MentorPage({ params }: Props) {
                                 {service.description}
                               </p>
                             )}
-                            <p className="text-xs text-gray-400 mt-2">⏱ {service.duration_minutes} мин</p>
+                            <p className="text-xs text-gray-400 mt-2 inline-flex items-center gap-1">
+                              <Icon name="schedule" size={12} />
+                              {service.duration_minutes} мин
+                            </p>
                           </div>
                           <div className="text-right flex-shrink-0">
                             <div className={`text-2xl font-bold ${isLocked ? "text-gray-400" : "text-gray-900"}`}>
                               {Number(service.price).toLocaleString("ru-RU")} ₸
                             </div>
                             {isOrdered ? (
-                              <span className="inline-block mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
-                                ✓ Заказано
+                              <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
+                                <Icon name="check" size={12} />
+                                Заказано
                               </span>
                             ) : isLocked ? (
                               <div className="mt-1 text-xs text-gray-400 flex items-center gap-1 justify-end">
-                                🔒 <span>Заблокировано</span>
+                                <Icon name="lock" size={12} />
+                                <span>Заблокировано</span>
                               </div>
                             ) : (
                               <button
@@ -345,7 +363,9 @@ export default function MentorPage({ params }: Props) {
               </div>
               {reviews.length === 0 ? (
                 <div className="border border-gray-100 rounded-2xl p-8 text-center">
-                  <div className="text-3xl mb-2">⭐</div>
+                  <div className="mb-2 flex justify-center">
+                    <Icon name="star" size={32} className="text-gray-300" />
+                  </div>
                   <p className="text-sm text-gray-400">У этого ментора пока нет отзывов</p>
                 </div>
               ) : (
@@ -395,15 +415,18 @@ export default function MentorPage({ params }: Props) {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-gray-50 space-y-2 text-xs text-gray-400">
+                <div className="mt-6 pt-6 border-t border-gray-50 space-y-2 text-xs text-gray-500">
                   <div className="flex items-center gap-2">
-                    <span>✓</span><span>Прозрачные цены в тенге</span>
+                    <Icon name="check" size={14} className="text-indigo-600" />
+                    <span>Прозрачные цены в тенге</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span>✓</span><span>Общение только в чате</span>
+                    <Icon name="check" size={14} className="text-indigo-600" />
+                    <span>Общение только в чате</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span>✓</span><span>Верифицированный ментор</span>
+                    <Icon name="check" size={14} className="text-indigo-600" />
+                    <span>Верифицированный ментор</span>
                   </div>
                 </div>
               </div>

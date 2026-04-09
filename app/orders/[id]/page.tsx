@@ -8,6 +8,7 @@ import { fetchChatMessages, fetchConversation, connectChat, closeConversation, t
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
+import Icon from "@/components/Icon"
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Ожидает подтверждения",
@@ -332,7 +333,7 @@ export default function OrderPage({ params }: Props) {
             {consultationText && (
               <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-base">🎁</span>
+                  <Icon name="redeem" size={18} className="text-indigo-600" />
                   <h3 className="text-sm font-semibold text-indigo-900">О консультации</h3>
                 </div>
                 <p className="text-xs text-indigo-800 leading-relaxed whitespace-pre-line">
@@ -364,7 +365,10 @@ export default function OrderPage({ params }: Props) {
             {/* Mentor: info banner about open chat = purchasable services */}
             {role === "mentor" && canChat && !chatClosed && order.order_status === "in_progress" && (
               <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-                <h3 className="font-semibold text-indigo-900 mb-1 text-sm">💬 Чат открыт</h3>
+                <h3 className="font-semibold text-indigo-900 mb-1 text-sm inline-flex items-center gap-1.5">
+                  <Icon name="chat" size={16} className="text-indigo-600" />
+                  Чат открыт
+                </h3>
                 <p className="text-xs text-indigo-800 leading-relaxed">
                   Пока чат со студентом открыт, он может покупать у тебя другие платные услуги. Чтобы это прекратить — заверши все активные заказы и закрой чат.
                 </p>
@@ -394,7 +398,10 @@ export default function OrderPage({ params }: Props) {
             {/* Both: chat closed banner */}
             {chatClosed && (
               <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
-                <h3 className="font-semibold text-gray-700 mb-1 text-sm">🔒 Чат закрыт</h3>
+                <h3 className="font-semibold text-gray-700 mb-1 text-sm inline-flex items-center gap-1.5">
+                  <Icon name="lock" size={16} />
+                  Чат закрыт
+                </h3>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   {role === "mentor"
                     ? "Студент не может писать сообщения и покупать услуги. Чат откроется снова, если ты примешь новый запрос на консультацию."
@@ -416,7 +423,10 @@ export default function OrderPage({ params }: Props) {
             {/* Student: in progress notice */}
             {role !== "mentor" && order.order_status === "in_progress" && (
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
-                <h3 className="font-semibold text-blue-800 mb-1 text-sm">🔵 В работе</h3>
+                <h3 className="font-semibold text-blue-800 mb-1 text-sm inline-flex items-center gap-1.5">
+                  <Icon name="hourglass_top" size={16} className="text-blue-600" />
+                  В работе
+                </h3>
                 <p className="text-xs text-blue-700 leading-relaxed">
                   Ментор работает над твоим заказом. Когда работа будет закончена, услуга станет завершённой и ты сможешь оставить отзыв.
                 </p>
@@ -600,8 +610,9 @@ export default function OrderPage({ params }: Props) {
                   {/* Input or closed banner */}
                   {chatClosed ? (
                     <div className="px-4 py-5 border-t border-gray-50 flex-shrink-0 bg-gray-50/60">
-                      <p className="text-center text-sm text-gray-500 font-medium">
-                        🔒 Чат закрыт
+                      <p className="text-center text-sm text-gray-500 font-medium inline-flex items-center gap-1.5 justify-center w-full">
+                        <Icon name="lock" size={16} />
+                        Чат закрыт
                       </p>
                       <p className="text-center text-xs text-gray-400 mt-1 leading-relaxed">
                         {role === "mentor"
@@ -639,7 +650,9 @@ export default function OrderPage({ params }: Props) {
               ) : (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center px-8">
-                    <div className="text-5xl mb-4">🔒</div>
+                    <div className="mb-4 flex justify-center">
+                      <Icon name="lock" size={48} className="text-gray-300" />
+                    </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Чат заблокирован</h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
                       Чат откроется после того, как ментор примет запрос на бесплатную консультацию.

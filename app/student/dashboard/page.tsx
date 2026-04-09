@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchStudentProfile, fetchOrders, fetchMentors } from "@/lib/api"
 import { StudentProfile, Order } from "@/types"
+import Icon from "@/components/Icon"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending_payment: "Ожидает оплаты",
@@ -70,7 +71,7 @@ export default function StudentDashboard() {
           <div>
             <p className="text-sm text-gray-400 mb-1">Личный кабинет</p>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Привет, {profile?.full_name?.split(" ")[0] || "студент"} 👋
+              Привет, {profile?.full_name?.split(" ")[0] || "студент"} <Icon name="waving_hand" size={28} className="text-yellow-500 align-baseline ml-1" />
             </h1>
             {profile?.current_school_or_university && (
               <p className="text-gray-500 mt-1 text-sm">{profile.current_school_or_university}</p>
@@ -108,7 +109,9 @@ export default function StudentDashboard() {
 
             {orders.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                <div className="text-5xl mb-4">📋</div>
+                <div className="mb-4 flex justify-center">
+                  <Icon name="description" size={48} className="text-gray-300" />
+                </div>
                 <h3 className="font-semibold text-gray-900 mb-2">Пока нет заказов</h3>
                 <p className="text-sm text-gray-400 mb-6">Найди ментора и запишись на консультацию</p>
                 <Link

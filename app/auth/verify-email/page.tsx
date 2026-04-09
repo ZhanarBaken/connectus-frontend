@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { verifyEmail } from "@/lib/api"
+import Icon from "@/components/Icon"
 
 type Status = "loading" | "success" | "error"
 
@@ -52,7 +53,7 @@ function VerifyEmailContent() {
           {status === "success" && (
             <>
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl text-green-600">✓</span>
+                <Icon name="check_circle" size={36} className="text-green-600" filled />
               </div>
               <h1 className="text-xl font-bold text-gray-900 mb-2">Email подтверждён</h1>
               <p className="text-gray-500 text-sm mb-6">
@@ -70,7 +71,7 @@ function VerifyEmailContent() {
           {status === "error" && (
             <>
               <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">⚠️</span>
+                <Icon name="error" size={36} className="text-red-600" />
               </div>
               <h1 className="text-xl font-bold text-gray-900 mb-2">Не удалось подтвердить</h1>
               <p className="text-gray-500 text-sm mb-6">{error}</p>

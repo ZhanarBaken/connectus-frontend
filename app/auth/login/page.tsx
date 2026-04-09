@@ -4,6 +4,7 @@ import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { login, fetchMe, resendVerification } from "@/lib/api"
+import Icon from "@/components/Icon"
 
 function LoginForm() {
   const router = useRouter()
@@ -132,7 +133,7 @@ function LoginForm() {
             {needsVerification && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-4">
                 <div className="flex items-start gap-3">
-                  <span className="text-xl">📬</span>
+                  <Icon name="mark_email_unread" size={22} className="text-yellow-700" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-yellow-800 mb-1">Email не подтверждён</p>
                     <p className="text-xs text-yellow-700 leading-relaxed mb-3">

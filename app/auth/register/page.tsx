@@ -3,19 +3,20 @@
 import { useState } from "react"
 import Link from "next/link"
 import { register, resendVerification } from "@/lib/api"
+import Icon from "@/components/Icon"
 
 type Role = "student" | "mentor"
 
 const ROLES = [
   {
     value: "student" as Role,
-    icon: "🎓",
+    icon: "school",
     title: "Я студент или родитель",
     desc: "Ищу ментора для поступления за рубеж",
   },
   {
     value: "mentor" as Role,
-    icon: "⭐",
+    icon: "star",
     title: "Я ментор",
     desc: "Хочу помогать студентам с поступлением",
   },
@@ -80,7 +81,7 @@ export default function RegisterPage() {
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
             <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">📬</span>
+              <Icon name="mark_email_unread" size={36} className="text-indigo-600" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">Проверь почту</h1>
             <p className="text-gray-500 text-sm mb-1">
@@ -165,7 +166,12 @@ export default function RegisterPage() {
                         : "border-gray-100 hover:border-gray-200"
                     }`}
                   >
-                    <span className="text-3xl">{r.icon}</span>
+                    <Icon
+                      name={r.icon}
+                      size={32}
+                      filled={role === r.value}
+                      className={role === r.value ? "text-indigo-600" : "text-gray-400"}
+                    />
                     <div>
                       <div className={`font-semibold text-sm ${role === r.value ? "text-indigo-700" : "text-gray-900"}`}>
                         {r.title}

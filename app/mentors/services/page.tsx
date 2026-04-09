@@ -11,6 +11,7 @@ import {
 } from "@/lib/api"
 import { MentorService } from "@/types"
 import BackButton from "@/components/BackButton"
+import Icon from "@/components/Icon"
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
@@ -245,16 +246,23 @@ export default function MentorServicesPage() {
                   <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="font-semibold text-gray-900">{consultation.title}</h3>
-                      <span className="text-xs bg-white text-indigo-600 px-2 py-0.5 rounded-full font-medium">
-                        🎁 Бесплатно
+                      <span className="text-xs bg-white text-indigo-600 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1">
+                        <Icon name="redeem" size={12} />
+                        Бесплатно
                       </span>
-                      <span className="text-xs bg-white text-gray-500 px-2 py-0.5 rounded-full">🔒 Управляется платформой</span>
+                      <span className="text-xs bg-white text-gray-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <Icon name="lock" size={12} />
+                        Управляется платформой
+                      </span>
                     </div>
                     {consultation.description && (
                       <p className="text-sm text-gray-600 mt-1">{consultation.description}</p>
                     )}
                     <div className="flex items-center gap-3 mt-2">
-                      <span className="text-xs text-gray-500">⏱ {consultation.duration_minutes} мин</span>
+                      <span className="text-xs text-gray-500 inline-flex items-center gap-1">
+                        <Icon name="schedule" size={12} />
+                        {consultation.duration_minutes} мин
+                      </span>
                     </div>
                     <p className="text-xs text-indigo-700 mt-3 leading-relaxed">
                       Это обязательная услуга — каждый ментор получает её автоматически. Студенты используют её для первого знакомства, и только после неё могут заказать платные услуги.
@@ -268,7 +276,9 @@ export default function MentorServicesPage() {
                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Платные услуги</h2>
                 {paid.length === 0 && !isFormOpen ? (
                   <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                    <div className="text-5xl mb-4">📋</div>
+                    <div className="mb-4 flex justify-center">
+                      <Icon name="description" size={48} className="text-gray-300" />
+                    </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Платных услуг пока нет</h3>
                     <p className="text-sm text-gray-400 mb-6">Добавь услугу чтобы студенты могли её заказать после консультации</p>
                     <button
@@ -293,7 +303,10 @@ export default function MentorServicesPage() {
                             <p className="text-sm text-gray-500 mt-1">{service.description}</p>
                           )}
                           <div className="flex items-center gap-3 mt-2">
-                            <span className="text-xs text-gray-400">⏱ {service.duration_minutes} мин</span>
+                            <span className="text-xs text-gray-400 inline-flex items-center gap-1">
+                              <Icon name="schedule" size={12} />
+                              {service.duration_minutes} мин
+                            </span>
                             <span className="text-xs text-gray-300">·</span>
                             <span className="text-sm font-bold text-gray-900">{formatPrice(service.price)}</span>
                           </div>

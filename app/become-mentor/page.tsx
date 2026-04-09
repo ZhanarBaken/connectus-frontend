@@ -1,25 +1,26 @@
 import Link from "next/link"
 import MentorRedirect from "@/components/MentorRedirect"
 import FaqList from "@/components/FaqList"
+import Icon from "@/components/Icon"
 
 const BENEFITS = [
   {
-    icon: "💰",
+    icon: "payments",
     title: "Зарабатывай на своём опыте",
     desc: "Устанавливай свои цены. Менторы на Connectus зарабатывают от $30 до $150 за одну консультацию.",
   },
   {
-    icon: "🕐",
+    icon: "schedule",
     title: "Гибкий график",
     desc: "Сам выбираешь когда и сколько работать. Совмещай с учёбой или работой без ограничений.",
   },
   {
-    icon: "🌍",
+    icon: "public",
     title: "Студенты из любой точки",
     desc: "Помогай студентам из Казахстана, Узбекистана, Кыргызстана и других стран — онлайн.",
   },
   {
-    icon: "🔒",
+    icon: "shield",
     title: "Безопасные выплаты",
     desc: "Платформа гарантирует оплату. Деньги поступают на твой счёт после завершения услуги.",
   },
@@ -133,7 +134,9 @@ export default function BecomeMentorPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {BENEFITS.map((b) => (
               <div key={b.title} className="bg-gray-50 rounded-2xl p-6 border border-gray-100 transform-gpu transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:shadow-md hover:border-indigo-100">
-                <div className="text-3xl mb-4 leading-none">{b.icon}</div>
+                <div className="mb-4">
+                  <Icon name={b.icon} size={32} className="text-indigo-600" />
+                </div>
                 <h3 className="font-semibold text-gray-900 text-lg mb-2">{b.title}</h3>
                 <p className="text-[15px] text-gray-600 leading-relaxed">{b.desc}</p>
               </div>
@@ -171,20 +174,20 @@ export default function BecomeMentorPage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: "🎯", label: "Консультация по поступлению" },
-              { icon: "✍️", label: "Проверка эссе и мотивационного письма" },
-              { icon: "📄", label: "Помощь с документами" },
-              { icon: "🏅", label: "Подбор стипендий" },
-              { icon: "🗣️", label: "Подготовка к интервью" },
-              { icon: "🗺️", label: "Выбор университета и программы" },
-              { icon: "📝", label: "SAT / IELTS / TOEFL подготовка" },
-              { icon: "🛂", label: "Визовые консультации" },
+              { icon: "flag", label: "Консультация по поступлению" },
+              { icon: "edit", label: "Проверка эссе и мотивационного письма" },
+              { icon: "article", label: "Помощь с документами" },
+              { icon: "military_tech", label: "Подбор стипендий" },
+              { icon: "record_voice_over", label: "Подготовка к интервью" },
+              { icon: "explore", label: "Выбор университета и программы" },
+              { icon: "edit_note", label: "SAT / IELTS / TOEFL подготовка" },
+              { icon: "flight_takeoff", label: "Визовые консультации" },
             ].map((item) => (
               <div
                 key={item.label}
                 className="bg-white/10 rounded-2xl px-4 py-4 flex items-center gap-3 text-white transform-gpu transition-[background-color,transform] duration-200 ease-out hover:bg-white/15 hover:-translate-y-0.5"
               >
-                <span className="text-2xl flex-shrink-0 leading-none">{item.icon}</span>
+                <Icon name={item.icon} size={24} className="flex-shrink-0 text-white" />
                 <span className="text-[15px] font-medium leading-snug">{item.label}</span>
               </div>
             ))}
@@ -214,9 +217,10 @@ export default function BecomeMentorPage() {
           </p>
           <Link
             href="/auth/register"
-            className="inline-block bg-indigo-600 text-white px-10 py-4 rounded-2xl text-base font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-10 py-4 rounded-2xl text-base font-bold hover:bg-indigo-700 transition-colors shadow-sm"
           >
-            Стать ментором — бесплатно →
+            Стать ментором — бесплатно
+            <Icon name="arrow_forward" size={20} />
           </Link>
           <p className="text-sm text-gray-500 mt-4">Уже есть аккаунт? <Link href="/auth/login" className="text-indigo-600 font-medium hover:underline">Войти</Link></p>
         </div>

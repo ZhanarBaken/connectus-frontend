@@ -6,6 +6,7 @@ import Link from "next/link"
 import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
+import Icon from "@/components/Icon"
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Запрос",
@@ -100,7 +101,9 @@ export default function MessagesPage() {
 
         {conversations.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-            <div className="text-5xl mb-4">💬</div>
+            <div className="mb-4 flex justify-center">
+              <Icon name="chat" size={48} className="text-gray-300" />
+            </div>
             <h3 className="font-semibold text-gray-900 mb-2">Пока нет чатов</h3>
             <p className="text-sm text-gray-400 mb-6">
               {role === "mentor"

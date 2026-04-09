@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getPlatformReviews, type Review } from "@/lib/reviews"
+import Icon from "./Icon"
 
 export default function PlatformReviews() {
   const [reviews, setReviews] = useState<Review[]>([])
@@ -17,7 +18,9 @@ export default function PlatformReviews() {
   if (reviews.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center max-w-xl mx-auto">
-        <div className="text-4xl mb-3">💬</div>
+        <div className="mb-3 flex justify-center">
+          <Icon name="chat" size={40} className="text-gray-300" />
+        </div>
         <h3 className="font-semibold text-gray-900 mb-2">Отзывов пока нет</h3>
         <p className="text-sm text-gray-400">
           Будь первым — после консультации с ментором ты сможешь оставить отзыв

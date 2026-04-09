@@ -3,6 +3,7 @@ import Link from "next/link"
 import FaqList from "@/components/FaqList"
 import MentorRedirect from "@/components/MentorRedirect"
 import PlatformReviews from "@/components/PlatformReviews"
+import Icon from "@/components/Icon"
 
 const CATEGORIES = [
   { label: "США", icon: "🇺🇸", desc: "Ivy League и топ университеты" },
@@ -85,8 +86,8 @@ export default async function HomePage() {
       <section className="bg-gradient-to-b from-indigo-50 to-white pt-20 pb-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
-            <span className="w-2 h-2 bg-indigo-500 rounded-full" />
-            🎁 Первая консультация — бесплатно
+            <Icon name="redeem" size={16} className="text-indigo-600" />
+            Первая консультация — бесплатно
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 leading-[1.1] tracking-tight mb-6">
             Поступи в университет<br />
@@ -198,8 +199,8 @@ export default async function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                 {/* Animated arrow */}
-                <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform-gpu">
-                  <span aria-hidden>→</span>
+                <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform-gpu">
+                  <Icon name="arrow_forward" size={16} className="text-white" />
                 </div>
 
                 <div className="relative">
@@ -230,9 +231,10 @@ export default async function HomePage() {
             </div>
             <Link
               href="/mentors"
-              className="hidden sm:inline-flex text-indigo-600 font-medium text-sm hover:underline"
+              className="hidden sm:inline-flex items-center gap-1 text-indigo-600 font-medium text-sm hover:underline"
             >
-              Смотреть всех →
+              Смотреть всех
+              <Icon name="arrow_forward" size={16} />
             </Link>
           </div>
 
@@ -285,7 +287,10 @@ export default async function HomePage() {
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                   {mentor.grant_or_scholarship && (
-                    <span className="text-xs text-gray-500">🏅 {mentor.grant_or_scholarship}</span>
+                    <span className="text-xs text-gray-500 inline-flex items-center gap-1">
+                      <Icon name="military_tech" size={14} />
+                      {mentor.grant_or_scholarship}
+                    </span>
                   )}
                   <span
                     className={`text-xs font-medium px-2.5 py-1 rounded-full ml-auto ${
@@ -306,7 +311,8 @@ export default async function HomePage() {
               href="/mentors"
               className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-medium hover:border-indigo-300 hover:text-indigo-600 transition-colors text-sm"
             >
-              Смотреть всех менторов →
+              Смотреть всех менторов
+              <Icon name="arrow_forward" size={16} />
             </Link>
           </div>
         </div>
@@ -323,10 +329,10 @@ export default async function HomePage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: "✅", title: "Верифицированные менторы", desc: "Каждый ментор проходит проверку документов и дипломов", stat: "100%", statLabel: "проверено" },
-              { icon: "💬", title: "Бесплатный чат до оплаты", desc: "Задайте вопросы ментору перед покупкой — без риска", stat: "5", statLabel: "сообщений" },
-              { icon: "💳", title: "Прозрачные цены", desc: "Вы видите полную стоимость заранее. Никаких скрытых комиссий", stat: "0₸", statLabel: "комиссий" },
-              { icon: "🎓", title: "Реальный опыт", desc: "Менторы — студенты и выпускники тех же университетов", stat: "50+", statLabel: "менторов" },
+              { icon: "verified", title: "Верифицированные менторы", desc: "Каждый ментор проходит проверку документов и дипломов", stat: "100%", statLabel: "проверено" },
+              { icon: "chat", title: "Бесплатный чат до оплаты", desc: "Задайте вопросы ментору перед покупкой — без риска", stat: "5", statLabel: "сообщений" },
+              { icon: "credit_card", title: "Прозрачные цены", desc: "Вы видите полную стоимость заранее. Никаких скрытых комиссий", stat: "0₸", statLabel: "комиссий" },
+              { icon: "school", title: "Реальный опыт", desc: "Менторы — студенты и выпускники тех же университетов", stat: "50+", statLabel: "менторов" },
             ].map((item) => (
               <div
                 key={item.title}
@@ -339,8 +345,8 @@ export default async function HomePage() {
                 {/* Icon — flips to show stat on hover */}
                 <div className="relative h-12 mb-4" style={{ perspective: "600px" }}>
                   <div className="absolute inset-0 transform-gpu transition-transform duration-500 ease-out group-hover:[transform:rotateY(180deg)]" style={{ transformStyle: "preserve-3d" }}>
-                    <div className="absolute inset-0 flex items-center text-3xl leading-none [backface-visibility:hidden]" style={{ WebkitBackfaceVisibility: "hidden" }}>
-                      <span>{item.icon}</span>
+                    <div className="absolute inset-0 flex items-center [backface-visibility:hidden]" style={{ WebkitBackfaceVisibility: "hidden" }}>
+                      <Icon name={item.icon} size={36} className="text-white" />
                     </div>
                     <div className="absolute inset-0 flex flex-col justify-center [backface-visibility:hidden]" style={{ WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
                       <div className="text-2xl font-bold leading-none">{item.stat}</div>
@@ -394,22 +400,22 @@ export default async function HomePage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
             {[
               {
-                icon: "💰",
+                icon: "payments",
                 title: "Зарабатывай на опыте",
                 desc: "Сам устанавливаешь цены на свои услуги. Гибкий график — работаешь когда удобно.",
               },
               {
-                icon: "📝",
+                icon: "edit_note",
                 title: "Простая регистрация",
                 desc: "Создай профиль за 5 минут: университет, специальность, опыт. Никаких лишних шагов.",
               },
               {
-                icon: "✓",
+                icon: "verified",
                 title: "Верификация 48 часов",
                 desc: "Мы проверяем диплом и подтверждаем университет. Только проверенные кандидаты на платформе.",
               },
               {
-                icon: "🔒",
+                icon: "shield",
                 title: "Безопасность платформы",
                 desc: "Всё общение и оплата — только на Connectus. Мы защищаем и менторов, и студентов.",
               },
@@ -423,8 +429,8 @@ export default async function HomePage() {
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
 
                 <div className="relative">
-                  <div className="text-3xl mb-4 leading-none transform-gpu transition-transform duration-300 group-hover:scale-110 inline-block">
-                    {card.icon}
+                  <div className="mb-4 transform-gpu transition-transform duration-300 group-hover:scale-110 inline-block">
+                    <Icon name={card.icon} size={36} className="text-white" />
                   </div>
                   <h3 className="font-semibold text-white text-lg mb-2">{card.title}</h3>
                   <p className="text-indigo-100 text-[15px] leading-relaxed">{card.desc}</p>
@@ -442,7 +448,7 @@ export default async function HomePage() {
               className="inline-flex items-center gap-2 bg-white text-indigo-700 px-8 py-4 rounded-2xl text-base font-bold hover:bg-indigo-50 transition-colors shadow-lg shadow-indigo-900/50"
             >
               Узнать больше про менторство
-              <span aria-hidden>→</span>
+              <Icon name="arrow_forward" size={20} />
             </Link>
             <p className="text-sm text-indigo-200 mt-4">
               Регистрация бесплатная · 48 часов на верификацию · Никаких подписок

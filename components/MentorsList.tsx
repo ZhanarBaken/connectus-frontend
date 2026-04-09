@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
 import { getMentorReviewCount, getMentorAverageRating } from "@/lib/reviews"
 import BackButton from "@/components/BackButton"
+import Icon from "@/components/Icon"
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -197,7 +198,9 @@ export default function MentorsList({ mentors }: Props) {
         {/* Results */}
         {filtered.length === 0 ? (
           <div className="text-center py-24">
-            <div className="text-5xl mb-4">🔍</div>
+            <div className="mb-4 flex justify-center">
+              <Icon name="search_off" size={48} className="text-gray-300" />
+            </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Менторов не найдено</h3>
             <p className="text-gray-400 mb-6">Попробуй изменить фильтры или поисковый запрос</p>
             <button
@@ -281,7 +284,10 @@ export default function MentorsList({ mentors }: Props) {
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                   {mentor.grant_or_scholarship ? (
-                    <span className="text-xs text-gray-400 truncate mr-2">🏅 {mentor.grant_or_scholarship}</span>
+                    <span className="text-xs text-gray-400 truncate mr-2 inline-flex items-center gap-1">
+                      <Icon name="military_tech" size={12} />
+                      {mentor.grant_or_scholarship}
+                    </span>
                   ) : (
                     <span />
                   )}

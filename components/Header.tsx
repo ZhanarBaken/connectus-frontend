@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
+import Icon from "./Icon"
 
 export default function Header() {
   const router = useRouter()
@@ -35,19 +36,19 @@ export default function Header() {
   }
 
   const mentorNav: NavLink[] = [
-    { href: "/mentor/dashboard", label: "Кабинет", icon: "📊" },
-    { href: "/mentors/profile", label: "Профиль", icon: "👤" },
-    { href: "/mentors/services", label: "Услуги", icon: "📋" },
-    { href: "/orders", label: "Заказы", icon: "📥", matchPrefixes: ["/orders"] },
-    { href: "/messages", label: "Сообщения", icon: "💬" },
+    { href: "/mentor/dashboard", label: "Кабинет", icon: "dashboard" },
+    { href: "/mentors/profile", label: "Профиль", icon: "person" },
+    { href: "/mentors/services", label: "Услуги", icon: "description" },
+    { href: "/orders", label: "Заказы", icon: "inbox", matchPrefixes: ["/orders"] },
+    { href: "/messages", label: "Сообщения", icon: "chat" },
   ]
 
   const studentNav: NavLink[] = [
-    { href: "/student/dashboard", label: "Кабинет", icon: "📊" },
-    { href: "/mentors", label: "Найти ментора", icon: "🔍" },
-    { href: "/orders", label: "Мои заказы", icon: "📋", matchPrefixes: ["/orders"] },
-    { href: "/messages", label: "Сообщения", icon: "💬" },
-    { href: "/students/profile", label: "Профиль", icon: "👤" },
+    { href: "/student/dashboard", label: "Кабинет", icon: "dashboard" },
+    { href: "/mentors", label: "Найти ментора", icon: "search" },
+    { href: "/orders", label: "Мои заказы", icon: "description", matchPrefixes: ["/orders"] },
+    { href: "/messages", label: "Сообщения", icon: "chat" },
+    { href: "/students/profile", label: "Профиль", icon: "person" },
   ]
 
   const guestNav: NavLink[] = [
@@ -92,9 +93,12 @@ export default function Header() {
                   }`}
                 >
                   {link.icon && (
-                    <span className={`text-base leading-none transition-transform duration-200 ${active ? "" : "group-hover:scale-110"}`}>
-                      {link.icon}
-                    </span>
+                    <Icon
+                      name={link.icon}
+                      size={18}
+                      filled={active}
+                      className={`transition-transform duration-200 ${active ? "" : "group-hover:scale-110"}`}
+                    />
                   )}
                   <span>{link.label}</span>
                 </Link>
@@ -169,7 +173,7 @@ export default function Header() {
                     : "text-gray-600 hover:text-indigo-600 hover:bg-gray-50"
                 }`}
               >
-                {link.icon && <span className="text-base leading-none">{link.icon}</span>}
+                {link.icon && <Icon name={link.icon} size={18} filled={active} />}
                 <span>{link.label}</span>
               </Link>
             )

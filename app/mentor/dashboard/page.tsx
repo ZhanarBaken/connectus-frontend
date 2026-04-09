@@ -6,6 +6,7 @@ import Link from "next/link"
 import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
 import { MentorProfile, MentorService, Order } from "@/types"
+import Icon from "@/components/Icon"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: "Запрос",
@@ -240,7 +241,7 @@ export default function MentorDashboard() {
                   <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-3">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-base">🎁</span>
+                        <Icon name="redeem" size={18} className="text-indigo-600" />
                         <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
                           Что увидят студенты
                         </h3>
@@ -278,7 +279,10 @@ export default function MentorDashboard() {
                               <h3 className="font-semibold text-gray-900 truncate">
                                 {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
                               </h3>
-                              <span className="text-xs bg-white text-indigo-600 font-semibold px-2 py-0.5 rounded-full">🎁 Бесплатно</span>
+                              <span className="text-xs bg-white text-indigo-600 font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Icon name="redeem" size={12} />
+                                Бесплатно
+                              </span>
                             </div>
                             <p className="text-xs text-gray-500 leading-relaxed">
                               хочет провести бесплатную консультацию
@@ -311,7 +315,9 @@ export default function MentorDashboard() {
 
               {otherOrders.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                  <div className="text-5xl mb-4">📥</div>
+                  <div className="mb-4 flex justify-center">
+                    <Icon name="inbox" size={48} className="text-gray-300" />
+                  </div>
                   <h3 className="font-semibold text-gray-900 mb-2">Пока нет заказов</h3>
                   <p className="text-sm text-gray-400">
                     Заказы появятся когда студенты запишутся на твои услуги
@@ -365,7 +371,9 @@ export default function MentorDashboard() {
               </div>
               {reviews.length === 0 ? (
                 <div className="text-center py-4">
-                  <div className="text-2xl mb-2">⭐</div>
+                  <div className="mb-2 flex justify-center">
+                    <Icon name="star" size={28} className="text-yellow-400" filled />
+                  </div>
                   <p className="text-sm text-gray-400 leading-relaxed">
                     Отзывы появятся после того как студенты завершат заказы
                   </p>
@@ -444,16 +452,16 @@ export default function MentorDashboard() {
               <h2 className="text-sm font-semibold text-gray-900 mb-4">Быстрые действия</h2>
               <div className="space-y-2">
                 {[
-                  { href: "/mentors/profile", icon: "👤", label: "Редактировать профиль" },
-                  { href: "/mentors/services", icon: "📋", label: "Управлять услугами" },
-                  { href: `/mentors/${profile.id}`, icon: "👁", label: "Предпросмотр профиля" },
+                  { href: "/mentors/profile", icon: "person", label: "Редактировать профиль" },
+                  { href: "/mentors/services", icon: "description", label: "Управлять услугами" },
+                  { href: `/mentors/${profile.id}`, icon: "visibility", label: "Предпросмотр профиля" },
                 ].map((item) => (
                   <Link
                     key={item.href + item.label}
                     href={item.href}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors group"
                   >
-                    <span className="text-lg">{item.icon}</span>
+                    <Icon name={item.icon} size={20} className="text-gray-500 group-hover:text-indigo-600 transition-colors" />
                     <span className="text-sm text-gray-600 group-hover:text-indigo-600 transition-colors">
                       {item.label}
                     </span>
