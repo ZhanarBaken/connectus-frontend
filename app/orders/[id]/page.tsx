@@ -335,7 +335,7 @@ export default function OrderPage({ params }: Props) {
                   <Icon name="redeem" size={18} className="text-indigo-600" />
                   <h3 className="text-sm font-semibold text-indigo-900">О консультации</h3>
                 </div>
-                <p className="text-xs text-indigo-800 leading-relaxed whitespace-pre-line">
+                <p className="text-xs text-indigo-800 leading-relaxed whitespace-pre-line break-words">
                   {consultationText}
                 </p>
               </div>
