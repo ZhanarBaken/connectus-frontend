@@ -9,6 +9,7 @@
 // SSR-safe — only call from "use client" components.
 
 import { ChatMessage } from "@/types"
+import { authFetch } from "./api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -22,9 +23,7 @@ export interface Conversation {
 }
 
 export async function fetchConversation(conversationId: number): Promise<Conversation> {
-  const res = await fetch(`${API_BASE}/chat/${conversationId}/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${API_BASE}/chat/${conversationId}/`)
   if (!res.ok) {
     throw new Error("Не удалось загрузить чат")
   }
@@ -32,9 +31,8 @@ export async function fetchConversation(conversationId: number): Promise<Convers
 }
 
 export async function closeConversation(conversationId: number): Promise<{ closed_at: string }> {
-  const res = await fetch(`${API_BASE}/chat/${conversationId}/close/`, {
+  const res = await authFetch(`${API_BASE}/chat/${conversationId}/close/`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -69,9 +67,7 @@ interface DRFListResponse<T> {
  * added later via a "load more" UI.
  */
 export async function fetchChatMessages(conversationId: number): Promise<ChatMessage[]> {
-  const res = await fetch(`${API_BASE}/chat/${conversationId}/messages/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${API_BASE}/chat/${conversationId}/messages/`)
   if (!res.ok) {
     if (res.status === 404) return []
     throw new Error("Failed to fetch chat history")

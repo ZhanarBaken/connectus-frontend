@@ -33,9 +33,7 @@ export async function fetchMentor(id: number): Promise<Mentor> {
     }
   }
 
-  const res = await fetch(`${BASE_URL}/mentors/${id}/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch mentor")
   return res.json()
 }
@@ -53,20 +51,15 @@ export async function fetchMe(token: string): Promise<{ id: number; email: strin
 // ─── Mentor own profile ───────────────────────────────────────────────────────
 
 export async function fetchMentorProfile(): Promise<MentorProfile> {
-  const res = await fetch(`${BASE_URL}/mentors/profile/me/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/mentors/profile/me/`)
   if (!res.ok) throw new Error("Failed to fetch mentor profile")
   return res.json()
 }
 
 export async function updateMentorProfile(data: Partial<MentorProfile>): Promise<MentorProfile> {
-  const res = await fetch(`${BASE_URL}/mentors/profile/me/`, {
+  const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -78,9 +71,8 @@ export async function updateMentorProfile(data: Partial<MentorProfile>): Promise
 }
 
 export async function submitMentorProfile(): Promise<void> {
-  const res = await fetch(`${BASE_URL}/mentors/profile/submit/`, {
+  const res = await authFetch(`${BASE_URL}/mentors/profile/submit/`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
   })
   if (!res.ok) {
     const err = await res.json()
@@ -92,18 +84,16 @@ export async function submitMentorProfile(): Promise<void> {
 // ─── Mentor services ─────────────────────────────────────────────────────────
 
 export async function fetchMentorServices(): Promise<import("@/types").MentorService[]> {
-  const res = await fetch(`${BASE_URL}/mentors/services/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/mentors/services/`)
   if (!res.ok) throw new Error("Failed to fetch services")
   const data = await res.json()
   return Array.isArray(data) ? data : data.results
 }
 
 export async function createMentorService(data: Partial<import("@/types").MentorService>): Promise<import("@/types").MentorService> {
-  const res = await fetch(`${BASE_URL}/mentors/services/`, {
+  const res = await authFetch(`${BASE_URL}/mentors/services/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -115,9 +105,9 @@ export async function createMentorService(data: Partial<import("@/types").Mentor
 }
 
 export async function updateMentorService(id: number, data: Partial<import("@/types").MentorService>): Promise<import("@/types").MentorService> {
-  const res = await fetch(`${BASE_URL}/mentors/services/${id}/`, {
+  const res = await authFetch(`${BASE_URL}/mentors/services/${id}/`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -129,9 +119,8 @@ export async function updateMentorService(id: number, data: Partial<import("@/ty
 }
 
 export async function deleteMentorService(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/mentors/services/${id}/`, {
+  const res = await authFetch(`${BASE_URL}/mentors/services/${id}/`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${getToken()}` },
   })
   if (!res.ok) throw new Error("Failed to delete service")
 }
@@ -141,21 +130,16 @@ export async function deleteMentorService(id: number): Promise<void> {
 export async function fetchOrders(): Promise<Order[]> {
   if (USE_MOCKS) return MOCK_ORDERS
 
-  const res = await fetch(`${BASE_URL}/orders/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/orders/`)
   if (!res.ok) throw new Error("Failed to fetch orders")
   const data = await res.json()
   return data.results
 }
 
 export async function createOrder(mentorServiceId: number): Promise<import("@/types").Order> {
-  const res = await fetch(`${BASE_URL}/orders/`, {
+  const res = await authFetch(`${BASE_URL}/orders/`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mentor_service: mentorServiceId }),
   })
   if (!res.ok) {
@@ -167,18 +151,13 @@ export async function createOrder(mentorServiceId: number): Promise<import("@/ty
 }
 
 export async function fetchOrder(id: number): Promise<Order> {
-  const res = await fetch(`${BASE_URL}/orders/${id}/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/orders/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch order")
   return res.json()
 }
 
 export async function cancelOrder(id: number): Promise<Order> {
-  const res = await fetch(`${BASE_URL}/orders/${id}/cancel/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/orders/${id}/cancel/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to cancel order")
@@ -187,10 +166,7 @@ export async function cancelOrder(id: number): Promise<Order> {
 }
 
 export async function confirmOrderPayment(id: number): Promise<Order> {
-  const res = await fetch(`${BASE_URL}/orders/${id}/confirm_payment/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/orders/${id}/confirm_payment/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to confirm payment")
@@ -199,10 +175,7 @@ export async function confirmOrderPayment(id: number): Promise<Order> {
 }
 
 export async function confirmConsultation(id: number): Promise<Order> {
-  const res = await fetch(`${BASE_URL}/orders/${id}/confirm_consultation/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/orders/${id}/confirm_consultation/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to confirm consultation")
@@ -211,10 +184,7 @@ export async function confirmConsultation(id: number): Promise<Order> {
 }
 
 export async function completeOrder(id: number): Promise<Order> {
-  const res = await fetch(`${BASE_URL}/orders/${id}/complete/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/orders/${id}/complete/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to complete order")
@@ -223,12 +193,9 @@ export async function completeOrder(id: number): Promise<Order> {
 }
 
 export async function createDispute(orderId: number, reason: string): Promise<Dispute> {
-  const res = await fetch(`${BASE_URL}/orders/${orderId}/dispute/`, {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/dispute/`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${getToken()}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason }),
   })
   if (!res.ok) {
@@ -250,9 +217,7 @@ export async function fetchStudentProfile(): Promise<StudentProfile> {
     return MOCK_STUDENT_PROFILE
   }
 
-  const res = await fetch(`${BASE_URL}/students/profile/me/`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  })
+  const res = await authFetch(`${BASE_URL}/students/profile/me/`)
   if (!res.ok) throw new Error("Failed to fetch profile")
   return res.json()
 }
@@ -266,12 +231,9 @@ export async function updateStudentProfile(data: Partial<StudentProfile>): Promi
     return profile
   }
 
-  const res = await fetch(`${BASE_URL}/students/profile/me/`, {
+  const res = await authFetch(`${BASE_URL}/students/profile/me/`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error("Failed to update profile")
@@ -355,4 +317,68 @@ export async function register(email: string, password: string, role: string) {
 function getToken(): string {
   if (typeof window === "undefined") return ""
   return localStorage.getItem("access_token") ?? ""
+}
+
+function getRefreshToken(): string {
+  if (typeof window === "undefined") return ""
+  return localStorage.getItem("refresh_token") ?? ""
+}
+
+function clearAuth() {
+  if (typeof window === "undefined") return
+  localStorage.removeItem("access_token")
+  localStorage.removeItem("refresh_token")
+  localStorage.removeItem("role")
+}
+
+// Single in-flight refresh promise so concurrent 401s share one refresh call.
+let refreshPromise: Promise<string> | null = null
+
+async function refreshAccessToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise
+
+  const refresh = getRefreshToken()
+  if (!refresh) throw new Error("No refresh token")
+
+  refreshPromise = (async () => {
+    const res = await fetch(`${BASE_URL}/auth/token/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh }),
+    })
+    if (!res.ok) {
+      clearAuth()
+      if (typeof window !== "undefined") window.location.href = "/auth/login"
+      throw new Error("Refresh failed")
+    }
+    const data = await res.json()
+    localStorage.setItem("access_token", data.access)
+    if (data.refresh) localStorage.setItem("refresh_token", data.refresh)
+    return data.access as string
+  })()
+
+  try {
+    return await refreshPromise
+  } finally {
+    refreshPromise = null
+  }
+}
+
+/**
+ * fetch wrapper that injects Bearer token and transparently retries on 401
+ * via refresh token flow.
+ */
+export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const buildHeaders = (token: string): HeadersInit => {
+    const headers = new Headers(init.headers)
+    if (token) headers.set("Authorization", `Bearer ${token}`)
+    return headers
+  }
+
+  let res = await fetch(input, { ...init, headers: buildHeaders(getToken()) })
+  if (res.status !== 401) return res
+
+  const newToken = await refreshAccessToken()
+  res = await fetch(input, { ...init, headers: buildHeaders(newToken) })
+  return res
 }

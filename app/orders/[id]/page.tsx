@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder, fetchMentor, fetchMentorProfile, completeOrder, cancelOrder, createDispute } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchMentorProfile, completeOrder, cancelOrder, createDispute, authFetch } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -90,9 +90,8 @@ export default function OrderPage({ params }: Props) {
         }
         // Resolve current user id (used to flag own messages)
         try {
-          const meRes = await fetch(
+          const meRes = await authFetch(
             `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/auth/me/`,
-            { headers: { Authorization: `Bearer ${token}` } },
           )
           if (meRes.ok) {
             const me = await meRes.json()
