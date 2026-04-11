@@ -41,7 +41,7 @@ export default function RegisterPage() {
     setError("")
     setLoading(true)
     try {
-      await register(email, password, role)
+      await register(email, password, role, agreedToTerms)
       // Save role so login can route correctly later (also returned by /auth/me)
       localStorage.setItem("pending_role", role)
       setRegistered(true)

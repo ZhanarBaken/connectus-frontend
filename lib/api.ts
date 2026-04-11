@@ -293,7 +293,7 @@ export async function resendVerification(email: string): Promise<void> {
   }
 }
 
-export async function register(email: string, password: string, role: string) {
+export async function register(email: string, password: string, role: string, agreedToTerms: boolean) {
   if (USE_MOCKS) {
     return { id: 1, email, role }
   }
@@ -301,7 +301,7 @@ export async function register(email: string, password: string, role: string) {
   const res = await fetch(`${BASE_URL}/auth/register/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, role, agreed_to_terms: true }),
+    body: JSON.stringify({ email, password, role, agreed_to_terms: agreedToTerms }),
   })
   if (!res.ok) {
     const data = await res.json()

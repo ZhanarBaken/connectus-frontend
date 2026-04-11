@@ -20,8 +20,6 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Отменён",
 }
 
-const DISPUTE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
-
 const STATUS_STYLE: Record<string, string> = {
   pending_payment: "bg-yellow-50 text-yellow-700 border-yellow-200",
   paid: "bg-blue-50 text-blue-700 border-blue-200",
@@ -58,8 +56,21 @@ export default function OrderPage({ params }: Props) {
   const [chatClosed, setChatClosed] = useState(false)
   const [closingChat, setClosingChat] = useState(false)
   const [closeError, setCloseError] = useState("")
+  const [disputeWindowMs, setDisputeWindowMs] = useState<number | null>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<ChatConnection | null>(null)
+
+  // Fetch dispute window from public settings (no auth needed)
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/settings/public/`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.dispute_window_hours != null) {
+          setDisputeWindowMs(data.dispute_window_hours * 60 * 60 * 1000)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -261,11 +272,13 @@ export default function OrderPage({ params }: Props) {
   // (happens after the mentor confirms a free consultation).
   const canChat = order.conversation_id !== null
 
-  // Student can open a dispute only during the 7-day window after completion.
+  // Student can open a dispute only during the window after completion.
+  // disputeWindowMs is loaded from /api/v1/settings/public/ — null means still loading.
   const disputeWindowOpen =
+    disputeWindowMs !== null &&
     order.order_status === "completed" &&
     order.completed_at !== null &&
-    Date.now() - new Date(order.completed_at).getTime() < DISPUTE_WINDOW_MS
+    Date.now() - new Date(order.completed_at).getTime() < disputeWindowMs
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -289,7 +302,7 @@ export default function OrderPage({ params }: Props) {
                   <span className="text-gray-400">Сумма</span>
                   <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                 </div>
-                {role === "mentor" && (
+                {role === "mentor" && order.total_price !== "0.00" && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Выплата ментору</span>
                     <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>
@@ -485,8 +498,8 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Review form — student only, after order is completed */}
-            {role !== "mentor" && order.order_status === "completed" && (
+            {/* Review form — student only, after paid order is completed (not free consultations) */}
+            {role !== "mentor" && order.order_status === "completed" && order.total_price !== "0.00" && (
               <ReviewForm
                 orderId={order.id}
                 mentorId={order.mentor}
