@@ -620,7 +620,7 @@ export default function OrderPage({ params }: Props) {
                       </div>
                     )}
                     {messages.map((msg) => {
-                      const isSystem = msg.sender === null || msg.sender === 0
+                      const isSystem = msg.is_system === true || msg.sender === null
                       const isOwn = !isSystem && currentUserId !== null && msg.sender === currentUserId
 
                       if (isSystem) {

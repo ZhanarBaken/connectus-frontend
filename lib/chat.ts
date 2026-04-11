@@ -86,6 +86,7 @@ interface WsMessageEvent {
   id: number
   sender_id: number | null
   sender_email: string | null
+  is_system?: boolean
   text: string
   created_at: string
 }
@@ -129,6 +130,7 @@ export function connectChat(
         id: msg.id,
         sender: msg.sender_id,
         sender_email: msg.sender_email,
+        is_system: msg.is_system,
         text: msg.text,
         created_at: msg.created_at,
       })

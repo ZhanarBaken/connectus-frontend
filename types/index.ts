@@ -152,6 +152,7 @@ export interface ChatMessage {
   id: number
   sender: number | null
   sender_email: string | null
+  is_system?: boolean
   text: string
   created_at: string
 }
