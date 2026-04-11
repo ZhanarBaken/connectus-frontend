@@ -620,7 +620,22 @@ export default function OrderPage({ params }: Props) {
                       </div>
                     )}
                     {messages.map((msg) => {
-                      const isOwn = currentUserId !== null && msg.sender === currentUserId
+                      const isSystem = msg.sender === null || msg.sender === 0
+                      const isOwn = !isSystem && currentUserId !== null && msg.sender === currentUserId
+
+                      if (isSystem) {
+                        return (
+                          <div key={msg.id} className="flex justify-center my-2">
+                            <div className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 max-w-[85%]">
+                              <p className="text-xs text-gray-600 text-center leading-relaxed whitespace-pre-wrap break-words">
+                                {msg.text}
+                              </p>
+                              <p className="text-[10px] text-gray-400 text-center mt-1">{formatTime(msg.created_at)}</p>
+                            </div>
+                          </div>
+                        )
+                      }
+
                       return (
                         <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[75%] ${isOwn ? "items-end" : "items-start"} flex flex-col gap-1`}>

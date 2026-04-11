@@ -150,8 +150,8 @@ export interface Dispute {
 
 export interface ChatMessage {
   id: number
-  sender: number
-  sender_email: string
+  sender: number | null
+  sender_email: string | null
   text: string
   created_at: string
 }

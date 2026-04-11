@@ -84,8 +84,8 @@ export interface ChatConnection {
 
 interface WsMessageEvent {
   id: number
-  sender_id: number
-  sender_email: string
+  sender_id: number | null
+  sender_email: string | null
   text: string
   created_at: string
 }
