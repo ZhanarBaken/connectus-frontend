@@ -354,12 +354,12 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Mentor: complete service */}
-            {role === "mentor" && order.order_status === "in_progress" && (
+            {/* Mentor: complete — only for free consultation for now */}
+            {role === "mentor" && order.order_status === "in_progress" && order.total_price === "0.00" && (
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">Завершить услугу</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">Завершить консультацию</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Когда работа со студентом закончена, отметь услугу выполненной. Студент получит возможность оставить отзыв, а выплата уйдёт после окончания периода споров (7 дней).
+                  Когда вы обсудили всё что нужно, отметь консультацию завершённой.
                 </p>
                 {completeError && (
                   <p className="text-xs text-red-600 mb-3">{completeError}</p>
@@ -369,7 +369,7 @@ export default function OrderPage({ params }: Props) {
                   disabled={completing}
                   className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
-                  {completing ? "Завершаем..." : "✓ Услуга выполнена"}
+                  {completing ? "Завершаем..." : "✓ Консультация завершена"}
                 </button>
               </div>
             )}
@@ -425,9 +425,13 @@ export default function OrderPage({ params }: Props) {
             {/* Mentor: completed banner */}
             {role === "mentor" && order.order_status === "completed" && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
-                <h3 className="font-semibold text-green-800 mb-1 text-sm">✓ Услуга завершена</h3>
+                <h3 className="font-semibold text-green-800 mb-1 text-sm">
+                  {order.total_price === "0.00" ? "✓ Консультация завершена" : "✓ Услуга завершена"}
+                </h3>
                 <p className="text-xs text-green-700 leading-relaxed">
-                  После периода споров (48ч) выплата автоматически уйдёт на твой счёт.
+                  {order.total_price === "0.00"
+                    ? "Бесплатная консультация завершена. Если студент хочет продолжить работу, он может заказать платную услугу."
+                    : "После окончания периода споров выплата автоматически уйдёт на твой счёт."}
                 </p>
               </div>
             )}
@@ -437,10 +441,12 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
                 <h3 className="font-semibold text-blue-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="hourglass_top" size={16} className="text-blue-600" />
-                  В работе
+                  {order.total_price === "0.00" ? "Консультация" : "В работе"}
                 </h3>
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  Ментор работает над твоим заказом. Когда работа будет закончена, услуга станет завершённой и ты сможешь оставить отзыв.
+                  {order.total_price === "0.00"
+                    ? "Бесплатная консультация активна. Общайтесь с ментором в чате — когда консультация закончится, ментор её завершит."
+                    : "Ментор работает над твоим заказом. Когда работа будет закончена, услуга станет завершённой и ты сможешь оставить отзыв."}
                 </p>
               </div>
             )}
@@ -508,8 +514,8 @@ export default function OrderPage({ params }: Props) {
               />
             )}
 
-            {/* Student: open dispute (7-day window) */}
-            {role !== "mentor" && order.order_status === "completed" && disputeWindowOpen && (
+            {/* Student: open dispute — only for paid orders */}
+            {role !== "mentor" && order.order_status === "completed" && order.total_price !== "0.00" && disputeWindowOpen && (
               <div className="bg-white border border-red-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Что-то пошло не так?</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
