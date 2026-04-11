@@ -340,22 +340,15 @@ export default function OrderPage({ params }: Props) {
                 </div>
               </div>
 
-              {/* Student: quick links to mentor profile */}
+              {/* Student: link to mentor profile & services */}
               {role !== "mentor" && mentor && (
-                <div className="mt-4 pt-4 border-t border-gray-50 space-y-2">
+                <div className="mt-4 pt-4 border-t border-gray-50">
                   <Link
                     href={`/mentors/${order.mentor}`}
                     className="flex items-center gap-2 text-sm text-indigo-600 font-medium hover:text-indigo-700 transition-colors"
                   >
                     <Icon name="person" size={16} />
-                    Профиль ментора
-                  </Link>
-                  <Link
-                    href={`/mentors/${order.mentor}`}
-                    className="flex items-center gap-2 text-sm text-indigo-600 font-medium hover:text-indigo-700 transition-colors"
-                  >
-                    <Icon name="shopping_cart" size={16} />
-                    Заказать услугу
+                    Профиль и услуги ментора
                   </Link>
                 </div>
               )}
