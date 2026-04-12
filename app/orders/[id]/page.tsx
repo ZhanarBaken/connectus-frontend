@@ -426,28 +426,25 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Mentor: info banner about open chat = purchasable services */}
-            {role === "mentor" && canChat && !chatClosed && order.order_status === "in_progress" && (
-              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-                <h3 className="font-semibold text-indigo-900 mb-1 text-sm inline-flex items-center gap-1.5">
-                  <Icon name="chat" size={16} className="text-indigo-600" />
-                  Чат открыт
-                </h3>
-                <p className="text-xs text-indigo-800 leading-relaxed">
-                  Пока чат со студентом открыт, он может покупать у тебя другие платные услуги. Чтобы это прекратить — заверши все активные заказы и закрой чат.
-                </p>
-              </div>
-            )}
-
             {/* Mentor: close chat */}
             {role === "mentor" && canChat && !chatClosed && (
               <div className="bg-white border border-gray-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Закрыть чат</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Если ты больше не работаешь с этим студентом, закрой чат. Студент больше не сможет писать тебе или покупать услуги, пока вы не начнёте новую консультацию.
+                  Если ты больше не работаешь с этим студентом, закрой чат. Студент больше не сможет писать тебе или покупать услуги.
                 </p>
                 {closeError && (
-                  <p className="text-xs text-red-600 mb-3">{closeError}</p>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
+                    <p className="text-xs font-semibold text-amber-800 mb-1 flex items-center gap-1.5">
+                      <Icon name="warning" size={14} className="text-amber-600" />
+                      Не удалось закрыть чат
+                    </p>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      {closeError.toLowerCase().includes("active")
+                        ? "Сначала заверши все активные услуги с этим студентом, потом чат можно будет закрыть."
+                        : closeError}
+                    </p>
+                  </div>
                 )}
                 <button
                   onClick={handleCloseChat}
