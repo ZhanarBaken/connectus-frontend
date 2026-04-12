@@ -471,19 +471,6 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Mentor: completed banner */}
-            {role === "mentor" && order.order_status === "completed" && (
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
-                <h3 className="font-semibold text-green-800 mb-1 text-sm">
-                  {isFree ? "✓ Консультация завершена" : "✓ Услуга завершена"}
-                </h3>
-                <p className="text-xs text-green-700 leading-relaxed">
-                  {isFree
-                    ? "Бесплатная консультация завершена. Если студент хочет продолжить работу, он может заказать платную услугу."
-                    : "После окончания периода споров выплата автоматически уйдёт на твой счёт."}
-                </p>
-              </div>
-            )}
 
             {/* Student: in progress notice */}
             {role !== "mentor" && order.order_status === "in_progress" && (
