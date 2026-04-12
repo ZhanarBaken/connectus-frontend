@@ -315,44 +315,50 @@ export default function OrderPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Counterpart info — only name shown, no contacts */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">
-                {role === "mentor" ? "Студент" : "Ментор"}
-              </h2>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-indigo-600 font-bold text-sm">
-                    {role === "mentor"
-                      ? (order.student_info?.full_name?.trim().charAt(0).toUpperCase() || "С")
-                      : (mentor?.full_name?.trim().charAt(0).toUpperCase() || "М")}
-                  </span>
+            {/* Counterpart info — clickable for student to visit mentor profile */}
+            {role !== "mentor" && mentor ? (
+              <Link
+                href={`/mentors/${order.mentor}`}
+                className="block bg-white rounded-2xl border border-gray-100 p-6 hover:border-indigo-200 hover:shadow-sm transition-all group"
+              >
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">Ментор</h2>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-200 transition-colors">
+                    <span className="text-indigo-600 font-bold text-sm">
+                      {mentor.full_name?.trim().charAt(0).toUpperCase() || "М"}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 text-sm truncate group-hover:text-indigo-600 transition-colors">
+                      {mentor.full_name || "Ментор"}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      Нажми чтобы открыть профиль
+                    </p>
+                  </div>
+                  <Icon name="arrow_forward" size={16} className="text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-900 text-sm truncate">
-                    {role === "mentor"
-                      ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент")
-                      : (mentor?.full_name || "Ментор")}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate">
-                    Общение только в чате
-                  </p>
+              </Link>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">Студент</h2>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-indigo-600 font-bold text-sm">
+                      {order.student_info?.full_name?.trim().charAt(0).toUpperCase() || "С"}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 text-sm truncate">
+                      {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      Общение только в чате
+                    </p>
+                  </div>
                 </div>
               </div>
-
-              {/* Student: link to mentor profile & services */}
-              {role !== "mentor" && mentor && (
-                <div className="mt-4 pt-4 border-t border-gray-50">
-                  <Link
-                    href={`/mentors/${order.mentor}`}
-                    className="flex items-center gap-2 text-sm text-indigo-600 font-medium hover:text-indigo-700 transition-colors"
-                  >
-                    <Icon name="person" size={16} />
-                    Профиль и услуги ментора
-                  </Link>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Consultation description — visible to both sides */}
             {consultationText && (
