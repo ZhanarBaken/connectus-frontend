@@ -279,6 +279,7 @@ export default function OrderPage({ params }: Props) {
   // Chat is available whenever the backend has created a Conversation
   // (happens after the mentor confirms a free consultation).
   const canChat = order.conversation_id !== null
+  const isFree = order.total_price === "0.00"
 
   // Student can open a dispute only during the window after completion.
   // disputeWindowMs is loaded from /api/v1/settings/public/ — null means still loading.
@@ -310,7 +311,7 @@ export default function OrderPage({ params }: Props) {
                   <span className="text-gray-400">Сумма</span>
                   <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                 </div>
-                {role === "mentor" && order.total_price !== "0.00" && (
+                {role === "mentor" && !isFree && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Выплата ментору</span>
                     <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>
@@ -409,12 +410,16 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Mentor: complete — only for free consultation for now */}
-            {role === "mentor" && order.order_status === "in_progress" && order.total_price === "0.00" && (
+            {/* Mentor: complete any in_progress order */}
+            {role === "mentor" && order.order_status === "in_progress" && (
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">Завершить консультацию</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">
+                  {isFree ? "Завершить консультацию" : "Завершить услугу"}
+                </h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Когда вы обсудили всё что нужно, отметь консультацию завершённой.
+                  {isFree
+                    ? "Когда вы обсудили всё что нужно, отметь консультацию завершённой."
+                    : "Когда работа выполнена, отметь услугу завершённой. Студент сможет оставить отзыв, а выплата уйдёт после периода споров."}
                 </p>
                 {completeError && (
                   <p className="text-xs text-red-600 mb-3">{completeError}</p>
@@ -424,7 +429,11 @@ export default function OrderPage({ params }: Props) {
                   disabled={completing}
                   className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
-                  {completing ? "Завершаем..." : "✓ Консультация завершена"}
+                  {completing
+                    ? "Завершаем..."
+                    : isFree
+                      ? "✓ Консультация завершена"
+                      : "✓ Услуга выполнена"}
                 </button>
               </div>
             )}
@@ -481,10 +490,10 @@ export default function OrderPage({ params }: Props) {
             {role === "mentor" && order.order_status === "completed" && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
                 <h3 className="font-semibold text-green-800 mb-1 text-sm">
-                  {order.total_price === "0.00" ? "✓ Консультация завершена" : "✓ Услуга завершена"}
+                  {isFree ? "✓ Консультация завершена" : "✓ Услуга завершена"}
                 </h3>
                 <p className="text-xs text-green-700 leading-relaxed">
-                  {order.total_price === "0.00"
+                  {isFree
                     ? "Бесплатная консультация завершена. Если студент хочет продолжить работу, он может заказать платную услугу."
                     : "После окончания периода споров выплата автоматически уйдёт на твой счёт."}
                 </p>
@@ -496,10 +505,10 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
                 <h3 className="font-semibold text-blue-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="hourglass_top" size={16} className="text-blue-600" />
-                  {order.total_price === "0.00" ? "Консультация" : "В работе"}
+                  {isFree ? "Консультация" : "В работе"}
                 </h3>
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  {order.total_price === "0.00"
+                  {isFree
                     ? "Бесплатная консультация активна. Общайтесь с ментором в чате — когда консультация закончится, ментор её завершит."
                     : "Ментор работает над твоим заказом. Когда работа будет закончена, услуга станет завершённой и ты сможешь оставить отзыв."}
                 </p>
@@ -560,7 +569,7 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Review form — student only, after paid order is completed (not free consultations) */}
-            {role !== "mentor" && order.order_status === "completed" && order.total_price !== "0.00" && (
+            {role !== "mentor" && order.order_status === "completed" && !isFree && (
               <ReviewForm
                 orderId={order.id}
                 mentorId={order.mentor}
@@ -570,7 +579,7 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Student: open dispute — only for paid orders */}
-            {role !== "mentor" && order.order_status === "completed" && order.total_price !== "0.00" && disputeWindowOpen && (
+            {role !== "mentor" && order.order_status === "completed" && !isFree && disputeWindowOpen && (
               <div className="bg-white border border-red-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Что-то пошло не так?</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
