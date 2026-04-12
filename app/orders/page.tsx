@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
@@ -31,11 +31,19 @@ const STATUS_STYLE: Record<Order["order_status"], string> = {
   cancelled: "bg-gray-100 text-gray-400",
 }
 
+interface ClientGroup {
+  studentId: number
+  studentName: string
+  orders: Order[]
+  activeCount: number
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
+  const [expandedClient, setExpandedClient] = useState<number | null>(null)
 
   useEffect(() => {
     const r = localStorage.getItem("role")
@@ -50,12 +58,36 @@ export default function OrdersPage() {
             for (const m of mentors) map[m.id] = m.full_name
             setMentorNames(map)
           } catch {
-            // ignore — fallback label
+            // ignore
           }
         }
       })
       .finally(() => setLoading(false))
   }, [])
+
+  // Group orders by student for mentor view
+  const clientGroups = useMemo((): ClientGroup[] => {
+    if (role !== "mentor") return []
+    const map = new Map<number, ClientGroup>()
+    for (const order of orders) {
+      const sid = order.student
+      if (!map.has(sid)) {
+        map.set(sid, {
+          studentId: sid,
+          studentName: order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент",
+          orders: [],
+          activeCount: 0,
+        })
+      }
+      const group = map.get(sid)!
+      group.orders.push(order)
+      if (["draft", "pending_payment", "in_progress"].includes(order.order_status)) {
+        group.activeCount++
+      }
+    }
+    // Sort: clients with active orders first
+    return Array.from(map.values()).sort((a, b) => b.activeCount - a.activeCount)
+  }, [orders, role])
 
   if (loading) {
     return (
@@ -65,28 +97,107 @@ export default function OrdersPage() {
     )
   }
 
+  const isMentor = role === "mentor"
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-10">
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">Мои заказы</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">
+          {isMentor ? "Клиенты" : "Мои заказы"}
+        </h1>
 
         {orders.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
             <div className="mb-4 flex justify-center">
-              <Icon name="description" size={48} className="text-gray-300" />
+              <Icon name={isMentor ? "people" : "description"} size={48} className="text-gray-300" />
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Заказов пока нет</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">
+              {isMentor ? "Клиентов пока нет" : "Заказов пока нет"}
+            </h3>
             <p className="text-sm text-gray-400 mb-6">
-              {role === "mentor" ? "Заказы появятся когда студенты запишутся к тебе" : "Найди ментора и запишись на консультацию"}
+              {isMentor ? "Клиенты появятся когда студенты запишутся к тебе" : "Найди ментора и запишись на консультацию"}
             </p>
-            {role !== "mentor" && (
+            {!isMentor && (
               <Link href="/mentors" className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
                 Найти ментора
               </Link>
             )}
           </div>
+        ) : isMentor ? (
+          /* ─── Mentor view: grouped by client ─── */
+          <div className="space-y-4">
+            {clientGroups.map((client) => {
+              const isExpanded = expandedClient === client.studentId
+              return (
+                <div key={client.studentId} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  {/* Client header — clickable to expand */}
+                  <button
+                    type="button"
+                    onClick={() => setExpandedClient(isExpanded ? null : client.studentId)}
+                    className="w-full flex items-center gap-4 p-5 hover:bg-gray-50 transition-colors text-left [-webkit-tap-highlight-color:transparent]"
+                  >
+                    <div className="w-11 h-11 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-indigo-600 font-bold">
+                        {client.studentName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900 truncate">{client.studentName}</h3>
+                        {client.activeCount > 0 && (
+                          <span className="text-[10px] bg-indigo-600 text-white font-bold px-1.5 py-0.5 rounded-full">
+                            {client.activeCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {client.orders.length} {client.orders.length === 1 ? "заказ" : client.orders.length < 5 ? "заказа" : "заказов"}
+                      </p>
+                    </div>
+                    <Icon
+                      name={isExpanded ? "expand_less" : "expand_more"}
+                      size={24}
+                      className="text-gray-400 flex-shrink-0"
+                    />
+                  </button>
+
+                  {/* Orders list — expandable */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-50">
+                      {client.orders.map((order) => (
+                        <Link
+                          key={order.id}
+                          href={`/orders/${order.id}`}
+                          className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 truncate">{order.service_title}</h4>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[order.order_status]}`}>
+                              {STATUS_LABEL[order.order_status]}
+                            </span>
+                            {order.total_price !== "0.00" && (
+                              <span className="text-sm font-bold text-gray-900">
+                                {Number(order.total_price).toLocaleString("ru-RU")} ₸
+                              </span>
+                            )}
+                            <Icon name="arrow_forward" size={16} className="text-gray-300" />
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         ) : (
+          /* ─── Student view: flat list ─── */
           <div className="space-y-3">
             {orders.map((order) => (
               <Link
@@ -99,9 +210,7 @@ export default function OrdersPage() {
                     {order.service_title}
                   </h3>
                   <p className="text-sm text-gray-500 mt-0.5 truncate">
-                    {role === "mentor"
-                      ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент")
-                      : (mentorNames[order.mentor] || "Ментор")}
+                    {mentorNames[order.mentor] || "Ментор"}
                   </p>
                   <p className="text-xs text-gray-300 mt-1">
                     {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}

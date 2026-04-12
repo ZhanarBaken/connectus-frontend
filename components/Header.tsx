@@ -39,7 +39,7 @@ export default function Header() {
     { href: "/mentor/dashboard", label: "Кабинет", icon: "dashboard" },
     { href: "/mentors/profile", label: "Профиль", icon: "person" },
     { href: "/mentors/services", label: "Услуги", icon: "description" },
-    { href: "/orders", label: "Заказы", icon: "inbox", matchPrefixes: ["/orders"] },
+    { href: "/orders", label: "Клиенты", icon: "people", matchPrefixes: ["/orders"] },
     { href: "/messages", label: "Сообщения", icon: "chat" },
   ]
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder, fetchMentor, fetchMentorProfile, completeOrder, cancelOrder, createDispute, authFetch } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchMentorProfile, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -39,6 +39,7 @@ export default function OrderPage({ params }: Props) {
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
   const [consultationText, setConsultationText] = useState<string | null>(null)
+  const [studentOrders, setStudentOrders] = useState<Order[]>([]) // mentor: all orders with this student
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
@@ -95,6 +96,13 @@ export default function OrderPage({ params }: Props) {
           try {
             const own = await fetchMentorProfile()
             if (own.consultation) setConsultationText(own.consultation)
+          } catch {
+            // ignore
+          }
+          // Mentor: load all orders to show service history with this student
+          try {
+            const all = await fetchOrders()
+            setStudentOrders(all.filter((o) => o.student === found.student))
           } catch {
             // ignore
           }
@@ -370,6 +378,34 @@ export default function OrderPage({ params }: Props) {
                 <p className="text-xs text-indigo-800 leading-relaxed whitespace-pre-line break-words">
                   {consultationText}
                 </p>
+              </div>
+            )}
+
+            {/* Mentor: service history with this student */}
+            {role === "mentor" && studentOrders.length > 1 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Icon name="history" size={16} className="text-gray-500" />
+                  История с клиентом
+                </h3>
+                <div className="space-y-2">
+                  {studentOrders.map((o) => (
+                    <Link
+                      key={o.id}
+                      href={`/orders/${o.id}`}
+                      className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-xs transition-colors ${
+                        o.id === order.id
+                          ? "bg-indigo-50 text-indigo-700 font-medium"
+                          : "hover:bg-gray-50 text-gray-600"
+                      }`}
+                    >
+                      <span className="truncate flex-1">{o.service_title}</span>
+                      <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full ${STATUS_STYLE[o.order_status] || "bg-gray-100 text-gray-500"}`}>
+                        {STATUS_LABEL[o.order_status]}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
 
