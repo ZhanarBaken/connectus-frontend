@@ -369,18 +369,6 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Consultation description — visible to both sides */}
-            {consultationText && (
-              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon name="redeem" size={18} className="text-indigo-600" />
-                  <h3 className="text-sm font-semibold text-indigo-900">О консультации</h3>
-                </div>
-                <p className="text-xs text-indigo-800 leading-relaxed whitespace-pre-line break-words">
-                  {consultationText}
-                </p>
-              </div>
-            )}
 
             {/* Mentor: service history with this student */}
             {role === "mentor" && studentOrders.length > 1 && (
