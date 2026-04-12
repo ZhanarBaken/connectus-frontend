@@ -283,11 +283,24 @@ export default function OrderPage({ params }: Props) {
 
   // Student can open a dispute only during the window after completion.
   // disputeWindowMs is loaded from /api/v1/settings/public/ — null means still loading.
-  const disputeWindowOpen =
-    disputeWindowMs !== null &&
-    order.order_status === "completed" &&
-    order.completed_at !== null &&
-    Date.now() - new Date(order.completed_at).getTime() < disputeWindowMs
+  // Dispute window calculation
+  const disputeTimeRemainingMs =
+    disputeWindowMs !== null && order.order_status === "completed" && order.completed_at !== null
+      ? disputeWindowMs - (Date.now() - new Date(order.completed_at).getTime())
+      : null
+  const disputeWindowOpen = disputeTimeRemainingMs !== null && disputeTimeRemainingMs > 0
+
+  const formatRemaining = (ms: number) => {
+    const hours = Math.floor(ms / (1000 * 60 * 60))
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24)
+      const leftHours = hours % 24
+      return leftHours > 0 ? `${days} дн. ${leftHours} ч.` : `${days} дн.`
+    }
+    if (hours > 0) return `${hours} ч.`
+    const minutes = Math.max(1, Math.floor(ms / (1000 * 60)))
+    return `${minutes} мин.`
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -540,6 +553,27 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
+            {/* Completed — shown to both sides with dispute timer */}
+            {order.order_status === "completed" && !isFree && (
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
+                <h3 className="font-semibold text-green-800 mb-1 text-sm inline-flex items-center gap-1.5">
+                  <Icon name="check_circle" size={16} className="text-green-600" filled />
+                  Завершено
+                </h3>
+                {disputeTimeRemainingMs !== null && disputeTimeRemainingMs > 0 ? (
+                  <p className="text-xs text-green-700 leading-relaxed">
+                    {role === "mentor"
+                      ? `Студент может подать спор в течение ${formatRemaining(disputeTimeRemainingMs)}.`
+                      : `У тебя есть ${formatRemaining(disputeTimeRemainingMs)} чтобы подать спор, если что-то пошло не так.`}
+                  </p>
+                ) : disputeTimeRemainingMs !== null ? (
+                  <p className="text-xs text-green-700 leading-relaxed">
+                    Период подачи спора истёк.
+                  </p>
+                ) : null}
+              </div>
+            )}
+
             {/* Review form — student only, after paid order is completed (not free consultations) */}
             {role !== "mentor" && order.order_status === "completed" && !isFree && (
               <ReviewForm
@@ -551,11 +585,11 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Student: open dispute — only for paid orders */}
-            {role !== "mentor" && order.order_status === "completed" && !isFree && disputeWindowOpen && (
+            {role !== "mentor" && order.order_status === "completed" && !isFree && disputeWindowOpen && disputeTimeRemainingMs && (
               <div className="bg-white border border-red-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Что-то пошло не так?</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Если услуга не была оказана или выполнена с нарушениями, открой спор в течение 7 дней после завершения. Администратор разберётся и примет решение.
+                  Если услуга не была оказана или выполнена с нарушениями, открой спор. Осталось {formatRemaining(disputeTimeRemainingMs)}. Администратор разберётся и примет решение.
                 </p>
                 {!disputeFormOpen ? (
                   <button
