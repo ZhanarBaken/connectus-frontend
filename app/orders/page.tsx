@@ -129,38 +129,51 @@ export default function OrdersPage() {
           <div className="space-y-4">
             {clientGroups.map((client) => {
               const isExpanded = expandedClient === client.studentId
+              // Find an order with a chat conversation to link to
+              const chatOrder = client.orders.find((o) => o.conversation_id !== null)
               return (
                 <div key={client.studentId} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                   {/* Client header — clickable to expand */}
-                  <button
-                    type="button"
-                    onClick={() => setExpandedClient(isExpanded ? null : client.studentId)}
-                    className="w-full flex items-center gap-4 p-5 hover:bg-gray-50 transition-colors text-left [-webkit-tap-highlight-color:transparent]"
-                  >
-                    <div className="w-11 h-11 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-indigo-600 font-bold">
-                        {client.studentName.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 truncate">{client.studentName}</h3>
-                        {client.activeCount > 0 && (
-                          <span className="text-[10px] bg-indigo-600 text-white font-bold px-1.5 py-0.5 rounded-full">
-                            {client.activeCount}
-                          </span>
-                        )}
+                  <div className="flex items-center gap-4 p-5">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedClient(isExpanded ? null : client.studentId)}
+                      className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left [-webkit-tap-highlight-color:transparent]"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-indigo-600 font-bold">
+                          {client.studentName.charAt(0).toUpperCase()}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {client.orders.length} {client.orders.length === 1 ? "заказ" : client.orders.length < 5 ? "заказа" : "заказов"}
-                      </p>
-                    </div>
-                    <Icon
-                      name={isExpanded ? "expand_less" : "expand_more"}
-                      size={24}
-                      className="text-gray-400 flex-shrink-0"
-                    />
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900 truncate">{client.studentName}</h3>
+                          {client.activeCount > 0 && (
+                            <span className="text-[10px] bg-indigo-600 text-white font-bold px-1.5 py-0.5 rounded-full">
+                              {client.activeCount}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {client.orders.length} {client.orders.length === 1 ? "заказ" : client.orders.length < 5 ? "заказа" : "заказов"}
+                        </p>
+                      </div>
+                      <Icon
+                        name={isExpanded ? "expand_less" : "expand_more"}
+                        size={24}
+                        className="text-gray-400 flex-shrink-0"
+                      />
+                    </button>
+                    {chatOrder && (
+                      <Link
+                        href={`/orders/${chatOrder.id}`}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors flex-shrink-0"
+                      >
+                        <Icon name="chat" size={16} />
+                        Чат
+                      </Link>
+                    )}
+                  </div>
 
                   {/* Orders list — expandable */}
                   {isExpanded && (
