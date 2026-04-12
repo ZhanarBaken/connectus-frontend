@@ -112,8 +112,8 @@ export default function MentorProfilePage() {
     )
   }
 
-  const filledFields = [fullName, country, school, major, bio, grant].filter(Boolean).length
-  const completionPercent = Math.round((filledFields / 6) * 100)
+  const filledFields = [fullName, country, school, major, bio, grant, expertiseAreas.length > 0].filter(Boolean).length
+  const completionPercent = Math.round((filledFields / 7) * 100)
 
   return (
     <div className="min-h-screen bg-gray-50">
