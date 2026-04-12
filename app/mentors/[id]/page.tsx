@@ -283,30 +283,23 @@ export default function MentorPage({ params }: Props) {
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">Платные услуги</h2>
                 <p className="text-sm text-gray-500 mb-4">
-                  {hasOpenChat
-                    ? "Закажи нужную услугу — оплата откроется после подтверждения админом"
-                    : "Сначала пройди бесплатную консультацию, чтобы заказать платную услугу"}
+                  Закажи нужную услугу — оплата откроется после подтверждения админом
                 </p>
                 <div className="space-y-3">
                   {paidServices.map((service) => {
-                    const isLocked = !hasOpenChat
                     const isOrdered = orderedPaidIds.has(service.id)
                     return (
                       <div
                         key={service.id}
-                        className={`border rounded-2xl p-5 transition-all ${
-                          isLocked
-                            ? "border-gray-100 bg-gray-50/50"
-                            : "border-gray-100 hover:border-indigo-200"
-                        }`}
+                        className="border rounded-2xl p-5 transition-all border-gray-100 hover:border-indigo-200"
                       >
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1 min-w-0">
-                            <h3 className={`font-semibold ${isLocked ? "text-gray-500" : "text-gray-900"}`}>
+                            <h3 className="font-semibold text-gray-900">
                               {service.title}
                             </h3>
                             {service.description && (
-                              <p className={`text-sm mt-1 ${isLocked ? "text-gray-400" : "text-gray-500"}`}>
+                              <p className="text-sm mt-1 text-gray-500">
                                 {service.description}
                               </p>
                             )}
@@ -316,7 +309,7 @@ export default function MentorPage({ params }: Props) {
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className={`text-2xl font-bold ${isLocked ? "text-gray-400" : "text-gray-900"}`}>
+                            <div className="text-2xl font-bold text-gray-900">
                               {Number(service.price).toLocaleString("ru-RU")} ₸
                             </div>
                             {isOrdered ? (
@@ -324,11 +317,6 @@ export default function MentorPage({ params }: Props) {
                                 <Icon name="check" size={12} />
                                 Заказано
                               </span>
-                            ) : isLocked ? (
-                              <div className="mt-1 text-xs text-gray-400 flex items-center gap-1 justify-end">
-                                <Icon name="lock" size={12} />
-                                <span>Заблокировано</span>
-                              </div>
                             ) : (
                               <button
                                 onClick={() => handleOrder(service.id)}
