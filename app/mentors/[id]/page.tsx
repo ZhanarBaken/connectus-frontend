@@ -54,7 +54,10 @@ export default function MentorPage({ params }: Props) {
         setAvgRating(getMentorAverageRating(m.id))
       })
       .catch(() => router.replace("/"))
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        window.scrollTo(0, 0)
+      })
   }, [id, router])
 
   const handleOrder = async (serviceId: number) => {
