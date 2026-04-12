@@ -45,7 +45,6 @@ export default function Header() {
   const studentNav: NavLink[] = [
     { href: "/student/dashboard", label: "Кабинет", icon: "dashboard" },
     { href: "/mentors", label: "Найти ментора", icon: "search" },
-    { href: "/orders", label: "Мои заказы", icon: "description", matchPrefixes: ["/orders"] },
     { href: "/messages", label: "Сообщения", icon: "chat" },
     { href: "/students/profile", label: "Профиль", icon: "person" },
   ]
