@@ -40,6 +40,7 @@ export default function Header() {
     { href: "/mentors/profile", label: "Профиль", icon: "person" },
     { href: "/mentors/services", label: "Услуги", icon: "description" },
     { href: "/orders", label: "Клиенты", icon: "people", matchPrefixes: ["/orders"] },
+    { href: "/settings", label: "Настройки", icon: "settings" },
   ]
 
   const studentNav: NavLink[] = [
@@ -47,6 +48,7 @@ export default function Header() {
     { href: "/mentors", label: "Найти ментора", icon: "search" },
     { href: "/messages", label: "Сообщения", icon: "chat" },
     { href: "/students/profile", label: "Профиль", icon: "person" },
+    { href: "/settings", label: "Настройки", icon: "settings" },
   ]
 
   const guestNav: NavLink[] = [

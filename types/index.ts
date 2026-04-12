@@ -107,6 +107,7 @@ export interface StudentProfile {
   full_name: string
   age: number
   current_school_or_university: string
+  is_public: boolean
 }
 
 export interface PaymentInstructions {
