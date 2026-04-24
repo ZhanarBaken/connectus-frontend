@@ -71,7 +71,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                           )}
                         </div>
                         <p className="text-sm text-gray-500 mt-0.5">
-                          {COUNTRY_FLAGS[mentor.country] || "🌍"} {mentor.school_or_university}
+                          {mentor.country.split(",").map((c) => COUNTRY_FLAGS[c.trim()] || "🌍").join(" ")} {mentor.school_or_university}
                         </p>
                       </div>
                     </div>

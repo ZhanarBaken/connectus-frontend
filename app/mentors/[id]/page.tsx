@@ -24,6 +24,15 @@ const COUNTRY_FLAGS: Record<string, string> = {
   Italy: "🇮🇹",
 }
 
+function formatCountries(country: string) {
+  const parts = country.split(",").filter(Boolean)
+  return parts.map((c) => `${COUNTRY_FLAGS[c.trim()] || "🌍"} ${c.trim()}`).join(", ")
+}
+
+function countryFlags(country: string) {
+  return country.split(",").filter(Boolean).map((c) => COUNTRY_FLAGS[c.trim()] || "🌍").join(" ")
+}
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -165,7 +174,7 @@ export default function MentorPage({ params }: Props) {
                   </span>
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
-                  {COUNTRY_FLAGS[mentor.country] || "🌍"} {mentor.school_or_university}
+                  {countryFlags(mentor.country)} {mentor.school_or_university}
                   {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
                 </p>
                 {mentor.grant_or_scholarship && (
@@ -199,7 +208,7 @@ export default function MentorPage({ params }: Props) {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "Страна", value: `${COUNTRY_FLAGS[mentor.country] || "🌍"} ${mentor.country}` },
+                { label: "Страны", value: formatCountries(mentor.country) },
                 { label: "GPA", value: mentor.gpa || "—" },
                 { label: "Экзамены", value: mentor.exam_results || "—" },
               ].map((stat) => (

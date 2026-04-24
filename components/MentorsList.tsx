@@ -63,7 +63,7 @@ export default function MentorsList({ mentors }: Props) {
   }, [router, mentors])
 
   const countries = useMemo(
-    () => Array.from(new Set(mentors.map((m) => m.country))),
+    () => Array.from(new Set(mentors.flatMap((m) => m.country.split(",").filter(Boolean).map((c) => c.trim())))),
     [mentors]
   )
 
@@ -74,7 +74,7 @@ export default function MentorsList({ mentors }: Props) {
           !m.detailed_bio.toLowerCase().includes(search.toLowerCase())) {
         return false
       }
-      if (country && m.country !== country) return false
+      if (country && !m.country.split(",").map((c) => c.trim()).includes(country)) return false
       if (expertise && !m.expertise_areas.some((a) => a.area === expertise)) return false
       if (onlyAccepting && !m.is_accepting_bookings) return false
       return true
@@ -243,7 +243,7 @@ export default function MentorsList({ mentors }: Props) {
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5 truncate">
-                      {COUNTRY_FLAGS[mentor.country] || "🌍"} {mentor.school_or_university}
+                      {mentor.country.split(",").map((c) => COUNTRY_FLAGS[c.trim()] || "🌍").join(" ")} {mentor.school_or_university}
                     </p>
                     {mentor.major && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate">{mentor.major}</p>

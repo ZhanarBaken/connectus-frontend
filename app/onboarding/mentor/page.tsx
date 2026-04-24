@@ -35,7 +35,11 @@ export default function MentorOnboarding() {
   const [bio, setBio] = useState("")
 
   // Step 2
-  const [country, setCountry] = useState("")
+  const [countries, setCountries] = useState<string[]>([])
+
+  const toggleCountry = (c: string) => {
+    setCountries((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])
+  }
   const [school, setSchool] = useState("")
   const [major, setMajor] = useState("")
   const [grant, setGrant] = useState("")
@@ -56,7 +60,7 @@ export default function MentorOnboarding() {
       await updateMentorProfile({
         full_name: fullName,
         detailed_bio: bio,
-        country,
+        country: countries.join(","),
         school_or_university: school,
         major,
         grant_or_scholarship: grant,
@@ -148,19 +152,22 @@ export default function MentorOnboarding() {
               <p className="text-gray-400 text-sm mb-6">Это главное доказательство твоей экспертизы</p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Страна</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Страны <span className="text-gray-400 font-normal">(можно несколько)</span>
+                  </label>
                   <div className="grid grid-cols-3 gap-2">
                     {COUNTRIES.map((c) => (
                       <button
                         key={c}
                         type="button"
-                        onClick={() => setCountry(c)}
+                        onClick={() => toggleCountry(c)}
                         className={`px-2 py-2 rounded-xl text-xs border-2 font-medium transition-all text-left ${
-                          country === c
+                          countries.includes(c)
                             ? "border-gray-900 bg-gray-50 text-gray-900"
                             : "border-gray-100 text-gray-600 hover:border-gray-200"
                         }`}
                       >
+                        {countries.includes(c) && <span className="mr-1">✓</span>}
                         {COUNTRY_LABELS[c] || c}
                       </button>
                     ))}
@@ -223,7 +230,7 @@ export default function MentorOnboarding() {
                 </button>
                 <button
                   onClick={() => setStep(3)}
-                  disabled={!school.trim() || !country}
+                  disabled={!school.trim() || countries.length === 0}
                   className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
                   Продолжить →

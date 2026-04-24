@@ -35,7 +35,11 @@ export default function MentorProfilePage() {
   const [error, setError] = useState("")
 
   const [fullName, setFullName] = useState("")
-  const [country, setCountry] = useState("")
+  const [countries, setCountries] = useState<string[]>([])
+
+  const toggleCountry = (c: string) => {
+    setCountries((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])
+  }
   const [school, setSchool] = useState("")
   const [major, setMajor] = useState("")
   const [grant, setGrant] = useState("")
@@ -54,7 +58,7 @@ export default function MentorProfilePage() {
     fetchMentorProfile()
       .then((p: MentorProfile) => {
         setFullName(p.full_name ?? "")
-        setCountry(p.country ?? "")
+        setCountries(p.country ? p.country.split(",").filter(Boolean) : [])
         setSchool(p.school_or_university ?? "")
         setMajor(p.major ?? "")
         setGrant(p.grant_or_scholarship ?? "")
@@ -84,7 +88,7 @@ export default function MentorProfilePage() {
     try {
       await updateMentorProfile({
         full_name: fullName,
-        country,
+        country: countries.join(","),
         school_or_university: school,
         major,
         grant_or_scholarship: grant,
@@ -112,7 +116,7 @@ export default function MentorProfilePage() {
     )
   }
 
-  const filledFields = [fullName, country, school, major, bio, grant, expertiseAreas.length > 0].filter(Boolean).length
+  const filledFields = [fullName, countries.length > 0, school, major, bio, grant, expertiseAreas.length > 0].filter(Boolean).length
   const completionPercent = Math.round((filledFields / 7) * 100)
 
   return (
@@ -145,12 +149,27 @@ export default function MentorProfilePage() {
                 <input value={fullName} onChange={(e) => setFullName(e.target.value)}
                   placeholder="Назгуль Ахметова" className={inputClass} />
               </Field>
-              <Field label="Страна обучения">
-                <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputClass}>
-                  <option value="">Выбрать страну</option>
-                  {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Страны (можно несколько)">
+                  <div className="flex flex-wrap gap-2">
+                    {COUNTRIES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => toggleCountry(c)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${
+                          countries.includes(c)
+                            ? "border-gray-900 bg-gray-50 text-gray-900"
+                            : "border-gray-200 text-gray-500 hover:border-gray-300"
+                        }`}
+                      >
+                        {countries.includes(c) && <span className="mr-1">✓</span>}
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              </div>
               <Field label="Университет">
                 <input value={school} onChange={(e) => setSchool(e.target.value)}
                   placeholder="MIT, UCL, TU Munich..." className={inputClass} />

@@ -146,7 +146,7 @@ export default function MentorDashboard() {
             {profile.school_or_university && (
               <p className="text-gray-500 mt-1 text-sm">
                 {profile.school_or_university}
-                {profile.country && ` · ${profile.country}`}
+                {profile.country && ` · ${profile.country.split(",").join(", ")}`}
               </p>
             )}
           </div>
