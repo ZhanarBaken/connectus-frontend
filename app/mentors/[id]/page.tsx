@@ -76,7 +76,7 @@ export default function MentorPage({ params }: Props) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400 text-sm">Загрузка профиля...</p>
         </div>
       </div>
@@ -122,7 +122,7 @@ export default function MentorPage({ params }: Props) {
   return (
     <div className="bg-white min-h-screen">
       {/* Breadcrumb + back */}
-      <div className="border-b border-gray-100 bg-white px-4 py-3">
+      <div className="border-b border-gray-200 bg-white px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-gray-400 min-w-0">
             <Link href="/" className="hover:text-indigo-600 transition-colors">Главная</Link>
@@ -143,7 +143,7 @@ export default function MentorPage({ params }: Props) {
 
             {/* Hero */}
             <div className="flex items-start gap-6">
-              <div className="w-24 h-24 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
                 {mentor.profile_photo ? (
                   <img
                     src={mentor.profile_photo}
@@ -151,7 +151,7 @@ export default function MentorPage({ params }: Props) {
                     className="w-24 h-24 rounded-2xl object-cover"
                   />
                 ) : (
-                  <span className="text-indigo-600 font-bold text-4xl">
+                  <span className="text-white font-bold text-4xl">
                     {mentor.full_name.charAt(0)}
                   </span>
                 )}
@@ -291,7 +291,7 @@ export default function MentorPage({ params }: Props) {
                     return (
                       <div
                         key={service.id}
-                        className="border rounded-2xl p-5 transition-all border-gray-100 hover:border-indigo-200"
+                        className="border rounded-2xl p-5 transition-all border-gray-200 hover:border-gray-300"
                       >
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1 min-w-0">
@@ -353,7 +353,7 @@ export default function MentorPage({ params }: Props) {
                 )}
               </div>
               {reviews.length === 0 ? (
-                <div className="border border-gray-100 rounded-2xl p-8 text-center">
+                <div className="border border-gray-200 rounded-2xl p-8 text-center">
                   <div className="mb-2 flex justify-center">
                     <Icon name="star" size={32} className="text-gray-300" />
                   </div>
@@ -362,7 +362,7 @@ export default function MentorPage({ params }: Props) {
               ) : (
                 <div className="space-y-4">
                   {reviews.map((review) => (
-                    <div key={review.id} className="border border-gray-100 rounded-2xl p-5">
+                    <div key={review.id} className="border border-gray-200 rounded-2xl p-5">
                       <div className="flex items-center gap-1 mb-2">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <span key={s} className={`text-sm ${s <= review.rating ? "text-yellow-400" : "text-gray-200"}`}>★</span>
@@ -389,19 +389,19 @@ export default function MentorPage({ params }: Props) {
           {/* ── Right column — trust card ─────────────────────── */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
-              <div className="border border-gray-100 rounded-2xl p-6">
+              <div className="border border-gray-200 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 text-sm">Как это работает</h3>
                 <div className="space-y-4 text-sm">
                   <div className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">1</span>
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">1</span>
                     <p className="text-gray-600 leading-relaxed">Запроси бесплатную консультацию</p>
                   </div>
                   <div className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">2</span>
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">2</span>
                     <p className="text-gray-600 leading-relaxed">Ментор примет запрос — откроется чат</p>
                   </div>
                   <div className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">3</span>
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">3</span>
                     <p className="text-gray-600 leading-relaxed">Обсудите план и закажи нужную платную услугу</p>
                   </div>
                 </div>

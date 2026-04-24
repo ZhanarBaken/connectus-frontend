@@ -1,9 +1,15 @@
 import type { Metadata } from "next"
-import { Geist } from "next/font/google"
+import { Geist, Instrument_Serif } from "next/font/google"
 import "./globals.css"
 import Header from "@/components/Header"
 
 const geist = Geist({ subsets: ["latin"] })
+const instrumentSerif = Instrument_Serif({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "Connectus — найди ментора для поступления за рубеж",
@@ -20,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200&display=swap"
         />
       </head>
-      <body className={geist.className}>
+      <body className={`${geist.className} ${instrumentSerif.variable}`}>
         <Header />
         {children}
       </body>

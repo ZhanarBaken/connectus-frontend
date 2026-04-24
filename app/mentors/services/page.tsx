@@ -118,8 +118,8 @@ export default function MentorServicesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -127,7 +127,7 @@ export default function MentorServicesPage() {
   const isFormOpen = editingId !== null
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -139,7 +139,7 @@ export default function MentorServicesPage() {
           {!isFormOpen && (
             <button
               onClick={startCreate}
-              className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+              className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
             >
               + Добавить
             </button>
@@ -152,7 +152,7 @@ export default function MentorServicesPage() {
 
         {/* Form (create or edit) */}
         {isFormOpen && (
-          <div className="bg-white rounded-2xl border border-indigo-100 p-6 mb-6">
+          <div className="bg-white rounded-2xl border border-gray-300 p-6 mb-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">
               {editingId === "new" ? "Новая услуга" : "Редактировать услугу"}
             </h2>
@@ -214,7 +214,7 @@ export default function MentorServicesPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  className="bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   {submitting
                     ? "Сохраняем..."
@@ -275,7 +275,7 @@ export default function MentorServicesPage() {
               <div>
                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Платные услуги</h2>
                 {paid.length === 0 && !isFormOpen ? (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                  <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
                     <div className="mb-4 flex justify-center">
                       <Icon name="description" size={48} className="text-gray-300" />
                     </div>
@@ -283,7 +283,7 @@ export default function MentorServicesPage() {
                     <p className="text-sm text-gray-400 mb-6">Добавь услугу чтобы студенты могли её заказать после консультации</p>
                     <button
                       onClick={startCreate}
-                      className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                      className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
                     >
                       + Добавить услугу
                     </button>
@@ -291,7 +291,7 @@ export default function MentorServicesPage() {
                 ) : (
                   <div className="space-y-3">
                     {paid.map((service) => (
-                      <div key={service.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start justify-between gap-4">
+                      <div key={service.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold text-gray-900">{service.title}</h3>

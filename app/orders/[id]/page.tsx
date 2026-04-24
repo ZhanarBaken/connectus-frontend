@@ -268,8 +268,8 @@ export default function OrderPage({ params }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -303,14 +303,14 @@ export default function OrderPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-6 transition-colors group [-webkit-tap-highlight-color:transparent]" />
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Order info */}
           <div className="lg:col-span-1 space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h1 className="text-lg font-bold text-gray-900 mb-1">{order.service_title}</h1>
               <p className="text-sm text-gray-400 mb-4">Заказ #{order.id}</p>
 
@@ -341,7 +341,7 @@ export default function OrderPage({ params }: Props) {
             {role !== "mentor" && mentor ? (
               <Link
                 href={`/mentors/${order.mentor}`}
-                className="block bg-white rounded-2xl border border-gray-100 p-6 hover:border-indigo-200 hover:shadow-sm transition-all group"
+                className="block bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-sm transition-all group"
               >
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">Ментор</h2>
                 <div className="flex items-center gap-3">
@@ -362,7 +362,7 @@ export default function OrderPage({ params }: Props) {
                 </div>
               </Link>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">Студент</h2>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
@@ -385,7 +385,7 @@ export default function OrderPage({ params }: Props) {
 
             {/* Mentor: service history with this student */}
             {role === "mentor" && studentOrders.length > 1 && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <Icon name="history" size={16} className="text-gray-500" />
                   История с клиентом
@@ -428,7 +428,7 @@ export default function OrderPage({ params }: Props) {
                 <button
                   onClick={handleComplete}
                   disabled={completing}
-                  className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   {completing
                     ? "Завершаем..."
@@ -638,7 +638,7 @@ export default function OrderPage({ params }: Props) {
 
           {/* Chat */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl border border-gray-100 flex flex-col h-[540px]">
+            <div className="bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]">
               {/* Chat header */}
               <div className="px-6 py-4 border-b border-gray-50 flex-shrink-0 flex items-center justify-between gap-3">
                 <div>

@@ -57,14 +57,14 @@ export default function StudentProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">
@@ -74,11 +74,11 @@ export default function StudentProfilePage() {
           <p className="text-sm text-gray-500 mt-1">Эту информацию увидит твой ментор</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 space-y-5">
           {/* Avatar preview */}
           <div className="flex items-center gap-4 pb-6 border-b border-gray-50">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
-              <span className="text-indigo-600 font-bold text-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-2xl">
                 {fullName.trim().charAt(0).toUpperCase() || "?"}
               </span>
             </div>
@@ -135,12 +135,12 @@ export default function StudentProfilePage() {
             <button
               type="submit"
               disabled={saving || !fullName.trim()}
-              className="bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               {saving ? "Сохраняем..." : "Сохранить"}
             </button>
             {saved && (
-              <span className="text-sm text-green-600 font-medium flex items-center gap-1.5">
+              <span className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center text-[10px]">✓</span>
                 Сохранено
               </span>

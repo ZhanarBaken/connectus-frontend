@@ -85,8 +85,8 @@ export default function MentorsList({ mentors }: Props) {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -94,7 +94,7 @@ export default function MentorsList({ mentors }: Props) {
   return (
     <div className="bg-white min-h-screen">
       {/* Page header */}
-      <div className="bg-gray-50 border-b border-gray-100 py-12 px-4">
+      <div className="bg-[#fafafa] border-b border-gray-200 py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Найти ментора</h1>
@@ -158,7 +158,7 @@ export default function MentorsList({ mentors }: Props) {
               aria-pressed={onlyAccepting}
               className={`group relative inline-flex items-center gap-2.5 text-sm px-4 py-2.5 rounded-xl border font-medium transform-gpu transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out [-webkit-tap-highlight-color:transparent] active:scale-95 ${
                 onlyAccepting
-                  ? "bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700 hover:border-indigo-700"
+                  ? "bg-gray-900 border-gray-900 text-white shadow-sm shadow-gray-200 hover:bg-gray-800 hover:border-gray-800"
                   : "bg-white border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
               }`}
               style={{ WebkitBackfaceVisibility: "hidden" }}
@@ -166,7 +166,7 @@ export default function MentorsList({ mentors }: Props) {
               {/* Switch indicator */}
               <span
                 className={`relative inline-flex w-8 h-[18px] rounded-full transition-colors duration-200 ${
-                  onlyAccepting ? "bg-white/30" : "bg-gray-200 group-hover:bg-indigo-100"
+                  onlyAccepting ? "bg-white/30" : "bg-gray-200 group-hover:bg-gray-300"
                 }`}
                 aria-hidden
               >
@@ -216,11 +216,11 @@ export default function MentorsList({ mentors }: Props) {
               <Link
                 key={mentor.id}
                 href={`/mentors/${mentor.id}`}
-                className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-indigo-100 transition-all group flex flex-col"
+                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all group flex flex-col"
               >
                 {/* Avatar + name */}
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
                     {mentor.profile_photo ? (
                       <img
                         src={mentor.profile_photo}
@@ -228,7 +228,7 @@ export default function MentorsList({ mentors }: Props) {
                         className="w-14 h-14 rounded-2xl object-cover"
                       />
                     ) : (
-                      <span className="text-indigo-600 font-bold text-xl">
+                      <span className="text-white font-bold text-xl">
                         {mentor.full_name.charAt(0)}
                       </span>
                     )}
@@ -239,7 +239,7 @@ export default function MentorsList({ mentors }: Props) {
                         {mentor.full_name}
                       </h3>
                       {mentor.is_verified && (
-                        <span className="text-indigo-500 flex-shrink-0 text-sm" title="Верифицирован">✓</span>
+                        <Icon name="verified" size={14} filled className="text-indigo-500 flex-shrink-0" />
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5 truncate">

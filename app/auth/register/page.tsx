@@ -68,7 +68,7 @@ export default function RegisterPage() {
   // ─── Post-registration screen ──────────────────────────────────
   if (registered) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2 justify-center">
@@ -79,9 +79,9 @@ export default function RegisterPage() {
             </Link>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-            <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
-              <Icon name="mark_email_unread" size={36} className="text-indigo-600" />
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Icon name="mark_email_unread" size={36} className="text-gray-900" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">Проверь почту</h1>
             <p className="text-gray-500 text-sm mb-1">
@@ -93,7 +93,7 @@ export default function RegisterPage() {
             </p>
 
             {resent ? (
-              <p className="text-sm text-green-600 font-medium">Письмо отправлено повторно ✓</p>
+              <p className="text-sm text-emerald-600 font-medium">Письмо отправлено повторно ✓</p>
             ) : (
               <button
                 onClick={handleResend}
@@ -117,7 +117,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -135,19 +135,19 @@ export default function RegisterPage() {
             <div key={s} className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                 step === s
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-gray-900 text-white"
                   : step > s
-                    ? "bg-indigo-100 text-indigo-600"
+                    ? "bg-gray-200 text-gray-600"
                     : "bg-gray-100 text-gray-400"
               }`}>
                 {step > s ? "✓" : s}
               </div>
-              {s < 2 && <div className={`w-12 h-0.5 ${step > s ? "bg-indigo-200" : "bg-gray-100"}`} />}
+              {s < 2 && <div className={`w-12 h-0.5 ${step > s ? "bg-gray-300" : "bg-gray-100"}`} />}
             </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
           {/* Step 1 — Role selection */}
           {step === 1 && (
             <div>
@@ -162,7 +162,7 @@ export default function RegisterPage() {
                     onClick={() => setRole(r.value)}
                     className={`flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-all ${
                       role === r.value
-                        ? "border-indigo-400 bg-indigo-50"
+                        ? "border-gray-900 bg-gray-50"
                         : "border-gray-100 hover:border-gray-200"
                     }`}
                   >
@@ -170,16 +170,16 @@ export default function RegisterPage() {
                       name={r.icon}
                       size={32}
                       filled={role === r.value}
-                      className={role === r.value ? "text-indigo-600" : "text-gray-400"}
+                      className={role === r.value ? "text-gray-900" : "text-gray-400"}
                     />
                     <div>
-                      <div className={`font-semibold text-sm ${role === r.value ? "text-indigo-700" : "text-gray-900"}`}>
+                      <div className={`font-semibold text-sm ${role === r.value ? "text-gray-900" : "text-gray-900"}`}>
                         {r.title}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">{r.desc}</div>
                     </div>
                     {role === r.value && (
-                      <div className="ml-auto w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                      <div className="ml-auto w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0">
                         <span className="text-white text-xs">✓</span>
                       </div>
                     )}
@@ -189,7 +189,7 @@ export default function RegisterPage() {
 
               <button
                 onClick={() => setStep(2)}
-                className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors text-sm"
+                className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors text-sm"
               >
                 Продолжить →
               </button>
@@ -281,7 +281,7 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={loading || !agreedToTerms}
-                  className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? "Создаём аккаунт..." : "Создать аккаунт"}
                 </button>

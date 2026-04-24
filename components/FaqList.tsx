@@ -17,7 +17,7 @@ export default function FaqList({ items }: { items: Faq[] }) {
         return (
           <div
             key={faq.q}
-            className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-[border-color,box-shadow] duration-300 hover:border-indigo-200 hover:shadow-sm"
+            className="bg-white rounded-2xl border border-gray-200 overflow-hidden transition-[border-color,box-shadow] duration-300 hover:border-gray-300 hover:shadow-sm"
           >
             <button
               type="button"
@@ -29,8 +29,8 @@ export default function FaqList({ items }: { items: Faq[] }) {
               <span
                 className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-lg transform-gpu transition-[transform,background-color,color] duration-300 ${
                   isOpen
-                    ? "bg-indigo-600 text-white rotate-45"
-                    : "bg-indigo-50 text-indigo-600"
+                    ? "bg-gray-900 text-white rotate-45"
+                    : "bg-gray-100 text-gray-600"
                 }`}
                 style={{ WebkitBackfaceVisibility: "hidden" }}
                 aria-hidden

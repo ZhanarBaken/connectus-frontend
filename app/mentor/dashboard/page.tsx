@@ -95,8 +95,8 @@ export default function MentorDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -126,7 +126,7 @@ export default function MentorDashboard() {
   const completionPercent = Math.round((profileCompletion / 6) * 100)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-6xl mx-auto px-4 py-10">
 
         {/* Header */}
@@ -138,8 +138,8 @@ export default function MentorDashboard() {
                 {profile.full_name || "Мой кабинет"}
               </h1>
               {profile.is_verified && (
-                <span className="text-xs bg-indigo-50 text-indigo-600 font-medium px-2.5 py-1 rounded-full">
-                  ✓ Верифицирован
+                <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-600 font-medium px-2.5 py-1 rounded-full">
+                  <Icon name="verified" size={14} filled className="text-indigo-500" /> Верифицирован
                 </span>
               )}
             </div>
@@ -170,7 +170,7 @@ export default function MentorDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white border border-gray-100 rounded-2xl p-6">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Заполни профиль и начни принимать заявки</p>
@@ -198,7 +198,7 @@ export default function MentorDashboard() {
                   <button
                     onClick={handleSubmit}
                     disabled={submitting || completionPercent < 50}
-                    className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting ? "Отправляем..." : "Отправить на проверку"}
                   </button>
@@ -215,7 +215,7 @@ export default function MentorDashboard() {
             { label: "Ожидают оплаты", value: pendingOrders.length, color: "text-yellow-600" },
             { label: "Заработано (₸)", value: totalEarned.toLocaleString("ru-RU"), color: "text-green-600" },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+            <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
               <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
               <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
             </div>
@@ -238,7 +238,7 @@ export default function MentorDashboard() {
                   </div>
                 </div>
                 {profile.consultation && (
-                  <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-3">
+                  <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-3">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
                         <Icon name="redeem" size={18} className="text-indigo-600" />
@@ -267,10 +267,10 @@ export default function MentorDashboard() {
                   {consultationRequests.map((order) => {
                     const busy = acceptingId === order.id
                     return (
-                      <div key={order.id} className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                      <div key={order.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
                         <div className="flex items-start gap-4 mb-4">
-                          <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                            <span className="text-indigo-600 font-bold">
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white font-bold">
                               {order.student_info?.full_name?.trim().charAt(0).toUpperCase() || "С"}
                             </span>
                           </div>
@@ -279,7 +279,7 @@ export default function MentorDashboard() {
                               <h3 className="font-semibold text-gray-900 truncate">
                                 {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
                               </h3>
-                              <span className="text-xs bg-white text-indigo-600 font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                              <span className="text-xs bg-emerald-50 text-emerald-600 font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                 <Icon name="redeem" size={12} />
                                 Бесплатно
                               </span>
@@ -314,7 +314,7 @@ export default function MentorDashboard() {
               </div>
 
               {otherOrders.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
                   <div className="mb-4 flex justify-center">
                     <Icon name="inbox" size={48} className="text-gray-300" />
                   </div>
@@ -329,7 +329,7 @@ export default function MentorDashboard() {
                     <Link
                       key={order.id}
                       href={`/orders/${order.id}`}
-                      className="block bg-white rounded-2xl border border-gray-100 p-5 hover:border-indigo-100 hover:shadow-sm transition-all"
+                      className="block bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
@@ -360,7 +360,7 @@ export default function MentorDashboard() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Reviews */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-gray-900">Отзывы</h2>
                 {reviews.length > 0 && (
@@ -410,7 +410,7 @@ export default function MentorDashboard() {
             </div>
 
             {/* Services */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-gray-900">Мои услуги</h2>
                 <Link href="/mentors/services" className="text-xs text-indigo-600 hover:underline font-medium">
@@ -448,7 +448,7 @@ export default function MentorDashboard() {
             </div>
 
             {/* Quick links */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-sm font-semibold text-gray-900 mb-4">Быстрые действия</h2>
               <div className="space-y-2">
                 {[
@@ -472,7 +472,7 @@ export default function MentorDashboard() {
 
             {/* Expertise */}
             {profile.expertise_areas?.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">Специализации</h2>
                 <div className="flex flex-wrap gap-2">
                   {profile.expertise_areas.map((e) => (

@@ -80,14 +80,14 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-3xl mx-auto px-4 py-10">
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <div className="mb-8">
@@ -100,7 +100,7 @@ export default function MessagesPage() {
         </div>
 
         {conversations.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <div className="mb-4 flex justify-center">
               <Icon name="chat" size={48} className="text-gray-300" />
             </div>
@@ -113,14 +113,14 @@ export default function MessagesPage() {
             {role !== "mentor" && (
               <Link
                 href="/mentors"
-                className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
                 Найти ментора
               </Link>
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             {conversations.map((order, i) => {
               const counterpartName = role === "mentor"
                 ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент")
@@ -142,8 +142,8 @@ export default function MessagesPage() {
                     i < conversations.length - 1 ? "border-b border-gray-50" : ""
                   }`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-indigo-600 font-bold">{initial}</span>
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold">{initial}</span>
                   </div>
 
                   <div className="flex-1 min-w-0">

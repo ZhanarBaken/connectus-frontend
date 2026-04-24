@@ -122,14 +122,14 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-2xl mx-auto px-4 py-10">
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">Настройки</h1>
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         )}
 
         {role === "mentor" && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 divide-y divide-gray-50">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 divide-y divide-gray-50">
             <Toggle
               label="Видимость профиля"
               description="Когда включено, студенты видят тебя в каталоге менторов и могут зайти на твою страницу."
@@ -177,7 +177,7 @@ export default function SettingsPage() {
         )}
 
         {role === "student" && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <Toggle
               label="Видимость профиля"
               description="Когда включено, менторы видят твоё имя и учебное заведение в информации о заказе."

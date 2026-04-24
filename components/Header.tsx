@@ -67,7 +67,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
+    <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
         {/* Logo */}
         <Link href={homeHref} className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export default function Header() {
 
         {/* Nav links */}
         {isAuthed ? (
-          <nav className="hidden md:flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-2xl p-1">
+          <nav className="hidden md:flex items-center gap-1 bg-[#fafafa] border border-gray-200/60 rounded-2xl p-1">
             {navLinks.map((link) => {
               const active = isActive(link)
               return (
@@ -138,7 +138,7 @@ export default function Header() {
               </Link>
               <Link
                 href="/auth/register"
-                className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors font-medium"
+                className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
               >
                 Регистрация
               </Link>
@@ -159,7 +159,7 @@ export default function Header() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 flex flex-col gap-1">
+        <div className="md:hidden border-t border-gray-200/60 bg-white px-4 py-4 flex flex-col gap-1">
           {navLinks.map((link) => {
             const active = isAuthed && isActive(link)
             return (
@@ -187,7 +187,7 @@ export default function Header() {
               <Link href="/auth/login" className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">
                 Войти
               </Link>
-              <Link href="/auth/register" className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-xl font-medium">
+              <Link href="/auth/register" className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
                 Регистрация
               </Link>
             </div>

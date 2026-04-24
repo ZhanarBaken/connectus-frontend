@@ -106,8 +106,8 @@ export default function MentorProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -116,7 +116,7 @@ export default function MentorProfilePage() {
   const completionPercent = Math.round((filledFields / 7) * 100)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -138,7 +138,7 @@ export default function MentorProfilePage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic info */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">Основная информация</h2>
             <div className="grid sm:grid-cols-2 gap-5">
               <Field label="Полное имя">
@@ -171,7 +171,7 @@ export default function MentorProfilePage() {
           </div>
 
           {/* Exams & social */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">Экзамены и ссылки</h2>
             <div className="space-y-5">
               <Field label="Результаты экзаменов" hint="Укажи баллы: IELTS, TOEFL, SAT, GRE и т.д.">
@@ -186,7 +186,7 @@ export default function MentorProfilePage() {
           </div>
 
           {/* Bio */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">О себе</h2>
             <Field label="Расскажи свою историю" hint="Минимум 3-4 предложения. Что ты прошёл, как можешь помочь.">
               <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={5}
@@ -196,7 +196,7 @@ export default function MentorProfilePage() {
           </div>
 
           {/* Free consultation description */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-1">Бесплатная консультация</h2>
             <p className="text-sm text-gray-500 mb-5">
               Это описание увидят студенты на твоём профиле. Расскажи что ты обсудишь на вводной встрече.
@@ -222,7 +222,7 @@ export default function MentorProfilePage() {
           </div>
 
           {/* Expertise */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-2">Специализация</h2>
             <p className="text-sm text-gray-400 mb-5">В чём ты помогаешь студентам?</p>
             <div className="flex flex-wrap gap-3">
@@ -233,7 +233,7 @@ export default function MentorProfilePage() {
                   onClick={() => toggleExpertise(value)}
                   className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
                     expertiseAreas.includes(value)
-                      ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                      ? "border-gray-900 bg-gray-50 text-gray-900"
                       : "border-gray-100 text-gray-600 hover:border-gray-200"
                   }`}
                 >
@@ -245,7 +245,7 @@ export default function MentorProfilePage() {
           </div>
 
           {/* Payout */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-2">Реквизиты для выплаты</h2>
             <p className="text-sm text-gray-400 mb-5">Видно только администратору платформы — не студентам</p>
             <Field label="Реквизиты">
@@ -269,7 +269,7 @@ export default function MentorProfilePage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+            className="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 text-sm"
           >
             {saving ? "Сохраняем..." : "Сохранить профиль"}
           </button>

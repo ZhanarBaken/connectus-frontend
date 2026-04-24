@@ -91,8 +91,8 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -100,7 +100,7 @@ export default function OrdersPage() {
   const isMentor = role === "mentor"
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-3xl mx-auto px-4 py-10">
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <h1 className="text-2xl font-bold text-gray-900 mb-8">
@@ -108,7 +108,7 @@ export default function OrdersPage() {
         </h1>
 
         {orders.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <div className="mb-4 flex justify-center">
               <Icon name={isMentor ? "people" : "description"} size={48} className="text-gray-300" />
             </div>
@@ -119,7 +119,7 @@ export default function OrdersPage() {
               {isMentor ? "Клиенты появятся когда студенты запишутся к тебе" : "Найди ментора и запишись на консультацию"}
             </p>
             {!isMentor && (
-              <Link href="/mentors" className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors">
+              <Link href="/mentors" className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
                 Найти ментора
               </Link>
             )}
@@ -132,7 +132,7 @@ export default function OrdersPage() {
               // Find an order with a chat conversation to link to
               const chatOrder = client.orders.find((o) => o.conversation_id !== null)
               return (
-                <div key={client.studentId} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div key={client.studentId} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                   {/* Client header — clickable to expand */}
                   <div className="flex items-center gap-4 p-5">
                     <button
@@ -140,8 +140,8 @@ export default function OrdersPage() {
                       onClick={() => setExpandedClient(isExpanded ? null : client.studentId)}
                       className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left [-webkit-tap-highlight-color:transparent]"
                     >
-                      <div className="w-11 h-11 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-indigo-600 font-bold">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white font-bold">
                           {client.studentName.charAt(0).toUpperCase()}
                         </span>
                       </div>
@@ -216,7 +216,7 @@ export default function OrdersPage() {
               <Link
                 key={order.id}
                 href={`/orders/${order.id}`}
-                className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start justify-between gap-4 hover:border-indigo-100 hover:shadow-sm transition-all group block"
+                className="bg-white rounded-2xl border border-gray-200 p-5 flex items-start justify-between gap-4 hover:border-gray-300 hover:shadow-sm transition-all group block"
               >
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">

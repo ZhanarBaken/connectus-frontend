@@ -52,8 +52,8 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -63,7 +63,7 @@ export default function StudentDashboard() {
   const completedOrders = orders.filter((o) => o.order_status === "completed")
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-6xl mx-auto px-4 py-10">
 
         {/* Header */}
@@ -79,7 +79,7 @@ export default function StudentDashboard() {
           </div>
           <Link
             href="/mentors"
-            className="hidden sm:inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
           >
             + Найти ментора
           </Link>
@@ -92,7 +92,7 @@ export default function StudentDashboard() {
             { label: "Ожидают оплаты", value: pendingOrders.length, color: "text-yellow-600" },
             { label: "Завершено", value: completedOrders.length, color: "text-green-600" },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+            <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
               <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
               <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
             </div>
@@ -108,7 +108,7 @@ export default function StudentDashboard() {
             </div>
 
             {orders.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+              <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
                 <div className="mb-4 flex justify-center">
                   <Icon name="description" size={48} className="text-gray-300" />
                 </div>
@@ -116,7 +116,7 @@ export default function StudentDashboard() {
                 <p className="text-sm text-gray-400 mb-6">Найди ментора и запишись на консультацию</p>
                 <Link
                   href="/mentors"
-                  className="inline-flex bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                  className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
                 >
                   Найти ментора
                 </Link>
@@ -127,7 +127,7 @@ export default function StudentDashboard() {
                   <Link
                     key={order.id}
                     href={`/orders/${order.id}`}
-                    className="block bg-white rounded-2xl border border-gray-100 p-5 hover:border-indigo-100 hover:shadow-sm transition-all group"
+                    className="block bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all group"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -155,7 +155,7 @@ export default function StudentDashboard() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Profile card */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-gray-900">Мой профиль</h2>
                 <Link
@@ -166,8 +166,8 @@ export default function StudentDashboard() {
                 </Link>
               </div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-indigo-600 font-bold text-lg">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-lg">
                     {profile?.full_name?.charAt(0) || "?"}
                   </span>
                 </div>
@@ -196,7 +196,7 @@ export default function StudentDashboard() {
         <div className="sm:hidden mt-8">
           <Link
             href="/mentors"
-            className="block text-center bg-indigo-600 text-white px-5 py-4 rounded-2xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+            className="block text-center bg-gray-900 text-white px-5 py-4 rounded-2xl text-sm font-semibold hover:bg-gray-800 transition-colors"
           >
             + Найти ментора
           </Link>

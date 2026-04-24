@@ -72,7 +72,7 @@ export default function MentorOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -92,17 +92,17 @@ export default function MentorOnboarding() {
             return (
               <div key={label} className="flex items-center gap-2">
                 <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                  step === s ? "bg-indigo-600 text-white" : step > s ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-400"
+                  step === s ? "bg-gray-900 text-white" : step > s ? "bg-gray-200 text-gray-600" : "bg-gray-100 text-gray-400"
                 }`}>
                   {step > s ? "✓" : s}. {label}
                 </div>
-                {i < STEPS.length - 1 && <div className={`w-6 h-0.5 ${step > s ? "bg-indigo-200" : "bg-gray-100"}`} />}
+                {i < STEPS.length - 1 && <div className={`w-6 h-0.5 ${step > s ? "bg-gray-300" : "bg-gray-100"}`} />}
               </div>
             )
           })}
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
 
           {/* Step 1 — Basic info */}
           {step === 1 && (
@@ -134,7 +134,7 @@ export default function MentorOnboarding() {
               <button
                 onClick={() => setStep(2)}
                 disabled={!fullName.trim() || !bio.trim()}
-                className="w-full mt-6 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-40 text-sm"
+                className="w-full mt-6 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
               >
                 Продолжить →
               </button>
@@ -157,7 +157,7 @@ export default function MentorOnboarding() {
                         onClick={() => setCountry(c)}
                         className={`px-2 py-2 rounded-xl text-xs border-2 font-medium transition-all text-left ${
                           country === c
-                            ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                            ? "border-gray-900 bg-gray-50 text-gray-900"
                             : "border-gray-100 text-gray-600 hover:border-gray-200"
                         }`}
                       >
@@ -224,7 +224,7 @@ export default function MentorOnboarding() {
                 <button
                   onClick={() => setStep(3)}
                   disabled={!school.trim() || !country}
-                  className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-40 text-sm"
+                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
                   Продолжить →
                 </button>
@@ -246,7 +246,7 @@ export default function MentorOnboarding() {
                     onClick={() => toggleExpertise(opt.value)}
                     className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
                       expertise.includes(opt.value)
-                        ? "border-indigo-400 bg-indigo-50"
+                        ? "border-gray-900 bg-gray-50"
                         : "border-gray-100 hover:border-gray-200"
                     }`}
                   >
@@ -254,17 +254,17 @@ export default function MentorOnboarding() {
                       name={opt.icon}
                       size={24}
                       filled={expertise.includes(opt.value)}
-                      className={expertise.includes(opt.value) ? "text-indigo-600" : "text-gray-400"}
+                      className={expertise.includes(opt.value) ? "text-gray-900" : "text-gray-400"}
                     />
-                    <span className={`text-sm font-medium ${expertise.includes(opt.value) ? "text-indigo-700" : "text-gray-700"}`}>
+                    <span className={`text-sm font-medium ${expertise.includes(opt.value) ? "text-gray-900" : "text-gray-700"}`}>
                       {opt.label}
                     </span>
                   </button>
                 ))}
               </div>
 
-              <div className="bg-indigo-50 rounded-xl p-4 mb-6">
-                <p className="text-xs text-indigo-700 leading-relaxed">
+              <div className="bg-gray-100 rounded-xl p-4 mb-6">
+                <p className="text-xs text-gray-600 leading-relaxed">
                   После заполнения профиль уйдёт на проверку. Мы верифицируем его в течение <strong>48 часов</strong> и опубликуем на платформе.
                 </p>
               </div>
@@ -283,7 +283,7 @@ export default function MentorOnboarding() {
                 <button
                   onClick={handleFinish}
                   disabled={saving || expertise.length === 0}
-                  className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-40 text-sm"
+                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
                   {saving ? "Сохраняем..." : "Отправить профиль →"}
                 </button>

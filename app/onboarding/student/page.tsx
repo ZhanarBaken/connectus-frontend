@@ -38,7 +38,7 @@ export default function StudentOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -58,17 +58,17 @@ export default function StudentOnboarding() {
             return (
               <div key={label} className="flex items-center gap-2">
                 <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                  step === s ? "bg-indigo-600 text-white" : step > s ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-400"
+                  step === s ? "bg-gray-900 text-white" : step > s ? "bg-gray-200 text-gray-600" : "bg-gray-100 text-gray-400"
                 }`}>
                   {step > s ? "✓" : s}. {label}
                 </div>
-                {i < STEPS.length - 1 && <div className={`w-6 h-0.5 ${step > s ? "bg-indigo-200" : "bg-gray-100"}`} />}
+                {i < STEPS.length - 1 && <div className={`w-6 h-0.5 ${step > s ? "bg-gray-300" : "bg-gray-100"}`} />}
               </div>
             )
           })}
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
 
           {/* Step 1 */}
           {step === 1 && (
@@ -101,7 +101,7 @@ export default function StudentOnboarding() {
               <button
                 onClick={() => setStep(2)}
                 disabled={!fullName.trim()}
-                className="w-full mt-6 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-40 text-sm"
+                className="w-full mt-6 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
               >
                 Продолжить →
               </button>
@@ -137,7 +137,7 @@ export default function StudentOnboarding() {
                 <button
                   onClick={handleFinish}
                   disabled={saving || !school.trim()}
-                  className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-40 text-sm"
+                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
                   {saving ? "Сохраняем..." : "Готово →"}
                 </button>
