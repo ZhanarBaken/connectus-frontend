@@ -56,7 +56,7 @@ export const MOCK_MENTORS: MentorCard[] = [
   {
     id: 1,
     full_name: "Назгуль Ахметова",
-    country: "USA",
+    countries: [{ country: "US" }],
     school_or_university: "MIT",
     major: "Computer Science",
     grant_or_scholarship: "Болашак",
@@ -69,7 +69,7 @@ export const MOCK_MENTORS: MentorCard[] = [
   {
     id: 2,
     full_name: "Айдана Сейткали",
-    country: "UK",
+    countries: [{ country: "GB" }],
     school_or_university: "University of Edinburgh",
     major: "Economics",
     grant_or_scholarship: "Chevening",
@@ -82,7 +82,7 @@ export const MOCK_MENTORS: MentorCard[] = [
   {
     id: 3,
     full_name: "Ерлан Жаксыбеков",
-    country: "Germany",
+    countries: [{ country: "DE" }],
     school_or_university: "TU Munich",
     major: "Engineering",
     grant_or_scholarship: "DAAD",

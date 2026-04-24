@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
+import { countriesLabelInline } from "@/lib/countries"
 import { MentorProfile, MentorService, Order } from "@/types"
 import Icon from "@/components/Icon"
 
@@ -117,7 +118,7 @@ export default function MentorDashboard() {
   const profileCompletion = [
     profile.full_name,
     profile.school_or_university,
-    profile.country,
+    profile.countries.length > 0,
     profile.major,
     profile.detailed_bio,
     profile.grant_or_scholarship,
@@ -146,7 +147,7 @@ export default function MentorDashboard() {
             {profile.school_or_university && (
               <p className="text-gray-500 mt-1 text-sm">
                 {profile.school_or_university}
-                {profile.country && ` · ${profile.country.split(",").join(", ")}`}
+                {profile.countries.length > 0 && ` · ${countriesLabelInline(profile.countries)}`}
               </p>
             )}
           </div>

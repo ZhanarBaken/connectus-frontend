@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
+import { countriesFlagsInline, countriesLabelInline } from "@/lib/countries"
 import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -14,23 +15,6 @@ const EXPERTISE_LABELS: Record<string, string> = {
   scholarships: "Стипендии",
   visa: "Виза",
   documents: "Документы",
-}
-
-const COUNTRY_FLAGS: Record<string, string> = {
-  USA: "🇺🇸",
-  UK: "🇬🇧",
-  Germany: "🇩🇪",
-  Spain: "🇪🇸",
-  Italy: "🇮🇹",
-}
-
-function formatCountries(country: string) {
-  const parts = country.split(",").filter(Boolean)
-  return parts.map((c) => `${COUNTRY_FLAGS[c.trim()] || "🌍"} ${c.trim()}`).join(", ")
-}
-
-function countryFlags(country: string) {
-  return country.split(",").filter(Boolean).map((c) => COUNTRY_FLAGS[c.trim()] || "🌍").join(" ")
 }
 
 interface Props {
@@ -174,7 +158,7 @@ export default function MentorPage({ params }: Props) {
                   </span>
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
-                  {countryFlags(mentor.country)} {mentor.school_or_university}
+                  {countriesFlagsInline(mentor.countries)} {mentor.school_or_university}
                   {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
                 </p>
                 {mentor.grant_or_scholarship && (
@@ -208,7 +192,7 @@ export default function MentorPage({ params }: Props) {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "Страны", value: formatCountries(mentor.country) },
+                { label: "Страны", value: countriesLabelInline(mentor.countries) },
                 { label: "GPA", value: mentor.gpa || "—" },
                 { label: "Экзамены", value: mentor.exam_results || "—" },
               ].map((stat) => (

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { fetchMentorProfile, updateMentorProfile } from "@/lib/api"
+import { COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { MentorProfile, ExpertiseArea } from "@/types"
 import BackButton from "@/components/BackButton"
 
@@ -12,8 +13,6 @@ const EXPERTISE_OPTIONS = [
   { value: "scholarships", label: "Стипендии" },
   { value: "visa", label: "Виза" },
 ]
-
-const COUNTRIES = ["USA", "UK", "Germany", "Spain", "Italy", "France", "Netherlands", "Canada", "Australia"]
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -58,7 +57,7 @@ export default function MentorProfilePage() {
     fetchMentorProfile()
       .then((p: MentorProfile) => {
         setFullName(p.full_name ?? "")
-        setCountries(p.country ? p.country.split(",").filter(Boolean) : [])
+        setCountries(p.countries.map((c) => c.country))
         setSchool(p.school_or_university ?? "")
         setMajor(p.major ?? "")
         setGrant(p.grant_or_scholarship ?? "")
@@ -88,7 +87,7 @@ export default function MentorProfilePage() {
     try {
       await updateMentorProfile({
         full_name: fullName,
-        country: countries.join(","),
+        countries: countries.map((c) => ({ country: c })),
         school_or_university: school,
         major,
         grant_or_scholarship: grant,
@@ -152,7 +151,7 @@ export default function MentorProfilePage() {
               <div className="sm:col-span-2">
                 <Field label="Страны (можно несколько)">
                   <div className="flex flex-wrap gap-2">
-                    {COUNTRIES.map((c) => (
+                    {COUNTRY_CODES.map((c) => (
                       <button
                         key={c}
                         type="button"
@@ -164,7 +163,7 @@ export default function MentorProfilePage() {
                         }`}
                       >
                         {countries.includes(c) && <span className="mr-1">✓</span>}
-                        {c}
+                        {countryFlag(c)} {countryLabel(c)}
                       </button>
                     ))}
                   </div>

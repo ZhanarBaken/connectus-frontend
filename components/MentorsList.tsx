@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
 import { getMentorReviewCount, getMentorAverageRating } from "@/lib/reviews"
+import { countryFlag, countryLabel, countriesFlagsInline } from "@/lib/countries"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 
@@ -13,22 +14,6 @@ const EXPERTISE_LABELS: Record<string, string> = {
   scholarships: "Стипендии",
   visa: "Виза",
   documents: "Документы",
-}
-
-const COUNTRY_FLAGS: Record<string, string> = {
-  USA: "🇺🇸",
-  UK: "🇬🇧",
-  Germany: "🇩🇪",
-  Spain: "🇪🇸",
-  Italy: "🇮🇹",
-}
-
-const COUNTRY_LABELS: Record<string, string> = {
-  USA: "США",
-  UK: "Великобритания",
-  Germany: "Германия",
-  Spain: "Испания",
-  Italy: "Италия",
 }
 
 interface Props {
@@ -63,7 +48,7 @@ export default function MentorsList({ mentors }: Props) {
   }, [router, mentors])
 
   const countries = useMemo(
-    () => Array.from(new Set(mentors.flatMap((m) => m.country.split(",").filter(Boolean).map((c) => c.trim())))),
+    () => Array.from(new Set(mentors.flatMap((m) => m.countries.map((c) => c.country)))),
     [mentors]
   )
 
@@ -74,7 +59,7 @@ export default function MentorsList({ mentors }: Props) {
           !m.detailed_bio.toLowerCase().includes(search.toLowerCase())) {
         return false
       }
-      if (country && !m.country.split(",").map((c) => c.trim()).includes(country)) return false
+      if (country && !m.countries.some((c) => c.country === country)) return false
       if (expertise && !m.expertise_areas.some((a) => a.area === expertise)) return false
       if (onlyAccepting && !m.is_accepting_bookings) return false
       return true
@@ -134,7 +119,7 @@ export default function MentorsList({ mentors }: Props) {
               <option value="">Все страны</option>
               {countries.map((c) => (
                 <option key={c} value={c}>
-                  {COUNTRY_FLAGS[c] || "🌍"} {COUNTRY_LABELS[c] || c}
+                  {countryFlag(c)} {countryLabel(c)}
                 </option>
               ))}
             </select>
@@ -243,7 +228,7 @@ export default function MentorsList({ mentors }: Props) {
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5 truncate">
-                      {mentor.country.split(",").map((c) => COUNTRY_FLAGS[c.trim()] || "🌍").join(" ")} {mentor.school_or_university}
+                      {countriesFlagsInline(mentor.countries)} {mentor.school_or_university}
                     </p>
                     {mentor.major && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate">{mentor.major}</p>

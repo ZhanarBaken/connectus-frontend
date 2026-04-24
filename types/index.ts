@@ -40,10 +40,15 @@ export interface MentorExpertise {
   area: ExpertiseArea
 }
 
+// Backend returns ISO-2 codes like "US", "DE" via django-countries.
+export interface MentorCountry {
+  country: string
+}
+
 export interface MentorProfile {
   id: number
   full_name: string
-  country: string
+  countries: MentorCountry[]
   school_or_university: string
   major: string
   grant_or_scholarship: string
@@ -71,7 +76,7 @@ export interface MentorCard {
   id: number
   profile_photo: string | null
   full_name: string
-  country: string
+  countries: MentorCountry[]
   school_or_university: string
   grant_or_scholarship: string
   major: string
@@ -85,7 +90,7 @@ export interface MentorCard {
 export interface Mentor {
   id: number
   full_name: string
-  country: string
+  countries: MentorCountry[]
   school_or_university: string
   major: string
   grant_or_scholarship: string

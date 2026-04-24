@@ -3,17 +3,11 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateMentorProfile } from "@/lib/api"
+import { COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { ExpertiseArea } from "@/types"
 import Icon from "@/components/Icon"
 
 const STEPS = ["О себе", "Университет", "Экспертиза"]
-
-const COUNTRIES = ["USA", "UK", "Germany", "Spain", "Italy", "France", "Netherlands", "Canada", "Australia"]
-const COUNTRY_LABELS: Record<string, string> = {
-  USA: "🇺🇸 США", UK: "🇬🇧 Великобритания", Germany: "🇩🇪 Германия",
-  Spain: "🇪🇸 Испания", Italy: "🇮🇹 Италия", France: "🇫🇷 Франция",
-  Netherlands: "🇳🇱 Нидерланды", Canada: "🇨🇦 Канада", Australia: "🇦🇺 Австралия",
-}
 
 const EXPERTISE_OPTIONS = [
   { value: "admission", label: "Поступление", icon: "flag" },
@@ -60,7 +54,7 @@ export default function MentorOnboarding() {
       await updateMentorProfile({
         full_name: fullName,
         detailed_bio: bio,
-        country: countries.join(","),
+        countries: countries.map((c) => ({ country: c })),
         school_or_university: school,
         major,
         grant_or_scholarship: grant,
@@ -156,7 +150,7 @@ export default function MentorOnboarding() {
                     Страны <span className="text-gray-400 font-normal">(можно несколько)</span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {COUNTRIES.map((c) => (
+                    {COUNTRY_CODES.map((c) => (
                       <button
                         key={c}
                         type="button"
@@ -168,7 +162,7 @@ export default function MentorOnboarding() {
                         }`}
                       >
                         {countries.includes(c) && <span className="mr-1">✓</span>}
-                        {COUNTRY_LABELS[c] || c}
+                        {countryFlag(c)} {countryLabel(c)}
                       </button>
                     ))}
                   </div>

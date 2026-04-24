@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { MentorCard } from "@/types"
+import { countriesFlagsInline } from "@/lib/countries"
 import TiltCard from "./TiltCard"
 import Icon from "./Icon"
 import ScrollReveal from "./ScrollReveal"
@@ -11,14 +12,6 @@ const EXPERTISE_LABELS: Record<string, string> = {
   scholarships: "Стипендии",
   visa: "Виза",
   documents: "Документы",
-}
-
-const COUNTRY_FLAGS: Record<string, string> = {
-  USA: "🇺🇸",
-  UK: "🇬🇧",
-  Germany: "🇩🇪",
-  Spain: "🇪🇸",
-  Italy: "🇮🇹",
 }
 
 export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
@@ -71,7 +64,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                           )}
                         </div>
                         <p className="text-sm text-gray-500 mt-0.5">
-                          {mentor.country.split(",").map((c) => COUNTRY_FLAGS[c.trim()] || "🌍").join(" ")} {mentor.school_or_university}
+                          {countriesFlagsInline(mentor.countries)} {mentor.school_or_university}
                         </p>
                       </div>
                     </div>
