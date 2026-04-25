@@ -40,11 +40,22 @@ export function countryLabel(code: string): string {
 }
 
 // Backend returns `{ country: string }[]` — these helpers take that shape.
+
+/** Compact flags: "🇺🇸🇬🇧🇩🇪" — no spaces, for tight layouts */
+export function countriesFlagsCompact(countries?: { country: string }[], max = 3): string {
+  if (!countries?.length) return "🌍"
+  const flags = countries.slice(0, max).map((c) => countryFlag(c.country)).join("")
+  const extra = countries.length - max
+  return extra > 0 ? `${flags}+${extra}` : flags
+}
+
+/** Spaced flags: "🇺🇸 🇬🇧 🇩🇪" */
 export function countriesFlagsInline(countries?: { country: string }[]): string {
   if (!countries?.length) return "🌍"
   return countries.map((c) => countryFlag(c.country)).join(" ")
 }
 
+/** Full labels: "🇺🇸 США, 🇬🇧 Великобритания" */
 export function countriesLabelInline(countries?: { country: string }[]): string {
   if (!countries?.length) return "—"
   return countries

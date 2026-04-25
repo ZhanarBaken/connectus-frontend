@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
 import { getMentorReviewCount, getMentorAverageRating } from "@/lib/reviews"
-import { countryFlag, countryLabel, countriesFlagsInline } from "@/lib/countries"
+import { countryFlag, countryLabel, countriesFlagsCompact } from "@/lib/countries"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 
@@ -224,14 +224,19 @@ export default function MentorsList({ mentors }: Props) {
                         {mentor.full_name}
                       </h3>
                       {mentor.is_verified && (
-                        <Icon name="verified" size={14} filled className="text-indigo-500 flex-shrink-0" />
+                        <span title="Платформа подтвердила документы ментора">
+                          <Icon name="verified" size={14} filled className="text-indigo-500 flex-shrink-0" />
+                        </span>
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5 truncate">
-                      {countriesFlagsInline(mentor.countries)} {mentor.school_or_university}
+                      {mentor.school_or_university}
+                      {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
                     </p>
-                    {mentor.major && (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">{mentor.major}</p>
+                    {(mentor.countries ?? []).length > 0 && (
+                      <p className="text-xs text-gray-400 mt-0.5" title={mentor.countries.map((c) => countryLabel(c.country)).join(", ")}>
+                        {countriesFlagsCompact(mentor.countries)} помогает поступить
+                      </p>
                     )}
                     {/* Reviews */}
                     <div className="mt-1.5 text-xs text-gray-400 flex items-center gap-1">

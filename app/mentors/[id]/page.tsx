@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
 import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
-import { countriesFlagsInline, countriesLabelInline } from "@/lib/countries"
+import { countryFlag, countryLabel } from "@/lib/countries"
 import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -152,17 +152,35 @@ export default function MentorPage({ params }: Props) {
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
-                  <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                    <Icon name="verified" size={14} className="text-indigo-600" filled />
-                    Верифицирован
-                  </span>
+                  {mentor.is_verified && (
+                    <span
+                      className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                      title="Платформа подтвердила документы ментора — диплом, факт учёбы и/или получение гранта"
+                    >
+                      <Icon name="verified" size={14} className="text-indigo-600" filled />
+                      Проверен
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
-                  {countriesFlagsInline(mentor.countries)} {mentor.school_or_university}
+                  {mentor.school_or_university}
                   {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
                 </p>
+                {/* Country chips */}
+                {(mentor.countries ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {mentor.countries.map((c) => (
+                      <span
+                        key={c.country}
+                        className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium"
+                      >
+                        {countryFlag(c.country)} {countryLabel(c.country)}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {mentor.grant_or_scholarship && (
-                  <p className="text-sm text-gray-400 mt-1 inline-flex items-center gap-1.5">
+                  <p className="text-sm text-gray-400 mt-2 inline-flex items-center gap-1.5">
                     <Icon name="military_tech" size={16} />
                     {mentor.grant_or_scholarship}
                   </p>
@@ -190,15 +208,17 @@ export default function MentorPage({ params }: Props) {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               {[
-                { label: "Страны", value: countriesLabelInline(mentor.countries) },
-                { label: "GPA", value: mentor.gpa || "—" },
-                { label: "Экзамены", value: mentor.exam_results || "—" },
+                { label: "GPA", value: mentor.gpa || "—", icon: "school" },
+                { label: "Экзамены", value: mentor.exam_results || "—", icon: "quiz" },
               ].map((stat) => (
-                <div key={stat.label} className="bg-gray-50 rounded-2xl p-4 text-center">
-                  <div className="text-sm text-gray-400 mb-1">{stat.label}</div>
-                  <div className="font-semibold text-gray-900 text-sm">{stat.value}</div>
+                <div key={stat.label} className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
+                  <Icon name={stat.icon} size={20} className="text-gray-300" />
+                  <div>
+                    <div className="text-xs text-gray-400">{stat.label}</div>
+                    <div className="font-semibold text-gray-900 text-sm">{stat.value}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -410,7 +430,7 @@ export default function MentorPage({ params }: Props) {
                   </div>
                   <div className="flex items-center gap-2">
                     <Icon name="check" size={14} className="text-indigo-600" />
-                    <span>Верифицированный ментор</span>
+                    <span>{mentor.is_verified ? "Документы проверены" : "Безопасная оплата"}</span>
                   </div>
                 </div>
               </div>

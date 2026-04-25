@@ -102,6 +102,7 @@ export interface Mentor {
   consultation: string | null
   linkedin_url: string
   profile_photo: string | null
+  is_verified: boolean
   is_public: boolean
   is_accepting_bookings: boolean
   services: MentorService[]

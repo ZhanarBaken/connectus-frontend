@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { MentorCard } from "@/types"
-import { countriesFlagsInline } from "@/lib/countries"
+import { countriesFlagsCompact, countryLabel } from "@/lib/countries"
 import TiltCard from "./TiltCard"
 import Icon from "./Icon"
 import ScrollReveal from "./ScrollReveal"
@@ -60,12 +60,19 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                             {mentor.full_name}
                           </h3>
                           {mentor.is_verified && (
-                            <Icon name="verified" size={16} filled className="text-indigo-500 flex-shrink-0" />
+                            <span title="Платформа подтвердила документы ментора">
+                              <Icon name="verified" size={16} filled className="text-indigo-500 flex-shrink-0" />
+                            </span>
                           )}
                         </div>
                         <p className="text-sm text-gray-500 mt-0.5">
-                          {countriesFlagsInline(mentor.countries)} {mentor.school_or_university}
+                          {mentor.school_or_university}
                         </p>
+                        {(mentor.countries ?? []).length > 0 && (
+                          <p className="text-xs text-gray-400 mt-0.5" title={(mentor.countries ?? []).map((c) => countryLabel(c.country)).join(", ")}>
+                            {countriesFlagsCompact(mentor.countries)} помогает поступить
+                          </p>
+                        )}
                       </div>
                     </div>
 
