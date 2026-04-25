@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation } from "@/lib/api"
-import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
+import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countriesLabelInline } from "@/lib/countries"
 import { MentorProfile, MentorService, Order } from "@/types"
 import Icon from "@/components/Icon"
@@ -42,7 +42,6 @@ export default function MentorDashboard() {
   const [services, setServices] = useState<MentorService[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
-  const [avgRating, setAvgRating] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -60,8 +59,7 @@ export default function MentorDashboard() {
         setProfile(p)
         setServices(s)
         setOrders(o)
-        setReviews(getMentorReviews(p.id))
-        setAvgRating(getMentorAverageRating(p.id))
+        fetchMentorReviews(p.id).then(setReviews)
       })
       .catch(() => router.replace("/auth/login"))
       .finally(() => setLoading(false))
@@ -393,7 +391,7 @@ export default function MentorDashboard() {
                 <h2 className="text-sm font-semibold text-gray-900">Отзывы</h2>
                 {reviews.length > 0 && (
                   <span className="text-xs text-gray-500 font-medium">
-                    <span className="text-yellow-400">★</span> {avgRating?.toFixed(1)} · {reviews.length}
+                    <span className="text-yellow-400">★</span> {profile.rating_avg?.toFixed(1) ?? "—"} · {reviews.length}
                   </span>
                 )}
               </div>
@@ -420,10 +418,10 @@ export default function MentorDashboard() {
                       </p>
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs text-gray-400 truncate">
-                          {review.authorName}
+                          {review.student_full_name}
                         </span>
                         <span className="text-xs text-gray-300 flex-shrink-0">
-                          {new Date(review.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                          {new Date(review.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                         </span>
                       </div>
                     </div>

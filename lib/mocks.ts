@@ -65,6 +65,8 @@ export const MOCK_MENTORS: MentorCard[] = [
     profile_photo: null,
     is_verified: true,
     is_accepting_bookings: true,
+    rating_avg: null,
+    rating_count: 0,
   },
   {
     id: 2,
@@ -78,6 +80,8 @@ export const MOCK_MENTORS: MentorCard[] = [
     profile_photo: null,
     is_verified: true,
     is_accepting_bookings: true,
+    rating_avg: null,
+    rating_count: 0,
   },
   {
     id: 3,
@@ -91,6 +95,8 @@ export const MOCK_MENTORS: MentorCard[] = [
     profile_photo: null,
     is_verified: false,
     is_accepting_bookings: true,
+    rating_avg: null,
+    rating_count: 0,
   },
 ]
 
@@ -143,8 +149,11 @@ export const MOCK_STUDENT_PROFILE: StudentProfile = {
   full_name: "Айгерим Бекова",
   age: 18,
   current_school_or_university: "НИШ Алматы",
+  contacts: "",
   profile_photo: null,
   is_public: true,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
 }
 
 export const getMockMentor = (id: number): MentorCard | undefined =>

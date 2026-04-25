@@ -1,73 +1,64 @@
-// ─── Reviews (localStorage stopgap) ─────────────────────────────────────────
-// TODO: replace with real API calls when backend reviews endpoint is ready.
-// All public functions are SSR-safe — they return [] / null on server.
+import { authFetch } from "./api"
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
 export interface Review {
-  id: string
-  orderId: number
-  mentorId: number
-  mentorName: string
-  target: "platform" | "mentor"
+  id: number
+  mentor: number
+  order: number
   rating: number
   text: string
-  authorName: string
-  createdAt: string
+  mentor_reply: string | null
+  mentor_reply_at: string | null
+  student_full_name: string
+  created_at: string
 }
 
-const STORAGE_KEY = "reviews"
+export async function fetchMentorReviews(mentorId: number): Promise<Review[]> {
+  const res = await authFetch(`${BASE_URL}/reviews/?mentor=${mentorId}`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
 
-function readAll(): Review[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+export async function fetchAllReviews(): Promise<Review[]> {
+  const res = await authFetch(`${BASE_URL}/reviews/`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function createReview(orderId: number, rating: number, text: string): Promise<Review> {
+  const res = await authFetch(`${BASE_URL}/reviews/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order: orderId, rating, text }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const detail = err.detail || (err.order && Array.isArray(err.order) ? err.order[0] : null) || "Не удалось оставить отзыв"
+    throw new Error(detail)
   }
+  return res.json()
 }
 
-function writeAll(reviews: Review[]) {
-  if (typeof window === "undefined") return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews))
-}
-
-export function getPlatformReviews(): Review[] {
-  return readAll()
-    .filter((r) => r.target === "platform")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
-
-export function getMentorReviews(mentorId: number): Review[] {
-  return readAll()
-    .filter((r) => r.target === "mentor" && r.mentorId === mentorId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
-
-export function getMentorReviewCount(mentorId: number): number {
-  return readAll().filter((r) => r.target === "mentor" && r.mentorId === mentorId).length
-}
-
-export function getMentorAverageRating(mentorId: number): number | null {
-  const reviews = readAll().filter((r) => r.target === "mentor" && r.mentorId === mentorId)
-  if (reviews.length === 0) return null
-  const sum = reviews.reduce((acc, r) => acc + r.rating, 0)
-  return sum / reviews.length
-}
-
-export function hasReviewForOrder(orderId: number, target: "platform" | "mentor"): boolean {
-  return readAll().some((r) => r.orderId === orderId && r.target === target)
-}
-
-export function addReview(input: Omit<Review, "id" | "createdAt">): Review {
-  const review: Review = {
-    ...input,
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    createdAt: new Date().toISOString(),
+export async function replyToReview(reviewId: number, mentorReply: string): Promise<Review> {
+  const res = await authFetch(`${BASE_URL}/reviews/${reviewId}/reply/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mentor_reply: mentorReply }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось ответить на отзыв")
   }
-  const all = readAll()
-  all.push(review)
-  writeAll(all)
-  return review
+  return res.json()
+}
+
+export async function hasReviewForOrder(orderId: number): Promise<boolean> {
+  const res = await authFetch(`${BASE_URL}/reviews/`)
+  if (!res.ok) return false
+  const data = await res.json()
+  const reviews: Review[] = data.results ?? data
+  return reviews.some((r) => r.order === orderId)
 }

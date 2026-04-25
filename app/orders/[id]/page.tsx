@@ -41,6 +41,7 @@ export default function OrderPage({ params }: Props) {
   const [consultationText, setConsultationText] = useState<string | null>(null)
   const [studentOrders, setStudentOrders] = useState<Order[]>([]) // mentor: all orders with this student
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -121,6 +122,7 @@ export default function OrderPage({ params }: Props) {
           if (meRes.ok) {
             const me = await meRes.json()
             setCurrentUserId(me.id)
+            setCurrentUserEmail(me.email)
           }
         } catch {
           // ignore
@@ -726,7 +728,7 @@ export default function OrderPage({ params }: Props) {
                               ? `${Math.round(doc.size_bytes / 1024)} KB`
                               : `${(doc.size_bytes / (1024 * 1024)).toFixed(1)} MB`}
                           </span>
-                          {currentUserId === doc.uploaded_by && (
+                          {currentUserEmail && currentUserEmail === doc.uploaded_by_email && (
                             <button
                               onClick={() => {
                                 deleteOrderDocument(order.id, doc.id)

@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
-import { getMentorReviews, getMentorAverageRating, type Review } from "@/lib/reviews"
+import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
 import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
@@ -30,7 +30,6 @@ export default function MentorPage({ params }: Props) {
   const [orderingServiceId, setOrderingServiceId] = useState<number | null>(null)
   const [orderError, setOrderError] = useState("")
   const [reviews, setReviews] = useState<Review[]>([])
-  const [avgRating, setAvgRating] = useState<number | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -43,8 +42,7 @@ export default function MentorPage({ params }: Props) {
       .then(([m, o]) => {
         setMentor(m)
         setOrders(o)
-        setReviews(getMentorReviews(m.id))
-        setAvgRating(getMentorAverageRating(m.id))
+        fetchMentorReviews(m.id).then(setReviews)
       })
       .catch(() => router.replace("/mentors"))
       .finally(() => {
@@ -358,10 +356,10 @@ export default function MentorPage({ params }: Props) {
             <div>
               <div className="flex items-baseline gap-3 mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Отзывы</h2>
-                {reviews.length > 0 && (
+                {(mentor.rating_count ?? 0) > 0 && (
                   <span className="text-sm text-gray-400">
-                    {avgRating?.toFixed(1)} ★ · {reviews.length}{" "}
-                    {reviews.length === 1 ? "отзыв" : reviews.length < 5 ? "отзыва" : "отзывов"}
+                    {mentor.rating_avg?.toFixed(1)} ★ · {mentor.rating_count}{" "}
+                    {mentor.rating_count === 1 ? "отзыв" : mentor.rating_count < 5 ? "отзыва" : "отзывов"}
                   </span>
                 )}
               </div>
@@ -382,14 +380,20 @@ export default function MentorPage({ params }: Props) {
                         ))}
                       </div>
                       <p className="text-gray-600 text-sm leading-relaxed mb-3">&ldquo;{review.text}&rdquo;</p>
+                      {review.mentor_reply && (
+                        <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3">
+                          <p className="text-xs text-gray-500 font-medium mb-1">Ответ ментора:</p>
+                          <p className="text-sm text-gray-600">{review.mentor_reply}</p>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
-                          <span className="text-gray-500 text-xs font-bold">{review.authorName.charAt(0).toUpperCase()}</span>
+                          <span className="text-gray-500 text-xs font-bold">{review.student_full_name.charAt(0).toUpperCase()}</span>
                         </div>
-                        <span className="text-sm text-gray-400">{review.authorName}</span>
+                        <span className="text-sm text-gray-400">{review.student_full_name}</span>
                         <span className="text-xs text-gray-300">·</span>
                         <span className="text-xs text-gray-300">
-                          {new Date(review.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                          {new Date(review.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                         </span>
                       </div>
                     </div>

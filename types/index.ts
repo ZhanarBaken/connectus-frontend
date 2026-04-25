@@ -48,6 +48,7 @@ export interface MentorCountry {
 export interface MentorProfile {
   id: number
   full_name: string
+  age: number
   countries: MentorCountry[]
   school_or_university: string
   major: string
@@ -57,12 +58,12 @@ export interface MentorProfile {
   detailed_bio: string
   consultation: string
   linkedin_url: string
+  university_email: string
   profile_photo: string | null
   expertise_areas: MentorExpertise[]
   contacts: string
   payout_details: string
   graduation_year_or_current_course: string
-  university_email: string
   is_approved: boolean
   is_verified: boolean
   is_submitted: boolean
@@ -70,6 +71,8 @@ export interface MentorProfile {
   is_accepting_bookings: boolean
   is_banned: boolean
   ban_reason: string
+  rating_avg: number | null
+  rating_count: number
   created_at: string
   updated_at: string
 }
@@ -86,6 +89,8 @@ export interface MentorCard {
   detailed_bio: string
   is_verified: boolean
   is_accepting_bookings: boolean
+  rating_avg: number | null
+  rating_count: number
 }
 
 // Matches backend MentorProfilePublicSerializer
@@ -107,6 +112,8 @@ export interface Mentor {
   is_verified: boolean
   is_public: boolean
   is_accepting_bookings: boolean
+  rating_avg: number | null
+  rating_count: number
   services: MentorService[]
 }
 
@@ -115,8 +122,11 @@ export interface StudentProfile {
   full_name: string
   age: number
   current_school_or_university: string
+  contacts: string
   profile_photo: string | null
   is_public: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface PaymentInstructions {
@@ -165,7 +175,7 @@ export interface OrderDocument {
   size_bytes: number
   description: string
   download_url: string
-  uploaded_by: number
+  uploaded_by_email: string
   uploaded_at: string
 }
 

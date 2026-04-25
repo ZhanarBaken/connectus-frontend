@@ -161,8 +161,18 @@ export default function MentorDocumentsPage() {
           </p>
         </div>
 
+        {isBanned && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+            <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
+              <p className="text-xs text-red-500 mt-1">Редактирование недоступно. Обратитесь в поддержку: hello@connectus.kz</p>
+            </div>
+          </div>
+        )}
+
         {/* Upload form */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+        {!isBanned && <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Загрузить документ</h2>
 
           {/* Kind select */}
@@ -213,7 +223,7 @@ export default function MentorDocumentsPage() {
           >
             {uploading ? "Загружаем..." : "Загрузить"}
           </button>
-        </div>
+        </div>}
 
         {/* Error */}
         {error && (
@@ -297,7 +307,7 @@ export default function MentorDocumentsPage() {
                         >
                           <Icon name="download" size={18} />
                         </button>
-                        {doc.status !== "approved" && (
+                        {doc.status !== "approved" && !isBanned && (
                           <button
                             onClick={() => handleDelete(doc.id)}
                             disabled={deletingId === doc.id}
