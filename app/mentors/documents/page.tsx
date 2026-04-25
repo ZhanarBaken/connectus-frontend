@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { authFetch } from "@/lib/api"
+import { authFetch, fetchMentorProfile } from "@/lib/api"
 import Icon from "@/components/Icon"
 import BackButton from "@/components/BackButton"
 
@@ -54,6 +54,9 @@ export default function MentorDocumentsPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState("")
 
+  // Ban state
+  const [isBanned, setIsBanned] = useState(false)
+
   // Delete state
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
@@ -62,6 +65,7 @@ export default function MentorDocumentsPage() {
     const role = localStorage.getItem("role")
     if (!token) { router.replace("/auth/login"); return }
     if (role === "student") { router.replace("/student/dashboard"); return }
+    fetchMentorProfile().then(p => setIsBanned(p.is_banned ?? false)).catch(() => {})
     loadDocuments()
   }, [router])
 

@@ -153,15 +153,35 @@ export default function MentorDashboard() {
             )}
           </div>
           <Link
-            href="/mentors/profile"
-            className="hidden sm:inline-flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+            href={profile.is_banned ? "#" : "/mentors/profile"}
+            onClick={profile.is_banned ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+            className={`hidden sm:inline-flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              profile.is_banned ? "opacity-50 cursor-not-allowed" : "hover:border-indigo-300 hover:text-indigo-600"
+            }`}
           >
             Редактировать профиль
           </Link>
         </div>
 
+        {/* Ban banner */}
+        {profile.is_banned && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-4">
+            <Icon name="block" size={24} className="text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-800">Аккаунт заблокирован</p>
+              {profile.ban_reason && (
+                <p className="text-sm text-red-700 mt-1">{profile.ban_reason}</p>
+              )}
+              <p className="text-xs text-red-500 mt-2">
+                Вы можете просматривать свои заказы и чаты, но не можете редактировать профиль, услуги или документы.
+                Если считаете что это ошибка — напишите на <a href="mailto:hello@connectus.kz" className="underline">hello@connectus.kz</a>
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Status banner */}
-        {!profile.is_approved && (
+        {!profile.is_banned && !profile.is_approved && (
           <div className="mb-8">
             {profile.is_submitted ? (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">

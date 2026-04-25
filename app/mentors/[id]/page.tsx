@@ -46,7 +46,7 @@ export default function MentorPage({ params }: Props) {
         setReviews(getMentorReviews(m.id))
         setAvgRating(getMentorAverageRating(m.id))
       })
-      .catch(() => router.replace("/"))
+      .catch(() => router.replace("/mentors"))
       .finally(() => {
         setLoading(false)
         window.scrollTo(0, 0)

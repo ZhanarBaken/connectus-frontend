@@ -68,6 +68,8 @@ export interface MentorProfile {
   is_submitted: boolean
   is_public: boolean
   is_accepting_bookings: boolean
+  is_banned: boolean
+  ban_reason: string
   created_at: string
   updated_at: string
 }

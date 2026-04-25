@@ -54,6 +54,8 @@ export default function MentorProfilePage() {
   const [payoutDetails, setPayoutDetails] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [isBanned, setIsBanned] = useState(false)
+  const [banReason, setBanReason] = useState("")
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   const CONSULTATION_MIN = 80
@@ -75,6 +77,8 @@ export default function MentorProfilePage() {
         setExpertiseAreas(p.expertise_areas.map((e) => e.area))
         setPayoutDetails(p.payout_details ?? "")
         setProfilePhoto(p.profile_photo ?? null)
+        setIsBanned(p.is_banned ?? false)
+        setBanReason(p.ban_reason ?? "")
       })
       .catch(() => setError("Не удалось загрузить профиль"))
       .finally(() => setLoading(false))
@@ -170,7 +174,19 @@ export default function MentorProfilePage() {
           <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${completionPercent}%` }} />
         </div>
 
+        {isBanned && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+            <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
+              {banReason && <p className="text-xs text-red-600 mt-0.5">{banReason}</p>}
+              <p className="text-xs text-red-500 mt-1">Редактирование профиля недоступно.</p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
+          <fieldset disabled={isBanned} className="space-y-6">
           {/* Avatar upload */}
           <div className="flex flex-col items-center">
             <input
@@ -362,9 +378,11 @@ export default function MentorProfilePage() {
             </div>
           )}
 
+          </fieldset>
+
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || isBanned}
             className="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 text-sm"
           >
             {saving ? "Сохраняем..." : "Сохранить профиль"}

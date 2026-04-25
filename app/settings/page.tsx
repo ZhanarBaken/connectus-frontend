@@ -53,6 +53,7 @@ export default function SettingsPage() {
   // Mentor settings
   const [isPublic, setIsPublic] = useState(true)
   const [isAcceptingBookings, setIsAcceptingBookings] = useState(true)
+  const [isBanned, setIsBanned] = useState(false)
 
   // Student settings
   const [studentIsPublic, setStudentIsPublic] = useState(true)
@@ -68,6 +69,7 @@ export default function SettingsPage() {
         .then((p) => {
           setIsPublic(p.is_public)
           setIsAcceptingBookings(p.is_accepting_bookings)
+          setIsBanned(p.is_banned ?? false)
         })
         .catch(() => setError("Не удалось загрузить настройки"))
         .finally(() => setLoading(false))
@@ -150,30 +152,41 @@ export default function SettingsPage() {
         )}
 
         {role === "mentor" && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 divide-y divide-gray-50">
-            <Toggle
-              label="Видимость профиля"
-              description="Когда включено, студенты видят тебя в каталоге менторов и могут зайти на твою страницу."
-              icon="visibility"
-              checked={isPublic}
-              onChange={(val) => {
-                setIsPublic(val)
-                handleSaveMentor("is_public", val)
-              }}
-              disabled={saving}
-            />
-            <Toggle
-              label="Приём заявок"
-              description="Когда включено, студенты могут отправлять запросы на консультацию и заказывать услуги."
-              icon="event_available"
-              checked={isAcceptingBookings}
-              onChange={(val) => {
-                setIsAcceptingBookings(val)
-                handleSaveMentor("is_accepting_bookings", val)
-              }}
-              disabled={saving}
-            />
-          </div>
+          <>
+            {isBanned && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+                <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
+                  <p className="text-xs text-red-500 mt-1">Настройки недоступны. Обратитесь в поддержку: hello@connectus.kz</p>
+                </div>
+              </div>
+            )}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 divide-y divide-gray-50">
+              <Toggle
+                label="Видимость профиля"
+                description="Когда включено, студенты видят тебя в каталоге менторов и могут зайти на твою страницу."
+                icon="visibility"
+                checked={isPublic}
+                onChange={(val) => {
+                  setIsPublic(val)
+                  handleSaveMentor("is_public", val)
+                }}
+                disabled={saving || isBanned}
+              />
+              <Toggle
+                label="Приём заявок"
+                description="Когда включено, студенты могут отправлять запросы на консультацию и заказывать услуги."
+                icon="event_available"
+                checked={isAcceptingBookings}
+                onChange={(val) => {
+                  setIsAcceptingBookings(val)
+                  handleSaveMentor("is_accepting_bookings", val)
+                }}
+                disabled={saving || isBanned}
+              />
+            </div>
+          </>
         )}
 
         {role === "student" && (

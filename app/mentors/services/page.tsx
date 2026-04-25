@@ -41,6 +41,7 @@ export default function MentorServicesPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState("")
+  const [isBanned, setIsBanned] = useState(false)
 
   useEffect(() => {
     // The /mentors/services/ endpoint excludes the auto-created free consultation,
@@ -48,7 +49,10 @@ export default function MentorServicesPage() {
     Promise.all([
       fetchMentorServices().catch(() => [] as MentorService[]),
       fetchMentorProfile()
-        .then((p) => fetchMentor(p.id))
+        .then((p) => {
+          setIsBanned(p.is_banned ?? false)
+          return fetchMentor(p.id)
+        })
         .then((m) => m.services.find((s) => s.payout_category === "consultation") ?? null)
         .catch(() => null),
     ])
@@ -136,7 +140,7 @@ export default function MentorServicesPage() {
 
             <h1 className="text-2xl font-bold text-gray-900">Мои услуги</h1>
           </div>
-          {!isFormOpen && (
+          {!isFormOpen && !isBanned && (
             <button
               onClick={startCreate}
               className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
@@ -145,6 +149,16 @@ export default function MentorServicesPage() {
             </button>
           )}
         </div>
+
+        {isBanned && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+            <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
+              <p className="text-xs text-red-500 mt-1">Редактирование недоступно. Обратитесь в поддержку: hello@connectus.kz</p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-6">{error}</div>
@@ -281,12 +295,14 @@ export default function MentorServicesPage() {
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Платных услуг пока нет</h3>
                     <p className="text-sm text-gray-400 mb-6">Добавь услугу чтобы студенты могли её заказать после консультации</p>
-                    <button
-                      onClick={startCreate}
-                      className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
-                    >
-                      + Добавить услугу
-                    </button>
+                    {!isBanned && (
+                      <button
+                        onClick={startCreate}
+                        className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+                      >
+                        + Добавить услугу
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -311,21 +327,23 @@ export default function MentorServicesPage() {
                             <span className="text-sm font-bold text-gray-900">{formatPrice(service.price)}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => startEdit(service)}
-                            className="text-xs text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 font-medium"
-                          >
-                            Изменить
-                          </button>
-                          <button
-                            onClick={() => handleDelete(service.id)}
-                            className="text-xs text-gray-300 hover:text-red-500 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50"
-                            aria-label="Удалить"
-                          >
-                            ✕
-                          </button>
-                        </div>
+                        {!isBanned && (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => startEdit(service)}
+                              className="text-xs text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 font-medium"
+                            >
+                              Изменить
+                            </button>
+                            <button
+                              onClick={() => handleDelete(service.id)}
+                              className="text-xs text-gray-300 hover:text-red-500 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50"
+                              aria-label="Удалить"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
