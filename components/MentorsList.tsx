@@ -48,7 +48,7 @@ export default function MentorsList({ mentors }: Props) {
   }, [router, mentors])
 
   const countries = useMemo(
-    () => Array.from(new Set(mentors.flatMap((m) => m.countries.map((c) => c.country)))),
+    () => Array.from(new Set(mentors.flatMap((m) => (m.countries ?? []).map((c) => c.country)))),
     [mentors]
   )
 
@@ -59,7 +59,7 @@ export default function MentorsList({ mentors }: Props) {
           !m.detailed_bio.toLowerCase().includes(search.toLowerCase())) {
         return false
       }
-      if (country && !m.countries.some((c) => c.country === country)) return false
+      if (country && !(m.countries ?? []).some((c) => c.country === country)) return false
       if (expertise && !m.expertise_areas.some((a) => a.area === expertise)) return false
       if (onlyAccepting && !m.is_accepting_bookings) return false
       return true

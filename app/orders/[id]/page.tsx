@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder, fetchMentor, fetchMentorProfile, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch } from "@/lib/api"
-import { fetchChatMessages, fetchConversation, connectChat, closeConversation, type ChatConnection } from "@/lib/chat"
-import { Order, Mentor, ChatMessage } from "@/types"
+import { fetchOrder, fetchMentor, fetchMentorProfile, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument } from "@/lib/api"
+import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
+import { Order, Mentor, ChatMessage, OrderDocument } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -45,6 +45,9 @@ export default function OrderPage({ params }: Props) {
   const [role, setRole] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [sending, setSending] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [wsConnected, setWsConnected] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState("")
@@ -58,6 +61,9 @@ export default function OrderPage({ params }: Props) {
   const [closingChat, setClosingChat] = useState(false)
   const [closeError, setCloseError] = useState("")
   const [disputeWindowMs, setDisputeWindowMs] = useState<number | null>(null)
+  const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const docInputRef = useRef<HTMLInputElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<ChatConnection | null>(null)
 
@@ -119,6 +125,8 @@ export default function OrderPage({ params }: Props) {
         } catch {
           // ignore
         }
+        // Load order documents
+        fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => {})
       })
       .catch(() => router.replace("/orders"))
       .finally(() => setLoading(false))
@@ -137,6 +145,9 @@ export default function OrderPage({ params }: Props) {
       .catch(() => {
         // ignore — chat will still try to open
       })
+
+    // Mark conversation as read when opening
+    markChatRead(order.conversation_id).catch(() => {})
 
     // Honest source of truth: ask the backend whether the conversation is closed.
     fetchConversation(order.conversation_id)
@@ -233,12 +244,49 @@ export default function OrderPage({ params }: Props) {
     }
   }
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     const text = newMessage.trim()
-    if (!text || !wsRef.current) return
-    const ok = wsRef.current.send(text)
-    if (ok) setNewMessage("")
+    const hasFiles = attachedFiles.length > 0
+    if (!text && !hasFiles) return
+    if (!order?.conversation_id) return
+
+    // If files attached — send via HTTP POST (WS doesn't support binary)
+    // Otherwise use WS for instant delivery
+    if (hasFiles) {
+      setSending(true)
+      try {
+        await sendChatMessage(order.conversation_id, text, attachedFiles)
+        // WS will broadcast the message back — don't append manually
+        setNewMessage("")
+        setAttachedFiles([])
+      } catch {
+        // keep message/files so user can retry
+      } finally {
+        setSending(false)
+      }
+    } else {
+      if (!wsRef.current) return
+      const ok = wsRef.current.send(text)
+      if (ok) setNewMessage("")
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    // Max 3 files, 10MB each, PDF/JPEG/PNG only
+    const valid = files.filter((f) => {
+      if (f.size > 10 * 1024 * 1024) return false
+      if (!["application/pdf", "image/jpeg", "image/png"].includes(f.type)) return false
+      return true
+    })
+    setAttachedFiles((prev) => [...prev, ...valid].slice(0, 3))
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const removeFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleCloseChat = async () => {
@@ -634,6 +682,120 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
+            {/* Order documents */}
+            {["in_progress", "completed"].includes(order.order_status) && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                    <Icon name="folder" size={16} className="text-gray-400" />
+                    Файлы
+                  </h3>
+                  <span className="text-xs text-gray-400">{orderDocs.length} / 10</span>
+                </div>
+
+                {orderDocs.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {orderDocs.map((doc) => (
+                      <div key={doc.id} className="group">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <Icon
+                              name={doc.content_type.startsWith("image/") ? "image" : "description"}
+                              size={14}
+                              className={doc.content_type === "application/pdf" ? "text-red-500" : "text-gray-400"}
+                            />
+                          </div>
+                          <button
+                            onClick={async () => {
+                              // Refetch fresh presigned URLs (TTL 10 min)
+                              try {
+                                const fresh = await fetchOrderDocuments(order.id)
+                                setOrderDocs(fresh)
+                                const updated = fresh.find((d) => d.id === doc.id)
+                                if (updated) window.open(updated.download_url, "_blank")
+                              } catch {
+                                window.open(doc.download_url, "_blank")
+                              }
+                            }}
+                            className="flex-1 min-w-0 text-xs text-gray-700 hover:text-indigo-600 transition-colors truncate font-medium text-left"
+                          >
+                            {doc.original_filename}
+                          </button>
+                          <span className="text-[10px] text-gray-300 flex-shrink-0">
+                            {doc.size_bytes < 1024 * 1024
+                              ? `${Math.round(doc.size_bytes / 1024)} KB`
+                              : `${(doc.size_bytes / (1024 * 1024)).toFixed(1)} MB`}
+                          </span>
+                          {currentUserId === doc.uploaded_by && (
+                            <button
+                              onClick={() => {
+                                deleteOrderDocument(order.id, doc.id)
+                                  .then(() => setOrderDocs((prev) => prev.filter((d) => d.id !== doc.id)))
+                                  .catch(() => {})
+                              }}
+                              className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all flex-shrink-0"
+                            >
+                              <Icon name="close" size={14} />
+                            </button>
+                          )}
+                        </div>
+                        {doc.description && (
+                          <p className="text-[10px] text-gray-400 mt-0.5 ml-9 truncate">{doc.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload with description */}
+                {orderDocs.length >= 10 ? (
+                  <p className="text-xs text-gray-400 text-center py-2">
+                    Достигнут лимит — 10 файлов на заказ
+                  </p>
+                ) : (
+                  <>
+                    <input
+                      ref={docInputRef}
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        if (file.size > 20 * 1024 * 1024) {
+                          alert("Файл слишком большой. Максимум 20 MB.")
+                          return
+                        }
+                        const desc = prompt("Описание файла (необязательно):", "")
+                        setUploadingDoc(true)
+                        try {
+                          const doc = await uploadOrderDocument(order.id, file, desc || undefined)
+                          setOrderDocs((prev) => [doc, ...prev])
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "Не удалось загрузить")
+                        } finally {
+                          setUploadingDoc(false)
+                          if (docInputRef.current) docInputRef.current.value = ""
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => docInputRef.current?.click()}
+                      disabled={uploadingDoc}
+                      className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 font-medium py-2 rounded-lg border border-dashed border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50"
+                    >
+                      {uploadingDoc ? (
+                        <div className="w-3.5 h-3.5 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Icon name="upload_file" size={14} />
+                      )}
+                      {uploadingDoc ? "Загрузка..." : "Загрузить файл"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
           </div>
 
           {/* Chat */}
@@ -693,16 +855,83 @@ export default function OrderPage({ params }: Props) {
                         )
                       }
 
+                      const hasAttachments = msg.attachments && msg.attachments.length > 0
+
                       return (
                         <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[75%] ${isOwn ? "items-end" : "items-start"} flex flex-col gap-1`}>
-                            <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                              isOwn
-                                ? "bg-indigo-600 text-white rounded-br-sm"
-                                : "bg-gray-100 text-gray-800 rounded-bl-sm"
-                            }`}>
-                              {msg.text}
-                            </div>
+                            {msg.text && (
+                              <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                                isOwn
+                                  ? "bg-indigo-600 text-white rounded-br-sm"
+                                  : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                              }`}>
+                                {msg.text}
+                              </div>
+                            )}
+                            {hasAttachments && (
+                              <div className="flex flex-col gap-1.5 mt-0.5">
+                                {msg.attachments!.map((att) => {
+                                  const isImage = att.content_type.startsWith("image/")
+                                  const sizeLabel = att.size_bytes < 1024 * 1024
+                                    ? `${Math.round(att.size_bytes / 1024)} KB`
+                                    : `${(att.size_bytes / (1024 * 1024)).toFixed(1)} MB`
+
+                                  if (isImage) {
+                                    return (
+                                      <a
+                                        key={att.id}
+                                        href={att.download_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors max-w-[240px]"
+                                      >
+                                        <img
+                                          src={att.download_url}
+                                          alt={att.original_filename}
+                                          className="w-full max-h-[200px] object-cover"
+                                          loading="lazy"
+                                        />
+                                        <div className="px-2.5 py-1.5 bg-white flex items-center gap-1.5">
+                                          <Icon name="image" size={12} className="text-gray-400" />
+                                          <span className="text-xs text-gray-500 truncate">{att.original_filename}</span>
+                                          <span className="text-[10px] text-gray-300 ml-auto flex-shrink-0">{sizeLabel}</span>
+                                        </div>
+                                      </a>
+                                    )
+                                  }
+
+                                  return (
+                                    <a
+                                      key={att.id}
+                                      href={att.download_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors ${
+                                        isOwn
+                                          ? "border-indigo-400/30 bg-indigo-500/20 hover:bg-indigo-500/30"
+                                          : "border-gray-200 bg-white hover:border-gray-300"
+                                      }`}
+                                    >
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                        isOwn ? "bg-white/20" : "bg-red-50"
+                                      }`}>
+                                        <Icon name="description" size={16} className={isOwn ? "text-white" : "text-red-500"} />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-medium truncate ${isOwn ? "text-white" : "text-gray-900"}`}>
+                                          {att.original_filename}
+                                        </p>
+                                        <p className={`text-[10px] ${isOwn ? "text-indigo-200" : "text-gray-400"}`}>
+                                          PDF · {sizeLabel}
+                                        </p>
+                                      </div>
+                                      <Icon name="download" size={16} className={isOwn ? "text-white/60" : "text-gray-400"} />
+                                    </a>
+                                  )
+                                })}
+                              </div>
+                            )}
                             <span className="text-xs text-gray-300 px-1">{formatTime(msg.created_at)}</span>
                           </div>
                         </div>
@@ -724,24 +953,63 @@ export default function OrderPage({ params }: Props) {
                       </p>
                     </div>
                   ) : (
-                    <div className="px-4 py-4 border-t border-gray-50 flex-shrink-0">
-                      <form onSubmit={handleSend} className="flex gap-3">
+                    <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0">
+                      {/* Attached files preview */}
+                      {attachedFiles.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {attachedFiles.map((f, i) => (
+                            <div key={i} className="flex items-center gap-1.5 bg-gray-100 rounded-lg px-2.5 py-1.5 text-xs text-gray-600">
+                              <Icon name={f.type === "application/pdf" ? "description" : "image"} size={14} className="text-gray-400" />
+                              <span className="max-w-[120px] truncate">{f.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(i)}
+                                className="text-gray-400 hover:text-red-500 transition-colors ml-0.5"
+                              >
+                                <Icon name="close" size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <form onSubmit={handleSend} className="flex gap-2">
+                        {/* Hidden file input */}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="application/pdf,image/jpeg,image/png"
+                          multiple
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                        {/* Attach button */}
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={!wsConnected || attachedFiles.length >= 3}
+                          className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
+                          title="Прикрепить файл (PDF, JPEG, PNG)"
+                        >
+                          <Icon name="attach_file" size={20} />
+                        </button>
                         <input
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Написать сообщение..."
                           className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                          disabled={!wsConnected}
+                          disabled={!wsConnected || sending}
                         />
                         <button
                           type="submit"
-                          disabled={!wsConnected || !newMessage.trim()}
-                          className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-40 flex-shrink-0"
+                          disabled={!wsConnected || sending || (!newMessage.trim() && attachedFiles.length === 0)}
+                          className="bg-gray-900 text-white px-4 py-2.5 rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-40 flex-shrink-0"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
+                          {sending ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Icon name="send" size={20} />
+                          )}
                         </button>
                       </form>
                       <p className="text-xs text-gray-300 mt-2 text-center">

@@ -192,6 +192,42 @@ export async function completeOrder(id: number): Promise<Order> {
   return res.json()
 }
 
+// ─── Order Documents ────────────────────────────────────────────────────────
+
+export async function fetchOrderDocuments(orderId: number): Promise<import("@/types").OrderDocument[]> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function uploadOrderDocument(orderId: number, file: File, description?: string): Promise<import("@/types").OrderDocument> {
+  const formData = new FormData()
+  formData.append("file", file)
+  if (description) formData.append("description", description)
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/`, {
+    method: "POST",
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось загрузить документ")
+  }
+  return res.json()
+}
+
+export async function deleteOrderDocument(orderId: number, docId: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/${docId}/`, {
+    method: "DELETE",
+  })
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось удалить документ")
+  }
+}
+
+// ─── Disputes ───────────────────────────────────────────────────────────────
+
 export async function createDispute(orderId: number, reason: string): Promise<Dispute> {
   const res = await authFetch(`${BASE_URL}/orders/${orderId}/dispute/`, {
     method: "POST",
@@ -368,6 +404,65 @@ async function refreshAccessToken(): Promise<string> {
  * fetch wrapper that injects Bearer token and transparently retries on 401
  * via refresh token flow.
  */
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: number
+  kind: string
+  title: string
+  url: string
+  payload: Record<string, unknown>
+  is_read: boolean
+  created_at: string
+}
+
+export async function fetchNotifications(unreadOnly = false): Promise<NotificationItem[]> {
+  const url = unreadOnly
+    ? `${BASE_URL}/notifications/?unread=true`
+    : `${BASE_URL}/notifications/`
+  const res = await authFetch(url)
+  if (!res.ok) throw new Error("Failed to fetch notifications")
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  const res = await authFetch(`${BASE_URL}/notifications/unread_count/`)
+  if (!res.ok) return 0
+  const data = await res.json()
+  return data.count ?? 0
+}
+
+export async function markNotificationsRead(ids?: number[]): Promise<void> {
+  const body = ids ? { ids } : { all: true }
+  await authFetch(`${BASE_URL}/notifications/mark_read/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+// ─── Chat unread ────────────────────────────────────────────────────────────
+
+export interface ChatUnreadSummary {
+  total: number
+  conversations: Record<string, number>
+}
+
+export async function fetchChatUnread(): Promise<ChatUnreadSummary> {
+  const res = await authFetch(`${BASE_URL}/chat/unread/`)
+  if (!res.ok) return { total: 0, conversations: {} }
+  return res.json()
+}
+
+export async function markChatRead(conversationId: number): Promise<void> {
+  await authFetch(`${BASE_URL}/chat/${conversationId}/mark_read/`, {
+    method: "POST",
+  })
+}
+
+// ─── Auth helpers ───────────────────────────────────────────────────────────
+
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const buildHeaders = (token: string): HeadersInit => {
     const headers = new Headers(init.headers)

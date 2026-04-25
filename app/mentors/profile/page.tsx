@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { fetchMentorProfile, updateMentorProfile } from "@/lib/api"
+import { fetchMentorProfile, updateMentorProfile, authFetch } from "@/lib/api"
 import { COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { MentorProfile, ExpertiseArea } from "@/types"
 import BackButton from "@/components/BackButton"
+import Icon from "@/components/Icon"
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
 const EXPERTISE_OPTIONS = [
   { value: "admission", label: "Поступление" },
@@ -49,6 +52,9 @@ export default function MentorProfilePage() {
   const [linkedin, setLinkedin] = useState("")
   const [expertiseAreas, setExpertiseAreas] = useState<string[]>([])
   const [payoutDetails, setPayoutDetails] = useState("")
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   const CONSULTATION_MIN = 80
   const CONSULTATION_MAX = 2000
@@ -68,6 +74,7 @@ export default function MentorProfilePage() {
         setLinkedin(p.linkedin_url ?? "")
         setExpertiseAreas(p.expertise_areas.map((e) => e.area))
         setPayoutDetails(p.payout_details ?? "")
+        setProfilePhoto(p.profile_photo ?? null)
       })
       .catch(() => setError("Не удалось загрузить профиль"))
       .finally(() => setLoading(false))
@@ -77,6 +84,30 @@ export default function MentorProfilePage() {
     setExpertiseAreas((prev) =>
       prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]
     )
+  }
+
+  const handlePhotoUpload = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Фото не должно превышать 5 МБ")
+      return
+    }
+    setUploadingPhoto(true)
+    setError("")
+    try {
+      const formData = new FormData()
+      formData.append("profile_photo", file)
+      const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, {
+        method: "PATCH",
+        body: formData,
+      })
+      if (!res.ok) throw new Error("Не удалось загрузить фото")
+      const data = await res.json()
+      setProfilePhoto(data.profile_photo ?? null)
+    } catch {
+      setError("Ошибка при загрузке фото")
+    } finally {
+      setUploadingPhoto(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,8 +146,8 @@ export default function MentorProfilePage() {
     )
   }
 
-  const filledFields = [fullName, countries.length > 0, school, major, bio, grant, expertiseAreas.length > 0].filter(Boolean).length
-  const completionPercent = Math.round((filledFields / 7) * 100)
+  const filledFields = [profilePhoto, fullName, countries.length > 0, school, major, bio, grant, expertiseAreas.length > 0].filter(Boolean).length
+  const completionPercent = Math.round((filledFields / 8) * 100)
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -140,6 +171,53 @@ export default function MentorProfilePage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Avatar upload */}
+          <div className="flex flex-col items-center">
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handlePhotoUpload(file)
+                e.target.value = ""
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="relative w-24 h-24 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50"
+            >
+              {profilePhoto ? (
+                <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-3xl">
+                    {fullName.trim().charAt(0).toUpperCase() || "?"}
+                  </span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Icon name="photo_camera" size={28} className="text-white" />
+                </span>
+              </div>
+              {uploadingPhoto && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </button>
+            <p className="text-xs text-gray-400 mt-2">
+              {profilePhoto ? "Нажмите чтобы изменить фото" : "Загрузите фото профиля"}
+            </p>
+            {!profilePhoto && (
+              <p className="text-xs text-red-500 mt-1 font-medium">Обязательно для верификации</p>
+            )}
+          </div>
+
           {/* Basic info */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">Основная информация</h2>

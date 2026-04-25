@@ -40,11 +40,13 @@ export function countryLabel(code: string): string {
 }
 
 // Backend returns `{ country: string }[]` — these helpers take that shape.
-export function countriesFlagsInline(countries: { country: string }[]): string {
+export function countriesFlagsInline(countries?: { country: string }[]): string {
+  if (!countries?.length) return "🌍"
   return countries.map((c) => countryFlag(c.country)).join(" ")
 }
 
-export function countriesLabelInline(countries: { country: string }[]): string {
+export function countriesLabelInline(countries?: { country: string }[]): string {
+  if (!countries?.length) return "—"
   return countries
     .map((c) => `${countryFlag(c.country)} ${countryLabel(c.country)}`)
     .join(", ")

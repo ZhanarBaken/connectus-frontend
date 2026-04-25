@@ -143,6 +143,7 @@ export const MOCK_STUDENT_PROFILE: StudentProfile = {
   full_name: "Айгерим Бекова",
   age: 18,
   current_school_or_university: "НИШ Алматы",
+  profile_photo: null,
   is_public: true,
 }
 

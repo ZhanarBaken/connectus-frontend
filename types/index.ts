@@ -112,6 +112,7 @@ export interface StudentProfile {
   full_name: string
   age: number
   current_school_or_university: string
+  profile_photo: string | null
   is_public: boolean
 }
 
@@ -154,6 +155,25 @@ export interface Dispute {
   resolution: string | null
 }
 
+export interface OrderDocument {
+  id: number
+  original_filename: string
+  content_type: string
+  size_bytes: number
+  description: string
+  download_url: string
+  uploaded_by: number
+  uploaded_at: string
+}
+
+export interface ChatAttachment {
+  id: number
+  original_filename: string
+  content_type: string
+  size_bytes: number
+  download_url: string
+}
+
 export interface ChatMessage {
   id: number
   sender: number | null
@@ -161,4 +181,5 @@ export interface ChatMessage {
   is_system?: boolean
   text: string
   created_at: string
+  attachments?: ChatAttachment[]
 }

@@ -8,7 +8,7 @@
 //
 // SSR-safe — only call from "use client" components.
 
-import { ChatMessage } from "@/types"
+import { ChatAttachment, ChatMessage } from "@/types"
 import { authFetch } from "./api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -89,6 +89,7 @@ interface WsMessageEvent {
   is_system?: boolean
   text: string
   created_at: string
+  attachments?: ChatAttachment[]
 }
 
 /**
@@ -99,6 +100,31 @@ interface WsMessageEvent {
  *
  * Returns a connection handle. Call close() when leaving the page.
  */
+/**
+ * Send a message with optional file attachments via HTTP POST.
+ * WS will broadcast the message to all participants including sender.
+ */
+export async function sendChatMessage(
+  conversationId: number,
+  text: string,
+  files?: File[],
+): Promise<ChatMessage> {
+  const formData = new FormData()
+  if (text) formData.append("text", text)
+  if (files) {
+    for (const f of files) formData.append("files", f)
+  }
+  const res = await authFetch(`${API_BASE}/chat/${conversationId}/messages/`, {
+    method: "POST",
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отправить сообщение")
+  }
+  return res.json()
+}
+
 export function connectChat(
   conversationId: number,
   handlers: {
@@ -133,6 +159,7 @@ export function connectChat(
         is_system: msg.is_system,
         text: msg.text,
         created_at: msg.created_at,
+        attachments: msg.attachments,
       })
     } catch {
       // ignore malformed payloads

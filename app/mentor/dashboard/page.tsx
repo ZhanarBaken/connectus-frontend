@@ -116,6 +116,7 @@ export default function MentorDashboard() {
     .reduce((sum, o) => sum + parseFloat(o.mentor_payout_amount), 0)
 
   const profileCompletion = [
+    profile.profile_photo,
     profile.full_name,
     profile.school_or_university,
     profile.countries.length > 0,
@@ -124,7 +125,7 @@ export default function MentorDashboard() {
     profile.grant_or_scholarship,
   ].filter(Boolean).length
 
-  const completionPercent = Math.round((profileCompletion / 6) * 100)
+  const completionPercent = Math.round((profileCompletion / 7) * 100)
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -198,12 +199,18 @@ export default function MentorDashboard() {
                   </Link>
                   <button
                     onClick={handleSubmit}
-                    disabled={submitting || completionPercent < 50}
+                    disabled={submitting || completionPercent < 50 || !profile.profile_photo}
                     className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting ? "Отправляем..." : "Отправить на проверку"}
                   </button>
                 </div>
+                {!profile.profile_photo && (
+                  <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                    <Icon name="photo_camera" size={14} />
+                    Загрузите фото профиля перед отправкой на проверку
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -455,6 +462,7 @@ export default function MentorDashboard() {
                 {[
                   { href: "/mentors/profile", icon: "person", label: "Редактировать профиль" },
                   { href: "/mentors/services", icon: "description", label: "Управлять услугами" },
+                  { href: "/mentors/documents", icon: "folder", label: "Документы верификации" },
                   { href: `/mentors/${profile.id}`, icon: "visibility", label: "Предпросмотр профиля" },
                 ].map((item) => (
                   <Link

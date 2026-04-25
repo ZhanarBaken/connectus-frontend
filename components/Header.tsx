@@ -1,18 +1,36 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
+import { fetchChatUnread } from "@/lib/api"
 import Icon from "./Icon"
+import NotificationBell from "./NotificationBell"
 
 export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const [role, setRole] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [chatUnread, setChatUnread] = useState(0)
 
   useEffect(() => {
     setRole(localStorage.getItem("role"))
+  }, [pathname])
+
+  // Poll chat unread count
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+    if (!token) return
+    let active = true
+    const poll = () => {
+      fetchChatUnread()
+        .then((d) => { if (active) setChatUnread(d.total) })
+        .catch(() => {})
+    }
+    poll()
+    const id = setInterval(poll, 30_000)
+    return () => { active = false; clearInterval(id) }
   }, [pathname])
 
   const handleLogout = () => {
@@ -32,21 +50,22 @@ export default function Header() {
     href: string
     label: string
     icon?: string
-    matchPrefixes?: string[]  // additional pathname prefixes considered "active"
+    matchPrefixes?: string[]
+    badge?: number
   }
 
   const mentorNav: NavLink[] = [
     { href: "/mentor/dashboard", label: "Кабинет", icon: "dashboard" },
     { href: "/mentors/profile", label: "Профиль", icon: "person" },
     { href: "/mentors/services", label: "Услуги", icon: "description" },
-    { href: "/orders", label: "Клиенты", icon: "people", matchPrefixes: ["/orders"] },
+    { href: "/orders", label: "Клиенты", icon: "people", matchPrefixes: ["/orders"], badge: chatUnread || undefined },
     { href: "/settings", label: "Настройки", icon: "settings" },
   ]
 
   const studentNav: NavLink[] = [
     { href: "/student/dashboard", label: "Кабинет", icon: "dashboard" },
     { href: "/mentors", label: "Найти ментора", icon: "search" },
-    { href: "/messages", label: "Сообщения", icon: "chat" },
+    { href: "/messages", label: "Сообщения", icon: "chat", badge: chatUnread || undefined },
     { href: "/students/profile", label: "Профиль", icon: "person" },
     { href: "/settings", label: "Настройки", icon: "settings" },
   ]
@@ -101,6 +120,11 @@ export default function Header() {
                     />
                   )}
                   <span>{link.label}</span>
+                  {link.badge != null && link.badge > 0 && (
+                    <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                      {link.badge > 99 ? "99+" : link.badge}
+                    </span>
+                  )}
                 </Link>
               )
             })}
@@ -120,14 +144,17 @@ export default function Header() {
         )}
 
         {/* Auth buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2">
           {role ? (
-            <button
-              onClick={handleLogout}
-              className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
-            >
-              Выйти
-            </button>
+            <>
+              <NotificationBell />
+              <button
+                onClick={handleLogout}
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors px-2 py-2"
+              >
+                Выйти
+              </button>
+            </>
           ) : (
             <>
               <Link
@@ -174,7 +201,12 @@ export default function Header() {
                 }`}
               >
                 {link.icon && <Icon name={link.icon} size={18} filled={active} />}
-                <span>{link.label}</span>
+                <span className="flex-1">{link.label}</span>
+                {link.badge != null && link.badge > 0 && (
+                  <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {link.badge > 99 ? "99+" : link.badge}
+                  </span>
+                )}
               </Link>
             )
           })}
