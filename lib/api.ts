@@ -40,10 +40,15 @@ export async function fetchMentor(id: number): Promise<Mentor> {
 
 // ─── Auth: current user ───────────────────────────────────────────────────────
 
-export async function fetchMe(token: string): Promise<{ id: number; email: string; role: string }> {
-  const res = await fetch(`${BASE_URL}/auth/me/`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+export async function fetchMe(token?: string): Promise<import("@/types").User> {
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  } else {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+    if (stored) headers.Authorization = `Bearer ${stored}`
+  }
+  const res = await fetch(`${BASE_URL}/auth/me/`, { headers })
   if (!res.ok) throw new Error("Failed to fetch user")
   return res.json()
 }
@@ -76,8 +81,8 @@ export async function submitMentorProfile(): Promise<void> {
   })
   if (!res.ok) {
     const err = await res.json()
-    const first = Object.values(err)[0]
-    throw new Error(Array.isArray(first) ? first[0] : String(first))
+    // Throw raw JSON so the dashboard can show field-level errors
+    throw new Error(JSON.stringify(err))
   }
 }
 
@@ -404,6 +409,169 @@ async function refreshAccessToken(): Promise<string> {
  * fetch wrapper that injects Bearer token and transparently retries on 401
  * via refresh token flow.
  */
+// ─── Telegram auth ──────────────────────────────────────────────────────────
+
+export async function telegramStart(role: string): Promise<{ token: string; bot_url: string }> {
+  const res = await fetch(`${BASE_URL}/auth/telegram/start/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось начать авторизацию через Telegram")
+  }
+  return res.json()
+}
+
+export async function telegramFinalize(token: string): Promise<{ user_id: number; created: boolean; access: string; refresh: string }> {
+  const res = await fetch(`${BASE_URL}/auth/telegram/finalize/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось завершить авторизацию через Telegram")
+  }
+  return res.json()
+}
+
+export async function telegramLinkStart(): Promise<{ token: string; bot_url: string }> {
+  const res = await authFetch(`${BASE_URL}/auth/telegram/link/start/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось начать привязку Telegram")
+  }
+  return res.json()
+}
+
+export async function telegramLinkFinalize(token: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/telegram/link/finalize/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось завершить привязку Telegram")
+  }
+}
+
+export async function telegramUnlink(): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/telegram/unlink/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать Telegram")
+  }
+}
+
+// ─── Google auth ────────────────────────────────────────────────────────────
+
+export async function googleAuth(idToken: string, role?: string): Promise<{ access: string; refresh: string; created?: boolean }> {
+  const body: Record<string, string> = { id_token: idToken }
+  if (role) body.role = role
+  const res = await fetch(`${BASE_URL}/auth/google/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (res.status === 409) {
+    throw new Error("Этот email уже зарегистрирован. Подтвердите email и войдите через пароль.")
+  }
+  if (res.status === 503) {
+    throw new Error("Google авторизация не настроена на сервере")
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось войти через Google")
+  }
+  return res.json()
+}
+
+export async function googleLink(idToken: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/google/link/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось привязать Google")
+  }
+}
+
+export async function googleUnlink(): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/google/unlink/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать Google")
+  }
+}
+
+// ─── Email management ───────────────────────────────────────────────────────
+
+export async function setEmail(email: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/email/set/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.email?.[0] || err.detail || "Не удалось установить email")
+  }
+}
+
+export async function changeEmail(email: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/email/change/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.email?.[0] || err.detail || "Не удалось сменить email")
+  }
+}
+
+export async function unlinkEmail(): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/email/unlink/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать email")
+  }
+}
+
+export async function setPassword(password: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/password/set/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  })
+  if (res.status === 403) {
+    // Re-auth required — refresh token and retry
+    const newToken = await refreshAccessToken()
+    const retry = await fetch(`${BASE_URL}/auth/password/set/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${newToken}`,
+      },
+      body: JSON.stringify({ password }),
+    })
+    if (!retry.ok) {
+      const err = await retry.json().catch(() => ({}))
+      throw new Error(err.detail || "Не удалось установить пароль")
+    }
+    return
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.password?.[0] || err.detail || "Не удалось установить пароль")
+  }
+}
+
 // ─── Notifications ──────────────────────────────────────────────────────────
 
 export interface NotificationItem {

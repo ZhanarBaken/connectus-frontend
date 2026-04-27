@@ -22,6 +22,10 @@ export interface User {
   email: string
   role: Role
   email_verified: boolean
+  has_telegram: boolean
+  telegram_username: string | null
+  has_google: boolean
+  google_email_at_signup: string | null
   created_at: string
 }
 

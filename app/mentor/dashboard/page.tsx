@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation, fetchMe } from "@/lib/api"
+import { User } from "@/types"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countriesLabelInline } from "@/lib/countries"
 import { MentorProfile, MentorService, Order } from "@/types"
@@ -42,6 +43,7 @@ export default function MentorDashboard() {
   const [services, setServices] = useState<MentorService[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
+  const [me, setMe] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -60,6 +62,8 @@ export default function MentorDashboard() {
         setServices(s)
         setOrders(o)
         fetchMentorReviews(p.id).then(setReviews)
+        const token = localStorage.getItem("access_token")
+        if (token) fetchMe(token).then(setMe).catch(() => {})
       })
       .catch(() => router.replace("/auth/login"))
       .finally(() => setLoading(false))
@@ -78,15 +82,37 @@ export default function MentorDashboard() {
     }
   }
 
+  const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({})
+
   const handleSubmit = async () => {
     setSubmitting(true)
     setSubmitError("")
+    setSubmitErrors({})
     try {
       await submitMentorProfile()
       const updated = await fetchMentorProfile()
       setProfile(updated)
     } catch (e: unknown) {
-      setSubmitError(e instanceof Error ? e.message : "Ошибка при отправке")
+      if (e instanceof Error) {
+        // Try to parse field-level errors from backend
+        try {
+          const parsed = JSON.parse(e.message)
+          if (typeof parsed === "object") {
+            const errors: Record<string, string> = {}
+            for (const [key, val] of Object.entries(parsed)) {
+              errors[key] = Array.isArray(val) ? val[0] : String(val)
+            }
+            setSubmitErrors(errors)
+            setSubmitError("Заполните обязательные поля перед отправкой")
+          } else {
+            setSubmitError(e.message)
+          }
+        } catch {
+          setSubmitError(e.message)
+        }
+      } else {
+        setSubmitError("Ошибка при отправке")
+      }
     } finally {
       setSubmitting(false)
     }
@@ -149,6 +175,32 @@ export default function MentorDashboard() {
                 {profile.countries.length > 0 && ` · ${countriesLabelInline(profile.countries)}`}
               </p>
             )}
+            {/* Auth badges */}
+            {me && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {me.has_telegram && (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-sky-50 text-sky-700 font-medium px-2 py-0.5 rounded-full">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                    Telegram
+                  </span>
+                )}
+                {me.has_google && (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-full">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/></svg>
+                    Google
+                  </span>
+                )}
+                {me.email_verified ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded-full">
+                    <Icon name="mark_email_read" size={12} /> Email
+                  </span>
+                ) : me.email ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 font-medium px-2 py-0.5 rounded-full">
+                    <Icon name="mail" size={12} /> Подтверди email
+                  </span>
+                ) : null}
+              </div>
+            )}
           </div>
           <Link
             href={profile.is_banned ? "#" : "/mentors/profile"}
@@ -208,6 +260,41 @@ export default function MentorDashboard() {
                   />
                 </div>
                 {submitError && <p className="text-red-500 text-sm mt-3">{submitError}</p>}
+
+                {/* Checklist for submit errors */}
+                {Object.keys(submitErrors).length > 0 && (
+                  <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-red-800 mb-2">Что нужно исправить:</p>
+                    <ul className="space-y-1">
+                      {Object.entries(submitErrors).map(([key, msg]) => (
+                        <li key={key} className="text-xs text-red-600 flex items-center gap-1.5">
+                          <Icon name="close" size={12} className="text-red-400" />
+                          {key === "email" ? "Email: " : key === "telegram" ? "Telegram: " : ""}
+                          {msg}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Pre-submit checklist */}
+                {me && (
+                  <div className="mt-3 space-y-1">
+                    <div className={`text-xs flex items-center gap-1.5 ${me.email && me.email_verified ? "text-emerald-600" : "text-red-500"}`}>
+                      <Icon name={me.email && me.email_verified ? "check_circle" : "cancel"} size={14} filled />
+                      Email {me.email && me.email_verified ? "подтверждён" : "не подтверждён"}
+                    </div>
+                    <div className={`text-xs flex items-center gap-1.5 ${me.has_telegram ? "text-emerald-600" : "text-red-500"}`}>
+                      <Icon name={me.has_telegram ? "check_circle" : "cancel"} size={14} filled />
+                      Telegram {me.has_telegram ? "привязан" : "не привязан"}
+                    </div>
+                    <div className={`text-xs flex items-center gap-1.5 ${profile.profile_photo ? "text-emerald-600" : "text-red-500"}`}>
+                      <Icon name={profile.profile_photo ? "check_circle" : "cancel"} size={14} filled />
+                      Фото профиля {profile.profile_photo ? "загружено" : "не загружено"}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3 mt-4">
                   <Link
                     href="/mentors/profile"
@@ -223,12 +310,6 @@ export default function MentorDashboard() {
                     {submitting ? "Отправляем..." : "Отправить на проверку"}
                   </button>
                 </div>
-                {!profile.profile_photo && (
-                  <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                    <Icon name="photo_camera" size={14} />
-                    Загрузите фото профиля перед отправкой на проверку
-                  </p>
-                )}
               </div>
             )}
           </div>

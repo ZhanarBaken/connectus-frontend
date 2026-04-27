@@ -25,6 +25,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200&display=swap"
         />
+        {/* Google Sign-In SDK */}
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className={`${geist.className} ${instrumentSerif.variable}`}>
         <Header />
