@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { telegramFinalize, fetchMe } from "@/lib/api"
 import Icon from "@/components/Icon"
+import Logo from "@/components/Logo"
 
 type Status = "loading" | "success" | "error"
 
@@ -65,9 +66,7 @@ function TgCallbackContent() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 justify-center">
-            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">C</span>
-            </div>
+            <Logo size={32} className="text-gray-900" />
             <span className="text-xl font-bold text-gray-900">Connectus</span>
           </Link>
         </div>

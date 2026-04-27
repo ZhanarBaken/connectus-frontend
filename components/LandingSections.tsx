@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { MentorCard } from "@/types"
 import Icon from "./Icon"
+import Logo from "./Logo"
 import ScrollReveal from "./ScrollReveal"
 import AnimatedCounter from "./AnimatedCounter"
 import FloatingOrb from "./FloatingOrb"
@@ -478,9 +479,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
           <div className="grid sm:grid-cols-4 gap-10 mb-12">
             <div className="sm:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">C</span>
-                </div>
+                <Logo size={28} className="text-white" />
                 <span className="text-white font-bold text-lg">Connectus</span>
               </div>
               <p className="text-sm leading-relaxed">

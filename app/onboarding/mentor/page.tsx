@@ -6,6 +6,7 @@ import { updateMentorProfile } from "@/lib/api"
 import { COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { ExpertiseArea } from "@/types"
 import Icon from "@/components/Icon"
+import Logo from "@/components/Logo"
 
 const STEPS = ["О себе", "Университет", "Экспертиза"]
 
@@ -75,9 +76,7 @@ export default function MentorOnboarding() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 justify-center mb-2">
-            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">C</span>
-            </div>
+            <Logo size={32} className="text-gray-900" />
             <span className="text-xl font-bold text-gray-900">Connectus</span>
           </div>
           <p className="text-gray-500 text-sm">Создай профиль — студенты увидят тебя после проверки</p>

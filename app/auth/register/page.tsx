@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { register, resendVerification, googleAuth, telegramStart, fetchMe } from "@/lib/api"
 import Icon from "@/components/Icon"
+import Logo from "@/components/Logo"
 
 type Role = "student" | "mentor"
 
@@ -116,9 +117,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2 justify-center">
-              <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold">C</span>
-              </div>
+              <Logo size={32} className="text-gray-900" />
               <span className="text-xl font-bold text-gray-900">Connectus</span>
             </Link>
           </div>
@@ -166,9 +165,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 justify-center">
-            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">C</span>
-            </div>
+            <Logo size={32} className="text-gray-900" />
             <span className="text-xl font-bold text-gray-900">Connectus</span>
           </Link>
         </div>

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateStudentProfile } from "@/lib/api"
+import Logo from "@/components/Logo"
 
 const STEPS = ["Основное", "Учёба"]
 
@@ -43,9 +44,7 @@ export default function StudentOnboarding() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 justify-center mb-2">
-            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">C</span>
-            </div>
+            <Logo size={32} className="text-gray-900" />
             <span className="text-xl font-bold text-gray-900">Connectus</span>
           </div>
           <p className="text-gray-500 text-sm">Расскажи о себе — это займёт минуту</p>

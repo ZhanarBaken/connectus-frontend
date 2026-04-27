@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { fetchChatUnread } from "@/lib/api"
 import Icon from "./Icon"
+import Logo from "./Logo"
 import NotificationBell from "./NotificationBell"
 
 export default function Header() {
@@ -90,9 +91,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
         {/* Logo */}
         <Link href={homeHref} className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">C</span>
-          </div>
+          <Logo size={32} className="text-gray-900" />
           <span className="text-xl font-bold text-gray-900">Connectus</span>
         </Link>
 

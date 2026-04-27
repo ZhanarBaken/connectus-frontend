@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { login, fetchMe, resendVerification, googleAuth, telegramStart } from "@/lib/api"
 import Icon from "@/components/Icon"
+import Logo from "@/components/Logo"
 
 function LoginForm() {
   const router = useRouter()
@@ -114,9 +115,7 @@ function LoginForm() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 justify-center">
-            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">C</span>
-            </div>
+            <Logo size={32} className="text-gray-900" />
             <span className="text-xl font-bold text-gray-900">Connectus</span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-2">Добро пожаловать</h1>
