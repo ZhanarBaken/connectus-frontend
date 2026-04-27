@@ -58,9 +58,9 @@ export default function Header() {
   const mentorNav: NavLink[] = [
     { href: "/mentor/dashboard", label: "Кабинет", icon: "dashboard" },
     { href: "/mentors/profile", label: "Профиль", icon: "person" },
+    { href: "/mentors/schedule", label: "Расписание", icon: "calendar_month" },
     { href: "/mentors/services", label: "Услуги", icon: "description" },
     { href: "/orders", label: "Клиенты", icon: "people", matchPrefixes: ["/orders"], badge: chatUnread || undefined },
-    { href: "/settings", label: "Настройки", icon: "settings" },
   ]
 
   const studentNav: NavLink[] = [

@@ -8,6 +8,7 @@ import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
 import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
+import BookingCalendar from "@/components/BookingCalendar"
 import Icon from "@/components/Icon"
 
 const EXPERTISE_LABELS: Record<string, string> = {
@@ -30,6 +31,7 @@ export default function MentorPage({ params }: Props) {
   const [orderingServiceId, setOrderingServiceId] = useState<number | null>(null)
   const [orderError, setOrderError] = useState("")
   const [reviews, setReviews] = useState<Review[]>([])
+  const [bookingService, setBookingService] = useState<MentorService | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -330,11 +332,11 @@ export default function MentorPage({ params }: Props) {
                               </span>
                             ) : (
                               <button
-                                onClick={() => handleOrder(service.id)}
+                                onClick={() => setBookingService(service)}
                                 disabled={orderingServiceId === service.id}
-                                className="mt-1 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                className="mt-1 text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
                               >
-                                {orderingServiceId === service.id ? "Заказываем..." : "Заказать"}
+                                {orderingServiceId === service.id ? "Заказываем..." : "Записаться"}
                               </button>
                             )}
                           </div>
@@ -442,6 +444,43 @@ export default function MentorPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Booking calendar modal */}
+      {bookingService && mentor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setBookingService(null)}
+          />
+          <div className="relative w-full max-w-md">
+            <div className="mb-3 bg-white rounded-xl px-4 py-3 border border-gray-200">
+              <p className="text-sm font-semibold text-gray-900">{bookingService.title}</p>
+              <p className="text-xs text-gray-400">
+                {bookingService.duration_minutes} мин · {Number(bookingService.price).toLocaleString("ru-RU")} ₸
+              </p>
+            </div>
+            <BookingCalendar
+              mentorId={mentor.id}
+              durationMinutes={bookingService.duration_minutes}
+              onSelect={async (date, time) => {
+                // TODO: pass date+time to backend when schedule API is ready
+                // For now, create order immediately after slot selection
+                setBookingService(null)
+                setOrderingServiceId(bookingService.id)
+                setOrderError("")
+                try {
+                  const created = await createOrder(bookingService.id)
+                  router.push(`/orders/${created.id}`)
+                } catch (err: unknown) {
+                  setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
+                  setOrderingServiceId(null)
+                }
+              }}
+              onCancel={() => setBookingService(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

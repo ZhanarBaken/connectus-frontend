@@ -560,6 +560,7 @@ export default function MentorDashboard() {
               <div className="space-y-2">
                 {[
                   { href: "/mentors/profile", icon: "person", label: "Редактировать профиль" },
+                  { href: "/mentors/schedule", icon: "calendar_month", label: "Настроить расписание" },
                   { href: "/mentors/services", icon: "description", label: "Управлять услугами" },
                   { href: "/mentors/documents", icon: "folder", label: "Документы верификации" },
                   { href: `/mentors/${profile.id}`, icon: "visibility", label: "Предпросмотр профиля" },
