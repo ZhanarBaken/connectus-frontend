@@ -104,11 +104,21 @@ export default function MentorProfilePage() {
         method: "PATCH",
         body: formData,
       })
-      if (!res.ok) throw new Error("Не удалось загрузить фото")
+      if (!res.ok) {
+        let msg = "Не удалось загрузить фото"
+        try {
+          const err = await res.json()
+          if (err.profile_photo) msg = Array.isArray(err.profile_photo) ? err.profile_photo[0] : err.profile_photo
+          else if (err.detail) msg = err.detail
+          else if (err.non_field_errors) msg = err.non_field_errors[0]
+          else msg = JSON.stringify(err)
+        } catch {}
+        throw new Error(`${res.status}: ${msg}`)
+      }
       const data = await res.json()
       setProfilePhoto(data.profile_photo ?? null)
-    } catch {
-      setError("Ошибка при загрузке фото")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
     } finally {
       setUploadingPhoto(false)
     }

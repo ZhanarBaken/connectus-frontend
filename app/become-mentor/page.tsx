@@ -187,9 +187,6 @@ export default function BecomeMentorPage() {
           <div className="grid lg:grid-cols-[1fr_1.3fr] gap-16 items-start">
             <div className="lg:sticky lg:top-32">
               <ScrollReveal variant="fade-right" duration={800}>
-                <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase">
-                  Преимущества
-                </p>
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
                   Почему менторы выбирают{" "}
                   <span className="font-[var(--font-display)] italic">Connectus</span>
@@ -226,11 +223,6 @@ export default function BecomeMentorPage() {
 
         <div className="relative max-w-5xl mx-auto">
           <ScrollReveal variant="fade-up">
-            <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase text-center">
-              Процесс
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={100}>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
               Как стать{" "}
               <span className="font-[var(--font-display)] italic">ментором</span>
@@ -269,11 +261,6 @@ export default function BecomeMentorPage() {
 
         <div className="relative max-w-5xl mx-auto">
           <ScrollReveal variant="fade-up">
-            <p className="text-sm font-semibold text-indigo-400 mb-2 tracking-wide uppercase text-center">
-              Услуги
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={100}>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight text-center">
               Что ты можешь{" "}
               <span className="font-[var(--font-display)] italic text-gray-400">предложить</span>
@@ -307,11 +294,6 @@ export default function BecomeMentorPage() {
       <section className="py-28 px-4 bg-white">
         <div className="max-w-3xl mx-auto">
           <ScrollReveal variant="fade-up">
-            <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase text-center">
-              FAQ
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={100}>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
               Частые{" "}
               <span className="font-[var(--font-display)] italic">вопросы</span>

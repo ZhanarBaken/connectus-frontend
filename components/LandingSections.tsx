@@ -53,11 +53,6 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
 
         <div className="relative max-w-5xl mx-auto">
           <ScrollReveal variant="fade-up">
-            <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase text-center">
-              Простой процесс
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={100}>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
               Как это{" "}
               <span className="font-[var(--font-display)] italic">работает</span>
@@ -110,9 +105,6 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
             {/* Left — sticky text */}
             <div className="lg:sticky lg:top-32">
               <ScrollReveal variant="fade-right" duration={800}>
-                <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase">
-                  География
-                </p>
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
                   10 стран.{" "}
                   <span className="font-[var(--font-display)] italic text-gray-400">
@@ -188,11 +180,6 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
 
         <div className="relative max-w-5xl mx-auto">
           <ScrollReveal variant="fade-up">
-            <p className="text-sm font-semibold text-indigo-400 mb-2 tracking-wide uppercase text-center">
-              Безопасность
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={100}>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight text-center">
               Почему нам{" "}
               <span className="font-[var(--font-display)] italic text-gray-400">
@@ -278,11 +265,6 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
       <section className="py-28 px-4 bg-white">
         <div className="max-w-5xl mx-auto">
           <ScrollReveal variant="fade-up">
-            <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase text-center">
-              Отзывы
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={100}>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
               Что говорят{" "}
               <span className="font-[var(--font-display)] italic">студенты</span>
@@ -306,9 +288,6 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
             {/* Left */}
             <div>
               <ScrollReveal variant="fade-right" duration={800}>
-                <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase">
-                  Для менторов
-                </p>
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
                   Учишься за рубежом?{" "}
                   <span className="font-[var(--font-display)] italic text-gray-400">
@@ -452,11 +431,6 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
       <section className="py-28 px-4 bg-[#fafafa]">
         <div className="max-w-3xl mx-auto">
           <ScrollReveal variant="fade-up">
-            <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase text-center">
-              FAQ
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={100}>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
               Частые{" "}
               <span className="font-[var(--font-display)] italic">вопросы</span>
