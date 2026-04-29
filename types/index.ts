@@ -2,7 +2,7 @@ export type Role = "mentor" | "student"
 
 export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 
-export type PayoutCategory = "consultation" | "delivery" | "milestone"
+export type PayoutCategory = "consultation" | "paid_consultation" | "delivery" | "milestone"
 
 export type OrderStatus =
   | "draft"
@@ -154,6 +154,7 @@ export interface Order {
   mentor: number
   mentor_service: number
   service_title: string
+  payout_category: PayoutCategory
   total_price: string
   platform_fee: string
   mentor_payout_amount: string

@@ -332,7 +332,13 @@ export default function OrderPage({ params }: Props) {
   // Chat is available whenever the backend has created a Conversation
   // (happens after the mentor confirms a free consultation).
   const canChat = order.conversation_id !== null
-  const isFree = order.total_price === "0.00"
+  // Free intro consultation skips payment / dispute / review. Paid
+  // consultation (10 000 ₸) and other paid services follow the regular
+  // paid flow, so we key off the category, not the price.
+  const isFreeIntro = order.payout_category === "consultation"
+  const isAnyConsultation =
+    order.payout_category === "consultation" ||
+    order.payout_category === "paid_consultation"
 
   // Student can open a dispute only during the window after completion.
   // disputeWindowMs is loaded from /api/v1/settings/public/ — null means still loading.
@@ -377,7 +383,7 @@ export default function OrderPage({ params }: Props) {
                   <span className="text-gray-400">Сумма</span>
                   <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                 </div>
-                {role === "mentor" && !isFree && (
+                {role === "mentor" && !isFreeIntro && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Выплата ментору</span>
                     <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>
@@ -468,10 +474,10 @@ export default function OrderPage({ params }: Props) {
             {role === "mentor" && order.order_status === "in_progress" && (
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">
-                  {isFree ? "Завершить консультацию" : "Завершить услугу"}
+                  {isAnyConsultation ? "Завершить консультацию" : "Завершить услугу"}
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  {isFree
+                  {isAnyConsultation
                     ? "Когда вы обсудили всё что нужно, отметь консультацию завершённой."
                     : "Когда работа выполнена, отметь услугу завершённой. Студент сможет оставить отзыв, а выплата уйдёт после периода споров."}
                 </p>
@@ -485,7 +491,7 @@ export default function OrderPage({ params }: Props) {
                 >
                   {completing
                     ? "Завершаем..."
-                    : isFree
+                    : isAnyConsultation
                       ? "✓ Консультация завершена"
                       : "✓ Услуга выполнена"}
                 </button>
@@ -532,7 +538,7 @@ export default function OrderPage({ params }: Props) {
                 <p className="text-xs text-gray-500 leading-relaxed">
                   {role === "mentor"
                     ? "Студент не может писать сообщения и покупать услуги. Чат откроется снова, если ты примешь новый запрос на консультацию."
-                    : "Ментор закрыл чат. Чтобы продолжить общение и заказать услуги, отправь новый запрос на бесплатную консультацию на странице ментора."}
+                    : "Ментор закрыл чат. Чтобы продолжить общение и заказать услуги, закажи новую консультацию на странице ментора."}
                 </p>
               </div>
             )}
@@ -543,11 +549,11 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
                 <h3 className="font-semibold text-blue-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="hourglass_top" size={16} className="text-blue-600" />
-                  {isFree ? "Консультация" : "В работе"}
+                  {isAnyConsultation ? "Консультация" : "В работе"}
                 </h3>
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  {isFree
-                    ? "Бесплатная консультация активна. Общайтесь с ментором в чате — когда консультация закончится, ментор её завершит."
+                  {isAnyConsultation
+                    ? "Консультация активна. Общайтесь с ментором в чате — когда консультация закончится, ментор её завершит."
                     : "Ментор работает над твоим заказом. Когда работа будет закончена, услуга станет завершённой и ты сможешь оставить отзыв."}
                 </p>
               </div>
@@ -672,7 +678,7 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Completed — shown to both sides with dispute timer */}
-            {order.order_status === "completed" && !isFree && (
+            {order.order_status === "completed" && !isFreeIntro && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
                 <h3 className="font-semibold text-green-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="check_circle" size={16} className="text-green-600" filled />
@@ -693,7 +699,7 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Review form — student only, after paid order is completed (not free consultations) */}
-            {role !== "mentor" && order.order_status === "completed" && !isFree && (
+            {role !== "mentor" && order.order_status === "completed" && !isFreeIntro && (
               <ReviewForm
                 orderId={order.id}
                 mentorId={order.mentor}
@@ -703,7 +709,7 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Student: open dispute — only for paid orders */}
-            {role !== "mentor" && order.order_status === "completed" && !isFree && disputeWindowOpen && disputeTimeRemainingMs && (
+            {role !== "mentor" && order.order_status === "completed" && !isFreeIntro && disputeWindowOpen && disputeTimeRemainingMs && (
               <div className="bg-white border border-red-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Что-то пошло не так?</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
@@ -1019,7 +1025,7 @@ export default function OrderPage({ params }: Props) {
                       <p className="text-center text-xs text-gray-400 mt-1 leading-relaxed">
                         {role === "mentor"
                           ? "Чат снова откроется, если ты примешь новый запрос на консультацию от этого студента."
-                          : "Запроси новую бесплатную консультацию у этого ментора, чтобы возобновить общение."}
+                          : "Закажи новую консультацию у этого ментора, чтобы возобновить общение."}
                       </p>
                     </div>
                   ) : (
@@ -1096,7 +1102,7 @@ export default function OrderPage({ params }: Props) {
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Чат заблокирован</h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                      Чат откроется после того, как ментор примет запрос на бесплатную консультацию.
+                      Чат откроется после того, как админ подтвердит оплату консультации.
                     </p>
                   </div>
                 </div>

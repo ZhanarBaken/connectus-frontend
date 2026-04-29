@@ -76,24 +76,28 @@ export default function MentorPage({ params }: Props) {
     )
   }
 
-  // Split services
+  // Split services. Paid consultation is the platform-default consultation
+  // offering (10 000 ₸); the legacy free intro is kept on backend as an
+  // inactive artifact and is not in the public services list.
   const consultationService: MentorService | undefined = mentor.services.find(
-    (s) => s.payout_category === "consultation"
+    (s) => s.payout_category === "paid_consultation"
   )
-  const paidServices = mentor.services.filter((s) => s.payout_category !== "consultation")
+  const paidServices = mentor.services.filter(
+    (s) => s.payout_category !== "consultation" && s.payout_category !== "paid_consultation"
+  )
 
   // Find the student's consultation order with this mentor (if any)
   const consultationOrder = consultationService
     ? orders.find(
         (o) =>
           o.mentor_service === consultationService.id &&
-          ["draft", "in_progress"].includes(o.order_status)
+          ["pending_payment", "in_progress"].includes(o.order_status)
       )
     : undefined
-  const consultationStatus: "none" | "draft" | "in_progress" =
+  const consultationStatus: "none" | "pending_payment" | "in_progress" =
     !consultationOrder
       ? "none"
-      : (consultationOrder.order_status as "draft" | "in_progress")
+      : (consultationOrder.order_status as "pending_payment" | "in_progress")
 
   // Paid services are unlocked whenever there's an open Conversation with this mentor.
   // Backend creates a Conversation when the mentor confirms a free consultation,
@@ -231,19 +235,19 @@ export default function MentorPage({ params }: Props) {
               </div>
             )}
 
-            {/* Free consultation — hero block */}
+            {/* Consultation — hero block (10 000 ₸) */}
             {consultationService && (
               <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="relative">
                   <div className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
-                    <Icon name="redeem" size={14} className="text-white" />
-                    Бесплатно
+                    <Icon name="forum" size={14} className="text-white" />
+                    {Number(consultationService.price).toLocaleString("ru-RU")} ₸
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">Бесплатная консультация</h2>
+                  <h2 className="text-2xl font-bold mb-2">Консультация</h2>
                   <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line">
-                    {mentor.consultation ||
-                      "Знакомство с ментором — обсудим цели поступления и план дальнейшей работы."}
+                    {consultationService.description ||
+                      "Индивидуальный разбор твоей ситуации, выбор программ и пошаговый план дальнейшей работы."}
                   </p>
                   <div className="flex items-center gap-4 mb-5 text-xs text-indigo-200">
                     <span className="inline-flex items-center gap-1">
@@ -253,7 +257,7 @@ export default function MentorPage({ params }: Props) {
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
                       <Icon name="chat" size={14} />
-                      Чат после принятия
+                      Чат после оплаты
                     </span>
                   </div>
 
@@ -268,10 +272,14 @@ export default function MentorPage({ params }: Props) {
                       </Link>
                       <span className="text-xs text-indigo-200">Консультация активна</span>
                     </div>
-                  ) : consultationStatus === "draft" ? (
-                    <div className="bg-white/15 rounded-xl px-4 py-3 text-sm">
-                      ⏳ Запрос отправлен. Ожидаем подтверждения от ментора.
-                    </div>
+                  ) : consultationStatus === "pending_payment" ? (
+                    <Link
+                      href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                      className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
+                    >
+                      Перейти к оплате
+                      <Icon name="arrow_forward" size={16} />
+                    </Link>
                   ) : (
                     <button
                       onClick={() => handleOrder(consultationService.id)}
@@ -279,8 +287,8 @@ export default function MentorPage({ params }: Props) {
                       className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {orderingServiceId === consultationService.id
-                        ? "Отправляем..."
-                        : "Получить бесплатную консультацию"}
+                        ? "Заказываем..."
+                        : `Заказать консультацию за ${Number(consultationService.price).toLocaleString("ru-RU")} ₸`}
                     </button>
                   )}
                   {!mentor.is_accepting_bookings && consultationStatus === "none" && (
@@ -412,11 +420,11 @@ export default function MentorPage({ params }: Props) {
                 <div className="space-y-4 text-sm">
                   <div className="flex gap-3">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">1</span>
-                    <p className="text-gray-600 leading-relaxed">Запроси бесплатную консультацию</p>
+                    <p className="text-gray-600 leading-relaxed">Закажи и оплати консультацию</p>
                   </div>
                   <div className="flex gap-3">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">2</span>
-                    <p className="text-gray-600 leading-relaxed">Ментор примет запрос — откроется чат</p>
+                    <p className="text-gray-600 leading-relaxed">После подтверждения оплаты откроется чат с ментором</p>
                   </div>
                   <div className="flex gap-3">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">3</span>

@@ -44,8 +44,10 @@ export default function MentorServicesPage() {
   const [isBanned, setIsBanned] = useState(false)
 
   useEffect(() => {
-    // The /mentors/services/ endpoint excludes the auto-created free consultation,
-    // so we fetch it separately via the public mentor endpoint (read-only).
+    // The /mentors/services/ endpoint excludes both consultation categories
+    // (free intro and paid 10 000 ₸ — both managed by platform). We fetch the
+    // paid_consultation separately via the public mentor endpoint to display
+    // it as a pinned, read-only entry.
     Promise.all([
       fetchMentorServices().catch(() => [] as MentorService[]),
       fetchMentorProfile()
@@ -53,7 +55,7 @@ export default function MentorServicesPage() {
           setIsBanned(p.is_banned ?? false)
           return fetchMentor(p.id)
         })
-        .then((m) => m.services.find((s) => s.payout_category === "consultation") ?? null)
+        .then((m) => m.services.find((s) => s.payout_category === "paid_consultation") ?? null)
         .catch(() => null),
     ])
       .then(([list, cons]) => {
@@ -249,11 +251,13 @@ export default function MentorServicesPage() {
         )}
 
         {(() => {
-          const paid = services.filter((s) => s.payout_category !== "consultation")
+          const paid = services.filter(
+            (s) => s.payout_category !== "consultation" && s.payout_category !== "paid_consultation"
+          )
 
           return (
             <div className="space-y-6">
-              {/* Free consultation — pinned, read-only (managed by platform) */}
+              {/* Paid consultation — pinned, read-only (managed by platform) */}
               {consultation && (
                 <div>
                   <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Обязательная услуга</h2>
@@ -261,8 +265,8 @@ export default function MentorServicesPage() {
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="font-semibold text-gray-900">{consultation.title}</h3>
                       <span className="text-xs bg-white text-indigo-600 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1">
-                        <Icon name="redeem" size={12} />
-                        Бесплатно
+                        <Icon name="forum" size={12} />
+                        {Number(consultation.price).toLocaleString("ru-RU")} ₸
                       </span>
                       <span className="text-xs bg-white text-gray-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                         <Icon name="lock" size={12} />
@@ -279,7 +283,7 @@ export default function MentorServicesPage() {
                       </span>
                     </div>
                     <p className="text-xs text-indigo-700 mt-3 leading-relaxed">
-                      Это обязательная услуга — каждый ментор получает её автоматически. Студенты используют её для первого знакомства, и только после неё могут заказать платные услуги.
+                      Платная консультация — каждый ментор получает её автоматически с фиксированной ценой 10 000 ₸. Студенты используют её для первого общения с тобой, после чего могут заказывать твои дополнительные услуги.
                     </p>
                   </div>
                 </div>
