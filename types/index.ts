@@ -149,7 +149,6 @@ export interface Order {
   student: number
   student_info: OrderStudentInfo
   mentor: number
-  mentor_email: string
   mentor_service: number
   service_title: string
   total_price: string
