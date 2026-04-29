@@ -136,6 +136,9 @@ export interface StudentProfile {
 export interface PaymentInstructions {
   account_details: string
   whatsapp_link: string
+  // True when the student has a Telegram account linked and the bot
+  // already DM'd the same requisites. UI shows a hint, not a hard hide.
+  tg_sent_to_user: boolean
 }
 
 export interface OrderStudentInfo {
@@ -173,6 +176,9 @@ export interface Dispute {
 
 export interface OrderDocument {
   id: number
+  // 'general' for any working file; 'payment_receipt' for student-
+  // submitted proof of payment on a PENDING_PAYMENT order.
+  kind: "general" | "payment_receipt"
   original_filename: string
   content_type: string
   size_bytes: number

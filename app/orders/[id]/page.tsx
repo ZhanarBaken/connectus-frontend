@@ -65,6 +65,9 @@ export default function OrderPage({ params }: Props) {
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const docInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  const [receiptError, setReceiptError] = useState("")
+  const receiptInputRef = useRef<HTMLInputElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<ChatConnection | null>(null)
 
@@ -551,14 +554,36 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Student: pending payment — details + cancel */}
-            {order.order_status === "pending_payment" && role !== "mentor" && (
+            {order.order_status === "pending_payment" && role !== "mentor" && (() => {
+              // Backend auto-cancels PENDING_PAYMENT orders after
+              // ORDER_PAYMENT_DEADLINE_DAYS (default 7) via Celery beat.
+              // Mirror the constant client-side; not exposed in the API.
+              const PAYMENT_DEADLINE_DAYS = 7
+              const deadlineMs =
+                new Date(order.created_at).getTime() +
+                PAYMENT_DEADLINE_DAYS * 24 * 60 * 60 * 1000 -
+                Date.now()
+              const hasReceipt = orderDocs.some((d) => d.kind === "payment_receipt")
+              return (
               <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
                 <div>
                   <h3 className="font-semibold text-yellow-800 mb-1">Ожидает оплаты</h3>
                   <p className="text-xs text-yellow-700 leading-relaxed">
-                    Переведи {Number(order.total_price).toLocaleString("ru-RU")} ₸ по реквизитам ниже. После оплаты напиши в WhatsApp администратору — после подтверждения заказ перейдёт в работу.
+                    Переведи {Number(order.total_price).toLocaleString("ru-RU")} ₸ по реквизитам ниже. После оплаты загрузи чек или напиши в WhatsApp администратору — после подтверждения заказ перейдёт в работу.
                   </p>
                 </div>
+
+                {deadlineMs > 0 && (
+                  <p className="text-[11px] text-yellow-700 bg-yellow-100/60 border border-yellow-200 rounded-lg px-3 py-2">
+                    Заказ автоотменится через {formatRemaining(deadlineMs)}, если не будет оплачен.
+                  </p>
+                )}
+
+                {order.payment_instructions?.tg_sent_to_user && (
+                  <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-[11px] text-blue-700 leading-relaxed">
+                    Реквизиты также отправлены тебе в Telegram — проверь личку. Если не получил, оплачивай по реквизитам ниже.
+                  </div>
+                )}
 
                 {order.payment_instructions?.account_details && (
                   <div>
@@ -580,6 +605,48 @@ export default function OrderPage({ params }: Props) {
                   </a>
                 )}
 
+                <input
+                  ref={receiptInputRef}
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    e.target.value = ""
+                    if (!file) return
+                    setReceiptError("")
+                    setUploadingReceipt(true)
+                    try {
+                      const doc = await uploadOrderDocument(
+                        order.id, file, undefined, "payment_receipt",
+                      )
+                      setOrderDocs((prev) => [doc, ...prev])
+                    } catch (err) {
+                      setReceiptError(err instanceof Error ? err.message : "Не удалось загрузить чек")
+                    } finally {
+                      setUploadingReceipt(false)
+                    }
+                  }}
+                />
+                {receiptError && (
+                  <p className="text-xs text-red-600">{receiptError}</p>
+                )}
+                {hasReceipt ? (
+                  <div className="w-full text-center bg-white border border-green-200 text-green-700 py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-1.5">
+                    <Icon name="check_circle" size={14} className="text-green-600" filled />
+                    Чек загружен — ждём подтверждения
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => receiptInputRef.current?.click()}
+                    disabled={uploadingReceipt}
+                    className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Icon name="upload_file" size={14} />
+                    {uploadingReceipt ? "Загрузка..." : "Загрузить чек оплаты"}
+                  </button>
+                )}
+
                 {cancelError && (
                   <p className="text-xs text-red-600">{cancelError}</p>
                 )}
@@ -591,7 +658,8 @@ export default function OrderPage({ params }: Props) {
                   {cancelling ? "Отменяем..." : "Отменить заказ"}
                 </button>
               </div>
-            )}
+              )
+            })()}
 
             {/* Disputed banner */}
             {order.order_status === "disputed" && (

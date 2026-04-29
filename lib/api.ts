@@ -206,10 +206,18 @@ export async function fetchOrderDocuments(orderId: number): Promise<import("@/ty
   return data.results ?? data
 }
 
-export async function uploadOrderDocument(orderId: number, file: File, description?: string): Promise<import("@/types").OrderDocument> {
+export type OrderDocumentKind = "general" | "payment_receipt"
+
+export async function uploadOrderDocument(
+  orderId: number,
+  file: File,
+  description?: string,
+  kind: OrderDocumentKind = "general",
+): Promise<import("@/types").OrderDocument> {
   const formData = new FormData()
   formData.append("file", file)
   if (description) formData.append("description", description)
+  formData.append("kind", kind)
   const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/`, {
     method: "POST",
     body: formData,

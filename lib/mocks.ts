@@ -116,6 +116,7 @@ export const MOCK_ORDERS: Order[] = [
     payment_instructions: {
       account_details: "Kaspi: +7 777 123 45 67, Иван Иванов",
       whatsapp_link: "https://wa.me/77771234567?text=Order 1 receipt",
+      tg_sent_to_user: false,
     },
     conversation_id: null,
     completed_at: null,
