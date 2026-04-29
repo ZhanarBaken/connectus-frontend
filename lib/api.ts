@@ -141,11 +141,16 @@ export async function fetchOrders(): Promise<Order[]> {
   return data.results
 }
 
-export async function createOrder(mentorServiceId: number): Promise<import("@/types").Order> {
+export async function createOrder(
+  mentorServiceId: number,
+  scheduledAt?: string,
+): Promise<import("@/types").Order> {
+  const body: Record<string, unknown> = { mentor_service: mentorServiceId }
+  if (scheduledAt) body.scheduled_at = scheduledAt
   const res = await authFetch(`${BASE_URL}/orders/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mentor_service: mentorServiceId }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.json()
@@ -635,6 +640,70 @@ export async function markChatRead(conversationId: number): Promise<void> {
   await authFetch(`${BASE_URL}/chat/${conversationId}/mark_read/`, {
     method: "POST",
   })
+}
+
+// ─── Mentor schedule + availability ─────────────────────────────────────────
+
+import type { MentorSchedule, ScheduleBlock, ScheduleWindow } from "./schedule"
+
+export async function fetchMyMentorSchedule(): Promise<MentorSchedule> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/schedule/`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось загрузить расписание")
+  }
+  return res.json()
+}
+
+export async function saveMyMentorSchedule(payload: {
+  weekly: ScheduleWindow[]
+  blocks: ScheduleBlock[]
+}): Promise<MentorSchedule> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/schedule/`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    // Bubble up the first field-level message if present (overlap, etc.).
+    const first = Object.values(err)[0]
+    throw new Error(
+      err.detail ||
+        (Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось сохранить расписание")),
+    )
+  }
+  return res.json()
+}
+
+export interface AvailabilityResponse {
+  date: string
+  timezone: string
+  duration_minutes: number
+  slots: string[]
+}
+
+export async function fetchMentorAvailability(
+  mentorId: number,
+  date: string,
+  durationMinutes: number,
+): Promise<AvailabilityResponse> {
+  const params = new URLSearchParams({
+    date,
+    duration_minutes: String(durationMinutes),
+  })
+  const res = await authFetch(
+    `${BASE_URL}/mentors/${mentorId}/availability/?${params.toString()}`,
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const first = Object.values(err)[0]
+    throw new Error(
+      err.detail ||
+        (Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось загрузить слоты")),
+    )
+  }
+  return res.json()
 }
 
 // ─── Auth helpers ───────────────────────────────────────────────────────────

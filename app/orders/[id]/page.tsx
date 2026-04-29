@@ -575,7 +575,7 @@ export default function OrderPage({ params }: Props) {
                 <div>
                   <h3 className="font-semibold text-yellow-800 mb-1">Ожидает оплаты</h3>
                   <p className="text-xs text-yellow-700 leading-relaxed">
-                    Переведи {Number(order.total_price).toLocaleString("ru-RU")} ₸ по реквизитам ниже. После оплаты загрузи чек или напиши в WhatsApp администратору — после подтверждения заказ перейдёт в работу.
+                    Переведи {Number(order.total_price).toLocaleString("ru-RU")} ₸ по реквизитам ниже. Чек админу можно отправить тремя способами: загрузить прямо здесь, написать в WhatsApp или отправить в Telegram-бот. После подтверждения заказ перейдёт в работу.
                   </p>
                 </div>
 
@@ -587,7 +587,7 @@ export default function OrderPage({ params }: Props) {
 
                 {order.payment_instructions?.tg_sent_to_user && (
                   <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-[11px] text-blue-700 leading-relaxed">
-                    Реквизиты также отправлены тебе в Telegram — проверь личку. Если не получил, оплачивай по реквизитам ниже.
+                    Реквизиты также отправлены в Telegram-бот. Самый быстрый способ — отправь чек прямо туда, бот пересылает админу автоматически.
                   </div>
                 )}
 

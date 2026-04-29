@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { fetchMentorAvailability } from "@/lib/api"
 import {
-  getMentorSchedule,
-  getAvailableSlots,
-  getNextDays,
-  formatDateISO,
   DAY_LABELS,
+  formatDateISO,
+  getNextDays,
 } from "@/lib/schedule"
 import Icon from "./Icon"
 
@@ -17,29 +16,56 @@ interface Props {
   onCancel: () => void
 }
 
+// Backend caps lookahead at 90 days; the calendar only shows 4 weeks.
+const MAX_WEEK_OFFSET = 3
+
 export default function BookingCalendar({ mentorId, durationMinutes, onSelect, onCancel }: Props) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
 
-  const schedule = useMemo(() => getMentorSchedule(mentorId), [mentorId])
+  const [slots, setSlots] = useState<string[]>([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [slotsError, setSlotsError] = useState("")
+  const [timezone, setTimezone] = useState("")
 
-  // Show 7 days at a time, starting from today + offset
+  // Show 7 days starting from today + offset (skip today on first week — same-day booking is rarely useful)
   const startDate = useMemo(() => {
     const d = new Date()
     d.setDate(d.getDate() + weekOffset * 7)
-    // If first week, start from tomorrow (can't book today)
     if (weekOffset === 0) d.setDate(d.getDate() + 1)
     return d
   }, [weekOffset])
 
   const days = useMemo(() => getNextDays(7, startDate), [startDate])
 
-  const slots = useMemo(() => {
-    if (!selectedDate) return []
-    const date = new Date(selectedDate + "T00:00:00")
-    return getAvailableSlots(schedule, date, durationMinutes)
-  }, [selectedDate, schedule, durationMinutes])
+  // Fetch availability when the user picks a date.
+  useEffect(() => {
+    if (!selectedDate) {
+      setSlots([])
+      return
+    }
+    let cancelled = false
+    setSlotsLoading(true)
+    setSlotsError("")
+    fetchMentorAvailability(mentorId, selectedDate, durationMinutes)
+      .then((res) => {
+        if (cancelled) return
+        setSlots(res.slots)
+        setTimezone(res.timezone)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setSlots([])
+        setSlotsError(err instanceof Error ? err.message : "Не удалось загрузить слоты")
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [mentorId, selectedDate, durationMinutes])
 
   const handleConfirm = () => {
     if (selectedDate && selectedTime) {
@@ -49,9 +75,8 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
 
   const today = formatDateISO(new Date())
 
-  const formatMonth = (date: Date) => {
-    return date.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
-  }
+  const formatMonth = (date: Date) =>
+    date.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
 
   const monthLabel = useMemo(() => {
     const first = days[0]
@@ -73,7 +98,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
           </button>
         </div>
         <p className="text-xs text-gray-400">
-          {durationMinutes} мин · {schedule.timezone}
+          {durationMinutes} мин{timezone ? ` · ${timezone}` : ""}
         </p>
       </div>
 
@@ -88,40 +113,37 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
         </button>
         <span className="text-sm font-medium text-gray-700 capitalize">{monthLabel}</span>
         <button
-          onClick={() => setWeekOffset(Math.min(3, weekOffset + 1))}
-          disabled={weekOffset >= 3}
+          onClick={() => setWeekOffset(Math.min(MAX_WEEK_OFFSET, weekOffset + 1))}
+          disabled={weekOffset >= MAX_WEEK_OFFSET}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30"
         >
           <Icon name="chevron_right" size={20} className="text-gray-600" />
         </button>
       </div>
 
-      {/* Day selector */}
+      {/* Day selector — backend decides what's available; here we just gate past dates. */}
       <div className="px-4 py-3 grid grid-cols-7 gap-1">
         {days.map((day) => {
           const dateStr = formatDateISO(day)
           const isPast = dateStr <= today
           const jsDay = day.getDay()
           const isoDay = jsDay === 0 ? 6 : jsDay - 1
-          const daySchedule = schedule.weekSchedule[isoDay]
-          const isBlocked = schedule.blockedDates.some((b) => b.date === dateStr)
-          const isAvailable = !isPast && !isBlocked && daySchedule?.enabled
           const isSelected = selectedDate === dateStr
 
           return (
             <button
               key={dateStr}
               onClick={() => {
-                if (isAvailable) {
+                if (!isPast) {
                   setSelectedDate(dateStr)
                   setSelectedTime(null)
                 }
               }}
-              disabled={!isAvailable}
+              disabled={isPast}
               className={`flex flex-col items-center py-2.5 rounded-xl transition-all text-center ${
                 isSelected
                   ? "bg-gray-900 text-white"
-                  : isAvailable
+                  : !isPast
                     ? "hover:bg-gray-100 text-gray-900"
                     : "text-gray-300 cursor-not-allowed"
               }`}
@@ -132,9 +154,6 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
               <span className={`text-lg font-semibold mt-0.5 ${isSelected ? "text-white" : ""}`}>
                 {day.getDate()}
               </span>
-              {isAvailable && !isSelected && (
-                <span className="w-1 h-1 rounded-full bg-emerald-400 mt-1" />
-              )}
             </button>
           )
         })}
@@ -151,7 +170,13 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
             })}
           </p>
 
-          {slots.length === 0 ? (
+          {slotsLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+            </div>
+          ) : slotsError ? (
+            <p className="text-sm text-red-500 text-center py-6">{slotsError}</p>
+          ) : slots.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">
               Нет доступных слотов на эту дату
             </p>

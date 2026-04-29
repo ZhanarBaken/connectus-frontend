@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { fetchMentorProfile } from "@/lib/api"
+import { fetchMyMentorSchedule, saveMyMentorSchedule } from "@/lib/api"
 import {
-  getMentorSchedule,
-  saveMentorSchedule,
   DAY_LABELS_FULL,
-  type MentorScheduleData,
-  type WeekSchedule,
-  type TimeSlot,
-  type BlockedDate,
+  emptyWeekSchedule,
+  flatToWeekSchedule,
   formatDateISO,
+  weekScheduleToFlat,
+  type ScheduleBlock,
+  type TimeSlot,
+  type WeekSchedule,
 } from "@/lib/schedule"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -32,9 +32,8 @@ export default function MentorSchedulePage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
 
-  const [mentorId, setMentorId] = useState<number | null>(null)
-  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>({})
-  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
+  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>(emptyWeekSchedule())
+  const [blockedDates, setBlockedDates] = useState<ScheduleBlock[]>([])
   const [timezone, setTimezone] = useState("")
 
   // Blocked date form
@@ -49,15 +48,15 @@ export default function MentorSchedulePage() {
       return
     }
 
-    fetchMentorProfile()
-      .then((profile) => {
-        setMentorId(profile.id)
-        const schedule = getMentorSchedule(profile.id)
-        setWeekSchedule(schedule.weekSchedule)
-        setBlockedDates(schedule.blockedDates)
+    fetchMyMentorSchedule()
+      .then((schedule) => {
+        setWeekSchedule(flatToWeekSchedule(schedule.weekly))
+        setBlockedDates(schedule.blocks)
         setTimezone(schedule.timezone)
       })
-      .catch(() => setError("Не удалось загрузить профиль"))
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Не удалось загрузить расписание"),
+      )
       .finally(() => setLoading(false))
   }, [router])
 
@@ -112,7 +111,7 @@ export default function MentorSchedulePage() {
     if (newBlockedDate < today) return
     if (blockedDates.some((b) => b.date === newBlockedDate)) return
     setBlockedDates((prev) =>
-      [...prev, { date: newBlockedDate, reason: newBlockedReason || undefined }].sort(
+      [...prev, { date: newBlockedDate, reason: newBlockedReason }].sort(
         (a, b) => a.date.localeCompare(b.date)
       )
     )
@@ -125,23 +124,19 @@ export default function MentorSchedulePage() {
   }
 
   /* ── Save ────────────────────────────────────────────────── */
-  const handleSave = () => {
-    if (mentorId === null) return
+  const handleSave = async () => {
     setSaving(true)
     setError("")
     setSaved(false)
     try {
-      const data: MentorScheduleData = {
-        mentorId,
-        timezone,
-        weekSchedule,
-        blockedDates,
-      }
-      saveMentorSchedule(data)
+      await saveMyMentorSchedule({
+        weekly: weekScheduleToFlat(weekSchedule),
+        blocks: blockedDates,
+      })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
-    } catch {
-      setError("Не удалось сохранить расписание")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить расписание")
     } finally {
       setSaving(false)
     }
@@ -167,9 +162,12 @@ export default function MentorSchedulePage() {
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
           Расписание
         </h1>
-        <p className="text-sm text-gray-500 mb-8">
+        <p className="text-sm text-gray-500 mb-1">
           Настрой доступные часы для записи
         </p>
+        {timezone && (
+          <p className="text-xs text-gray-400 mb-8">Часовой пояс: {timezone}</p>
+        )}
 
         {/* ── Alerts ─────────────────────────────────────── */}
         {error && (

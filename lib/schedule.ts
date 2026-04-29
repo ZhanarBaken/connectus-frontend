@@ -1,14 +1,41 @@
 /**
- * Schedule data layer — localStorage MVP.
- * Replace with real API when backend adds schedule endpoints.
+ * Schedule data layer.
  *
- * Mentor sets weekly availability (day → time slots).
- * Students see available slots and pick one when booking.
+ * Backend stores the source of truth (apps.mentors.MentorAvailability +
+ * AvailabilityBlock). The schedule editor still works with the
+ * WeekSchedule shape (one row per day with an `enabled` flag) for UX,
+ * so this module exposes adapters between the API's flat list of
+ * windows and the editor's per-day form.
+ *
+ * Slot generation (which 30-min start times are free for a service of
+ * duration N) lives entirely on the backend — call
+ * `fetchMentorAvailability(mentorId, date, duration)` from `lib/api`.
  */
 
+// ─── API-aligned types ──────────────────────────────────────────────────────
+
+export interface ScheduleWindow {
+  weekday: number // 0=Mon ... 6=Sun (ISO)
+  start_time: string // "10:00"
+  end_time: string
+}
+
+export interface ScheduleBlock {
+  date: string // "2026-05-12"
+  reason: string
+}
+
+export interface MentorSchedule {
+  timezone: string
+  weekly: ScheduleWindow[]
+  blocks: ScheduleBlock[]
+}
+
+// ─── Editor-friendly shape (with explicit per-day enabled toggle) ───────────
+
 export interface TimeSlot {
-  start: string // "09:00"
-  end: string   // "10:00"
+  start: string
+  end: string
 }
 
 export interface DaySchedule {
@@ -16,123 +43,64 @@ export interface DaySchedule {
   slots: TimeSlot[]
 }
 
-// 0=Mon ... 6=Sun (ISO weekday, not JS getDay)
 export type WeekSchedule = Record<number, DaySchedule>
 
-export interface BlockedDate {
-  date: string // "2026-05-15"
-  reason?: string
-}
+const EMPTY_DAY = (): DaySchedule => ({ enabled: false, slots: [] })
 
-export interface MentorScheduleData {
-  mentorId: number
-  timezone: string
-  weekSchedule: WeekSchedule
-  blockedDates: BlockedDate[]
-}
-
-const STORAGE_KEY = "connectus_schedules"
-
-const DEFAULT_WEEK: WeekSchedule = {
-  0: { enabled: true, slots: [{ start: "10:00", end: "18:00" }] },
-  1: { enabled: true, slots: [{ start: "10:00", end: "18:00" }] },
-  2: { enabled: true, slots: [{ start: "10:00", end: "18:00" }] },
-  3: { enabled: true, slots: [{ start: "10:00", end: "18:00" }] },
-  4: { enabled: true, slots: [{ start: "10:00", end: "18:00" }] },
-  5: { enabled: false, slots: [] },
-  6: { enabled: false, slots: [] },
-}
-
-function readAll(): Record<number, MentorScheduleData> {
-  if (typeof window === "undefined") return {}
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")
-  } catch {
-    return {}
+export function emptyWeekSchedule(): WeekSchedule {
+  return {
+    0: EMPTY_DAY(),
+    1: EMPTY_DAY(),
+    2: EMPTY_DAY(),
+    3: EMPTY_DAY(),
+    4: EMPTY_DAY(),
+    5: EMPTY_DAY(),
+    6: EMPTY_DAY(),
   }
 }
 
-function writeAll(data: Record<number, MentorScheduleData>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-}
-
-export function getMentorSchedule(mentorId: number): MentorScheduleData {
-  const all = readAll()
-  return all[mentorId] ?? {
-    mentorId,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    weekSchedule: DEFAULT_WEEK,
-    blockedDates: [],
+export function flatToWeekSchedule(weekly: ScheduleWindow[]): WeekSchedule {
+  const result = emptyWeekSchedule()
+  for (const w of weekly) {
+    const day = result[w.weekday]
+    day.enabled = true
+    day.slots.push({ start: w.start_time, end: w.end_time })
   }
+  return result
 }
 
-export function saveMentorSchedule(data: MentorScheduleData) {
-  const all = readAll()
-  all[data.mentorId] = data
-  writeAll(all)
-}
-
-export const DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-export const DAY_LABELS_FULL = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
-
-/**
- * Generate available booking slots for a specific date.
- * Takes the mentor's weekly schedule + blocked dates + service duration.
- * Returns array of start times like ["10:00", "10:30", "11:00", ...]
- */
-export function getAvailableSlots(
-  schedule: MentorScheduleData,
-  date: Date,
-  durationMinutes: number,
-  bookedSlots: string[] = [], // already booked start times
-): string[] {
-  // Check if date is blocked
-  const dateStr = formatDateISO(date)
-  if (schedule.blockedDates.some((b) => b.date === dateStr)) return []
-
-  // Get day of week (ISO: Mon=0 ... Sun=6)
-  const jsDay = date.getDay() // 0=Sun, 1=Mon...
-  const isoDay = jsDay === 0 ? 6 : jsDay - 1
-
-  const daySchedule = schedule.weekSchedule[isoDay]
-  if (!daySchedule?.enabled || !daySchedule.slots.length) return []
-
-  const slots: string[] = []
-  const step = 30 // 30-minute intervals
-
-  for (const window of daySchedule.slots) {
-    const startMin = timeToMinutes(window.start)
-    const endMin = timeToMinutes(window.end)
-
-    for (let t = startMin; t + durationMinutes <= endMin; t += step) {
-      const timeStr = minutesToTime(t)
-      if (!bookedSlots.includes(timeStr)) {
-        slots.push(timeStr)
-      }
+export function weekScheduleToFlat(week: WeekSchedule): ScheduleWindow[] {
+  const out: ScheduleWindow[] = []
+  for (const [dayStr, ds] of Object.entries(week)) {
+    if (!ds.enabled) continue
+    for (const slot of ds.slots) {
+      out.push({
+        weekday: Number(dayStr),
+        start_time: slot.start,
+        end_time: slot.end,
+      })
     }
   }
-
-  return slots
+  return out
 }
 
-export function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number)
-  return h * 60 + m
-}
+// ─── Utilities (no I/O) ─────────────────────────────────────────────────────
 
-export function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
-}
+export const DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+export const DAY_LABELS_FULL = [
+  "Понедельник",
+  "Вторник",
+  "Среда",
+  "Четверг",
+  "Пятница",
+  "Суббота",
+  "Воскресенье",
+]
 
 export function formatDateISO(date: Date): string {
   return date.toISOString().split("T")[0]
 }
 
-/**
- * Get the next N days starting from today.
- */
 export function getNextDays(count: number, startFrom?: Date): Date[] {
   const start = startFrom ?? new Date()
   const days: Date[] = []
@@ -142,4 +110,10 @@ export function getNextDays(count: number, startFrom?: Date): Date[] {
     days.push(d)
   }
   return days
+}
+
+// JS Date.getDay() returns 0=Sun ... 6=Sat. Backend uses 0=Mon ... 6=Sun.
+export function isoWeekday(date: Date): number {
+  const jsDay = date.getDay()
+  return jsDay === 0 ? 6 : jsDay - 1
 }

@@ -470,13 +470,15 @@ export default function MentorPage({ params }: Props) {
               mentorId={mentor.id}
               durationMinutes={bookingService.duration_minutes}
               onSelect={async (date, time) => {
-                // TODO: pass date+time to backend when schedule API is ready
-                // For now, create order immediately after slot selection
                 setBookingService(null)
                 setOrderingServiceId(bookingService.id)
                 setOrderError("")
+                // Backend SCHEDULE_TIMEZONE is Asia/Almaty (+05:00, no
+                // DST). Hardcoded so a student in another browser TZ
+                // still books the mentor's local slot correctly.
+                const scheduledAt = `${date}T${time}:00+05:00`
                 try {
-                  const created = await createOrder(bookingService.id)
+                  const created = await createOrder(bookingService.id, scheduledAt)
                   router.push(`/orders/${created.id}`)
                 } catch (err: unknown) {
                   setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
