@@ -243,7 +243,6 @@ export default function MentorPage({ params }: Props) {
                   <h2 className="text-2xl font-bold mb-2">Бесплатная консультация</h2>
                   <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line">
                     {mentor.consultation ||
-                      consultationService.description ||
                       "Знакомство с ментором — обсудим цели поступления и план дальнейшей работы."}
                   </p>
                   <div className="flex items-center gap-4 mb-5 text-xs text-indigo-200">
