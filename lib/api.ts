@@ -437,6 +437,23 @@ export async function telegramStart(role: string): Promise<{ token: string; bot_
   return res.json()
 }
 
+export async function telegramLogin(token: string): Promise<{
+  user_id: number
+  access: string
+  refresh: string
+}> {
+  const res = await fetch(`${BASE_URL}/auth/telegram/login/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось войти через Telegram")
+  }
+  return res.json()
+}
+
 export async function telegramFinalize(token: string): Promise<{ user_id: number; created: boolean; access: string; refresh: string }> {
   const res = await fetch(`${BASE_URL}/auth/telegram/finalize/`, {
     method: "POST",
