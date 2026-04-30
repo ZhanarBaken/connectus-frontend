@@ -579,6 +579,23 @@ export default function OrderPage({ params }: Props) {
                   </p>
                 </div>
 
+                {Number(order.bonus_applied) > 0 && (
+                  <div className="text-xs text-yellow-700 space-y-1 bg-white border border-yellow-200 rounded-xl p-3">
+                    <div className="flex justify-between">
+                      <span>Стоимость услуги</span>
+                      <span>{Number(order.subtotal).toLocaleString("ru-RU")} ₸</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-700">
+                      <span>Приветственный бонус</span>
+                      <span>−{Number(order.bonus_applied).toLocaleString("ru-RU")} ₸</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-yellow-900 pt-1 border-t border-yellow-200">
+                      <span>К оплате</span>
+                      <span>{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
+                    </div>
+                  </div>
+                )}
+
                 {deadlineMs > 0 && (
                   <p className="text-[11px] text-yellow-700 bg-yellow-100/60 border border-yellow-200 rounded-lg px-3 py-2">
                     Заказ автоотменится через {formatRemaining(deadlineMs)}, если не будет оплачен.
@@ -677,8 +694,9 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Completed — shown to both sides with dispute timer */}
-            {order.order_status === "completed" && !isFreeIntro && (
+            {/* Completed — shown to both sides with dispute timer.
+                Hidden for any consultation (intro contact, no dispute). */}
+            {order.order_status === "completed" && !isAnyConsultation && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
                 <h3 className="font-semibold text-green-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="check_circle" size={16} className="text-green-600" filled />
@@ -698,8 +716,9 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Review form — student only, after paid order is completed (not free consultations) */}
-            {role !== "mentor" && order.order_status === "completed" && !isFreeIntro && (
+            {/* Review form — student only, after paid deliverable order
+                is completed. Consultations are intro contact, not work. */}
+            {role !== "mentor" && order.order_status === "completed" && !isAnyConsultation && (
               <ReviewForm
                 orderId={order.id}
                 mentorId={order.mentor}
@@ -708,8 +727,8 @@ export default function OrderPage({ params }: Props) {
               />
             )}
 
-            {/* Student: open dispute — only for paid orders */}
-            {role !== "mentor" && order.order_status === "completed" && !isFreeIntro && disputeWindowOpen && disputeTimeRemainingMs && (
+            {/* Student: open dispute — only for paid deliverable orders */}
+            {role !== "mentor" && order.order_status === "completed" && !isAnyConsultation && disputeWindowOpen && disputeTimeRemainingMs && (
               <div className="bg-white border border-red-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Что-то пошло не так?</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">

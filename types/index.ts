@@ -129,6 +129,10 @@ export interface StudentProfile {
   contacts: string
   profile_photo: string | null
   is_public: boolean
+  // Welcome bonus 5 000 ₸ for new students — applies automatically to
+  // paid_consultation orders within 30 days of signup.
+  welcome_bonus_available: boolean
+  welcome_bonus_expires_at: string | null
   created_at: string
   updated_at: string
 }
@@ -155,6 +159,10 @@ export interface Order {
   mentor_service: number
   service_title: string
   payout_category: PayoutCategory
+  // Full price of the service at order time. Equals total_price when no
+  // bonus was applied; otherwise total_price = subtotal - bonus_applied.
+  subtotal: string
+  bonus_applied: string
   total_price: string
   platform_fee: string
   mentor_payout_amount: string

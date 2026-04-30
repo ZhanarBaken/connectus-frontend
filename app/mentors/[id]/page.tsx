@@ -3,10 +3,10 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentor, createOrder, fetchOrders } from "@/lib/api"
+import { fetchMentor, createOrder, fetchOrders, fetchStudentProfile } from "@/lib/api"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
-import { Mentor, MentorService, Order } from "@/types"
+import { Mentor, MentorService, Order, StudentProfile } from "@/types"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
 import Icon from "@/components/Icon"
@@ -27,6 +27,7 @@ export default function MentorPage({ params }: Props) {
   const router = useRouter()
   const [mentor, setMentor] = useState<Mentor | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [orderingServiceId, setOrderingServiceId] = useState<number | null>(null)
   const [orderError, setOrderError] = useState("")
@@ -45,6 +46,9 @@ export default function MentorPage({ params }: Props) {
         setMentor(m)
         setOrders(o)
         fetchMentorReviews(m.id).then(setReviews)
+        // Best-effort: only logged-in students will succeed; mentors get
+        // a 403 and the bonus banner just won't render.
+        fetchStudentProfile().then(setStudentProfile).catch(() => {})
       })
       .catch(() => router.replace("/mentors"))
       .finally(() => {
@@ -235,14 +239,26 @@ export default function MentorPage({ params }: Props) {
               </div>
             )}
 
-            {/* Consultation — hero block (10 000 ₸) */}
-            {consultationService && (
+            {/* Consultation — hero block (10 000 ₸; 5 000 ₸ with welcome bonus) */}
+            {consultationService && (() => {
+              const fullPrice = Number(consultationService.price)
+              const bonusActive = studentProfile?.welcome_bonus_available ?? false
+              const bonusAmount = 5000  // matches backend WELCOME_BONUS_AMOUNT
+              const discountedPrice = bonusActive ? Math.max(fullPrice - bonusAmount, 0) : fullPrice
+              return (
               <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="relative">
                   <div className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
                     <Icon name="forum" size={14} className="text-white" />
-                    {Number(consultationService.price).toLocaleString("ru-RU")} ₸
+                    {bonusActive ? (
+                      <>
+                        <span className="line-through opacity-60">{fullPrice.toLocaleString("ru-RU")} ₸</span>
+                        <span>{discountedPrice.toLocaleString("ru-RU")} ₸ с бонусом</span>
+                      </>
+                    ) : (
+                      <span>{fullPrice.toLocaleString("ru-RU")} ₸</span>
+                    )}
                   </div>
                   <h2 className="text-2xl font-bold mb-2">Консультация</h2>
                   <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line">
@@ -288,15 +304,19 @@ export default function MentorPage({ params }: Props) {
                     >
                       {orderingServiceId === consultationService.id
                         ? "Заказываем..."
-                        : `Заказать консультацию за ${Number(consultationService.price).toLocaleString("ru-RU")} ₸`}
+                        : `Заказать консультацию за ${discountedPrice.toLocaleString("ru-RU")} ₸`}
                     </button>
                   )}
                   {!mentor.is_accepting_bookings && consultationStatus === "none" && (
                     <p className="text-xs text-indigo-200 mt-2">Ментор сейчас не принимает запросы</p>
                   )}
+                  {bonusActive && consultationStatus === "none" && (
+                    <p className="text-xs text-indigo-200 mt-2">🎁 Применится приветственный бонус 5 000 ₸</p>
+                  )}
                 </div>
               </div>
-            )}
+              )
+            })()}
 
             {/* Paid services */}
             {paidServices.length > 0 && (

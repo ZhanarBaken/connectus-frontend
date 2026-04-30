@@ -154,6 +154,23 @@ export default function StudentDashboard() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Welcome bonus banner — first 30 days only */}
+            {profile?.welcome_bonus_available && (
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-5">
+                <h3 className="font-bold text-emerald-800 mb-1 text-sm inline-flex items-center gap-1.5">
+                  🎁 Бонус 5 000 ₸
+                </h3>
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  Применится автоматически при заказе платной консультации.
+                </p>
+                {profile.welcome_bonus_expires_at && (
+                  <p className="text-[11px] text-emerald-600 mt-2">
+                    Действует до {new Date(profile.welcome_bonus_expires_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Profile card */}
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
