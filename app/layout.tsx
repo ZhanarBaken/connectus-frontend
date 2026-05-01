@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Geist, Instrument_Serif } from "next/font/google"
 import "./globals.css"
+import AnalyticsInit from "@/components/AnalyticsInit"
 import Header from "@/components/Header"
 
 const geist = Geist({ subsets: ["latin"] })
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className={`${geist.className} ${instrumentSerif.variable}`}>
+        <AnalyticsInit />
         <Header />
         {children}
       </body>
