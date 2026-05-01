@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { register, resendVerification, googleAuth, telegramStart, fetchMe } from "@/lib/api"
+import { track } from "@/lib/analytics"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
@@ -38,6 +39,16 @@ export default function RegisterPage() {
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
   const [resendError, setResendError] = useState("")
+  // Refs (not state) so flipping the flag doesn't trigger a re-render.
+  // We only need to fire the analytics event the very first time this
+  // tab interacts with the form.
+  const formStartedRef = useRef(false)
+
+  const handleFirstInteraction = () => {
+    if (formStartedRef.current) return
+    formStartedRef.current = true
+    track("signup_form_started", { role })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,6 +58,7 @@ export default function RegisterPage() {
       await register(email, password, role, agreedToTerms)
       // Save role so login can route correctly later (also returned by /auth/me)
       localStorage.setItem("pending_role", role)
+      track("signup_form_submitted", { role })
       setRegistered(true)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка при регистрации. Проверьте данные.")
@@ -261,7 +273,10 @@ export default function RegisterPage() {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      handleFirstInteraction()
+                      setEmail(e.target.value)
+                    }}
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                     required
                   />
@@ -273,7 +288,10 @@ export default function RegisterPage() {
                       type={showPassword ? "text" : "password"}
                       placeholder="Минимум 12 символов"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        handleFirstInteraction()
+                        setPassword(e.target.value)
+                      }}
                       className="w-full border border-gray-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                       required
                     />

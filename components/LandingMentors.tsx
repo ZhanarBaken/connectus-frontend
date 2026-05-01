@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { MentorCard } from "@/types"
+import { track } from "@/lib/analytics"
 import { countriesFlagsCompact, countryLabel } from "@/lib/countries"
 import TiltCard from "./TiltCard"
 import Icon from "./Icon"
@@ -44,7 +45,11 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {mentors.slice(0, 3).map((mentor, i) => (
             <ScrollReveal key={mentor.id} variant="fade-up" delay={i * 150} duration={800}>
-              <Link href={`/mentors/${mentor.id}`} className="block h-full">
+              <Link
+                href={`/mentors/${mentor.id}`}
+                onClick={() => track("mentor_card_clicked", { mentor_profile_id: mentor.id })}
+                className="block h-full"
+              >
                 <TiltCard className="rounded-2xl h-full" tiltDeg={5} scale={1.01}>
                   <div className="bg-white rounded-2xl border border-gray-200 p-6 h-full flex flex-col hover:border-gray-300 transition-colors">
                     {/* Header */}

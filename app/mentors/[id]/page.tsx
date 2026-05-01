@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentor, createOrder, fetchOrders, fetchStudentProfile } from "@/lib/api"
+import { track } from "@/lib/analytics"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
 import { Mentor, MentorService, Order, StudentProfile } from "@/types"
@@ -45,6 +46,7 @@ export default function MentorPage({ params }: Props) {
       .then(([m, o]) => {
         setMentor(m)
         setOrders(o)
+        track("mentor_profile_viewed", { mentor_profile_id: m.id })
         fetchMentorReviews(m.id).then(setReviews)
         // Best-effort: only logged-in students will succeed; mentors get
         // a 403 and the bonus banner just won't render.
@@ -298,7 +300,13 @@ export default function MentorPage({ params }: Props) {
                     </Link>
                   ) : (
                     <button
-                      onClick={() => handleOrder(consultationService.id)}
+                      onClick={() => {
+                        track("book_consultation_clicked", {
+                          mentor_profile_id: mentor.id,
+                          mentor_service_id: consultationService.id,
+                        })
+                        handleOrder(consultationService.id)
+                      }}
                       disabled={orderingServiceId === consultationService.id || !mentor.is_accepting_bookings}
                       className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >

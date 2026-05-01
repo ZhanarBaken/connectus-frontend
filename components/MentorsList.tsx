@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
+import { track } from "@/lib/analytics"
 import { countryFlag, countryLabel, countriesFlagsCompact } from "@/lib/countries"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -190,6 +191,7 @@ export default function MentorsList({ mentors }: Props) {
               <Link
                 key={mentor.id}
                 href={`/mentors/${mentor.id}`}
+                onClick={() => track("mentor_card_clicked", { mentor_profile_id: mentor.id })}
                 className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all group flex flex-col"
               >
                 {/* Avatar + name */}
