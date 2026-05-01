@@ -46,6 +46,9 @@ export default function MentorPage({ params }: Props) {
       .then(([m, o]) => {
         setMentor(m)
         setOrders(o)
+        // Intentionally fires on every navigation between mentor
+        // profiles within the same SPA session — that is the "view"
+        // semantic. Don't gate this with a useRef.
         track("mentor_profile_viewed", { mentor_profile_id: m.id })
         fetchMentorReviews(m.id).then(setReviews)
         // Best-effort: only logged-in students will succeed; mentors get
