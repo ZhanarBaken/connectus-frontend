@@ -31,17 +31,12 @@ export default function AnimatedCounter({
       return
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !triggered.current) {
-          triggered.current = true
-          animate()
-          observer.unobserve(el)
-        }
-      },
-      { threshold: 0.3 }
-    )
-    observer.observe(el)
+    // No IO support — show final value immediately.
+    if (typeof IntersectionObserver === "undefined") {
+      setDisplay(value.toLocaleString())
+      triggered.current = true
+      return
+    }
 
     function animate() {
       const start = performance.now()
@@ -57,7 +52,33 @@ export default function AnimatedCounter({
       requestAnimationFrame(tick)
     }
 
-    return () => observer.disconnect()
+    let observerFired = false
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        observerFired = true
+        if (entry.isIntersecting && !triggered.current) {
+          triggered.current = true
+          animate()
+          observer.unobserve(el)
+        }
+      },
+      { threshold: 0.3 }
+    )
+    observer.observe(el)
+
+    // Safety net: if IO never fires (mobile Safari quirk), show
+    // the final value after 1s so users don't see a stuck zero.
+    const fallback = window.setTimeout(() => {
+      if (!observerFired && !triggered.current) {
+        triggered.current = true
+        animate()
+      }
+    }, 1000)
+
+    return () => {
+      observer.disconnect()
+      window.clearTimeout(fallback)
+    }
   }, [value, duration])
 
   return (

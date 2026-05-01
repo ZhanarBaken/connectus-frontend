@@ -82,8 +82,16 @@ export default function ScrollReveal({
       return
     }
 
+    // No IO support (very old browsers) — show content immediately.
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true)
+      return
+    }
+
+    let observerFired = false
     const observer = new IntersectionObserver(
       ([entry]) => {
+        observerFired = true
         if (entry.isIntersecting) {
           setVisible(true)
           if (once) observer.unobserve(el)
@@ -94,7 +102,19 @@ export default function ScrollReveal({
       { threshold, rootMargin: "0px 0px -40px 0px" }
     )
     observer.observe(el)
-    return () => observer.disconnect()
+
+    // Safety net: mobile Safari sometimes never fires IO on
+    // already-visible above-the-fold elements. If the observer
+    // hasn't reported anything within 1s, reveal the content
+    // unconditionally so the page is never permanently empty.
+    const fallback = window.setTimeout(() => {
+      if (!observerFired) setVisible(true)
+    }, 1000)
+
+    return () => {
+      observer.disconnect()
+      window.clearTimeout(fallback)
+    }
   }, [threshold, once])
 
   const style = useMemo<React.CSSProperties>(
