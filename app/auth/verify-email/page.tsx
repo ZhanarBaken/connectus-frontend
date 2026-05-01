@@ -23,12 +23,24 @@ function VerifyEmailContent() {
       return
     }
     verifyEmail(token)
-      .then(() => setStatus("success"))
+      .then((data) => {
+        // Auto-login: backend returns a fresh JWT pair so the user
+        // doesn't have to type email/password right after clicking
+        // the email link. Redirect by role.
+        localStorage.setItem("access_token", data.access)
+        localStorage.setItem("refresh_token", data.refresh)
+        localStorage.setItem("role", data.role)
+        setStatus("success")
+        const target = data.role === "mentor"
+          ? "/onboarding/mentor"
+          : "/onboarding/student"
+        router.replace(target)
+      })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Не удалось подтвердить email")
         setStatus("error")
       })
-  }, [params])
+  }, [params, router])
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">

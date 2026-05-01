@@ -323,7 +323,9 @@ export async function login(email: string, password: string) {
   return res.json()
 }
 
-export async function verifyEmail(token: string): Promise<void> {
+export async function verifyEmail(
+  token: string,
+): Promise<{ access: string; refresh: string; role: string }> {
   const res = await fetch(`${BASE_URL}/auth/verify-email/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -333,6 +335,7 @@ export async function verifyEmail(token: string): Promise<void> {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.token?.[0] || err.detail || "Не удалось подтвердить email")
   }
+  return res.json()
 }
 
 export async function resendVerification(email: string): Promise<void> {
