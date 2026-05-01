@@ -29,14 +29,7 @@ export default function LandingHero() {
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left — text */}
           <div>
-            <ScrollReveal variant="fade-up" duration={600}>
-              <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-8 border border-emerald-100">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                Первая консультация — бесплатно
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal variant="fade-up" delay={100} duration={800}>
+            <ScrollReveal variant="fade-up" duration={800}>
               <h1 className="text-[clamp(2.5rem,5vw,4rem)] font-bold text-gray-900 leading-[1.08] tracking-tight mb-6">
                 Поступи в университет мечты{" "}
                 <span className="font-[var(--font-display)] italic text-indigo-600">
@@ -126,27 +119,6 @@ export default function LandingHero() {
                         Студентов
                       </div>
                     </div>
-                  </div>
-
-                  {/* Live indicator */}
-                  <div className="mt-8 pt-6 border-t border-gray-100 flex items-center gap-3">
-                    <div className="flex -space-x-2">
-                      {["A", "K", "M"].map((letter, i) => (
-                        <div
-                          key={letter}
-                          className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
-                          style={{
-                            backgroundColor: ["#6366f1", "#8b5cf6", "#a78bfa"][i],
-                          }}
-                        >
-                          {letter}
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      <span className="font-semibold text-gray-700">3 студента</span>{" "}
-                      нашли ментора сегодня
-                    </p>
                   </div>
                 </div>
               </TiltCard>
