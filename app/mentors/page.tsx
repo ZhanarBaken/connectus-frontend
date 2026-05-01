@@ -6,6 +6,12 @@ import MentorsList from "@/components/MentorsList"
 export const dynamic = "force-dynamic"
 
 export default async function MentorsPage() {
-  const mentors = await fetchMentors()
+  // Degrade gracefully when the backend is unreachable.
+  let mentors: Awaited<ReturnType<typeof fetchMentors>> = []
+  try {
+    mentors = await fetchMentors()
+  } catch {
+    // Empty list — page still renders with the search/filter UI.
+  }
   return <MentorsList mentors={mentors} />
 }

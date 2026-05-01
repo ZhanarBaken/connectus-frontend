@@ -12,6 +12,17 @@ import LandingSections from "@/components/LandingSections"
 // time, so static prerendering would fail with ECONNREFUSED.
 export const dynamic = "force-dynamic"
 
+async function safeFetchMentors() {
+  // Degrade gracefully when the backend is unreachable (e.g. cold
+  // deploy where backend isn't up yet, or temporary outage). The
+  // landing renders with an empty mentor list instead of crashing.
+  try {
+    return await fetchMentors()
+  } catch {
+    return []
+  }
+}
+
 const CATEGORIES = [
   { label: "США", code: "US", desc: "Ivy League и топ университеты" },
   { label: "Великобритания", code: "GB", desc: "Oxbridge, Russell Group" },
@@ -70,7 +81,7 @@ const FAQS = [
 ]
 
 export default async function HomePage() {
-  const mentors = await fetchMentors()
+  const mentors = await safeFetchMentors()
 
   return (
     <main className="bg-white">
