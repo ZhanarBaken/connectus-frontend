@@ -41,7 +41,10 @@ export default function RegisterPage() {
   const [resendError, setResendError] = useState("")
   // Refs (not state) so flipping the flag doesn't trigger a re-render.
   // We only need to fire the analytics event the very first time this
-  // tab interacts with the form.
+  // tab interacts with the form. Wired to every entry path (role
+  // pick, email/password input, terms checkbox, OAuth/Telegram
+  // buttons) so the funnel `signup_form_started → submitted` covers
+  // all signup flows, not just the email/password one.
   const formStartedRef = useRef(false)
 
   const handleFirstInteraction = () => {
@@ -68,6 +71,7 @@ export default function RegisterPage() {
   }
 
   const handleGoogleRegister = () => {
+    handleFirstInteraction()
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setError("Google авторизация не настроена"); return }
 
@@ -97,6 +101,7 @@ export default function RegisterPage() {
   }
 
   const handleTelegramRegister = async () => {
+    handleFirstInteraction()
     setLoading(true)
     setError("")
     try {
@@ -212,7 +217,10 @@ export default function RegisterPage() {
                   <button
                     key={r.value}
                     type="button"
-                    onClick={() => setRole(r.value)}
+                    onClick={() => {
+                      handleFirstInteraction()
+                      setRole(r.value)
+                    }}
                     className={`flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-all ${
                       role === r.value
                         ? "border-gray-900 bg-gray-50"
@@ -320,7 +328,10 @@ export default function RegisterPage() {
                   <input
                     type="checkbox"
                     checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    onChange={(e) => {
+                      handleFirstInteraction()
+                      setAgreedToTerms(e.target.checked)
+                    }}
                     className="mt-0.5 flex-shrink-0 accent-indigo-600"
                   />
                   <span className="text-sm text-gray-500 leading-relaxed">
