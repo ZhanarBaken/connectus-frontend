@@ -54,10 +54,18 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                   <div className="bg-white rounded-2xl border border-gray-200 p-6 h-full flex flex-col hover:border-gray-300 transition-colors">
                     {/* Header */}
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white font-bold text-lg">
-                          {mentor.full_name.charAt(0)}
-                        </span>
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {mentor.profile_photo ? (
+                          <img
+                            src={mentor.profile_photo}
+                            alt={mentor.full_name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-white font-bold text-lg">
+                            {mentor.full_name.charAt(0)}
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
