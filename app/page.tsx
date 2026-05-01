@@ -8,6 +8,10 @@ import LandingHero from "@/components/LandingHero"
 import LandingMentors from "@/components/LandingMentors"
 import LandingSections from "@/components/LandingSections"
 
+// Render on each request — backend isn't reachable at Vercel build
+// time, so static prerendering would fail with ECONNREFUSED.
+export const dynamic = "force-dynamic"
+
 const CATEGORIES = [
   { label: "США", code: "US", desc: "Ivy League и топ университеты" },
   { label: "Великобритания", code: "GB", desc: "Oxbridge, Russell Group" },
