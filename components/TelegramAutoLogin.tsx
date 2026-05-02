@@ -29,7 +29,18 @@ export default function TelegramAutoLogin() {
   const router = useRouter()
   const { isInTelegram, initData } = useTelegramWebApp()
 
-  const [stage, setStage] = useState<AuthStage>("idle")
+  // Initial stage: synchronously detect Mini App context via URL hash
+  // (Telegram sets `#tgWebAppData=...` before any JS runs, well before
+  // the WebApp SDK script finishes loading async). If the hash is
+  // present we immediately show the loading overlay on first paint —
+  // no public-homepage flash before the role picker / redirect.
+  const [stage, setStage] = useState<AuthStage>(() => {
+    if (typeof window === "undefined") return "idle"
+    const looksLikeMiniApp = window.location.hash.includes("tgWebApp")
+    if (!looksLikeMiniApp) return "idle"
+    if (localStorage.getItem("access_token")) return "done"
+    return "checking"
+  })
   const [submittingRole, setSubmittingRole] = useState<Role | null>(null)
   const [error, setError] = useState("")
   // Guard against re-running auto-login when state updates trigger a
@@ -85,11 +96,15 @@ export default function TelegramAutoLogin() {
         localStorage.setItem("access_token", result.access)
         localStorage.setItem("refresh_token", result.refresh)
         localStorage.setItem("role", role)
-        // Drop the overlay before navigating — RootLayout persists, so
-        // leaving stage="needsRole" would keep the picker on top of
-        // the onboarding page.
-        setStage("done")
+        // Swap to checking spinner BEFORE navigating so the overlay
+        // stays up while /onboarding/<role> mounts — otherwise the
+        // destination page flashes its own auth-check skeleton.
+        // Cleared shortly after navigation by a layout effect (below).
+        setStage("checking")
         router.push(role === "mentor" ? "/onboarding/mentor" : "/onboarding/student")
+        // Hide the overlay after the next tick so the destination has
+        // had a chance to read localStorage and render with auth.
+        window.setTimeout(() => setStage("done"), 600)
       } else {
         setError("Не удалось создать аккаунт")
       }
