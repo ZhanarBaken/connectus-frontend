@@ -12,6 +12,14 @@ import TiltCard from "./TiltCard"
 import FaqList from "./FaqList"
 import PlatformReviews from "./PlatformReviews"
 import LandingMentors from "./LandingMentors"
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_EMAIL_HREF,
+  SUPPORT_TELEGRAM_URL,
+  SUPPORT_TELEGRAM_USERNAME,
+  SUPPORT_WHATSAPP_DISPLAY,
+  SUPPORT_WHATSAPP_URL,
+} from "@/lib/contacts"
 
 interface Step {
   number: string
@@ -478,7 +486,37 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
             <div>
               <h4 className="text-white font-semibold mb-4 text-sm">Поддержка</h4>
               <ul className="space-y-3 text-sm">
-                <li><a href="mailto:hello@connectus.kz" className="hover:text-white transition-colors">hello@connectus.kz</a></li>
+                <li>
+                  <a
+                    href={SUPPORT_EMAIL_HREF}
+                    className="inline-flex items-center gap-2 hover:text-white transition-colors"
+                  >
+                    <Icon name="mail" size={16} className="text-gray-500" />
+                    {SUPPORT_EMAIL}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={SUPPORT_WHATSAPP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 hover:text-white transition-colors"
+                  >
+                    <Icon name="chat" size={16} className="text-gray-500" />
+                    WhatsApp {SUPPORT_WHATSAPP_DISPLAY}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={SUPPORT_TELEGRAM_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 hover:text-white transition-colors"
+                  >
+                    <Icon name="send" size={16} className="text-gray-500" />
+                    Telegram {SUPPORT_TELEGRAM_USERNAME}
+                  </a>
+                </li>
               </ul>
             </div>
           </div>

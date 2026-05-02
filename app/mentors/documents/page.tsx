@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { authFetch, fetchMentorProfile } from "@/lib/api"
+import { SUPPORT_EMAIL } from "@/lib/contacts"
 import Icon from "@/components/Icon"
 import BackButton from "@/components/BackButton"
 
@@ -166,7 +167,7 @@ export default function MentorDocumentsPage() {
             <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
-              <p className="text-xs text-red-500 mt-1">Редактирование недоступно. Обратитесь в поддержку: hello@connectus.kz</p>
+              <p className="text-xs text-red-500 mt-1">Редактирование недоступно. Обратитесь в поддержку: {SUPPORT_EMAIL}</p>
             </div>
           </div>
         )}

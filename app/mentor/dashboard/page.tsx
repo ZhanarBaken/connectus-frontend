@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation, fetchMe } from "@/lib/api"
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/contacts"
 import { User } from "@/types"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countriesLabelInline } from "@/lib/countries"
@@ -224,7 +225,7 @@ export default function MentorDashboard() {
               )}
               <p className="text-xs text-red-500 mt-2">
                 Вы можете просматривать свои заказы и чаты, но не можете редактировать профиль, услуги или документы.
-                Если считаете что это ошибка — напишите на <a href="mailto:hello@connectus.kz" className="underline">hello@connectus.kz</a>
+                Если считаете что это ошибка — напишите на <a href={SUPPORT_EMAIL_HREF} className="underline">{SUPPORT_EMAIL}</a>
               </p>
             </div>
           </div>
