@@ -197,7 +197,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
           </ScrollReveal>
           <ScrollReveal variant="blur-in" delay={200}>
             <p className="text-gray-400 text-lg text-center mb-16 max-w-xl mx-auto">
-              Безопасно для студентов и родителей
+              Безопасно для абитуриентов и родителей
             </p>
           </ScrollReveal>
 
@@ -230,7 +230,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
               {
                 icon: "school",
                 title: "Реальный опыт",
-                desc: "Менторы — студенты и выпускники тех же университетов",
+                desc: "Менторы — абитуриенты и выпускники тех же университетов",
                 stat: 50,
                 statSuffix: "+",
                 statLabel: "менторов",
@@ -275,7 +275,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
           <ScrollReveal variant="fade-up">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
               Что говорят{" "}
-              <span className="font-[var(--font-display)] italic">студенты</span>
+              <span className="font-[var(--font-display)] italic">абитуриенты</span>
             </h2>
           </ScrollReveal>
           <ScrollReveal variant="blur-in" delay={200}>
@@ -304,7 +304,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
                 </h2>
                 <p className="text-gray-500 text-lg leading-relaxed mb-10 max-w-lg">
                   Стань ментором Connectus. Делись опытом, помогай
-                  следующему поколению студентов пройти тот же путь.
+                  следующему поколению абитуриентов пройти тот же путь.
                 </p>
               </ScrollReveal>
 
@@ -364,7 +364,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
 
                     <div className="space-y-4 mb-6">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Студентов</span>
+                        <span className="text-gray-500">Абитуриентов</span>
                         <span className="font-semibold text-gray-900">
                           <AnimatedCounter value={12} duration={1200} />
                         </span>
@@ -469,7 +469,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4 text-sm">Студентам</h4>
+              <h4 className="text-white font-semibold mb-4 text-sm">Абитуриентам</h4>
               <ul className="space-y-3 text-sm">
                 <li><Link href="/mentors" className="hover:text-white transition-colors">Найти ментора</Link></li>
                 <li><Link href="/#how-it-works" className="hover:text-white transition-colors">Как это работает</Link></li>
@@ -522,7 +522,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-sm">&copy; 2026 Connectus. Все права защищены.</p>
-            <p className="text-sm">Сделано для студентов Казахстана</p>
+            <p className="text-sm">Сделано для абитуриентов Казахстана</p>
           </div>
         </div>
       </footer>

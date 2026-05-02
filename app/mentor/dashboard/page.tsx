@@ -247,7 +247,7 @@ export default function MentorDashboard() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Заполни профиль и начни принимать заявки</p>
-                    <p className="text-sm text-gray-500">Студенты увидят тебя только после одобрения профиля</p>
+                    <p className="text-sm text-gray-500">Абитуриенты увидят тебя только после одобрения профиля</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
                     <div className="text-2xl font-bold text-indigo-600">{completionPercent}%</div>
@@ -351,7 +351,7 @@ export default function MentorDashboard() {
                       <div className="flex items-center gap-2">
                         <Icon name="redeem" size={18} className="text-indigo-600" />
                         <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Что увидят студенты
+                          Что увидят абитуриенты
                         </h3>
                       </div>
                       <Link
@@ -385,7 +385,7 @@ export default function MentorDashboard() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-semibold text-gray-900 truncate">
-                                {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                                {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
                               </h3>
                               <span className="text-xs bg-emerald-50 text-emerald-600 font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                 <Icon name="redeem" size={12} />
@@ -428,7 +428,7 @@ export default function MentorDashboard() {
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">Пока нет заказов</h3>
                   <p className="text-sm text-gray-400">
-                    Заказы появятся когда студенты запишутся на твои услуги
+                    Заказы появятся когда абитуриенты запишутся на твои услуги
                   </p>
                 </div>
               ) : (
@@ -443,7 +443,7 @@ export default function MentorDashboard() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-900 truncate">{order.service_title}</h3>
                           <p className="text-sm text-gray-400 mt-0.5">
-                            {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                            {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
                           </p>
                           <p className="text-xs text-gray-300 mt-1">
                             {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
@@ -483,7 +483,7 @@ export default function MentorDashboard() {
                     <Icon name="star" size={28} className="text-yellow-400" filled />
                   </div>
                   <p className="text-sm text-gray-400 leading-relaxed">
-                    Отзывы появятся после того как студенты завершат заказы
+                    Отзывы появятся после того как абитуриенты завершат заказы
                   </p>
                 </div>
               ) : (

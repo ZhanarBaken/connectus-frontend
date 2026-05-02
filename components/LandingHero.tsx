@@ -116,7 +116,7 @@ export default function LandingHero() {
                       </div>
                       <div className="text-sm text-gray-400 font-medium flex items-center gap-1.5">
                         <Icon name="school" size={14} className="text-gray-300" />
-                        Студентов
+                        Абитуриентов
                       </div>
                     </div>
                   </div>
@@ -131,7 +131,7 @@ export default function LandingHero() {
           {[
             { value: 50, suffix: "+", label: "Менторов" },
             { value: 15, suffix: "", label: "Стран" },
-            { value: 200, suffix: "+", label: "Студентов" },
+            { value: 200, suffix: "+", label: "Абитуриентов" },
           ].map((stat, i) => (
             <ScrollReveal key={stat.label} variant="fade-up" delay={i * 100}>
               <div className="text-center bg-white rounded-xl border border-gray-100 py-4 px-2">

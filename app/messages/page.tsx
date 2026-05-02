@@ -94,7 +94,7 @@ export default function MessagesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Сообщения</h1>
           <p className="text-sm text-gray-400 mt-1">
             {role === "mentor"
-              ? "Чаты со студентами по принятым консультациям"
+              ? "Чаты с абитуриентами по принятым консультациям"
               : "Чаты с менторами по твоим заказам"}
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function MessagesPage() {
             <h3 className="font-semibold text-gray-900 mb-2">Пока нет чатов</h3>
             <p className="text-sm text-gray-400 mb-6">
               {role === "mentor"
-                ? "Чат со студентом откроется после оплаты консультации"
+                ? "Чат с абитуриентом откроется после оплаты консультации"
                 : "Закажи консультацию у ментора — после оплаты откроется чат"}
             </p>
             {role !== "mentor" && (
@@ -123,7 +123,7 @@ export default function MessagesPage() {
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             {conversations.map((order, i) => {
               const counterpartName = role === "mentor"
-                ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент")
+                ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент")
                 : (mentorNames[order.mentor] || "Ментор")
               const initial = counterpartName.charAt(0).toUpperCase()
               const dateLabel = new Date(order.created_at).toLocaleDateString("ru-RU", {

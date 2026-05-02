@@ -14,14 +14,14 @@ const ROLES = [
   {
     value: "student" as Role,
     icon: "school",
-    title: "Я студент или родитель",
+    title: "Я абитуриент или родитель",
     desc: "Ищу ментора для поступления за рубеж",
   },
   {
     value: "mentor" as Role,
     icon: "star",
     title: "Я ментор",
-    desc: "Хочу помогать студентам с поступлением",
+    desc: "Хочу помогать абитуриентам с поступлением",
   },
 ]
 
@@ -270,7 +270,7 @@ export default function RegisterPage() {
               <p className="text-gray-500 text-sm mb-6">
                 Регистрируешься как{" "}
                 <span className="font-medium text-indigo-600">
-                  {role === "mentor" ? "ментор" : "студент"}
+                  {role === "mentor" ? "ментор" : "абитуриент"}
                 </span>
               </p>
 

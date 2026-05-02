@@ -541,7 +541,7 @@ export default function SettingsPage() {
             <div className="bg-white rounded-2xl border border-gray-200 p-6 divide-y divide-gray-50">
               <Toggle
                 label="Видимость профиля"
-                description="Когда включено, студенты видят тебя в каталоге менторов и могут зайти на твою страницу."
+                description="Когда включено, абитуриенты видят тебя в каталоге менторов и могут зайти на твою страницу."
                 icon="visibility"
                 checked={isPublic}
                 onChange={(val) => {
@@ -552,7 +552,7 @@ export default function SettingsPage() {
               />
               <Toggle
                 label="Приём заявок"
-                description="Когда включено, студенты могут отправлять запросы на консультацию и заказывать услуги."
+                description="Когда включено, абитуриенты могут отправлять запросы на консультацию и заказывать услуги."
                 icon="event_available"
                 checked={isAcceptingBookings}
                 onChange={(val) => {

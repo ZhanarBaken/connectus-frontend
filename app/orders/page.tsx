@@ -74,7 +74,7 @@ export default function OrdersPage() {
       if (!map.has(sid)) {
         map.set(sid, {
           studentId: sid,
-          studentName: order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент",
+          studentName: order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент",
           orders: [],
           activeCount: 0,
         })
@@ -116,7 +116,7 @@ export default function OrdersPage() {
               {isMentor ? "Клиентов пока нет" : "Заказов пока нет"}
             </h3>
             <p className="text-sm text-gray-400 mb-6">
-              {isMentor ? "Клиенты появятся когда студенты запишутся к тебе" : "Найди ментора и запишись на консультацию"}
+              {isMentor ? "Клиенты появятся когда абитуриенты запишутся к тебе" : "Найди ментора и запишись на консультацию"}
             </p>
             {!isMentor && (
               <Link href="/mentors" className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">

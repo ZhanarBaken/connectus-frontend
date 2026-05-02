@@ -198,7 +198,7 @@ export default function OrderPage({ params }: Props) {
 
   const handleComplete = async () => {
     if (!order) return
-    if (!confirm("Отметить услугу выполненной? Студент сможет оставить отзыв, а ты получишь выплату после окончания периода споров.")) return
+    if (!confirm("Отметить услугу выполненной? Абитуриент сможет оставить отзыв, а ты получишь выплату после окончания периода споров.")) return
     setCompleting(true)
     setCompleteError("")
     try {
@@ -297,7 +297,7 @@ export default function OrderPage({ params }: Props) {
   const handleCloseChat = async () => {
     if (!order?.conversation_id) return
     if (!confirm(
-      "Закрыть чат с этим студентом? Студент больше не сможет писать или покупать у тебя услуги, пока чат не откроется снова. Чат переоткроется автоматически, если студент попросит новую консультацию и ты её примешь."
+      "Закрыть чат с этим абитуриентом? Абитуриент больше не сможет писать или покупать у тебя услуги, пока чат не откроется снова. Чат переоткроется автоматически, если абитуриент попросит новую консультацию и ты её примешь."
     )) return
     setClosingChat(true)
     setCloseError("")
@@ -422,7 +422,7 @@ export default function OrderPage({ params }: Props) {
               </Link>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">Студент</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">Абитуриент</h2>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-indigo-600 font-bold text-sm">
@@ -431,7 +431,7 @@ export default function OrderPage({ params }: Props) {
                   </div>
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900 text-sm truncate">
-                      {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                      {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
                     </p>
                     <p className="text-xs text-gray-400 truncate">
                       Общение только в чате
@@ -479,7 +479,7 @@ export default function OrderPage({ params }: Props) {
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
                   {isAnyConsultation
                     ? "Когда вы обсудили всё что нужно, отметь консультацию завершённой."
-                    : "Когда работа выполнена, отметь услугу завершённой. Студент сможет оставить отзыв, а выплата уйдёт после периода споров."}
+                    : "Когда работа выполнена, отметь услугу завершённой. Абитуриент сможет оставить отзыв, а выплата уйдёт после периода споров."}
                 </p>
                 {completeError && (
                   <p className="text-xs text-red-600 mb-3">{completeError}</p>
@@ -503,7 +503,7 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-white border border-gray-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">Закрыть чат</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Если ты больше не работаешь с этим студентом, закрой чат. Студент больше не сможет писать тебе или покупать услуги.
+                  Если ты больше не работаешь с этим абитуриентом, закрой чат. Абитуриент больше не сможет писать тебе или покупать услуги.
                 </p>
                 {closeError && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
@@ -513,7 +513,7 @@ export default function OrderPage({ params }: Props) {
                     </p>
                     <p className="text-xs text-amber-700 leading-relaxed">
                       {closeError.toLowerCase().includes("active")
-                        ? "Сначала заверши все активные услуги с этим студентом, потом чат можно будет закрыть."
+                        ? "Сначала заверши все активные услуги с этим абитуриентом, потом чат можно будет закрыть."
                         : closeError}
                     </p>
                   </div>
@@ -523,7 +523,7 @@ export default function OrderPage({ params }: Props) {
                   disabled={closingChat}
                   className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-50"
                 >
-                  {closingChat ? "Закрываем..." : "Закрыть чат со студентом"}
+                  {closingChat ? "Закрываем..." : "Закрыть чат с абитуриентом"}
                 </button>
               </div>
             )}
@@ -537,7 +537,7 @@ export default function OrderPage({ params }: Props) {
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   {role === "mentor"
-                    ? "Студент не может писать сообщения и покупать услуги. Чат откроется снова, если ты примешь новый запрос на консультацию."
+                    ? "Абитуриент не может писать сообщения и покупать услуги. Чат откроется снова, если ты примешь новый запрос на консультацию."
                     : "Ментор закрыл чат. Чтобы продолжить общение и заказать услуги, закажи новую консультацию на странице ментора."}
                 </p>
               </div>
@@ -705,7 +705,7 @@ export default function OrderPage({ params }: Props) {
                 {disputeTimeRemainingMs !== null && disputeTimeRemainingMs > 0 ? (
                   <p className="text-xs text-green-700 leading-relaxed">
                     {role === "mentor"
-                      ? `Студент может подать спор в течение ${formatRemaining(disputeTimeRemainingMs)}.`
+                      ? `Абитуриент может подать спор в течение ${formatRemaining(disputeTimeRemainingMs)}.`
                       : `У тебя есть ${formatRemaining(disputeTimeRemainingMs)} чтобы подать спор, если что-то пошло не так.`}
                   </p>
                 ) : disputeTimeRemainingMs !== null ? (
@@ -723,7 +723,7 @@ export default function OrderPage({ params }: Props) {
                 orderId={order.id}
                 mentorId={order.mentor}
                 mentorName="Ментор"
-                authorName={order.student_info?.full_name?.trim().split(/\s+/)[0] || "Студент"}
+                authorName={order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
               />
             )}
 
@@ -1043,7 +1043,7 @@ export default function OrderPage({ params }: Props) {
                       </p>
                       <p className="text-center text-xs text-gray-400 mt-1 leading-relaxed">
                         {role === "mentor"
-                          ? "Чат снова откроется, если ты примешь новый запрос на консультацию от этого студента."
+                          ? "Чат снова откроется, если ты примешь новый запрос на консультацию от этого абитуриента."
                           : "Закажи новую консультацию у этого ментора, чтобы возобновить общение."}
                       </p>
                     </div>

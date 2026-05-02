@@ -300,7 +300,7 @@ export default function MentorProfilePage() {
                 <input value={examResults} onChange={(e) => setExamResults(e.target.value)}
                   placeholder="IELTS 7.5, SAT 1480, GRE 320..." className={inputClass} />
               </Field>
-              <Field label="LinkedIn" hint="Необязательно — помогает студентам убедиться в твоих достижениях">
+              <Field label="LinkedIn" hint="Необязательно — помогает абитуриентам убедиться в твоих достижениях">
                 <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)}
                   placeholder="https://linkedin.com/in/..." className={inputClass} />
               </Field>
@@ -312,7 +312,7 @@ export default function MentorProfilePage() {
             <h2 className="text-base font-semibold text-gray-900 mb-5">О себе</h2>
             <Field label="Расскажи свою историю" hint="Минимум 3-4 предложения. Что ты прошёл, как можешь помочь.">
               <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={5}
-                placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю студентам составить план поступления, написать эссе и подать заявки в топ университеты США..."
+                placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю абитуриентам составить план поступления, написать эссе и подать заявки в топ университеты США..."
                 className={`${inputClass} resize-none`} />
             </Field>
           </div>
@@ -321,7 +321,7 @@ export default function MentorProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-1">Бесплатная консультация</h2>
             <p className="text-sm text-gray-500 mb-5">
-              Это описание увидят студенты на твоём профиле. Расскажи что ты обсудишь на вводной встрече.
+              Это описание увидят абитуриенты на твоём профиле. Расскажи что ты обсудишь на вводной встрече.
             </p>
             <Field
               label="Что обсудим на консультации"
@@ -346,7 +346,7 @@ export default function MentorProfilePage() {
           {/* Expertise */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-2">Специализация</h2>
-            <p className="text-sm text-gray-400 mb-5">В чём ты помогаешь студентам?</p>
+            <p className="text-sm text-gray-400 mb-5">В чём ты помогаешь абитуриентам?</p>
             <div className="flex flex-wrap gap-3">
               {EXPERTISE_OPTIONS.map(({ value, label }) => (
                 <button
@@ -369,7 +369,7 @@ export default function MentorProfilePage() {
           {/* Payout */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-2">Реквизиты для выплаты</h2>
-            <p className="text-sm text-gray-400 mb-5">Видно только администратору платформы — не студентам</p>
+            <p className="text-sm text-gray-400 mb-5">Видно только администратору платформы — не абитуриентам</p>
             <Field label="Реквизиты">
               <input value={payoutDetails} onChange={(e) => setPayoutDetails(e.target.value)}
                 placeholder="Kaspi: +7 777 123 45 67 / IBAN: KZ..." className={inputClass} />

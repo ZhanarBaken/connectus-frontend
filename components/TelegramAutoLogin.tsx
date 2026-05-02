@@ -142,7 +142,7 @@ export default function TelegramAutoLogin() {
                 disabled={submittingRole !== null}
                 className="bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
-                {submittingRole === "student" ? "Создаём..." : "Я студент или родитель"}
+                {submittingRole === "student" ? "Создаём..." : "Я абитуриент или родитель"}
               </button>
               <button
                 onClick={() => handlePickRole("mentor")}

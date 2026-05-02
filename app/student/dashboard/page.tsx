@@ -71,7 +71,7 @@ export default function StudentDashboard() {
           <div>
             <p className="text-sm text-gray-400 mb-1">Личный кабинет</p>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Привет, {profile?.full_name?.split(" ")[0] || "студент"} <Icon name="waving_hand" size={28} className="text-yellow-500 align-baseline ml-1" />
+              Привет, {profile?.full_name?.split(" ")[0] || "абитуриент"} <Icon name="waving_hand" size={28} className="text-yellow-500 align-baseline ml-1" />
             </h1>
             {profile?.current_school_or_university && (
               <p className="text-gray-500 mt-1 text-sm">{profile.current_school_or_university}</p>

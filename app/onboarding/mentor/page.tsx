@@ -79,7 +79,7 @@ export default function MentorOnboarding() {
             <Logo size={32} className="text-gray-900" />
             <span className="text-xl font-bold text-gray-900">Connectus</span>
           </div>
-          <p className="text-gray-500 text-sm">Создай профиль — студенты увидят тебя после проверки</p>
+          <p className="text-gray-500 text-sm">Создай профиль — абитуриенты увидят тебя после проверки</p>
         </div>
 
         {/* Steps */}
@@ -105,7 +105,7 @@ export default function MentorOnboarding() {
           {step === 1 && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Расскажи о себе</h1>
-              <p className="text-gray-400 text-sm mb-6">Студенты увидят это на твоей странице</p>
+              <p className="text-gray-400 text-sm mb-6">Абитуриенты увидят это на твоей странице</p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Полное имя</label>
@@ -122,10 +122,10 @@ export default function MentorOnboarding() {
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={4}
-                    placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю студентам составить план поступления, написать эссе и подать заявки в топ университеты..."
+                    placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю абитуриентам составить план поступления, написать эссе и подать заявки в топ университеты..."
                     className={`${inputClass} resize-none`}
                   />
-                  <p className="text-xs text-gray-400 mt-1">Минимум 2-3 предложения — это влияет на доверие студентов</p>
+                  <p className="text-xs text-gray-400 mt-1">Минимум 2-3 предложения — это влияет на доверие абитуриентов</p>
                 </div>
               </div>
               <button

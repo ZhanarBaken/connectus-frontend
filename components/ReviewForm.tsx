@@ -60,7 +60,7 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
       <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center">
         <div className="text-2xl mb-2">✓</div>
         <p className="text-sm font-semibold text-green-800">Спасибо за отзыв!</p>
-        <p className="text-xs text-green-700 mt-1">Он помогает другим студентам сделать выбор</p>
+        <p className="text-xs text-green-700 mt-1">Он помогает другим абитуриентам сделать выбор</p>
       </div>
     )
   }

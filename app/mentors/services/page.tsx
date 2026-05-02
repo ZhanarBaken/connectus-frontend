@@ -284,7 +284,7 @@ export default function MentorServicesPage() {
                       </span>
                     </div>
                     <p className="text-xs text-indigo-700 mt-3 leading-relaxed">
-                      Платная консультация — каждый ментор получает её автоматически с фиксированной ценой 10 000 ₸. Студенты используют её для первого общения с тобой, после чего могут заказывать твои дополнительные услуги.
+                      Платная консультация — каждый ментор получает её автоматически с фиксированной ценой 10 000 ₸. Абитуриенты используют её для первого общения с тобой, после чего могут заказывать твои дополнительные услуги.
                     </p>
                   </div>
                 </div>
@@ -299,7 +299,7 @@ export default function MentorServicesPage() {
                       <Icon name="description" size={48} className="text-gray-300" />
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Платных услуг пока нет</h3>
-                    <p className="text-sm text-gray-400 mb-6">Добавь услугу чтобы студенты могли её заказать после консультации</p>
+                    <p className="text-sm text-gray-400 mb-6">Добавь услугу чтобы абитуриенты могли её заказать после консультации</p>
                     {!isBanned && (
                       <button
                         onClick={startCreate}
