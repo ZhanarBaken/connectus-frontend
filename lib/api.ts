@@ -457,6 +457,34 @@ export async function telegramLogin(token: string): Promise<{
   return res.json()
 }
 
+export type TelegramMiniAppLoginResult =
+  | { ok: true; access: string; refresh: string; user_id: number; created: boolean }
+  | { ok: false; reason: "role_required" }
+
+export async function telegramMiniAppLogin(
+  initData: string,
+  role?: "student" | "mentor",
+): Promise<TelegramMiniAppLoginResult> {
+  const res = await fetch(`${BASE_URL}/auth/telegram/miniapp/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(role ? { init_data: initData, role } : { init_data: initData }),
+  })
+  if (res.status === 400) {
+    const err = await res.json().catch(() => ({}))
+    if (err.detail === "role_required") {
+      return { ok: false, reason: "role_required" }
+    }
+    throw new Error(err.detail || "Не удалось войти через Telegram")
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось войти через Telegram")
+  }
+  const data = await res.json()
+  return { ok: true, ...data }
+}
+
 export async function telegramFinalize(token: string): Promise<{ user_id: number; created: boolean; access: string; refresh: string }> {
   const res = await fetch(`${BASE_URL}/auth/telegram/finalize/`, {
     method: "POST",

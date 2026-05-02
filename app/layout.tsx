@@ -3,6 +3,7 @@ import { Geist, Instrument_Serif } from "next/font/google"
 import "./globals.css"
 import AnalyticsInit from "@/components/AnalyticsInit"
 import Header from "@/components/Header"
+import TelegramAutoLogin from "@/components/TelegramAutoLogin"
 
 const geist = Geist({ subsets: ["latin"] })
 const instrumentSerif = Instrument_Serif({
@@ -28,9 +29,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         {/* Google Sign-In SDK */}
         <script src="https://accounts.google.com/gsi/client" async defer></script>
+        {/* Telegram Mini App SDK — no-op outside Telegram, exposes
+            window.Telegram.WebApp inside it. */}
+        <script src="https://telegram.org/js/telegram-web-app.js" async defer></script>
       </head>
       <body className={`${geist.className} ${instrumentSerif.variable}`}>
         <AnalyticsInit />
+        <TelegramAutoLogin />
         <Header />
         {children}
       </body>
