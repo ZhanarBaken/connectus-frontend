@@ -67,6 +67,10 @@ export default function TelegramAutoLogin() {
         localStorage.setItem("access_token", result.access)
         localStorage.setItem("refresh_token", result.refresh)
         localStorage.setItem("role", role)
+        // Hide the picker before navigating — the layout persists across
+        // route changes, so leaving needsRole=true would keep the
+        // full-screen overlay on top of the onboarding page.
+        setNeedsRole(false)
         router.push(role === "mentor" ? "/onboarding/mentor" : "/onboarding/student")
       } else {
         setError("Не удалось создать аккаунт")
