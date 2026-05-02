@@ -75,7 +75,7 @@ export default function TelegramAutoLogin() {
           localStorage.setItem("role", me.role)
           setStage("done")
           if (result.created) {
-            router.push(me.role === "mentor" ? "/onboarding/mentor" : "/onboarding/student")
+            router.push(me.role === "mentor" ? "/onboarding/mentor/identity" : "/onboarding/student")
           } else {
             router.refresh()
           }
@@ -101,7 +101,7 @@ export default function TelegramAutoLogin() {
         // destination page flashes its own auth-check skeleton.
         // Cleared shortly after navigation by a layout effect (below).
         setStage("checking")
-        router.push(role === "mentor" ? "/onboarding/mentor" : "/onboarding/student")
+        router.push(role === "mentor" ? "/onboarding/mentor/identity" : "/onboarding/student")
         // Hide the overlay after the next tick so the destination has
         // had a chance to read localStorage and render with auth.
         window.setTimeout(() => setStage("done"), 600)

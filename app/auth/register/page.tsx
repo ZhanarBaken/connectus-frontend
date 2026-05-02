@@ -87,7 +87,7 @@ export default function RegisterPage() {
           localStorage.setItem("refresh_token", data.refresh)
           const me = await fetchMe(data.access)
           localStorage.setItem("role", me.role)
-          if (me.role === "mentor") router.push("/onboarding/mentor")
+          if (me.role === "mentor") router.push("/onboarding/mentor/identity")
           else router.push("/onboarding/student")
         } catch (e: unknown) {
           setError(e instanceof Error ? e.message : "Ошибка регистрации через Google")

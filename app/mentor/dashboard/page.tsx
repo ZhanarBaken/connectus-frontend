@@ -214,6 +214,28 @@ export default function MentorDashboard() {
           </Link>
         </div>
 
+        {/* Identity banner — shown for legacy mentors who registered
+            before the new identity-gate flow. Submission still requires
+            verified email + linked Telegram on the backend, so we
+            point them at the gate page to complete the missing piece. */}
+        {me && !profile.is_banned && (!me.email || !me.email_verified || !me.has_telegram) && (
+          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
+            <Icon name="warning" size={24} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-amber-900">Заверши настройку идентичности</p>
+              <p className="text-sm text-amber-800 mt-1">
+                Менторам нужны и email, и Telegram. Без них профиль нельзя отправить на проверку.
+              </p>
+              <Link
+                href="/onboarding/mentor/identity"
+                className="inline-block mt-3 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+              >
+                Завершить настройку
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Ban banner */}
         {profile.is_banned && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-4">

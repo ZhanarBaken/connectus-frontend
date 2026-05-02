@@ -32,7 +32,7 @@ function VerifyEmailContent() {
         localStorage.setItem("role", data.role)
         setStatus("success")
         const target = data.role === "mentor"
-          ? "/onboarding/mentor"
+          ? "/onboarding/mentor/identity"
           : "/onboarding/student"
         router.replace(target)
       })

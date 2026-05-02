@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { updateMentorProfile } from "@/lib/api"
+import { fetchMe, updateMentorProfile } from "@/lib/api"
 import { COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { ExpertiseArea } from "@/types"
 import Icon from "@/components/Icon"
@@ -24,6 +24,32 @@ export default function MentorOnboarding() {
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  // Until we've checked that the user passed the identity gate
+  // (verified email + linked Telegram), don't render the form —
+  // otherwise a returning user could land here mid-flow without
+  // satisfying the backend submit requirements.
+  const [identityReady, setIdentityReady] = useState(false)
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : ""
+    if (!token) {
+      router.replace("/auth/login")
+      return
+    }
+    fetchMe(token)
+      .then((me) => {
+        if (me.role !== "mentor") {
+          router.replace(me.role === "student" ? "/student/dashboard" : "/")
+          return
+        }
+        if (!me.email || !me.email_verified || !me.has_telegram) {
+          router.replace("/onboarding/mentor/identity")
+          return
+        }
+        setIdentityReady(true)
+      })
+      .catch(() => router.replace("/auth/login"))
+  }, [router])
 
   // Step 1
   const [fullName, setFullName] = useState("")
@@ -68,6 +94,14 @@ export default function MentorOnboarding() {
       setError(e instanceof Error ? e.message : "Ошибка при сохранении")
       setSaving(false)
     }
+  }
+
+  if (!identityReady) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (

@@ -41,7 +41,7 @@ function TgCallbackContent() {
         setTimeout(() => {
           if (data.created) {
             if (me.role === "mentor") {
-              router.push("/onboarding/mentor")
+              router.push("/onboarding/mentor/identity")
             } else {
               router.push("/onboarding/student")
             }
