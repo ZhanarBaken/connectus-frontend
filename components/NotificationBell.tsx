@@ -18,7 +18,23 @@ const KIND_ICON: Record<string, string> = {
   "review.reply": "reply",
 }
 
-const POLL_INTERVAL = 30_000 // 30s
+// Used only as a fallback when the WebSocket connection cannot be
+// established (anonymous tab, hostile proxy, browser blocks WS).
+const POLL_FALLBACK_INTERVAL = 60_000
+
+function buildWebSocketBase(): string | null {
+  // NEXT_PUBLIC_API_URL is like `https://api.connectus.kz/api/v1`.
+  // The notifications WS lives at `wss://api.connectus.kz/ws/notifications/`.
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) return null
+  try {
+    const url = new URL(apiUrl)
+    const scheme = url.protocol === "https:" ? "wss:" : "ws:"
+    return `${scheme}//${url.host}/ws/notifications/`
+  } catch {
+    return null
+  }
+}
 
 export default function NotificationBell() {
   const router = useRouter()
@@ -28,17 +44,107 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Poll unread count
+  // Subscribe to the notifications WebSocket. Polling is kept as a
+  // fallback only — engaged when the WS can't be opened or after it
+  // closes, until the next successful reconnect.
   useEffect(() => {
     let active = true
-    const poll = () => {
+    let backoffMs = 1_000
+    let ws: WebSocket | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null
+
+    const refreshCount = () => {
       fetchUnreadNotificationCount()
         .then((c) => { if (active) setCount(c) })
-        .catch(() => {})
+        .catch(() => { /* offline — polling will retry */ })
     }
-    poll()
-    const id = setInterval(poll, POLL_INTERVAL)
-    return () => { active = false; clearInterval(id) }
+
+    const startFallback = () => {
+      if (fallbackTimer) return
+      fallbackTimer = setInterval(refreshCount, POLL_FALLBACK_INTERVAL)
+    }
+    const stopFallback = () => {
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer)
+        fallbackTimer = null
+      }
+    }
+
+    const connect = () => {
+      const token = typeof window !== "undefined"
+        ? localStorage.getItem("access_token")
+        : null
+      const wsBase = buildWebSocketBase()
+      if (!token || !wsBase) {
+        // Anonymous tab or misconfigured client — polling is the only
+        // path to a fresh badge.
+        startFallback()
+        return
+      }
+      try {
+        ws = new WebSocket(`${wsBase}?token=${encodeURIComponent(token)}`)
+      } catch {
+        startFallback()
+        return
+      }
+
+      ws.onopen = () => {
+        // Real-time channel is live — no need to keep polling.
+        stopFallback()
+        backoffMs = 1_000
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const fresh = JSON.parse(event.data) as NotificationItem
+          if (typeof fresh !== "object" || fresh === null || !("id" in fresh)) {
+            return
+          }
+          if (!fresh.is_read) {
+            setCount((c) => c + 1)
+          }
+          setItems((prev) => {
+            // Dedupe — a refresh racing the push could otherwise show
+            // the same row twice.
+            if (prev.some((n) => n.id === fresh.id)) return prev
+            return [fresh, ...prev]
+          })
+        } catch {
+          // Bad payload — fallback polling will resync the badge.
+        }
+      }
+
+      ws.onclose = () => {
+        ws = null
+        if (!active) return
+        // Lean on polling while we're disconnected, retry the WS with
+        // capped exponential backoff (1s → 60s). Cleanly survives the
+        // dev server reload, network blips, and idle-laptop sleeps.
+        startFallback()
+        const delay = Math.min(backoffMs, 60_000)
+        backoffMs = Math.min(backoffMs * 2, 60_000)
+        reconnectTimer = setTimeout(connect, delay)
+      }
+
+      // onerror precedes onclose — let onclose drive the reconnect.
+      ws.onerror = () => { /* noop */ }
+    }
+
+    refreshCount()
+    connect()
+
+    return () => {
+      active = false
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      stopFallback()
+      if (ws) {
+        // Detach our handler so the synthetic close doesn't trigger a
+        // reconnect on a component that's already unmounting.
+        ws.onclose = null
+        ws.close()
+      }
+    }
   }, [])
 
   // Close on outside click
