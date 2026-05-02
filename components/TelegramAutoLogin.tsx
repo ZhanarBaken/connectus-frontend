@@ -6,6 +6,18 @@ import { telegramMiniAppLogin, fetchMe } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import type { Role } from "@/types"
 
+// What stage of Mini App auto-login we're at. Drives whether we render
+// a covering overlay (loading or role picker) or step out of the way.
+//   - "idle":      not in a Mini App context (or SDK not yet detected).
+//                  Render nothing — the regular site UI shows through.
+//   - "checking":  in a Mini App, hitting the backend right now. Cover
+//                  the page so the user doesn't see the public
+//                  homepage flash before being redirected/picker-prompted.
+//   - "needsRole": new user — show role picker.
+//   - "done":      logged in (or skipping login because token cached).
+//                  Render nothing.
+type AuthStage = "idle" | "checking" | "needsRole" | "done"
+
 // Mounts globally inside <RootLayout>. Outside Telegram it is a no-op.
 // Inside a Mini App and without a stored access token, it:
 //   1. Posts initData to the backend.
@@ -17,7 +29,7 @@ export default function TelegramAutoLogin() {
   const router = useRouter()
   const { isInTelegram, initData } = useTelegramWebApp()
 
-  const [needsRole, setNeedsRole] = useState(false)
+  const [stage, setStage] = useState<AuthStage>("idle")
   const [submittingRole, setSubmittingRole] = useState<Role | null>(null)
   const [error, setError] = useState("")
   // Guard against re-running auto-login when state updates trigger a
@@ -27,16 +39,22 @@ export default function TelegramAutoLogin() {
 
   useEffect(() => {
     if (!isInTelegram || !initData || attempted.current) return
-    if (typeof window !== "undefined" && localStorage.getItem("access_token")) return
+    if (typeof window !== "undefined" && localStorage.getItem("access_token")) {
+      // Returning user with cached token — skip the network round-trip
+      // and let the underlying page render.
+      setStage("done")
+      return
+    }
 
     attempted.current = true
+    setStage("checking")
     void runLogin()
 
     async function runLogin(role?: Role) {
       try {
         const result = await telegramMiniAppLogin(initData, role)
         if (!result.ok && result.reason === "role_required") {
-          setNeedsRole(true)
+          setStage("needsRole")
           return
         }
         if (result.ok) {
@@ -44,16 +62,16 @@ export default function TelegramAutoLogin() {
           localStorage.setItem("refresh_token", result.refresh)
           const me = await fetchMe(result.access)
           localStorage.setItem("role", me.role)
+          setStage("done")
           if (result.created) {
             router.push(me.role === "mentor" ? "/onboarding/mentor" : "/onboarding/student")
           } else {
-            // Returning user — refresh so server components and any
-            // auth-dependent UI re-render with the new token.
             router.refresh()
           }
         }
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Ошибка входа через Telegram")
+        setStage("done")
       }
     }
   }, [isInTelegram, initData, router])
@@ -67,10 +85,10 @@ export default function TelegramAutoLogin() {
         localStorage.setItem("access_token", result.access)
         localStorage.setItem("refresh_token", result.refresh)
         localStorage.setItem("role", role)
-        // Hide the picker before navigating — the layout persists across
-        // route changes, so leaving needsRole=true would keep the
-        // full-screen overlay on top of the onboarding page.
-        setNeedsRole(false)
+        // Drop the overlay before navigating — RootLayout persists, so
+        // leaving stage="needsRole" would keep the picker on top of
+        // the onboarding page.
+        setStage("done")
         router.push(role === "mentor" ? "/onboarding/mentor" : "/onboarding/student")
       } else {
         setError("Не удалось создать аккаунт")
@@ -82,40 +100,48 @@ export default function TelegramAutoLogin() {
     }
   }
 
-  if (!needsRole) return null
+  if (stage === "idle" || stage === "done") return null
 
-  // Full-screen role picker — covers the page until the new user has
-  // chosen their role. Mini App context only, so we can be aggressive
-  // about owning the viewport.
+  // Both checking and needsRole share the same full-screen frame so
+  // there is no flash between them — only the inner content swaps.
   return (
     <div className="fixed inset-0 z-50 bg-[#fafafa] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-          Добро пожаловать в Connectus
-        </h1>
-        <p className="text-gray-500 text-sm mb-8 text-center">
-          Выбери роль чтобы продолжить
-        </p>
+        {stage === "checking" ? (
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+            <p className="text-sm text-gray-500">Входим в Connectus...</p>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+              Добро пожаловать в Connectus
+            </h1>
+            <p className="text-gray-500 text-sm mb-8 text-center">
+              Выбери роль чтобы продолжить
+            </p>
 
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={() => handlePickRole("student")}
-            disabled={submittingRole !== null}
-            className="bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {submittingRole === "student" ? "Создаём..." : "Я студент или родитель"}
-          </button>
-          <button
-            onClick={() => handlePickRole("mentor")}
-            disabled={submittingRole !== null}
-            className="border border-gray-300 text-gray-700 py-4 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
-          >
-            {submittingRole === "mentor" ? "Создаём..." : "Я ментор"}
-          </button>
-        </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => handlePickRole("student")}
+                disabled={submittingRole !== null}
+                className="bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              >
+                {submittingRole === "student" ? "Создаём..." : "Я студент или родитель"}
+              </button>
+              <button
+                onClick={() => handlePickRole("mentor")}
+                disabled={submittingRole !== null}
+                className="border border-gray-300 text-gray-700 py-4 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                {submittingRole === "mentor" ? "Создаём..." : "Я ментор"}
+              </button>
+            </div>
 
-        {error && (
-          <p className="text-sm text-red-600 mt-4 text-center">{error}</p>
+            {error && (
+              <p className="text-sm text-red-600 mt-4 text-center">{error}</p>
+            )}
+          </>
         )}
       </div>
     </div>
