@@ -164,7 +164,7 @@ export default function MentorDashboard() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {profile.full_name || "Мой кабинет"}
               </h1>
-              {profile.is_verified && (
+              {profile.is_approved && (
                 <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-600 font-medium px-2.5 py-1 rounded-full">
                   <Icon name="verified" size={14} filled className="text-indigo-500" /> Верифицирован
                 </span>

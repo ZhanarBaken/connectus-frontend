@@ -69,7 +69,6 @@ export interface MentorProfile {
   payout_details: string
   graduation_year_or_current_course: string
   is_approved: boolean
-  is_verified: boolean
   is_submitted: boolean
   is_public: boolean
   is_accepting_bookings: boolean
@@ -91,7 +90,6 @@ export interface MentorCard {
   major: string
   expertise_areas: MentorExpertise[]
   detailed_bio: string
-  is_verified: boolean
   is_accepting_bookings: boolean
   rating_avg: number | null
   rating_count: number
@@ -113,7 +111,6 @@ export interface Mentor {
   consultation: string | null
   linkedin_url: string
   profile_photo: string | null
-  is_verified: boolean
   is_public: boolean
   is_accepting_bookings: boolean
   rating_avg: number | null

@@ -214,11 +214,12 @@ export default function MentorsList({ mentors }: Props) {
                       <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
                         {mentor.full_name}
                       </h3>
-                      {mentor.is_verified && (
-                        <span title="Платформа подтвердила документы ментора">
-                          <Icon name="verified" size={14} filled className="text-indigo-500 flex-shrink-0" />
-                        </span>
-                      )}
+                      {/* Every visible mentor has been admin-approved
+                          (documents + identity verified), so the badge
+                          is shown unconditionally. */}
+                      <span title="Платформа подтвердила документы ментора">
+                        <Icon name="verified" size={14} filled className="text-indigo-500 flex-shrink-0" />
+                      </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5 truncate">
                       {mentor.school_or_university}

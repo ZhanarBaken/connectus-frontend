@@ -72,11 +72,9 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                           <h3 className="font-semibold text-gray-900 truncate">
                             {mentor.full_name}
                           </h3>
-                          {mentor.is_verified && (
-                            <span title="Платформа подтвердила документы ментора">
-                              <Icon name="verified" size={16} filled className="text-indigo-500 flex-shrink-0" />
-                            </span>
-                          )}
+                          <span title="Платформа подтвердила документы ментора">
+                            <Icon name="verified" size={16} filled className="text-indigo-500 flex-shrink-0" />
+                          </span>
                         </div>
                         <p className="text-sm text-gray-500 mt-0.5">
                           {mentor.school_or_university}
