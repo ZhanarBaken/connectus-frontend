@@ -315,14 +315,25 @@ export default function MentorPage({ params }: Props) {
                     >
                       {orderingServiceId === consultationService.id
                         ? "Заказываем..."
-                        : `Заказать консультацию за ${discountedPrice.toLocaleString("ru-RU")} ₸`}
+                        : bonusActive
+                        ? (
+                          <span className="inline-flex items-baseline gap-2">
+                            <span>Заказать за {discountedPrice.toLocaleString("ru-RU")} ₸</span>
+                            <span className="text-xs font-semibold opacity-60 line-through">
+                              {fullPrice.toLocaleString("ru-RU")} ₸
+                            </span>
+                          </span>
+                        )
+                        : `Заказать консультацию за ${fullPrice.toLocaleString("ru-RU")} ₸`}
                     </button>
                   )}
                   {!mentor.is_accepting_bookings && consultationStatus === "none" && (
                     <p className="text-xs text-indigo-200 mt-2">Ментор сейчас не принимает запросы</p>
                   )}
                   {bonusActive && consultationStatus === "none" && (
-                    <p className="text-xs text-indigo-200 mt-2">🎁 Применится приветственный бонус 5 000 ₸</p>
+                    <p className="text-xs text-indigo-200 mt-2">
+                      🎁 Бонус новичку: −5 000 ₸ от базовой {fullPrice.toLocaleString("ru-RU")} ₸
+                    </p>
                   )}
                 </div>
               </div>
