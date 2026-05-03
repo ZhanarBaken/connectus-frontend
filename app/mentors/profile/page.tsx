@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { fetchMentorProfile, updateMentorProfile, authFetch } from "@/lib/api"
-import { COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
+import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { MentorProfile, ExpertiseArea } from "@/types"
 import BackButton from "@/components/BackButton"
+import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 
@@ -39,6 +40,7 @@ export default function MentorProfilePage() {
 
   const [fullName, setFullName] = useState("")
   const [countries, setCountries] = useState<string[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const toggleCountry = (c: string) => {
     setCountries((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])
@@ -260,7 +262,7 @@ export default function MentorProfilePage() {
               <div className="sm:col-span-2">
                 <Field label="Страны (можно несколько)">
                   <div className="flex flex-wrap gap-2">
-                    {COUNTRY_CODES.map((c) => (
+                    {POPULAR_COUNTRY_CODES.map((c) => (
                       <button
                         key={c}
                         type="button"
@@ -275,8 +277,47 @@ export default function MentorProfilePage() {
                         {countryFlag(c)} {countryLabel(c)}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(true)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 transition-all"
+                    >
+                      + Другая страна
+                    </button>
                   </div>
+                  {/* Selected countries that aren't in the popular row —
+                      shown as removable chips so the user can see what's
+                      picked even if it's exotic. */}
+                  {countries.filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never)).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {countries
+                        .filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never))
+                        .map((c) => (
+                          <span
+                            key={c}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border-2 border-gray-900 text-sm font-medium text-gray-900"
+                          >
+                            {countryFlag(c)} {countryLabel(c)}
+                            <button
+                              type="button"
+                              onClick={() => toggleCountry(c)}
+                              aria-label={`Убрать ${countryLabel(c)}`}
+                              className="ml-0.5 text-gray-400 hover:text-red-500"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  )}
                 </Field>
+                <CountryPickerModal
+                  open={pickerOpen}
+                  selected={countries}
+                  hiddenCodes={[...POPULAR_COUNTRY_CODES]}
+                  onSelect={(code) => toggleCountry(code)}
+                  onClose={() => setPickerOpen(false)}
+                />
               </div>
               <Field label="Университет">
                 <input value={school} onChange={(e) => setSchool(e.target.value)}

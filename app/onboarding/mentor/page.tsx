@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { fetchMe, updateMentorProfile } from "@/lib/api"
-import { COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
+import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { ExpertiseArea } from "@/types"
+import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
@@ -57,6 +58,7 @@ export default function MentorOnboarding() {
 
   // Step 2
   const [countries, setCountries] = useState<string[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const toggleCountry = (c: string) => {
     setCountries((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])
@@ -183,7 +185,7 @@ export default function MentorOnboarding() {
                     Страны <span className="text-gray-400 font-normal">(можно несколько)</span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {COUNTRY_CODES.map((c) => (
+                    {POPULAR_COUNTRY_CODES.map((c) => (
                       <button
                         key={c}
                         type="button"
@@ -198,7 +200,44 @@ export default function MentorOnboarding() {
                         {countryFlag(c)} {countryLabel(c)}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(true)}
+                      className="col-span-3 px-2 py-2 rounded-xl text-xs border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 font-medium transition-all"
+                    >
+                      + Другая страна
+                    </button>
                   </div>
+                  {/* Selected exotic countries (not in the popular grid) */}
+                  {countries.filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never)).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {countries
+                        .filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never))
+                        .map((c) => (
+                          <span
+                            key={c}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border-2 border-gray-900 text-xs font-medium text-gray-900"
+                          >
+                            {countryFlag(c)} {countryLabel(c)}
+                            <button
+                              type="button"
+                              onClick={() => toggleCountry(c)}
+                              aria-label={`Убрать ${countryLabel(c)}`}
+                              className="ml-0.5 text-gray-400 hover:text-red-500"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                  <CountryPickerModal
+                    open={pickerOpen}
+                    selected={countries}
+                    hiddenCodes={[...POPULAR_COUNTRY_CODES]}
+                    onSelect={(code) => toggleCountry(code)}
+                    onClose={() => setPickerOpen(false)}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Университет</label>
