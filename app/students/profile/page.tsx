@@ -6,6 +6,7 @@ import { fetchStudentProfile, updateStudentProfile, authFetch } from "@/lib/api"
 import { StudentProfile } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import AvatarCropperModal from "@/components/AvatarCropperModal"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -23,6 +24,7 @@ export default function StudentProfilePage() {
   const [school, setSchool] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [pickedFile, setPickedFile] = useState<File | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -42,16 +44,12 @@ export default function StudentProfilePage() {
       .finally(() => setLoading(false))
   }, [router])
 
-  const handlePhotoUpload = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Фото не должно превышать 5 МБ")
-      return
-    }
+  const uploadCroppedPhoto = async (blob: Blob) => {
     setUploadingPhoto(true)
     setError("")
     try {
       const formData = new FormData()
-      formData.append("profile_photo", file)
+      formData.append("profile_photo", blob, "avatar.jpg")
       const res = await authFetch(`${BASE_URL}/students/profile/me/`, {
         method: "PATCH",
         body: formData,
@@ -115,7 +113,14 @@ export default function StudentProfilePage() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0]
-                if (file) handlePhotoUpload(file)
+                if (file) {
+                  if (file.size > 5 * 1024 * 1024) {
+                    setError("Фото не должно превышать 5 МБ")
+                  } else {
+                    setError("")
+                    setPickedFile(file)
+                  }
+                }
                 e.target.value = ""
               }}
             />
@@ -211,6 +216,14 @@ export default function StudentProfilePage() {
           </div>
         </form>
       </div>
+      <AvatarCropperModal
+        file={pickedFile}
+        onClose={() => setPickedFile(null)}
+        onSave={async (blob) => {
+          setPickedFile(null)
+          await uploadCroppedPhoto(blob)
+        }}
+      />
     </div>
   )
 }
