@@ -65,13 +65,29 @@ export function formatCooldownShort(totalSeconds: number): string {
 
 async function readCooldown(res: Response, fallbackMessage: string): Promise<CooldownError> {
   const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  const detail = typeof body.detail === "string" ? body.detail : ""
+  // Source priority for retry seconds, falling back if each source is
+  // missing or unreadable:
+  //   1. `Retry-After` HTTP header — preferred. Requires the backend
+  //      to expose it via CORS_EXPOSE_HEADERS, otherwise the browser
+  //      hides it from JS and `headers.get` returns null.
+  //   2. `retry_after` field — set by our custom 429 body
+  //      (apps/users/views.py:_cooldown_response). Not present on
+  //      DRF's standard throttle response.
+  //   3. Number scraped from DRF's "Expected available in N seconds."
+  //      message. Defensive — survives a misconfigured CORS or a
+  //      future DRF wording change as long as the seconds digits stay.
+  //   4. 60s fallback so the user is never stuck with no countdown.
   const headerValue = res.headers.get("Retry-After")
+  const bodyRetry = (body.retry_after as string | number | undefined)?.toString()
+  // `seconds?` so we also match DRF's singular form "in 1 second." —
+  // emitted via ngettext when `wait == 1`.
+  const detailMatch = detail.match(/\bin (\d+) seconds?\b/)
   const retryAfter = parseInt(
-    headerValue || (body.retry_after as string | number | undefined)?.toString() || "60",
+    headerValue || bodyRetry || (detailMatch ? detailMatch[1] : "") || "60",
     10,
   )
   const seconds = isNaN(retryAfter) ? 60 : retryAfter
-  const detail = typeof body.detail === "string" ? body.detail : ""
 
   // Map known backend / DRF / Cloudflare messages to friendly Russian.
   // We never show the raw English `Request was throttled. Expected available in N seconds.`
