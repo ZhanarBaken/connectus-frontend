@@ -10,6 +10,7 @@ import {
   googleLink, googleUnlink,
   setEmail, changeEmail, unlinkEmail,
   setPassword,
+  CooldownError,
 } from "@/lib/api"
 import { User } from "@/types"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
@@ -78,6 +79,15 @@ export default function SettingsPage() {
   const [passwordInput, setPasswordInput] = useState("")
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  // Seconds remaining on a verification-email cooldown. Drives both
+  // the inline message and the disabled state of the Save button.
+  const [emailCooldown, setEmailCooldown] = useState(0)
+
+  useEffect(() => {
+    if (emailCooldown <= 0) return
+    const timer = setTimeout(() => setEmailCooldown((s) => s - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [emailCooldown])
 
   const loadMe = async () => {
     const token = localStorage.getItem("access_token")
@@ -261,7 +271,13 @@ export default function SettingsPage() {
       setEmailInput("")
       setTimeout(() => setSuccess(""), 3000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось установить email")
+      if (e instanceof CooldownError) {
+        // Start countdown so the Save button becomes available again.
+        setEmailCooldown(e.retryAfter)
+        setError(e.message)
+      } else {
+        setError(e instanceof Error ? e.message : "Не удалось установить email")
+      }
     } finally {
       setLinkingAction("")
     }
@@ -455,7 +471,7 @@ export default function SettingsPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => { setShowEmailForm(!showEmailForm); setEmailInput(me.email || "") }}
+                    onClick={() => { setShowEmailForm(!showEmailForm); setEmailInput("") }}
                     className="text-xs text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors"
                   >
                     {me.email ? "Изменить" : "Добавить"}
@@ -470,15 +486,19 @@ export default function SettingsPage() {
                     type="email"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="email@example.com"
+                    placeholder={me.email || "email@example.com"}
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                   <button
                     onClick={handleEmailSet}
-                    disabled={linkingAction === "email"}
+                    disabled={linkingAction === "email" || emailCooldown > 0}
                     className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
                   >
-                    {linkingAction === "email" ? "..." : "Сохранить"}
+                    {linkingAction === "email"
+                      ? "..."
+                      : emailCooldown > 0
+                        ? `Подождите ${emailCooldown}с`
+                        : "Сохранить"}
                   </button>
                 </div>
               )}

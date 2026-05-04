@@ -7,6 +7,35 @@ import { Dispute, Mentor, MentorCard, MentorProfile, Order, StudentProfile } fro
 const USE_MOCKS = false
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
+// ─── Cooldown / rate-limit error ────────────────────────────────────────────
+// Backend returns 429 in two situations: the per-user verification-email
+// cooldown (60s) and the per-IP / per-user DRF throttle. Both set a
+// `Retry-After` header (seconds). We surface this as a typed error so
+// the UI can show a countdown instead of a generic toast.
+export class CooldownError extends Error {
+  retryAfter: number
+  constructor(message: string, retryAfter: number) {
+    super(message)
+    this.name = "CooldownError"
+    this.retryAfter = retryAfter
+  }
+}
+
+async function readCooldown(res: Response, fallbackMessage: string): Promise<CooldownError> {
+  const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  const headerValue = res.headers.get("Retry-After")
+  const retryAfter = parseInt(
+    headerValue || (body.retry_after as string | number | undefined)?.toString() || "60",
+    10,
+  )
+  const detail = typeof body.detail === "string" ? body.detail : ""
+  // Prefer a Russian message we control over Cloudflare/DRF's English defaults.
+  const message = detail.startsWith("A verification email was sent recently")
+    ? "Письмо отправлено недавно. Подождите немного, прежде чем запросить новое."
+    : detail || fallbackMessage
+  return new CooldownError(message, isNaN(retryAfter) ? 60 : retryAfter)
+}
+
 // ─── Mentors ─────────────────────────────────────────────────────────────────
 
 export async function fetchMentors(): Promise<MentorCard[]> {
@@ -344,6 +373,9 @@ export async function resendVerification(email: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   })
+  if (res.status === 429) {
+    throw await readCooldown(res, "Не удалось отправить письмо")
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.email?.[0] || err.detail || "Не удалось отправить письмо")
@@ -578,6 +610,9 @@ export async function setEmail(email: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   })
+  if (res.status === 429) {
+    throw await readCooldown(res, "Не удалось установить email")
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.email?.[0] || err.detail || "Не удалось установить email")
@@ -590,6 +625,9 @@ export async function changeEmail(email: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   })
+  if (res.status === 429) {
+    throw await readCooldown(res, "Не удалось сменить email")
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.email?.[0] || err.detail || "Не удалось сменить email")
