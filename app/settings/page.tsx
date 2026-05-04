@@ -12,6 +12,7 @@ import {
   setPassword,
   CooldownError,
 } from "@/lib/api"
+import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { User } from "@/types"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
 import BackButton from "@/components/BackButton"
@@ -213,29 +214,22 @@ export default function SettingsPage() {
     }
   }
 
-  const handleGoogleLink = () => {
+  const handleGoogleLink = async () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setError("Google не настроен"); return }
     setLinkingAction("google")
     setError("")
-    // @ts-expect-error — Google SDK
-    window.google?.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (response: { credential: string }) => {
-        try {
-          await googleLink(response.credential)
-          setSuccess("Google привязан!")
-          await loadMe()
-          setTimeout(() => setSuccess(""), 2000)
-        } catch (e: unknown) {
-          setError(e instanceof Error ? e.message : "Не удалось привязать Google")
-        } finally {
-          setLinkingAction("")
-        }
-      },
-    })
-    // @ts-expect-error — Google SDK
-    window.google?.accounts.id.prompt()
+    try {
+      const credential = await promptGoogleCredential(clientId)
+      await googleLink(credential)
+      setSuccess("Google привязан!")
+      await loadMe()
+      setTimeout(() => setSuccess(""), 2000)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Не удалось привязать Google")
+    } finally {
+      setLinkingAction("")
+    }
   }
 
   const handleGoogleUnlink = async () => {

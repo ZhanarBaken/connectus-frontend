@@ -4,6 +4,7 @@ import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { login, fetchMe, resendVerification, googleAuth, telegramStart } from "@/lib/api"
+import { promptGoogleCredential } from "@/lib/googleSignIn"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
@@ -51,33 +52,25 @@ function LoginForm() {
     }
   }
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setError("Google авторизация не настроена"); return }
-
-    // @ts-expect-error - Google SDK
-    window.google?.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (response: { credential: string }) => {
-        setLoading(true)
-        setError("")
-        try {
-          const data = await googleAuth(response.credential)
-          localStorage.setItem("access_token", data.access)
-          localStorage.setItem("refresh_token", data.refresh)
-          const me = await fetchMe(data.access)
-          localStorage.setItem("role", me.role)
-          if (me.role === "mentor") router.push("/mentor/dashboard")
-          else router.push("/student/dashboard")
-        } catch (e: unknown) {
-          setError(e instanceof Error ? e.message : "Ошибка входа через Google")
-        } finally {
-          setLoading(false)
-        }
-      },
-    })
-    // @ts-expect-error - Google SDK
-    window.google?.accounts.id.prompt()
+    setLoading(true)
+    setError("")
+    try {
+      const credential = await promptGoogleCredential(clientId)
+      const data = await googleAuth(credential)
+      localStorage.setItem("access_token", data.access)
+      localStorage.setItem("refresh_token", data.refresh)
+      const me = await fetchMe(data.access)
+      localStorage.setItem("role", me.role)
+      if (me.role === "mentor") router.push("/mentor/dashboard")
+      else router.push("/student/dashboard")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка входа через Google")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleTelegramLogin = async () => {

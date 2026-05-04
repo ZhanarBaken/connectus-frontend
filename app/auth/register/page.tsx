@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { register, resendVerification, googleAuth, telegramStart, fetchMe } from "@/lib/api"
+import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { track } from "@/lib/analytics"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
@@ -70,34 +71,26 @@ export default function RegisterPage() {
     }
   }
 
-  const handleGoogleRegister = () => {
+  const handleGoogleRegister = async () => {
     handleFirstInteraction()
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setError("Google авторизация не настроена"); return }
-
-    // @ts-expect-error - Google SDK
-    window.google?.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (response: { credential: string }) => {
-        setLoading(true)
-        setError("")
-        try {
-          const data = await googleAuth(response.credential, role)
-          localStorage.setItem("access_token", data.access)
-          localStorage.setItem("refresh_token", data.refresh)
-          const me = await fetchMe(data.access)
-          localStorage.setItem("role", me.role)
-          if (me.role === "mentor") router.push("/onboarding/mentor/identity")
-          else router.push("/onboarding/student")
-        } catch (e: unknown) {
-          setError(e instanceof Error ? e.message : "Ошибка регистрации через Google")
-        } finally {
-          setLoading(false)
-        }
-      },
-    })
-    // @ts-expect-error - Google SDK
-    window.google?.accounts.id.prompt()
+    setLoading(true)
+    setError("")
+    try {
+      const credential = await promptGoogleCredential(clientId)
+      const data = await googleAuth(credential, role)
+      localStorage.setItem("access_token", data.access)
+      localStorage.setItem("refresh_token", data.refresh)
+      const me = await fetchMe(data.access)
+      localStorage.setItem("role", me.role)
+      if (me.role === "mentor") router.push("/onboarding/mentor/identity")
+      else router.push("/onboarding/student")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка регистрации через Google")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleTelegramRegister = async () => {
