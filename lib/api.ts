@@ -21,6 +21,48 @@ export class CooldownError extends Error {
   }
 }
 
+// Render N seconds as a Russian-friendly duration:
+// 47    → "47 секунд"
+// 90    → "1 минуту 30 секунд"
+// 2574  → "43 минуты"
+// 7200  → "2 часа"
+export function formatCooldown(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds))
+  const plural = (n: number, forms: [string, string, string]) => {
+    const mod10 = n % 10, mod100 = n % 100
+    if (mod10 === 1 && mod100 !== 11) return forms[0]
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return forms[1]
+    return forms[2]
+  }
+  const sec = (n: number) => `${n} ${plural(n, ["секунду", "секунды", "секунд"])}`
+  const min = (n: number) => `${n} ${plural(n, ["минуту", "минуты", "минут"])}`
+  const hr  = (n: number) => `${n} ${plural(n, ["час", "часа", "часов"])}`
+
+  if (s < 60) return sec(s)
+  if (s < 3600) {
+    const m = Math.floor(s / 60)
+    const rem = s % 60
+    return rem && m < 5 ? `${min(m)} ${sec(rem)}` : min(m)
+  }
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  return m ? `${hr(h)} ${min(m)}` : hr(h)
+}
+
+// Compact form for tight UI like a button label: "47с", "1м 30с", "43м", "2ч"
+export function formatCooldownShort(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds))
+  if (s < 60) return `${s}с`
+  if (s < 3600) {
+    const m = Math.floor(s / 60)
+    const rem = s % 60
+    return rem ? `${m}м ${rem}с` : `${m}м`
+  }
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  return m ? `${h}ч ${m}м` : `${h}ч`
+}
+
 async function readCooldown(res: Response, fallbackMessage: string): Promise<CooldownError> {
   const body = await res.json().catch(() => ({} as Record<string, unknown>))
   const headerValue = res.headers.get("Retry-After")
@@ -28,12 +70,20 @@ async function readCooldown(res: Response, fallbackMessage: string): Promise<Coo
     headerValue || (body.retry_after as string | number | undefined)?.toString() || "60",
     10,
   )
+  const seconds = isNaN(retryAfter) ? 60 : retryAfter
   const detail = typeof body.detail === "string" ? body.detail : ""
-  // Prefer a Russian message we control over Cloudflare/DRF's English defaults.
-  const message = detail.startsWith("A verification email was sent recently")
-    ? "Письмо отправлено недавно. Подождите немного, прежде чем запросить новое."
-    : detail || fallbackMessage
-  return new CooldownError(message, isNaN(retryAfter) ? 60 : retryAfter)
+
+  // Map known backend / DRF / Cloudflare messages to friendly Russian.
+  // We never show the raw English `Request was throttled. Expected available in N seconds.`
+  let message: string
+  if (detail.startsWith("A verification email was sent recently")) {
+    message = `Письмо отправлено недавно. Попробуйте снова через ${formatCooldown(seconds)}.`
+  } else if (/throttled/i.test(detail)) {
+    message = `Слишком много попыток. Попробуйте снова через ${formatCooldown(seconds)}.`
+  } else {
+    message = detail || fallbackMessage
+  }
+  return new CooldownError(message, seconds)
 }
 
 // ─── Mentors ─────────────────────────────────────────────────────────────────

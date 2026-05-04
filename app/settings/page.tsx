@@ -11,6 +11,7 @@ import {
   setEmail, changeEmail, unlinkEmail,
   setPassword,
   CooldownError,
+  formatCooldownShort,
 } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { User } from "@/types"
@@ -491,7 +492,7 @@ export default function SettingsPage() {
                     {linkingAction === "email"
                       ? "..."
                       : emailCooldown > 0
-                        ? `Подождите ${emailCooldown}с`
+                        ? `Подождите ${formatCooldownShort(emailCooldown)}`
                         : "Сохранить"}
                   </button>
                 </div>
