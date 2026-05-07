@@ -353,23 +353,41 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <label className="flex items-start gap-3 cursor-pointer">
+                <div className="flex items-start gap-3">
                   <input
+                    id="terms-checkbox"
                     type="checkbox"
                     checked={agreedToTerms}
                     onChange={(e) => {
                       handleFirstInteraction()
                       setAgreedToTerms(e.target.checked)
                     }}
-                    className="mt-0.5 flex-shrink-0 accent-indigo-600"
+                    className="mt-0.5 flex-shrink-0 accent-indigo-600 cursor-pointer"
                   />
-                  <span className="text-sm text-gray-500 leading-relaxed">
-                    Я принимаю{" "}
-                    <span className="text-indigo-600 font-medium">условия использования</span>
+                  <div className="text-sm text-gray-500 leading-relaxed">
+                    <label htmlFor="terms-checkbox" className="cursor-pointer">
+                      Я принимаю
+                    </label>
+                    {" "}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 font-medium hover:underline"
+                    >
+                      условия использования
+                    </Link>
                     {" "}и{" "}
-                    <span className="text-indigo-600 font-medium">политику конфиденциальности</span>
-                  </span>
-                </label>
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 font-medium hover:underline"
+                    >
+                      политику конфиденциальности
+                    </Link>
+                  </div>
+                </div>
 
                 {error && (
                   <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">

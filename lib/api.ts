@@ -102,6 +102,19 @@ async function readCooldown(res: Response, fallbackMessage: string): Promise<Coo
   return new CooldownError(message, seconds)
 }
 
+// ─── Public settings ────────────────────────────────────────────────────────
+
+export interface PublicSettings {
+  dispute_window_hours: number
+  terms_text: string
+}
+
+export async function fetchPublicSettings(): Promise<PublicSettings> {
+  const res = await fetch(`${BASE_URL}/settings/public/`)
+  if (!res.ok) throw new Error("Failed to fetch public settings")
+  return res.json()
+}
+
 // ─── Mentors ─────────────────────────────────────────────────────────────────
 
 export async function fetchMentors(): Promise<MentorCard[]> {
