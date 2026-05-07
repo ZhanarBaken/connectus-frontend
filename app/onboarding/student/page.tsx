@@ -1,34 +1,119 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { updateStudentProfile } from "@/lib/api"
+import { fetchMe, setEmail, updateStudentProfile, CooldownError } from "@/lib/api"
 import Logo from "@/components/Logo"
-
-const STEPS = ["Основное", "Учёба"]
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
+type Stage = "loading" | "email" | "verify" | "name" | "school"
+
+const VERIFY_POLL_INTERVAL_MS = 5000
+
 export default function StudentOnboarding() {
   const router = useRouter()
-  const [step, setStep] = useState(1)
+  const [stage, setStage] = useState<Stage>("loading")
+  const [needsEmail, setNeedsEmail] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
-  // Step 1
+  // Step: Email
+  const [email, setEmailValue] = useState("")
+  const [verifyEmail, setVerifyEmail] = useState("")
+  const [verifyChecking, setVerifyChecking] = useState(false)
+
+  // Step: Name
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
 
-  // Step 2
+  // Step: School
   const [school, setSchool] = useState("")
 
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchMe()
+      .then((me) => {
+        if (cancelled) return
+        if (me.email && me.email_verified) {
+          setStage("name")
+        } else if (me.email) {
+          setVerifyEmail(me.email)
+          setNeedsEmail(true)
+          setStage("verify")
+        } else {
+          setNeedsEmail(true)
+          setStage("email")
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        router.replace("/auth/login")
+      })
+    return () => { cancelled = true }
+  }, [router])
+
+  useEffect(() => {
+    if (stage !== "verify") return
+    const tick = async () => {
+      const me = await fetchMe().catch(() => null)
+      if (me?.email_verified) setStage("name")
+    }
+    pollTimer.current = setInterval(tick, VERIFY_POLL_INTERVAL_MS)
+    return () => {
+      if (pollTimer.current) clearInterval(pollTimer.current)
+    }
+  }, [stage])
+
+  const handleSubmitEmail = async () => {
+    setSaving(true)
+    setError("")
+    try {
+      await setEmail(email.trim())
+      setVerifyEmail(email.trim())
+      setStage("verify")
+    } catch (e: unknown) {
+      if (e instanceof CooldownError) {
+        setError(e.message)
+      } else {
+        setError(e instanceof Error ? e.message : "Не удалось отправить письмо")
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleManualVerifyCheck = async () => {
+    setVerifyChecking(true)
+    setError("")
+    try {
+      const me = await fetchMe()
+      if (me.email_verified) {
+        setStage("name")
+      } else {
+        setError("Email пока не подтверждён. Проверь почту, в том числе папку «Спам».")
+      }
+    } catch {
+      setError("Не удалось проверить статус. Попробуй ещё раз.")
+    } finally {
+      setVerifyChecking(false)
+    }
+  }
+
   const handleFinish = async () => {
+    const ageNum = Number(age)
+    if (!Number.isInteger(ageNum) || ageNum < 10 || ageNum > 60) {
+      setError("Укажи возраст от 10 до 60")
+      return
+    }
     setSaving(true)
     setError("")
     try {
       await updateStudentProfile({
         full_name: fullName,
-        age: Number(age) || 0,
+        age: ageNum,
         current_school_or_university: school,
       })
       router.push("/student/dashboard")
@@ -38,10 +123,19 @@ export default function StudentOnboarding() {
     }
   }
 
+  const stepsForUser = needsEmail
+    ? ["Email", "Основное", "Учёба"]
+    : ["Основное", "Учёба"]
+  const currentStepIndex = (() => {
+    if (stage === "email" || stage === "verify") return 1
+    if (stage === "name") return needsEmail ? 2 : 1
+    if (stage === "school") return needsEmail ? 3 : 2
+    return 0
+  })()
+
   return (
     <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 justify-center mb-2">
             <Logo size={32} className="text-gray-900" />
@@ -50,27 +144,86 @@ export default function StudentOnboarding() {
           <p className="text-gray-500 text-sm">Расскажи о себе — это займёт минуту</p>
         </div>
 
-        {/* Steps */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {STEPS.map((label, i) => {
-            const s = i + 1
-            return (
-              <div key={label} className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                  step === s ? "bg-gray-900 text-white" : step > s ? "bg-gray-200 text-gray-600" : "bg-gray-100 text-gray-400"
-                }`}>
-                  {step > s ? "✓" : s}. {label}
+        {stage !== "loading" && (
+          <div className="flex items-center justify-center gap-2 mb-8">
+            {stepsForUser.map((label, i) => {
+              const s = i + 1
+              return (
+                <div key={label} className="flex items-center gap-2">
+                  <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                    currentStepIndex === s ? "bg-gray-900 text-white" : currentStepIndex > s ? "bg-gray-200 text-gray-600" : "bg-gray-100 text-gray-400"
+                  }`}>
+                    {currentStepIndex > s ? "✓" : s}. {label}
+                  </div>
+                  {i < stepsForUser.length - 1 && <div className={`w-6 h-0.5 ${currentStepIndex > s ? "bg-gray-300" : "bg-gray-100"}`} />}
                 </div>
-                {i < STEPS.length - 1 && <div className={`w-6 h-0.5 ${step > s ? "bg-gray-300" : "bg-gray-100"}`} />}
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
 
-          {/* Step 1 */}
-          {step === 1 && (
+          {stage === "loading" && (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {stage === "email" && (
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Добавь email</h1>
+              <p className="text-gray-400 text-sm mb-6">
+                Нужен для подтверждения заказов и важных уведомлений. Без email нельзя оформить заказ.
+              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmailValue(e.target.value)}
+                placeholder="you@example.com"
+                className={inputClass}
+              />
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mt-4">{error}</div>
+              )}
+              <button
+                onClick={handleSubmitEmail}
+                disabled={saving || !email.trim()}
+                className="w-full mt-6 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+              >
+                {saving ? "Отправляем..." : "Отправить письмо для подтверждения"}
+              </button>
+            </div>
+          )}
+
+          {stage === "verify" && (
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Проверь почту</h1>
+              <p className="text-gray-400 text-sm mb-6">
+                Мы отправили ссылку на <span className="text-gray-700 font-medium">{verifyEmail}</span>.
+                Кликни на неё, и ты автоматически вернёшься сюда.
+              </p>
+              {error && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-700 mb-4">{error}</div>
+              )}
+              <button
+                onClick={handleManualVerifyCheck}
+                disabled={verifyChecking}
+                className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+              >
+                {verifyChecking ? "Проверяем..." : "Я подтвердил email"}
+              </button>
+              <button
+                onClick={() => { setStage("email"); setError("") }}
+                className="w-full mt-3 text-gray-500 hover:text-gray-700 text-sm"
+              >
+                Указать другой email
+              </button>
+            </div>
+          )}
+
+          {stage === "name" && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Как тебя зовут?</h1>
               <p className="text-gray-400 text-sm mb-6">Эту информацию увидит твой ментор</p>
@@ -98,7 +251,7 @@ export default function StudentOnboarding() {
                 </div>
               </div>
               <button
-                onClick={() => setStep(2)}
+                onClick={() => setStage("school")}
                 disabled={!fullName.trim()}
                 className="w-full mt-6 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
               >
@@ -107,8 +260,7 @@ export default function StudentOnboarding() {
             </div>
           )}
 
-          {/* Step 2 */}
-          {step === 2 && (
+          {stage === "school" && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Где ты учишься?</h1>
               <p className="text-gray-400 text-sm mb-6">Школа, колледж или университет</p>
@@ -128,7 +280,7 @@ export default function StudentOnboarding() {
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStage("name")}
                   className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
                 >
                   ← Назад
