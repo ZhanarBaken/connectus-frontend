@@ -74,6 +74,7 @@ export interface MentorProfile {
   is_accepting_bookings: boolean
   is_banned: boolean
   ban_reason: string
+  has_documents: boolean
   rating_avg: number | null
   rating_count: number
   created_at: string
