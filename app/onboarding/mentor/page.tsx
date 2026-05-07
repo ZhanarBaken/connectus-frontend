@@ -1,15 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { fetchMe, updateMentorProfile } from "@/lib/api"
+import { authFetch, fetchMe, fetchMentorProfile, updateMentorProfile } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { ExpertiseArea } from "@/types"
+import AvatarCropperModal from "@/components/AvatarCropperModal"
 import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
-const STEPS = ["О себе", "Университет", "Экспертиза"]
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
+
+const STEPS = ["Фото", "О себе", "Университет", "Экспертиза"]
 
 const EXPERTISE_OPTIONS = [
   { value: "admission", label: "Поступление", icon: "flag" },
@@ -31,32 +34,17 @@ export default function MentorOnboarding() {
   // satisfying the backend submit requirements.
   const [identityReady, setIdentityReady] = useState(false)
 
-  useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : ""
-    if (!token) {
-      router.replace("/auth/login")
-      return
-    }
-    fetchMe(token)
-      .then((me) => {
-        if (me.role !== "mentor") {
-          router.replace(me.role === "student" ? "/student/dashboard" : "/")
-          return
-        }
-        if (!me.email || !me.email_verified || !me.has_telegram) {
-          router.replace("/onboarding/mentor/identity")
-          return
-        }
-        setIdentityReady(true)
-      })
-      .catch(() => router.replace("/auth/login"))
-  }, [router])
+  // Step 1 — Photo
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+  const [pickedFile, setPickedFile] = useState<File | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // Step 1
+  // Step 2 — Bio
   const [fullName, setFullName] = useState("")
   const [bio, setBio] = useState("")
 
-  // Step 2
+  // Step 3 — University
   const [countries, setCountries] = useState<string[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
 
@@ -69,11 +57,68 @@ export default function MentorOnboarding() {
   const [gpa, setGpa] = useState("")
   const [examResults, setExamResults] = useState("")
 
-  // Step 3
+  // Step 4 — Expertise
   const [expertise, setExpertise] = useState<string[]>([])
 
   const toggleExpertise = (val: string) => {
     setExpertise((prev) => prev.includes(val) ? prev.filter((e) => e !== val) : [...prev, val])
+  }
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : ""
+    if (!token) {
+      router.replace("/auth/login")
+      return
+    }
+    fetchMe(token)
+      .then(async (me) => {
+        if (me.role !== "mentor") {
+          router.replace(me.role === "student" ? "/student/dashboard" : "/")
+          return
+        }
+        if (!me.email || !me.email_verified || !me.has_telegram) {
+          router.replace("/onboarding/mentor/identity")
+          return
+        }
+        // Photo may already be set (mentor returning mid-flow). Read once
+        // so the avatar preview is accurate and the gate doesn't block them.
+        try {
+          const profile = await fetchMentorProfile()
+          setProfilePhoto(profile.profile_photo ?? null)
+        } catch {
+          // Non-fatal — onboarding still proceeds with empty photo state.
+        }
+        setIdentityReady(true)
+      })
+      .catch(() => router.replace("/auth/login"))
+  }, [router])
+
+  const uploadCroppedPhoto = async (blob: Blob) => {
+    setUploadingPhoto(true)
+    setError("")
+    try {
+      const formData = new FormData()
+      formData.append("profile_photo", blob, "avatar.jpg")
+      const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, {
+        method: "PATCH",
+        body: formData,
+      })
+      if (!res.ok) {
+        let msg = "Не удалось загрузить фото"
+        try {
+          const err = await res.json()
+          if (err.profile_photo) msg = Array.isArray(err.profile_photo) ? err.profile_photo[0] : err.profile_photo
+          else if (err.detail) msg = err.detail
+        } catch {}
+        throw new Error(msg)
+      }
+      const data = await res.json()
+      setProfilePhoto(data.profile_photo ?? null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
+    } finally {
+      setUploadingPhoto(false)
+    }
   }
 
   const handleFinish = async () => {
@@ -137,8 +182,76 @@ export default function MentorOnboarding() {
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
 
-          {/* Step 1 — Basic info */}
+          {/* Step 1 — Photo (required) */}
           {step === 1 && (
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Загрузи фото</h1>
+              <p className="text-gray-400 text-sm mb-6">
+                Абитуриенты охотнее доверяют менторам с реальной фотографией. Без фото профиль нельзя отправить на проверку.
+              </p>
+              <div className="flex flex-col items-center mb-6">
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        setError("Фото не должно превышать 5 МБ")
+                      } else {
+                        setError("")
+                        setPickedFile(file)
+                      }
+                    }
+                    e.target.value = ""
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="relative w-32 h-32 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50"
+                >
+                  {profilePhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                      <Icon name="photo_camera" size={36} className="text-white" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Icon name="edit" size={28} className="text-white" />
+                    </span>
+                  </div>
+                  {uploadingPhoto && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <div className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </button>
+                <p className="text-xs text-gray-400 mt-3">
+                  {profilePhoto ? "Нажмите чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                </p>
+              </div>
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">{error}</div>
+              )}
+              <button
+                onClick={() => setStep(2)}
+                disabled={!profilePhoto || uploadingPhoto}
+                className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+              >
+                Продолжить →
+              </button>
+            </div>
+          )}
+
+          {/* Step 2 — Basic info */}
+          {step === 2 && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Расскажи о себе</h1>
               <p className="text-gray-400 text-sm mb-6">Абитуриенты увидят это на твоей странице</p>
@@ -164,18 +277,26 @@ export default function MentorOnboarding() {
                   <p className="text-xs text-gray-400 mt-1">Минимум 2-3 предложения — это влияет на доверие абитуриентов</p>
                 </div>
               </div>
-              <button
-                onClick={() => setStep(2)}
-                disabled={!fullName.trim() || !bio.trim()}
-                className="w-full mt-6 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-              >
-                Продолжить →
-              </button>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
+                >
+                  ← Назад
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={!fullName.trim() || !bio.trim()}
+                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+                >
+                  Продолжить →
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Step 2 — University */}
-          {step === 2 && (
+          {/* Step 3 — University */}
+          {step === 3 && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Твой университет</h1>
               <p className="text-gray-400 text-sm mb-6">Это главное доказательство твоей экспертизы</p>
@@ -289,13 +410,13 @@ export default function MentorOnboarding() {
               </div>
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(2)}
                   className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
                 >
                   ← Назад
                 </button>
                 <button
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(4)}
                   disabled={!school.trim() || countries.length === 0}
                   className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
@@ -305,8 +426,8 @@ export default function MentorOnboarding() {
             </div>
           )}
 
-          {/* Step 3 — Expertise */}
-          {step === 3 && (
+          {/* Step 4 — Expertise */}
+          {step === 4 && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Чем ты помогаешь?</h1>
               <p className="text-gray-400 text-sm mb-6">Выбери свои направления — можно несколько</p>
@@ -348,7 +469,7 @@ export default function MentorOnboarding() {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                   className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
                 >
                   ← Назад
@@ -364,6 +485,14 @@ export default function MentorOnboarding() {
             </div>
           )}
         </div>
+        <AvatarCropperModal
+          file={pickedFile}
+          onClose={() => setPickedFile(null)}
+          onSave={async (blob) => {
+            setPickedFile(null)
+            await uploadCroppedPhoto(blob)
+          }}
+        />
 
         <p className="text-center text-xs text-gray-300 mt-4">
           Можно изменить позже в личном кабинете

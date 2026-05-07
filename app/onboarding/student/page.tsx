@@ -2,12 +2,23 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { fetchMe, setEmail, updateStudentProfile, CooldownError } from "@/lib/api"
+import {
+  authFetch,
+  CooldownError,
+  fetchMe,
+  fetchStudentProfile,
+  setEmail,
+  updateStudentProfile,
+} from "@/lib/api"
+import AvatarCropperModal from "@/components/AvatarCropperModal"
+import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
-type Stage = "loading" | "email" | "verify" | "name" | "school"
+type Stage = "loading" | "email" | "verify" | "photo" | "name" | "school"
 
 const VERIFY_POLL_INTERVAL_MS = 5000
 
@@ -23,6 +34,12 @@ export default function StudentOnboarding() {
   const [verifyEmail, setVerifyEmail] = useState("")
   const [verifyChecking, setVerifyChecking] = useState(false)
 
+  // Step: Photo (optional)
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+  const [pickedFile, setPickedFile] = useState<File | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
   // Step: Name
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
@@ -35,10 +52,19 @@ export default function StudentOnboarding() {
   useEffect(() => {
     let cancelled = false
     fetchMe()
-      .then((me) => {
+      .then(async (me) => {
+        if (cancelled) return
+        // Pre-fill the photo so the picker shows the existing avatar if
+        // the student returns mid-flow.
+        try {
+          const profile = await fetchStudentProfile()
+          if (!cancelled) setProfilePhoto(profile.profile_photo ?? null)
+        } catch {
+          // Non-fatal — onboarding continues with empty photo state.
+        }
         if (cancelled) return
         if (me.email && me.email_verified) {
-          setStage("name")
+          setStage("photo")
         } else if (me.email) {
           setVerifyEmail(me.email)
           setNeedsEmail(true)
@@ -59,13 +85,33 @@ export default function StudentOnboarding() {
     if (stage !== "verify") return
     const tick = async () => {
       const me = await fetchMe().catch(() => null)
-      if (me?.email_verified) setStage("name")
+      if (me?.email_verified) setStage("photo")
     }
     pollTimer.current = setInterval(tick, VERIFY_POLL_INTERVAL_MS)
     return () => {
       if (pollTimer.current) clearInterval(pollTimer.current)
     }
   }, [stage])
+
+  const uploadCroppedPhoto = async (blob: Blob) => {
+    setUploadingPhoto(true)
+    setError("")
+    try {
+      const formData = new FormData()
+      formData.append("profile_photo", blob, "avatar.jpg")
+      const res = await authFetch(`${BASE_URL}/students/profile/me/`, {
+        method: "PATCH",
+        body: formData,
+      })
+      if (!res.ok) throw new Error("Не удалось загрузить фото")
+      const data = await res.json()
+      setProfilePhoto(data.profile_photo ?? null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   const handleSubmitEmail = async () => {
     setSaving(true)
@@ -124,12 +170,13 @@ export default function StudentOnboarding() {
   }
 
   const stepsForUser = needsEmail
-    ? ["Email", "Основное", "Учёба"]
-    : ["Основное", "Учёба"]
+    ? ["Email", "Фото", "Основное", "Учёба"]
+    : ["Фото", "Основное", "Учёба"]
   const currentStepIndex = (() => {
     if (stage === "email" || stage === "verify") return 1
-    if (stage === "name") return needsEmail ? 2 : 1
-    if (stage === "school") return needsEmail ? 3 : 2
+    if (stage === "photo") return needsEmail ? 2 : 1
+    if (stage === "name") return needsEmail ? 3 : 2
+    if (stage === "school") return needsEmail ? 4 : 3
     return 0
   })()
 
@@ -223,6 +270,73 @@ export default function StudentOnboarding() {
             </div>
           )}
 
+          {stage === "photo" && (
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Загрузи фото</h1>
+              <p className="text-gray-400 text-sm mb-6">
+                Менторам приятнее общаться, когда они видят кто перед ними. Можно пропустить и добавить позже.
+              </p>
+              <div className="flex flex-col items-center mb-6">
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        setError("Фото не должно превышать 5 МБ")
+                      } else {
+                        setError("")
+                        setPickedFile(file)
+                      }
+                    }
+                    e.target.value = ""
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="relative w-32 h-32 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50"
+                >
+                  {profilePhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                      <Icon name="photo_camera" size={36} className="text-white" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Icon name="edit" size={28} className="text-white" />
+                    </span>
+                  </div>
+                  {uploadingPhoto && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <div className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </button>
+                <p className="text-xs text-gray-400 mt-3">
+                  {profilePhoto ? "Нажмите чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                </p>
+              </div>
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">{error}</div>
+              )}
+              <button
+                onClick={() => setStage("name")}
+                disabled={uploadingPhoto}
+                className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+              >
+                {profilePhoto ? "Продолжить →" : "Пропустить"}
+              </button>
+            </div>
+          )}
+
           {stage === "name" && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Как тебя зовут?</h1>
@@ -250,13 +364,21 @@ export default function StudentOnboarding() {
                   />
                 </div>
               </div>
-              <button
-                onClick={() => setStage("school")}
-                disabled={!fullName.trim()}
-                className="w-full mt-6 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-              >
-                Продолжить →
-              </button>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setStage("photo")}
+                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
+                >
+                  ← Назад
+                </button>
+                <button
+                  onClick={() => setStage("school")}
+                  disabled={!fullName.trim()}
+                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+                >
+                  Продолжить →
+                </button>
+              </div>
             </div>
           )}
 
@@ -301,6 +423,14 @@ export default function StudentOnboarding() {
           Можно изменить позже в профиле
         </p>
       </div>
+      <AvatarCropperModal
+        file={pickedFile}
+        onClose={() => setPickedFile(null)}
+        onSave={async (blob) => {
+          setPickedFile(null)
+          await uploadCroppedPhoto(blob)
+        }}
+      />
     </div>
   )
 }
