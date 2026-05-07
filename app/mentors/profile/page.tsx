@@ -363,9 +363,9 @@ export default function MentorProfilePage() {
             </Field>
           </div>
 
-          {/* Free consultation description */}
+          {/* Consultation description */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Бесплатная консультация</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Консультация</h2>
             <p className="text-sm text-gray-500 mb-5">
               Это описание увидят абитуриенты на твоём профиле. Расскажи что ты обсудишь на вводной встрече.
             </p>
@@ -379,7 +379,7 @@ export default function MentorProfilePage() {
                 rows={5}
                 minLength={CONSULTATION_MIN}
                 maxLength={CONSULTATION_MAX}
-                placeholder="Бесплатная вводная консультация — 60 минут. Обсудим твои цели, текущую ситуацию и составим пошаговый план: какие документы готовить, в какие университеты подаваться и на что обратить внимание в первую очередь."
+                placeholder="Вводная консультация — 60 минут. Обсудим твои цели, текущую ситуацию и составим пошаговый план: какие документы готовить, в какие университеты подаваться и на что обратить внимание в первую очередь."
                 className={`${inputClass} resize-none ${
                   consultation.trim().length > 0 && consultation.trim().length < CONSULTATION_MIN
                     ? "border-red-200 focus:ring-red-100 focus:border-red-300"

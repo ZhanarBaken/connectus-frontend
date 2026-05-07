@@ -213,11 +213,11 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
               },
               {
                 icon: "forum",
-                title: "Бесплатная консультация",
-                desc: "Познакомьтесь с ментором до любой оплаты — без риска",
+                title: "Консультация",
+                desc: "Познакомьтесь с ментором и обсудите цели до старта работы",
                 stat: 0,
-                statSuffix: "₸",
-                statLabel: "за знакомство",
+                statSuffix: "",
+                statLabel: "",
               },
               {
                 icon: "credit_card",

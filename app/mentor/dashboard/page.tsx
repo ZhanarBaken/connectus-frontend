@@ -409,13 +409,9 @@ export default function MentorDashboard() {
                               <h3 className="font-semibold text-gray-900 truncate">
                                 {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
                               </h3>
-                              <span className="text-xs bg-emerald-50 text-emerald-600 font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                                <Icon name="redeem" size={12} />
-                                Бесплатно
-                              </span>
                             </div>
                             <p className="text-xs text-gray-500 leading-relaxed">
-                              хочет провести бесплатную консультацию
+                              хочет провести консультацию
                             </p>
                             <p className="text-xs text-gray-400 mt-0.5">
                               {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
