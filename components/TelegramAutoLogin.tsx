@@ -6,6 +6,24 @@ import { telegramMiniAppLogin, fetchMe } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import type { Role } from "@/types"
 
+
+// Telegram exposes whatever string the bot put after `?startapp=` in
+// `initDataUnsafe.start_param`. We use it as a tiny routing key —
+// e.g. server-side notification builds `order_<id>` so a tap on the
+// TG message lands on the right order screen post-login. Returning
+// null when the value isn't recognised keeps the auto-login flow
+// from accidentally redirecting to an attacker-shaped path.
+function resolveStartParamTarget(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const orderMatch = /^order_(\d+)$/.exec(raw)
+  if (orderMatch) {
+    // ?chat=open tells the order page to open the chat overlay
+    // straight away on mount (the param is read inside that page).
+    return `/orders/${orderMatch[1]}?chat=open`
+  }
+  return null
+}
+
 // What stage of Mini App auto-login we're at. Drives whether we render
 // a covering overlay (loading or role picker) or step out of the way.
 //   - "idle":      not in a Mini App context (or SDK not yet detected).
@@ -50,9 +68,18 @@ export default function TelegramAutoLogin() {
 
   useEffect(() => {
     if (!isInTelegram || !initData || attempted.current) return
+    // start_param is set by Telegram when the user follows a
+    // `https://t.me/<bot>/<app>?startapp=<value>` deep link. We use
+    // it for in-app routing (e.g. an "open chat" notification puts
+    // `order_42` here so we navigate to /orders/42 after login).
+    const startParam =
+      window.Telegram?.WebApp?.initDataUnsafe?.start_param ?? ""
+    const startTarget = resolveStartParamTarget(startParam)
+
     if (typeof window !== "undefined" && localStorage.getItem("access_token")) {
       // Returning user with cached token — skip the network round-trip
       // and let the underlying page render.
+      if (startTarget) router.push(startTarget)
       setStage("done")
       return
     }
@@ -76,6 +103,8 @@ export default function TelegramAutoLogin() {
           setStage("done")
           if (result.created) {
             router.push(me.role === "mentor" ? "/onboarding/mentor/identity" : "/onboarding/student")
+          } else if (startTarget) {
+            router.push(startTarget)
           } else {
             router.refresh()
           }

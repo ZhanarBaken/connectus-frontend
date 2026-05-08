@@ -77,7 +77,14 @@ export default function OrderPage({ params }: Props) {
   // page is the first thing the user sees; tapping the CTA opens
   // the chat as a fullscreen overlay over the whole Mini App.
   // Outside Telegram this stays false and the chat renders inline.
-  const [chatExpanded, setChatExpanded] = useState(false)
+  // Initial state pulls `?chat=open` synchronously so a deep-linked
+  // open (TG notification → t.me/<bot>/<app>?startapp=order_42 →
+  // /orders/42?chat=open) lands on the chat without an extra effect
+  // tick that would briefly flash the order page first.
+  const [chatExpanded, setChatExpanded] = useState(() => {
+    if (typeof window === "undefined") return false
+    return new URLSearchParams(window.location.search).get("chat") === "open"
+  })
 
   // Lock the body scroll while the fullscreen chat overlay is up so
   // a swipe doesn't drag the order page underneath it.
