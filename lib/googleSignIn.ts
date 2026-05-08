@@ -22,19 +22,15 @@ const NOT_AVAILABLE_MESSAGE =
 const SDK_NOT_LOADED_MESSAGE =
   "Google SDK не загрузился. Перезагрузите страницу."
 
-interface PromptNotification {
-  isNotDisplayed?: () => boolean
-  isSkippedMoment?: () => boolean
-}
-
 interface GoogleIdentitySdk {
   accounts: {
     id: {
       initialize: (config: {
         client_id: string
         callback: (response: { credential: string }) => void
+        use_fedcm_for_prompt?: boolean
       }) => void
-      prompt: (handler?: (notification: PromptNotification) => void) => void
+      prompt: () => void
     }
   }
 }
@@ -62,9 +58,16 @@ export async function promptGoogleCredential(
       cb()
     }
 
-    // Backstop: prompt() can silently no-op (FedCM blocked, throttled,
-    // unsupported context). Without this the caller's button stays in
-    // its loading state forever.
+    // Backstop: prompt() can silently no-op (third-party cookies blocked,
+    // user dismissed, unsupported context). Without this the caller's
+    // button stays in its loading state forever.
+    //
+    // We used to also reject when the legacy notification API reported
+    // `isNotDisplayed()` / `isSkippedMoment()` — but those return `true`
+    // under FedCM whenever Google shows its own native dialog instead of
+    // the legacy iframe prompt, causing false-negative rejects. Per
+    // Google's FedCM migration guide we now opt into FedCM and rely
+    // entirely on the callback (success) + this timeout (failure).
     const failTimeout = setTimeout(() => {
       settle(() => reject(new Error(NOT_AVAILABLE_MESSAGE)))
     }, timeoutMs)
@@ -74,12 +77,8 @@ export async function promptGoogleCredential(
       callback: ({ credential }) => {
         settle(() => resolve(credential))
       },
+      use_fedcm_for_prompt: true,
     })
-    window.google!.accounts.id.prompt((notification) => {
-      // Explicit failure modes from the SDK — fire before the timeout.
-      if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
-        settle(() => reject(new Error(NOT_AVAILABLE_MESSAGE)))
-      }
-    })
+    window.google!.accounts.id.prompt()
   })
 }
