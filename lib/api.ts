@@ -726,6 +726,16 @@ export async function telegramUnlink(): Promise<void> {
 
 // ─── Google auth ────────────────────────────────────────────────────────────
 
+// Carried out of googleAuth when the backend tells us the email
+// has no account yet — the login page shows a "К регистрации"
+// button alongside the message instead of a dead-end error.
+export class AccountNotFoundError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "AccountNotFoundError"
+  }
+}
+
 export async function googleAuth(idToken: string, role?: string): Promise<{ access: string; refresh: string; created?: boolean }> {
   const body: Record<string, string> = { id_token: idToken }
   if (role) body.role = role
@@ -742,6 +752,9 @@ export async function googleAuth(idToken: string, role?: string): Promise<{ acce
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
+    if (err.code === "account_not_found") {
+      throw new AccountNotFoundError(err.detail || "Аккаунт не найден. Сначала зарегистрируйтесь.")
+    }
     throw new Error(err.detail || "Не удалось войти через Google")
   }
   return res.json()

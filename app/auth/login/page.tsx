@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { login, fetchMe, resendVerification, googleAuth, telegramStart } from "@/lib/api"
+import { login, fetchMe, resendVerification, googleAuth, telegramStart, AccountNotFoundError } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import Icon from "@/components/Icon"
@@ -16,6 +16,10 @@ function LoginForm() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  // Set when /auth/google/ replies with code='account_not_found'
+  // — surfaces a "К регистрации" CTA next to the error so the
+  // dead-end becomes a one-tap recovery.
+  const [accountNotFound, setAccountNotFound] = useState(false)
   const [loading, setLoading] = useState(false)
   const [needsVerification, setNeedsVerification] = useState(false)
   const [resending, setResending] = useState(false)
@@ -71,6 +75,7 @@ function LoginForm() {
     if (!clientId) { setError("Google авторизация не настроена"); return }
     setLoading(true)
     setError("")
+    setAccountNotFound(false)
     try {
       const credential = await promptGoogleCredential(clientId)
       const data = await googleAuth(credential)
@@ -81,7 +86,12 @@ function LoginForm() {
       if (me.role === "mentor") router.push("/mentor/dashboard")
       else router.push("/student/dashboard")
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка входа через Google")
+      if (e instanceof AccountNotFoundError) {
+        setAccountNotFound(true)
+        setError(e.message)
+      } else {
+        setError(e instanceof Error ? e.message : "Ошибка входа через Google")
+      }
     } finally {
       setLoading(false)
     }
@@ -185,7 +195,15 @@ function LoginForm() {
 
             {error && (
               <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
-                {error}
+                <p>{error}</p>
+                {accountNotFound && (
+                  <Link
+                    href="/auth/register"
+                    className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-red-700 hover:text-red-800 underline-offset-2 hover:underline"
+                  >
+                    К регистрации →
+                  </Link>
+                )}
               </div>
             )}
 
