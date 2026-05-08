@@ -26,6 +26,11 @@ export interface User {
   telegram_username: string | null
   has_google: boolean
   google_email_at_signup: string | null
+  // True for accounts with a usable password (set via /password/set/
+  // or the email/password signup flow). False for TG-only or
+  // Google-only users — the settings UI uses this to switch the
+  // password button between "Установить" and "Изменить".
+  has_password: boolean
   created_at: string
 }
 

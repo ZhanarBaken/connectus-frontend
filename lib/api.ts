@@ -769,13 +769,6 @@ export async function changeEmail(email: string): Promise<void> {
   }
 }
 
-export async function unlinkEmail(): Promise<void> {
-  const res = await authFetch(`${BASE_URL}/auth/email/unlink/`, { method: "POST" })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать email")
-  }
-}
 
 export async function setPassword(password: string): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/password/set/`, {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   fetchMentorProfile, updateMentorProfile,
@@ -8,7 +8,7 @@ import {
   fetchMe,
   telegramLinkStart, telegramLinkFinalize, telegramUnlink,
   googleLink, googleUnlink,
-  setEmail, changeEmail, unlinkEmail,
+  setEmail, changeEmail,
   setPassword,
   CooldownError,
   formatCooldownShort,
@@ -87,6 +87,25 @@ export default function SettingsPage() {
   const [passwordInput, setPasswordInput] = useState("")
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  // 2-tap unlink confirmation. First tap sets this to "telegram" /
+  // "google" / "email" and the button switches to a red "Точно
+  // отвязать?" state; second tap on the SAME channel within 5 s
+  // actually fires the unlink. Replaces the old window.confirm()
+  // dialog which was easy to dismiss-as-OK by accident on touch.
+  const [pendingUnlink, setPendingUnlink] = useState<"" | "telegram" | "google">("")
+  const pendingUnlinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const armUnlink = (channel: "telegram" | "google") => {
+    setPendingUnlink(channel)
+    if (pendingUnlinkTimer.current) clearTimeout(pendingUnlinkTimer.current)
+    pendingUnlinkTimer.current = setTimeout(() => setPendingUnlink(""), 5000)
+  }
+  const clearPendingUnlink = () => {
+    setPendingUnlink("")
+    if (pendingUnlinkTimer.current) clearTimeout(pendingUnlinkTimer.current)
+  }
+  useEffect(() => () => {
+    if (pendingUnlinkTimer.current) clearTimeout(pendingUnlinkTimer.current)
+  }, [])
   // Seconds remaining on a verification-email cooldown. Drives both
   // the inline message and the disabled state of the Save button.
   const [emailCooldown, setEmailCooldown] = useState(0)
@@ -206,7 +225,11 @@ export default function SettingsPage() {
   }
 
   const handleTelegramUnlink = async () => {
-    if (!confirm("Отвязать Telegram?")) return
+    if (pendingUnlink !== "telegram") {
+      armUnlink("telegram")
+      return
+    }
+    clearPendingUnlink()
     setLinkingAction("telegram")
     setError("")
     try {
@@ -240,7 +263,11 @@ export default function SettingsPage() {
   }
 
   const handleGoogleUnlink = async () => {
-    if (!confirm("Отвязать Google?")) return
+    if (pendingUnlink !== "google") {
+      armUnlink("google")
+      return
+    }
+    clearPendingUnlink()
     setLinkingAction("google")
     setError("")
     try {
@@ -284,34 +311,22 @@ export default function SettingsPage() {
     }
   }
 
-  const handleEmailUnlink = async () => {
-    if (!confirm("Отвязать email? Вы потеряете вход по паролю.")) return
-    setLinkingAction("email")
-    setError("")
-    try {
-      await unlinkEmail()
-      setSuccess("Email отвязан")
-      await loadMe()
-      setTimeout(() => setSuccess(""), 2000)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось отвязать email")
-    } finally {
-      setLinkingAction("")
-    }
-  }
-
   const handlePasswordSet = async () => {
     if (!passwordInput || passwordInput.length < 12) {
       setError("Пароль должен быть не менее 12 символов")
       return
     }
+    const wasSet = me?.has_password === true
     setLinkingAction("password")
     setError("")
     try {
       await setPassword(passwordInput)
-      setSuccess("Пароль установлен")
+      setSuccess(wasSet ? "Пароль изменён" : "Пароль установлен")
       setShowPasswordForm(false)
       setPasswordInput("")
+      // Refresh /me/ so has_password flips to true on the first set
+      // and the button below switches to "Изменить" without reload.
+      await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Не удалось установить пароль")
@@ -380,9 +395,13 @@ export default function SettingsPage() {
                   <button
                     onClick={handleTelegramUnlink}
                     disabled={linkingAction === "telegram"}
-                    className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium disabled:opacity-50"
+                    className={`text-xs font-medium transition-colors disabled:opacity-50 ${
+                      pendingUnlink === "telegram"
+                        ? "bg-red-50 text-red-600 px-3 py-1.5 rounded-lg ring-1 ring-red-200"
+                        : "text-gray-400 hover:text-red-500"
+                    }`}
                   >
-                    Отвязать
+                    {pendingUnlink === "telegram" ? "Точно отвязать?" : "Отвязать"}
                   </button>
                 ) : (
                   <button
@@ -417,9 +436,13 @@ export default function SettingsPage() {
                   <button
                     onClick={handleGoogleUnlink}
                     disabled={linkingAction === "google"}
-                    className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium disabled:opacity-50"
+                    className={`text-xs font-medium transition-colors disabled:opacity-50 ${
+                      pendingUnlink === "google"
+                        ? "bg-red-50 text-red-600 px-3 py-1.5 rounded-lg ring-1 ring-red-200"
+                        : "text-gray-400 hover:text-red-500"
+                    }`}
                   >
-                    Отвязать
+                    {pendingUnlink === "google" ? "Точно отвязать?" : "Отвязать"}
                   </button>
                 ) : isInTelegram ? (
                   <span className="text-xs text-gray-400 text-right max-w-[140px] leading-tight">
@@ -466,15 +489,9 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {me.email && !isMentor && (
-                    <button
-                      onClick={handleEmailUnlink}
-                      disabled={linkingAction === "email"}
-                      className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium disabled:opacity-50"
-                    >
-                      Отвязать
-                    </button>
-                  )}
+                  {/* Email is mandatory and unique — it's the cross-channel
+                      dedup key. There's no unlink button anymore; users
+                      can only swap to a different email via /email/change/. */}
                   <button
                     onClick={() => { setShowEmailForm(!showEmailForm); setEmailInput("") }}
                     className="text-xs text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors"
@@ -516,7 +533,11 @@ export default function SettingsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">Пароль</p>
                   <p className="text-xs text-gray-400">
-                    {me.email ? "Установить или изменить пароль" : "Сначала добавьте email"}
+                    {!me.email
+                      ? "Сначала добавьте email"
+                      : me.has_password
+                        ? "Пароль установлен — можно изменить"
+                        : "Установите пароль для входа по email"}
                   </p>
                 </div>
                 {me.email && (
@@ -524,7 +545,7 @@ export default function SettingsPage() {
                     onClick={() => setShowPasswordForm(!showPasswordForm)}
                     className="text-xs text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors"
                   >
-                    Установить
+                    {me.has_password ? "Изменить" : "Установить"}
                   </button>
                 )}
               </div>
@@ -535,7 +556,7 @@ export default function SettingsPage() {
                     type="password"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="Минимум 12 символов"
+                    placeholder={me.has_password ? "Новый пароль (минимум 12)" : "Минимум 12 символов"}
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                   <button
