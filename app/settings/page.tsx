@@ -14,6 +14,7 @@ import {
   formatCooldownShort,
 } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { User } from "@/types"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
 import BackButton from "@/components/BackButton"
@@ -57,6 +58,11 @@ function Toggle({ label, description, icon, checked, onChange, disabled }: Toggl
 
 export default function SettingsPage() {
   const router = useRouter()
+  // Inside Telegram WebView Google's SDK is blocked, so the "Привязать"
+  // path is dead. Existing links (set up in a regular browser) still
+  // surface correctly via me.has_google + me.google_email_at_signup,
+  // and Unlink is a pure backend call so it keeps working in TG.
+  const { isInTelegram } = useTelegramWebApp()
   const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -415,6 +421,10 @@ export default function SettingsPage() {
                   >
                     Отвязать
                   </button>
+                ) : isInTelegram ? (
+                  <span className="text-xs text-gray-400 text-right max-w-[140px] leading-tight">
+                    Откройте сайт в браузере, чтобы привязать
+                  </span>
                 ) : (
                   <button
                     onClick={handleGoogleLink}
