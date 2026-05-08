@@ -67,10 +67,19 @@ export function track(eventType: string, properties?: Record<string, unknown>): 
   }
 }
 
+// Amplitude rejects user_ids shorter than 5 chars (SDK logs
+// "Invalid id length" and silently drops the event). Zero-pad
+// short numeric Django PKs so identify/track land. The same
+// algorithm runs server-side in apps/core/analytics.py so a single
+// user has the same id across both code paths.
+function amplitudeUserId(userId: string | number): string {
+  return String(userId).padStart(5, "0")
+}
+
 export function identify(userId: string | number, traits?: Record<string, unknown>): void {
   if (!amplitude) return
   try {
-    amplitude.setUserId(String(userId))
+    amplitude.setUserId(amplitudeUserId(userId))
     if (traits) {
       const ident = new amplitude.Identify()
       for (const [key, value] of Object.entries(traits)) {
