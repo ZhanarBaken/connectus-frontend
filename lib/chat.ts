@@ -57,9 +57,11 @@ interface DRFListResponse<T> {
 }
 
 /**
- * Load chat history for a conversation. Returns messages in chronological order.
- * Currently fetches the first page only (50 most recent). Pagination can be
- * added later via a "load more" UI.
+ * Load chat history for a conversation. Backend returns the 50 most
+ * recent messages newest-first (cursor pagination on `-created_at`);
+ * we reverse them client-side so the UI renders chronologically with
+ * the latest message at the bottom — matching the WhatsApp / Telegram
+ * convention. Older history is loaded later via `next` cursor.
  */
 export async function fetchChatMessages(conversationId: number): Promise<ChatMessage[]> {
   const res = await authFetch(`${API_BASE}/chat/${conversationId}/messages/`)
@@ -68,8 +70,9 @@ export async function fetchChatMessages(conversationId: number): Promise<ChatMes
     throw new Error("Failed to fetch chat history")
   }
   const data: DRFListResponse<ChatMessage> | ChatMessage[] = await res.json()
-  if (Array.isArray(data)) return data
-  return data.results ?? []
+  const list = Array.isArray(data) ? data : (data.results ?? [])
+  // Reverse: backend gives newest-first, UI wants oldest-first (top → bottom).
+  return list.slice().reverse()
 }
 
 export interface ChatConnection {
