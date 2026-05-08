@@ -101,7 +101,7 @@ export const MOCK_ORDERS: Order[] = [
   {
     id: 1,
     student: 1,
-    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
+    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы", profile_photo: null },
     mentor: 1,
     mentor_service: 1,
     service_title: "Платная консультация",
@@ -126,7 +126,7 @@ export const MOCK_ORDERS: Order[] = [
   {
     id: 2,
     student: 1,
-    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы" },
+    student_info: { id: 1, full_name: "Айгерим Бекова", current_school_or_university: "НИШ Алматы", profile_photo: null },
     mentor: 2,
     mentor_service: 3,
     service_title: "Платная консультация",

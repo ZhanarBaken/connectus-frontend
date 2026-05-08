@@ -147,6 +147,7 @@ export interface OrderStudentInfo {
   id: number
   full_name: string
   current_school_or_university: string
+  profile_photo: string | null
 }
 
 export interface Order {

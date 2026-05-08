@@ -6,6 +6,7 @@ import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import { Avatar } from "@/components/Avatar"
 
 const STATUS_LABEL: Record<Order["order_status"], string> = {
   draft: "Черновик",
@@ -34,6 +35,7 @@ const STATUS_STYLE: Record<Order["order_status"], string> = {
 interface ClientGroup {
   studentId: number
   studentName: string
+  studentPhoto: string | null
   orders: Order[]
   activeCount: number
 }
@@ -75,6 +77,7 @@ export default function OrdersPage() {
         map.set(sid, {
           studentId: sid,
           studentName: order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент",
+          studentPhoto: order.student_info?.profile_photo ?? null,
           orders: [],
           activeCount: 0,
         })
@@ -140,11 +143,12 @@ export default function OrdersPage() {
                       onClick={() => setExpandedClient(isExpanded ? null : client.studentId)}
                       className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left [-webkit-tap-highlight-color:transparent]"
                     >
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white font-bold">
-                          {client.studentName.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
+                      <Avatar
+                        src={client.studentPhoto}
+                        name={client.studentName}
+                        className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500"
+                        letterClassName="text-white font-bold"
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-gray-900 truncate">{client.studentName}</h3>

@@ -10,6 +10,7 @@ import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countriesLabelInline } from "@/lib/countries"
 import { MentorProfile, MentorService, Order } from "@/types"
 import Icon from "@/components/Icon"
+import { Avatar } from "@/components/Avatar"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: "Запрос",
@@ -424,11 +425,12 @@ export default function MentorDashboard() {
                     return (
                       <div key={order.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
                         <div className="flex items-start gap-4 mb-4">
-                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white font-bold">
-                              {order.student_info?.full_name?.trim().charAt(0).toUpperCase() || "С"}
-                            </span>
-                          </div>
+                          <Avatar
+                            src={order.student_info?.profile_photo}
+                            name={order.student_info?.full_name || "С"}
+                            className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500"
+                            letterClassName="text-white font-bold"
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-semibold text-gray-900 truncate">

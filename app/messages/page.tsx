@@ -7,6 +7,7 @@ import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import { Avatar } from "@/components/Avatar"
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Запрос",
@@ -37,6 +38,7 @@ export default function MessagesPage() {
   const [role, setRole] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
+  const [mentorPhotos, setMentorPhotos] = useState<Record<number, string | null>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -66,9 +68,14 @@ export default function MessagesPage() {
         if (r !== "mentor") {
           try {
             const mentors = await fetchMentors()
-            const map: Record<number, string> = {}
-            for (const m of mentors) map[m.id] = m.full_name
-            setMentorNames(map)
+            const nameMap: Record<number, string> = {}
+            const photoMap: Record<number, string | null> = {}
+            for (const m of mentors) {
+              nameMap[m.id] = m.full_name
+              photoMap[m.id] = m.profile_photo
+            }
+            setMentorNames(nameMap)
+            setMentorPhotos(photoMap)
           } catch {
             // ignore
           }
@@ -125,7 +132,9 @@ export default function MessagesPage() {
               const counterpartName = role === "mentor"
                 ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент")
                 : (mentorNames[order.mentor] || "Ментор")
-              const initial = counterpartName.charAt(0).toUpperCase()
+              const counterpartPhoto = role === "mentor"
+                ? (order.student_info?.profile_photo ?? null)
+                : (mentorPhotos[order.mentor] ?? null)
               const dateLabel = new Date(order.created_at).toLocaleDateString("ru-RU", {
                 day: "numeric",
                 month: "short",
@@ -142,9 +151,12 @@ export default function MessagesPage() {
                     i < conversations.length - 1 ? "border-b border-gray-50" : ""
                   }`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-bold">{initial}</span>
-                  </div>
+                  <Avatar
+                    src={counterpartPhoto}
+                    name={counterpartName}
+                    className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500"
+                    letterClassName="text-white font-bold"
+                  />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2">

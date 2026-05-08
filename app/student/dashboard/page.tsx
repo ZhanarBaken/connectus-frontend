@@ -6,6 +6,7 @@ import Link from "next/link"
 import { fetchStudentProfile, fetchOrders, fetchMentors } from "@/lib/api"
 import { StudentProfile, Order } from "@/types"
 import Icon from "@/components/Icon"
+import { Avatar } from "@/components/Avatar"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending_payment: "Ожидает оплаты",
@@ -183,11 +184,12 @@ export default function StudentDashboard() {
                 </Link>
               </div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-lg">
-                    {profile?.full_name?.charAt(0) || "?"}
-                  </span>
-                </div>
+                <Avatar
+                  src={profile?.profile_photo}
+                  name={profile?.full_name}
+                  className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500"
+                  letterClassName="text-white font-bold text-lg"
+                />
                 <div className="min-w-0">
                   <div className="font-semibold text-gray-900 text-sm truncate">{profile?.full_name || "Без имени"}</div>
                   {profile?.current_school_or_university && (
