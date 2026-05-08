@@ -22,6 +22,13 @@ export default function StudentProfilePage() {
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
   const [school, setSchool] = useState("")
+  const [schoolGrade, setSchoolGrade] = useState("")
+  const [city, setCity] = useState("")
+  const [graduationYear, setGraduationYear] = useState("")
+  const [desiredMajor, setDesiredMajor] = useState("")
+  const [desiredCountries, setDesiredCountries] = useState("")
+  const [examResults, setExamResults] = useState("")
+  const [gpa, setGpa] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [pickedFile, setPickedFile] = useState<File | null>(null)
@@ -38,6 +45,13 @@ export default function StudentProfilePage() {
         setFullName(p.full_name ?? "")
         setAge(p.age != null ? String(p.age) : "")
         setSchool(p.current_school_or_university ?? "")
+        setSchoolGrade(p.school_grade ?? "")
+        setCity(p.city ?? "")
+        setGraduationYear(p.school_graduation_year != null ? String(p.school_graduation_year) : "")
+        setDesiredMajor(p.desired_major ?? "")
+        setDesiredCountries(p.desired_countries ?? "")
+        setExamResults(p.exam_results ?? "")
+        setGpa(p.gpa ?? "")
         setProfilePhoto(p.profile_photo ?? null)
       })
       .catch(() => setError("Не удалось загрузить профиль"))
@@ -74,6 +88,13 @@ export default function StudentProfilePage() {
         full_name: fullName,
         age: Number(age) || 0,
         current_school_or_university: school,
+        school_grade: schoolGrade,
+        city: city,
+        school_graduation_year: graduationYear ? Number(graduationYear) : null,
+        desired_major: desiredMajor,
+        desired_countries: desiredCountries,
+        exam_results: examResults,
+        gpa: gpa,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -193,6 +214,103 @@ export default function StudentProfilePage() {
             <p className="text-xs text-gray-400 mt-1">Школа, колледж или университет где ты сейчас учишься</p>
           </div>
 
+          {/* Required pre-consultation fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Класс <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={schoolGrade}
+                onChange={(e) => setSchoolGrade(e.target.value)}
+                required
+                placeholder="11"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Год выпуска со школы <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={graduationYear}
+                onChange={(e) => setGraduationYear(e.target.value)}
+                min={1990}
+                max={2050}
+                required
+                placeholder="2026"
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Город <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              required
+              placeholder="Алматы"
+              className={inputClass}
+            />
+          </div>
+
+          {/* Optional context block */}
+          <div className="pt-2 mt-2 border-t border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h2>
+            <p className="text-xs text-gray-500 leading-relaxed mb-4">
+              Советуем заполнить эти данные — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
+            </p>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
+                <input
+                  type="text"
+                  value={desiredMajor}
+                  onChange={(e) => setDesiredMajor(e.target.value)}
+                  placeholder="Computer Science, Business, Medicine..."
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
+                <input
+                  type="text"
+                  value={desiredCountries}
+                  onChange={(e) => setDesiredCountries(e.target.value)}
+                  placeholder="США, Канада, Германия..."
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
+                <input
+                  type="text"
+                  value={examResults}
+                  onChange={(e) => setExamResults(e.target.value)}
+                  placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
+                <input
+                  type="text"
+                  value={gpa}
+                  onChange={(e) => setGpa(e.target.value)}
+                  placeholder="4.5 / 5.0  или  3.8 / 4.0"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+
           {error && (
             <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
               {error}
@@ -202,7 +320,7 @@ export default function StudentProfilePage() {
           <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
-              disabled={saving || !fullName.trim()}
+              disabled={saving || !fullName.trim() || !schoolGrade.trim() || !city.trim() || !graduationYear.trim()}
               className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               {saving ? "Сохраняем..." : "Сохранить"}

@@ -125,6 +125,15 @@ export interface StudentProfile {
   age: number
   current_school_or_university: string
   contacts: string
+  // Pre-consultation context the mentor reads before booking. The
+  // first three are required in the form; the last four are optional.
+  school_grade: string
+  city: string
+  school_graduation_year: number | null
+  desired_major: string
+  desired_countries: string
+  exam_results: string
+  gpa: string
   profile_photo: string | null
   is_public: boolean
   // Welcome bonus 5 000 ₸ for new students — applies automatically to
