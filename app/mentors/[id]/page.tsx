@@ -309,7 +309,12 @@ export default function MentorPage({ params }: Props) {
                           mentor_profile_id: mentor.id,
                           mentor_service_id: consultationService.id,
                         })
-                        handleOrder(consultationService.id)
+                        // Paid consultation goes through the same slot
+                        // picker as any other paid service. The order
+                        // POST without scheduled_at is rejected by the
+                        // backend whenever the mentor has availability
+                        // configured ("A time slot is required …").
+                        setBookingService(consultationService)
                       }}
                       disabled={orderingServiceId === consultationService.id || !mentor.is_accepting_bookings}
                       className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
