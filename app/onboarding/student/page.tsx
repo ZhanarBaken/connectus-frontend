@@ -44,8 +44,15 @@ export default function StudentOnboarding() {
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
 
-  // Step: School
+  // Step: School + pre-consultation context
   const [school, setSchool] = useState("")
+  const [schoolGrade, setSchoolGrade] = useState("")
+  const [city, setCity] = useState("")
+  const [graduationYear, setGraduationYear] = useState("")
+  const [desiredMajor, setDesiredMajor] = useState("")
+  const [desiredCountries, setDesiredCountries] = useState("")
+  const [examResults, setExamResults] = useState("")
+  const [gpa, setGpa] = useState("")
 
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -161,6 +168,13 @@ export default function StudentOnboarding() {
         full_name: fullName,
         age: ageNum,
         current_school_or_university: school,
+        school_grade: schoolGrade,
+        city: city,
+        school_graduation_year: graduationYear ? Number(graduationYear) : null,
+        desired_major: desiredMajor,
+        desired_countries: desiredCountries,
+        exam_results: examResults,
+        gpa: gpa,
       })
       router.push("/student/dashboard")
     } catch (e: unknown) {
@@ -385,15 +399,119 @@ export default function StudentOnboarding() {
           {stage === "school" && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Где ты учишься?</h1>
-              <p className="text-gray-400 text-sm mb-6">Школа, колледж или университет</p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
-                <input
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
-                  placeholder="НИШ Алматы, школа №1..."
-                  className={inputClass}
-                />
+              <p className="text-gray-400 text-sm mb-6">
+                Эта информация поможет ментору понять твой уровень ещё до консультации.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
+                  <input
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    placeholder="НИШ Алматы, школа №1..."
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Класс <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={schoolGrade}
+                      onChange={(e) => setSchoolGrade(e.target.value)}
+                      required
+                      placeholder="11"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Год выпуска <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={graduationYear}
+                      onChange={(e) => setGraduationYear(e.target.value)}
+                      min={1990}
+                      max={2050}
+                      required
+                      placeholder="2026"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Город <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    required
+                    placeholder="Алматы"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              {/* Optional context block — same hint as in the profile
+                  editor so the copy stays consistent across both
+                  surfaces. Mentors get more useful pre-call context
+                  the more of these the student fills. */}
+              <div className="pt-5 mt-5 border-t border-gray-100">
+                <h2 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h2>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  Советуем заполнить эти данные — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
+                </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
+                    <input
+                      type="text"
+                      value={desiredMajor}
+                      onChange={(e) => setDesiredMajor(e.target.value)}
+                      placeholder="Computer Science, Business, Medicine..."
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
+                    <input
+                      type="text"
+                      value={desiredCountries}
+                      onChange={(e) => setDesiredCountries(e.target.value)}
+                      placeholder="США, Канада, Германия..."
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
+                    <input
+                      type="text"
+                      value={examResults}
+                      onChange={(e) => setExamResults(e.target.value)}
+                      placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
+                    <input
+                      type="text"
+                      value={gpa}
+                      onChange={(e) => setGpa(e.target.value)}
+                      placeholder="4.5 / 5.0  или  3.8 / 4.0"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
               </div>
 
               {error && (
@@ -409,7 +527,13 @@ export default function StudentOnboarding() {
                 </button>
                 <button
                   onClick={handleFinish}
-                  disabled={saving || !school.trim()}
+                  disabled={
+                    saving
+                    || !school.trim()
+                    || !schoolGrade.trim()
+                    || !city.trim()
+                    || !graduationYear.trim()
+                  }
                   className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
                   {saving ? "Сохраняем..." : "Готово →"}
