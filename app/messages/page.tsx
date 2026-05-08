@@ -8,6 +8,7 @@ import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Запрос",
@@ -35,6 +36,12 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function MessagesPage() {
   const router = useRouter()
+  const { isInTelegram, webApp } = useTelegramWebApp()
+  useEffect(() => {
+    if (webApp) {
+      try { webApp.expand() } catch { /* older clients */ }
+    }
+  }, [webApp])
   const [role, setRole] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
@@ -94,11 +101,13 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
-      <div className="max-w-3xl mx-auto px-4 py-10">
-        <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Сообщения</h1>
+    <div className={`bg-[#fafafa] ${isInTelegram ? "min-h-[100dvh]" : "min-h-screen"}`}>
+      <div className={`max-w-3xl mx-auto ${isInTelegram ? "px-3 py-3" : "px-4 py-10"}`}>
+        {!isInTelegram && (
+          <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
+        )}
+        <div className={isInTelegram ? "mb-4" : "mb-8"}>
+          <h1 className={`font-bold text-gray-900 ${isInTelegram ? "text-xl" : "text-2xl"}`}>Сообщения</h1>
           <p className="text-sm text-gray-400 mt-1">
             {role === "mentor"
               ? "Чаты с абитуриентами по принятым консультациям"

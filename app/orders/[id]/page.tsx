@@ -11,6 +11,7 @@ import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 import { Linkified } from "@/components/Linkified"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Ожидает подтверждения",
@@ -72,6 +73,17 @@ export default function OrderPage({ params }: Props) {
   const receiptInputRef = useRef<HTMLInputElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<ChatConnection | null>(null)
+
+  // Telegram Mini App detection — drives a denser layout (no internal
+  // back button, less outer padding, chat first on the screen and
+  // taking the full viewport, order info pushed below).
+  const { isInTelegram, webApp } = useTelegramWebApp()
+  // Mini App opens at half-height by default — expand once on mount.
+  useEffect(() => {
+    if (webApp) {
+      try { webApp.expand() } catch { /* older clients */ }
+    }
+  }, [webApp])
 
   // Fetch dispute window from public settings (no auth needed)
   useEffect(() => {
@@ -364,13 +376,19 @@ export default function OrderPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-6 transition-colors group [-webkit-tap-highlight-color:transparent]" />
+    <div className={`bg-[#fafafa] ${isInTelegram ? "min-h-[100dvh]" : "min-h-screen"}`}>
+      <div className={`max-w-4xl mx-auto ${isInTelegram ? "px-3 py-2" : "px-4 py-8"}`}>
+        {/* TG Mini App injects its own back button via Telegram.WebApp,
+            and the in-page padding is squeezed — hide our duplicate. */}
+        {!isInTelegram && (
+          <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-6 transition-colors group [-webkit-tap-highlight-color:transparent]" />
+        )}
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Order info */}
-          <div className="lg:col-span-1 space-y-4">
+        <div className="grid lg:grid-cols-3 gap-4 lg:gap-6">
+          {/* Order info — bumped below the chat on mobile/Mini App so
+              the conversation is the first thing on screen; reverts to
+              the natural left-sidebar layout on lg+. */}
+          <div className={`space-y-4 ${isInTelegram ? "order-2 lg:order-1 lg:col-span-1" : "lg:col-span-1"}`}>
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h1 className="text-lg font-bold text-gray-900 mb-1">{order.service_title}</h1>
               <p className="text-sm text-gray-400 mb-4">Заказ #{order.id}</p>
@@ -898,8 +916,15 @@ export default function OrderPage({ params }: Props) {
           </div>
 
           {/* Chat */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]">
+          <div className={isInTelegram ? "order-1 lg:order-2 lg:col-span-2" : "lg:col-span-2"}>
+            <div className={`bg-white rounded-2xl border border-gray-200 flex flex-col ${
+              isInTelegram
+                // Mini App: take essentially the whole viewport. The
+                // ~140px subtraction accounts for the page padding,
+                // section gap, and the order-info card peek below.
+                ? "h-[calc(100dvh-140px)] min-h-[420px]"
+                : "h-[540px]"
+            }`}>
               {/* Chat header */}
               <div className="px-6 py-4 border-b border-gray-50 flex-shrink-0 flex items-center justify-between gap-3">
                 <div>
