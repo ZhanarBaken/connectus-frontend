@@ -203,12 +203,44 @@ export default function OrderPage({ params }: Props) {
     }
   }, [order?.conversation_id])
 
-  // Auto-scroll on new messages
+  // Pin scroll to the bottom on every change to the messages list,
+  // including the very first hydration. Three reasons this needs more
+  // care than `scrollTop = scrollHeight`:
+  //   1. canChat starts false until the order's conversation_id is
+  //      known, so chatRef can be null on the render that first
+  //      populates `messages`. Re-run when canChat flips so the
+  //      pin happens once the container actually mounts.
+  //   2. Reading `scrollHeight` synchronously inside a layout-effect-
+  //      style callback can return a stale value before the browser
+  //      has finished laying out freshly mounted message rows. rAF
+  //      defers the assignment past that paint.
+  //   3. The order page hosts other heavy children that lay out after
+  //      the chat column (sidebar fetches, attachments, etc.). A
+  //      second rAF nests past their reflows so the final position
+  //      survives.
+  // canChat is computed below from order.conversation_id; mirror the
+  // condition here so the dep array is stable and the effect doesn't
+  // bind to an undeclared identifier (canChat sits later in the body).
+  const _hasChat = order?.conversation_id != null
   useEffect(() => {
-    if (chatRef.current) {
-      chatRef.current.scrollTop = chatRef.current.scrollHeight
+    if (!_hasChat || !chatRef.current) return
+    const id1 = requestAnimationFrame(() => {
+      const id2 = requestAnimationFrame(() => {
+        if (chatRef.current) {
+          chatRef.current.scrollTop = chatRef.current.scrollHeight
+        }
+      })
+      ;(chatRef.current as HTMLDivElement & { _rAF2?: number })._rAF2 = id2
+    })
+    return () => {
+      cancelAnimationFrame(id1)
+      const node = chatRef.current as
+        (HTMLDivElement & { _rAF2?: number }) | null
+      if (node?._rAF2 !== undefined) {
+        cancelAnimationFrame(node._rAF2)
+      }
     }
-  }, [messages])
+  }, [messages, _hasChat])
 
   const handleComplete = async () => {
     if (!order) return
