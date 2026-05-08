@@ -77,6 +77,15 @@ export default function RegisterPage() {
 
   const handleGoogleRegister = async () => {
     handleFirstInteraction()
+    // Belt-and-braces: useTelegramWebApp may not have settled yet
+    // when the user taps very fast on first paint, so the button
+    // visibility gate could miss. Re-check synchronously off the
+    // global before launching Google's SDK (which won't work in
+    // embedded WebViews anyway).
+    if (typeof window !== "undefined" && window.Telegram?.WebApp?.initData) {
+      setError("В Telegram-приложении Google недоступен. Открой сайт в браузере или используй вход через Telegram.")
+      return
+    }
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setError("Google авторизация не настроена"); return }
     setLoading(true)

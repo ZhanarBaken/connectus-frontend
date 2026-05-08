@@ -17,7 +17,7 @@
 // to handle the SDK's notification API directly.
 
 const NOT_AVAILABLE_MESSAGE =
-  "Google Sign-In недоступен здесь. Откройте сайт в обычном браузере или используйте другой способ входа."
+  "Не удалось завершить вход через Google. Попробуйте ещё раз или войдите другим способом."
 
 const SDK_NOT_LOADED_MESSAGE =
   "Google SDK не загрузился. Перезагрузите страницу."
@@ -43,7 +43,12 @@ declare global {
 
 export async function promptGoogleCredential(
   clientId: string,
-  timeoutMs = 10000,
+  // 10 s used to be too aggressive — real users picking an account
+  // (especially first-timers consenting to scopes) routinely take
+  // 20–40 s. The timeout's only job is to unstick the button when
+  // the prompt silently no-ops; legitimate slow pickers shouldn't
+  // hit it. 90 s gives plenty of headroom.
+  timeoutMs = 90000,
 ): Promise<string> {
   if (!window.google?.accounts?.id) {
     throw new Error(SDK_NOT_LOADED_MESSAGE)

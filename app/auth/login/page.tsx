@@ -59,6 +59,14 @@ function LoginForm() {
   }
 
   const handleGoogleLogin = async () => {
+    // Belt-and-braces against a fast tap before useTelegramWebApp
+    // has populated — if we're inside a Telegram WebView, Google's
+    // SDK will silently fail and only surface as the timeout. Bail
+    // here with a clearer message.
+    if (typeof window !== "undefined" && window.Telegram?.WebApp?.initData) {
+      setError("В Telegram-приложении Google недоступен. Открой сайт в браузере или используй вход через Telegram.")
+      return
+    }
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) { setError("Google авторизация не настроена"); return }
     setLoading(true)

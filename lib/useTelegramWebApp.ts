@@ -16,7 +16,17 @@ export interface TelegramWebAppContext {
 // outside Telegram, the global never appears and `isInTelegram` stays
 // false forever.
 export function useTelegramWebApp(): TelegramWebAppContext {
-  const [webApp, setWebApp] = useState<TelegramWebApp | null>(null)
+  // Synchronous initial check catches the common case where the Mini
+  // App SDK script (loaded `async defer` from app/layout.tsx) is
+  // already evaluated by the time React mounts — especially likely
+  // since Telegram's WebView pre-warms the page. Without this, the
+  // first render shows `isInTelegram=false` for a few hundred ms,
+  // letting Google buttons leak through to a too-fast tap.
+  const [webApp, setWebApp] = useState<TelegramWebApp | null>(() => {
+    if (typeof window === "undefined") return null
+    const candidate = window.Telegram?.WebApp
+    return candidate && candidate.initData ? candidate : null
+  })
 
   useEffect(() => {
     if (typeof window === "undefined") return
