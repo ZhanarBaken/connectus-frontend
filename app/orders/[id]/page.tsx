@@ -73,6 +73,20 @@ export default function OrderPage({ params }: Props) {
   const receiptInputRef = useRef<HTMLInputElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<ChatConnection | null>(null)
+  // In Mini App we hide the chat panel behind a CTA so the order
+  // page is the first thing the user sees; tapping the CTA opens
+  // the chat as a fullscreen overlay over the whole Mini App.
+  // Outside Telegram this stays false and the chat renders inline.
+  const [chatExpanded, setChatExpanded] = useState(false)
+
+  // Lock the body scroll while the fullscreen chat overlay is up so
+  // a swipe doesn't drag the order page underneath it.
+  useEffect(() => {
+    if (!chatExpanded) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.body.style.overflow = previous }
+  }, [chatExpanded])
 
   // Telegram Mini App detection — drives a denser layout (no internal
   // back button, less outer padding, chat first on the screen and
@@ -240,7 +254,7 @@ export default function OrderPage({ params }: Props) {
         cancelAnimationFrame(node._rAF2)
       }
     }
-  }, [messages, _hasChat])
+  }, [messages, _hasChat, chatExpanded])
 
   const handleComplete = async () => {
     if (!order) return
@@ -947,19 +961,69 @@ export default function OrderPage({ params }: Props) {
 
           </div>
 
-          {/* Chat */}
+          {/* Chat — in Telegram Mini App we hide the panel behind a
+              CTA row so the order details stay primary; tapping it
+              opens the chat as a fullscreen overlay. Outside Telegram
+              the chat renders inline as a sidebar to the order. */}
           <div className={isInTelegram ? "order-1 lg:order-2 lg:col-span-2" : "lg:col-span-2"}>
-            <div className={`bg-white rounded-2xl border border-gray-200 flex flex-col ${
-              isInTelegram
-                // Mini App: take essentially the whole viewport. The
-                // ~140px subtraction accounts for the page padding,
-                // section gap, and the order-info card peek below.
-                ? "h-[calc(100dvh-140px)] min-h-[420px]"
-                : "h-[540px]"
-            }`}>
+            {isInTelegram && !chatExpanded && (
+              <button
+                type="button"
+                onClick={() => setChatExpanded(true)}
+                className="w-full bg-white rounded-2xl border border-gray-200 p-4 text-left flex items-center gap-3 hover:border-gray-300 active:border-indigo-300 transition-colors [-webkit-tap-highlight-color:transparent]"
+              >
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                  <Icon name="chat" size={20} className="text-indigo-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900">Чат</p>
+                    {wsConnected && !chatClosed && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                    {(() => {
+                      if (!canChat) return "Откроется после подтверждения оплаты"
+                      if (chatClosed) return "Чат закрыт ментором"
+                      if (messages.length === 0) return "Начните переписку"
+                      const last = messages[messages.length - 1]
+                      const text = last.text?.trim() ?? ""
+                      if (text) return text
+                      if (last.attachments?.length) return "📎 Вложение"
+                      return "—"
+                    })()}
+                  </p>
+                </div>
+                <Icon name="arrow_forward_ios" size={16} className="text-gray-300 flex-shrink-0" />
+              </button>
+            )}
+            <div className={
+              isInTelegram && chatExpanded
+                // Fullscreen overlay on top of the entire Mini App.
+                // No rounding / border so it visually replaces the
+                // page rather than sitting in it.
+                ? "fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]"
+                : isInTelegram
+                  // Collapsed in Mini App — DOM still mounted (so the
+                  // chatRef + WS state stick around between toggles)
+                  // but visually hidden behind the CTA above.
+                  ? "hidden"
+                  : "bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]"
+            }>
               {/* Chat header */}
-              <div className="px-6 py-4 border-b border-gray-50 flex-shrink-0 flex items-center justify-between gap-3">
-                <div>
+              <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-50 flex-shrink-0 flex items-center gap-3">
+                {isInTelegram && chatExpanded && (
+                  <button
+                    type="button"
+                    onClick={() => setChatExpanded(false)}
+                    className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
+                    aria-label="Закрыть чат"
+                  >
+                    <Icon name="arrow_back" size={22} />
+                  </button>
+                )}
+                <div className="flex-1 min-w-0">
                   <h2 className="font-semibold text-gray-900">Сообщения</h2>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {!canChat
