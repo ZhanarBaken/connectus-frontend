@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { fetchChatUnread } from "@/lib/api"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import Icon from "./Icon"
 import Logo from "./Logo"
 import NotificationBell from "./NotificationBell"
@@ -14,6 +15,7 @@ export default function Header() {
   const [role, setRole] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [chatUnread, setChatUnread] = useState(0)
+  const { isInTelegram } = useTelegramWebApp()
 
   useEffect(() => {
     setRole(localStorage.getItem("role"))
@@ -147,12 +149,14 @@ export default function Header() {
           {role ? (
             <>
               <NotificationBell />
-              <button
-                onClick={handleLogout}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors px-2 py-2"
-              >
-                Выйти
-              </button>
+              {!isInTelegram && (
+                <button
+                  onClick={handleLogout}
+                  className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors px-2 py-2"
+                >
+                  Выйти
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -210,9 +214,11 @@ export default function Header() {
             )
           })}
           {role ? (
-            <button onClick={handleLogout} className="text-sm text-gray-500 text-left py-1">
-              Выйти
-            </button>
+            !isInTelegram && (
+              <button onClick={handleLogout} className="text-sm text-gray-500 text-left py-1">
+                Выйти
+              </button>
+            )
           ) : (
             <div className="flex gap-3 pt-2">
               <Link href="/auth/login" className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">
