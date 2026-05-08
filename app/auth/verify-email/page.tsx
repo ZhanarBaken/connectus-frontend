@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { verifyEmail } from "@/lib/api"
+import { verifyEmail, fetchMentorProfile, fetchStudentProfile } from "@/lib/api"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
@@ -23,17 +23,41 @@ function VerifyEmailContent() {
       return
     }
     verifyEmail(token)
-      .then((data) => {
+      .then(async (data) => {
         // Auto-login: backend returns a fresh JWT pair so the user
         // doesn't have to type email/password right after clicking
-        // the email link. Redirect by role.
+        // the email link.
         localStorage.setItem("access_token", data.access)
         localStorage.setItem("refresh_token", data.refresh)
         localStorage.setItem("role", data.role)
         setStatus("success")
-        const target = data.role === "mentor"
-          ? "/onboarding/mentor/identity"
-          : "/onboarding/student"
+        // Two callers hit this URL: a brand-new signup verifying for
+        // the first time (→ onboarding) and an already-onboarded user
+        // who just changed email and is verifying the new one (→
+        // dashboard, they're not new). Profile rows are auto-created
+        // with an empty `full_name` by the signup signal; `full_name`
+        // only gets filled during onboarding/profile editing, so
+        // checking it is the simplest correct heuristic.
+        let onboarded = false
+        try {
+          if (data.role === "mentor") {
+            const profile = await fetchMentorProfile()
+            onboarded = Boolean(profile.full_name?.trim())
+          } else {
+            const profile = await fetchStudentProfile()
+            onboarded = Boolean(profile.full_name?.trim())
+          }
+        } catch {
+          // Profile fetch failed → assume new signup, push to
+          // onboarding (safer than locking a real new user on a
+          // dashboard with an empty profile).
+        }
+        let target: string
+        if (onboarded) {
+          target = data.role === "mentor" ? "/mentor/dashboard" : "/student/dashboard"
+        } else {
+          target = data.role === "mentor" ? "/onboarding/mentor/identity" : "/onboarding/student"
+        }
         router.replace(target)
       })
       .catch((err: unknown) => {
