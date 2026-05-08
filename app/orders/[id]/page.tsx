@@ -9,6 +9,7 @@ import { Order, Mentor, ChatMessage, OrderDocument } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import { Linkified } from "@/components/Linkified"
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Ожидает подтверждения",
@@ -942,7 +943,7 @@ export default function OrderPage({ params }: Props) {
                           <div key={msg.id} className="flex justify-center my-2">
                             <div className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 max-w-[85%]">
                               <p className="text-xs text-gray-600 text-center leading-relaxed whitespace-pre-wrap break-words">
-                                {msg.text}
+                                <Linkified text={msg.text} />
                               </p>
                               <p className="text-[10px] text-gray-400 text-center mt-1">{formatTime(msg.created_at)}</p>
                             </div>
@@ -961,7 +962,7 @@ export default function OrderPage({ params }: Props) {
                                   ? "bg-indigo-600 text-white rounded-br-sm"
                                   : "bg-gray-100 text-gray-800 rounded-bl-sm"
                               }`}>
-                                {msg.text}
+                                <Linkified text={msg.text} />
                               </div>
                             )}
                             {hasAttachments && (
