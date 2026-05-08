@@ -101,30 +101,52 @@ export default function MentorsList({ mentors }: Props) {
           {/* Filter row */}
           <div className="flex flex-wrap gap-3 items-center">
             {/* Country filter */}
-            <select
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="text-sm border border-gray-200 rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 text-gray-700 transition-all"
-            >
-              <option value="">Все страны</option>
-              {countries.map((c) => (
-                <option key={c} value={c}>
-                  {countryFlag(c)} {countryLabel(c)}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="appearance-none text-sm font-medium border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 bg-white text-gray-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+              >
+                <option value="">Все страны</option>
+                {countries.map((c) => (
+                  <option key={c} value={c}>
+                    {countryFlag(c)} {countryLabel(c)}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
 
             {/* Expertise filter */}
-            <select
-              value={expertise}
-              onChange={(e) => setExpertise(e.target.value)}
-              className="text-sm border border-gray-200 rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 text-gray-700 transition-all"
-            >
-              <option value="">Все услуги</option>
-              {Object.entries(EXPERTISE_LABELS).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={expertise}
+                onChange={(e) => setExpertise(e.target.value)}
+                className="appearance-none text-sm font-medium border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 bg-white text-gray-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+              >
+                <option value="">Все услуги</option>
+                {Object.entries(EXPERTISE_LABELS).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+              <svg
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
 
             {/* Accepting bookings toggle */}
             <button
