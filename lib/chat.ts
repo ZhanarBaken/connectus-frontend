@@ -9,7 +9,7 @@
 // SSR-safe — only call from "use client" components.
 
 import { ChatAttachment, ChatMessage } from "@/types"
-import { authFetch } from "./api"
+import { authFetch, getFreshAccessToken } from "./api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -48,11 +48,6 @@ function deriveWsBase(): string {
   u.pathname = ""
   u.search = ""
   return u.toString().replace(/\/$/, "")
-}
-
-function getToken(): string {
-  if (typeof window === "undefined") return ""
-  return localStorage.getItem("access_token") ?? ""
 }
 
 interface DRFListResponse<T> {
@@ -135,44 +130,69 @@ export function connectChat(
     onServerError?: (err: string) => void
   },
 ): ChatConnection {
-  const token = getToken()
-  const url = `${deriveWsBase()}/ws/chat/${conversationId}/?token=${encodeURIComponent(token)}`
-  let ws: WebSocket | null = new WebSocket(url)
+  let ws: WebSocket | null = null
+  let closed = false
 
-  ws.onopen = () => {
-    handlers.onOpen?.()
-  }
-
-  ws.onmessage = (event) => {
+  // Refresh the access token if it's near expiry BEFORE opening the
+  // socket — WS handshakes aren't covered by authFetch's 401-retry,
+  // so a stale token would mean a rejected handshake + fallback,
+  // not a transparent retry. Returning the controller synchronously
+  // preserves the existing API; close() handles the "ws not yet
+  // created" case via the `closed` flag.
+  ;(async () => {
+    let token: string | null
     try {
-      const data = JSON.parse(event.data)
-      // Backend may send {error: '...'} when the message is rejected (e.g. closed chat)
-      if (data && typeof data.error === "string") {
-        handlers.onServerError?.(data.error)
-        return
-      }
-      const msg = data as WsMessageEvent
-      handlers.onMessage({
-        id: msg.id,
-        sender: msg.sender_id,
-        sender_email: msg.sender_email,
-        is_system: msg.is_system,
-        text: msg.text,
-        created_at: msg.created_at,
-        attachments: msg.attachments,
-      })
+      token = await getFreshAccessToken()
     } catch {
-      // ignore malformed payloads
+      // refreshAccessToken redirects to /auth/login on hard fail;
+      // surface as an error here so the caller can stop spinning.
+      handlers.onError?.()
+      return
     }
-  }
+    if (closed) return
+    if (!token) {
+      handlers.onError?.()
+      return
+    }
 
-  ws.onerror = () => {
-    handlers.onError?.()
-  }
+    const url = `${deriveWsBase()}/ws/chat/${conversationId}/?token=${encodeURIComponent(token)}`
+    ws = new WebSocket(url)
 
-  ws.onclose = (event) => {
-    handlers.onClose?.(event.code)
-  }
+    ws.onopen = () => {
+      handlers.onOpen?.()
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        // Backend may send {error: '...'} when the message is rejected (e.g. closed chat)
+        if (data && typeof data.error === "string") {
+          handlers.onServerError?.(data.error)
+          return
+        }
+        const msg = data as WsMessageEvent
+        handlers.onMessage({
+          id: msg.id,
+          sender: msg.sender_id,
+          sender_email: msg.sender_email,
+          is_system: msg.is_system,
+          text: msg.text,
+          created_at: msg.created_at,
+          attachments: msg.attachments,
+        })
+      } catch {
+        // ignore malformed payloads
+      }
+    }
+
+    ws.onerror = () => {
+      handlers.onError?.()
+    }
+
+    ws.onclose = (event) => {
+      handlers.onClose?.(event.code)
+    }
+  })()
 
   return {
     send: (text: string) => {
@@ -181,6 +201,7 @@ export function connectChat(
       return true
     },
     close: () => {
+      closed = true
       if (ws) {
         // Detach handlers so a delayed close event doesn't fire callbacks
         // after the component has unmounted.

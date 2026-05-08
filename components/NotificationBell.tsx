@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   fetchUnreadNotificationCount,
   fetchNotifications,
+  getFreshAccessToken,
   markNotificationsRead,
   type NotificationItem,
 } from "@/lib/api"
@@ -71,15 +72,27 @@ export default function NotificationBell() {
       }
     }
 
-    const connect = () => {
-      const token = typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null
+    const connect = async () => {
       const wsBase = buildWebSocketBase()
-      if (!token || !wsBase) {
-        // Anonymous tab or misconfigured client — polling is the only
-        // path to a fresh badge.
+      if (!wsBase) {
         startFallback()
+        return
+      }
+      // Refresh near-expiry access token before opening the socket —
+      // a stale token would just bounce the handshake (close 4001)
+      // and drop us into polling fallback even though the user is
+      // actively logged in.
+      let token: string | null
+      try {
+        token = await getFreshAccessToken()
+      } catch {
+        // Refresh hard-failed: refreshAccessToken already navigated
+        // the tab to /auth/login, so further work here is moot.
+        startFallback()
+        return
+      }
+      if (!active || !token) {
+        if (!token) startFallback()
         return
       }
       try {

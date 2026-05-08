@@ -532,6 +532,62 @@ async function refreshAccessToken(): Promise<string> {
   }
 }
 
+
+// Decode the JWT's `exp` claim without verifying — we trust the
+// signature was checked on the last refresh; this read is purely to
+// know if the token is about to expire on our side. Returns the
+// numeric `exp` (epoch seconds) or null if we couldn't parse it.
+function _jwtExp(token: string): number | null {
+  try {
+    const part = token.split(".")[1]
+    if (!part) return null
+    // base64url → base64
+    const padded = part.replace(/-/g, "+").replace(/_/g, "/")
+      .padEnd(part.length + ((4 - part.length % 4) % 4), "=")
+    const payload = JSON.parse(atob(padded))
+    return typeof payload.exp === "number" ? payload.exp : null
+  } catch {
+    return null
+  }
+}
+
+
+// Skew so we refresh just before the server would reject the token.
+// 60s is a balance: long enough to cover network latency on the WS
+// handshake, short enough that we don't refresh on every page load.
+const _ACCESS_TOKEN_REFRESH_SKEW_S = 60
+
+/**
+ * Return an access token guaranteed to be valid for at least the next
+ * `_ACCESS_TOKEN_REFRESH_SKEW_S` seconds. Used at WebSocket open time
+ * because WS connections aren't covered by `authFetch`'s 401-retry
+ * loop — once a WS handshake is rejected, the browser closes the
+ * socket and the call site has to reconnect from scratch.
+ *
+ * Returns null when the user has no token at all (anonymous tab).
+ * Throws and bubbles up when refresh itself fails — the existing
+ * refreshAccessToken redirects to /auth/login in that case, matching
+ * authFetch's hard-401 behavior.
+ */
+export async function getFreshAccessToken(): Promise<string | null> {
+  const current = getToken()
+  if (!current) return null
+
+  const exp = _jwtExp(current)
+  if (exp === null) {
+    // Can't read exp — let the WS attempt with the current token; if
+    // it's bad, the consumer rejects with 4001 and the caller falls
+    // back to polling, same as today.
+    return current
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  if (exp - now > _ACCESS_TOKEN_REFRESH_SKEW_S) return current
+
+  return await refreshAccessToken()
+}
+
+
 /**
  * fetch wrapper that injects Bearer token and transparently retries on 401
  * via refresh token flow.
