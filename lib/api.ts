@@ -461,6 +461,36 @@ export async function resendVerification(email: string): Promise<void> {
   }
 }
 
+// Always 200 — backend never reveals whether the address exists.
+export async function requestPasswordReset(email: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/password/forgot/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+  if (res.status === 429) {
+    throw await readCooldown(res, "Слишком много попыток. Попробуйте позже.")
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.email?.[0] || err.detail || "Не удалось отправить письмо")
+  }
+}
+
+export async function confirmPasswordReset(token: string, password: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/password/reset/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(
+      err.token?.[0] || err.password?.[0] || err.detail || "Не удалось обновить пароль",
+    )
+  }
+}
+
 export async function register(email: string, password: string, role: string, agreedToTerms: boolean) {
   if (USE_MOCKS) {
     return { id: 1, email, role }
