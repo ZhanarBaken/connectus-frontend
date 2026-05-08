@@ -88,8 +88,18 @@ export default function RegisterPage() {
       localStorage.setItem("refresh_token", data.refresh)
       const me = await fetchMe(data.access)
       localStorage.setItem("role", me.role)
-      if (me.role === "mentor") router.push("/onboarding/mentor/identity")
-      else router.push("/onboarding/student")
+      // `created=false` means the backend matched (or auto-linked
+      // Google to) an existing account by email — the user is not
+      // brand new, so onboarding would be wrong. Send them to their
+      // dashboard instead. Only true new signups go through onboarding.
+      if (data.created === false) {
+        if (me.role === "mentor") router.push("/mentor/dashboard")
+        else router.push("/student/dashboard")
+      } else if (me.role === "mentor") {
+        router.push("/onboarding/mentor/identity")
+      } else {
+        router.push("/onboarding/student")
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка регистрации через Google")
     } finally {
