@@ -367,15 +367,29 @@ export default function MentorDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-10">
           {[
-            { label: "Активных заказов", value: activeOrders.length, color: "text-indigo-600" },
-            { label: "Ожидают оплаты", value: pendingOrders.length, color: "text-yellow-600" },
-            { label: "Заработано (₸)", value: totalEarned.toLocaleString("ru-RU"), color: "text-green-600" },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-              <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
-            </div>
-          ))}
+            { label: "Активных заказов", value: activeOrders.length, color: "text-indigo-600", href: null },
+            { label: "Ожидают оплаты", value: pendingOrders.length, color: "text-yellow-600", href: null },
+            {
+              label: "Заработано · подробнее →",
+              value: totalEarned.toLocaleString("ru-RU"),
+              color: "text-green-600",
+              href: "/mentor/earnings",
+            },
+          ].map((stat) => {
+            const card = (
+              <div className="bg-white rounded-2xl border border-gray-200 p-5 text-center h-full">
+                <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
+                <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
+              </div>
+            )
+            return stat.href ? (
+              <Link key={stat.label} href={stat.href} className="block hover:opacity-90 transition-opacity">
+                {card}
+              </Link>
+            ) : (
+              <div key={stat.label}>{card}</div>
+            )
+          })}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -606,6 +620,7 @@ export default function MentorDashboard() {
               <div className="space-y-2">
                 {[
                   { href: "/mentor/guide", icon: "menu_book", label: "Памятка ментора" },
+                  { href: "/mentor/earnings", icon: "account_balance_wallet", label: "Финансы" },
                   { href: "/mentors/profile", icon: "person", label: "Редактировать профиль" },
                   { href: "/mentors/schedule", icon: "calendar_month", label: "Настроить расписание" },
                   { href: "/mentors/services", icon: "description", label: "Управлять услугами" },

@@ -250,6 +250,25 @@ export async function fetchPrimaryConsultation(): Promise<import("@/types").Ment
   return res.json()
 }
 
+export interface MentorEarnings {
+  pending_amount: string
+  earned_unpaid_amount: string
+  earned_paid_amount: string
+  payouts: Array<{
+    id: number
+    amount: string
+    paid_at: string
+    method: "kaspi" | "bank" | "cash" | "other"
+    note: string
+  }>
+}
+
+export async function fetchMentorEarnings(): Promise<MentorEarnings> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/earnings/`)
+  if (!res.ok) throw new Error("Не удалось загрузить финансы")
+  return res.json()
+}
+
 export async function updatePrimaryConsultation(
   data: Partial<import("@/types").MentorService>,
 ): Promise<import("@/types").MentorService> {
