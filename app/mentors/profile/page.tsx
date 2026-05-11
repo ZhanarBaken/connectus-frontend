@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { fetchMentorProfile, updateMentorProfile, authFetch } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
+import { calcProfileCompletion } from "@/lib/profileCompletion"
 import { MentorProfile, ExpertiseArea } from "@/types"
 import BackButton from "@/components/BackButton"
 import CountryPickerModal from "@/components/CountryPickerModal"
@@ -154,8 +155,20 @@ export default function MentorProfilePage() {
     )
   }
 
-  const filledFields = [profilePhoto, fullName, countries.length > 0, school, major, bio, grant, expertiseAreas.length > 0].filter(Boolean).length
-  const completionPercent = Math.round((filledFields / 8) * 100)
+  // Передаём «как будто бы это профиль из бэка» — формула одна на оба
+  // экрана. Поля, которые юзер сейчас редактирует, читаются из state
+  // (могут быть несохранённые правки) — это специально, чтобы прогресс
+  // мгновенно реагировал на ввод.
+  const { percent: completionPercent } = calcProfileCompletion({
+    profile_photo: profilePhoto,
+    full_name: fullName,
+    school_or_university: school,
+    countries: countries.map((c) => ({ country: c })),
+    major,
+    detailed_bio: bio,
+    grant_or_scholarship: grant,
+    expertise_areas: expertiseAreas.map((a) => ({ area: a as ExpertiseArea })),
+  } as MentorProfile)
 
   return (
     <div className="min-h-screen bg-[#fafafa]">

@@ -8,6 +8,7 @@ import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/contacts"
 import { User } from "@/types"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countriesLabelInline } from "@/lib/countries"
+import { calcProfileCompletion } from "@/lib/profileCompletion"
 import { MentorProfile, MentorService, Order } from "@/types"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
@@ -141,17 +142,7 @@ export default function MentorDashboard() {
     .filter((o) => o.order_status === "completed")
     .reduce((sum, o) => sum + parseFloat(o.mentor_payout_amount), 0)
 
-  const profileCompletion = [
-    profile.profile_photo,
-    profile.full_name,
-    profile.school_or_university,
-    profile.countries.length > 0,
-    profile.major,
-    profile.detailed_bio,
-    profile.grant_or_scholarship,
-  ].filter(Boolean).length
-
-  const completionPercent = Math.round((profileCompletion / 7) * 100)
+  const { percent: completionPercent } = calcProfileCompletion(profile)
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
