@@ -4,11 +4,13 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   fetchMe,
+  googleLink,
   resendVerification,
   setEmail as setEmailApi,
   telegramLinkFinalize,
   telegramLinkStart,
 } from "@/lib/api"
+import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { User } from "@/types"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
@@ -30,6 +32,10 @@ export default function MentorIdentityPage() {
   const [emailError, setEmailError] = useState("")
   const [emailJustSent, setEmailJustSent] = useState(false)
   const [resending, setResending] = useState(false)
+
+  // Google link state
+  const [linkingGoogle, setLinkingGoogle] = useState(false)
+  const [googleError, setGoogleError] = useState("")
 
   // Telegram state
   const [linkingTelegram, setLinkingTelegram] = useState(false)
@@ -122,6 +128,28 @@ export default function MentorIdentityPage() {
     }
   }
 
+  const handleLinkGoogle = async () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      setGoogleError("Google не настроен")
+      return
+    }
+    setLinkingGoogle(true)
+    setGoogleError("")
+    try {
+      const credential = await promptGoogleCredential(clientId)
+      await googleLink(credential)
+      // Backend auto-verifies email when it matches the Google address
+      // (or auto-sets email to the Google one for users without an
+      // email). reload() pulls the fresh state.
+      await reload()
+    } catch (e) {
+      setGoogleError(e instanceof Error ? e.message : "Не удалось привязать Google")
+    } finally {
+      setLinkingGoogle(false)
+    }
+  }
+
   const handleLinkTelegram = async () => {
     setLinkingTelegram(true)
     setTelegramError("")
@@ -191,31 +219,60 @@ export default function MentorIdentityPage() {
             </div>
           </div>
 
-          {/* No email at all → form to set it */}
+          {/* No email at all → Google one-click OR manual email form */}
           {!me.email && (
-            <form onSubmit={handleSaveEmail} className="flex flex-col gap-3 mt-4">
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                required
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
-              />
-              {emailError && (
-                <p className="text-xs text-red-500">{emailError}</p>
-              )}
+            <div className="flex flex-col gap-3 mt-4">
+              {/* Google is the fast path — auto-verifies email in one
+                  click; user falls back to manual entry only if they
+                  don't want Google. */}
               <button
-                type="submit"
-                disabled={savingEmail || !emailInput.trim()}
-                className="bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm"
+                type="button"
+                onClick={handleLinkGoogle}
+                disabled={linkingGoogle}
+                className="flex items-center justify-center gap-2.5 bg-white border border-gray-200 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors text-sm"
               >
-                {savingEmail ? "Сохраняем..." : "Сохранить и отправить письмо"}
+                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+                  <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.63z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 009 18z" fill="#34A853"/>
+                  <path d="M3.97 10.71A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.71V4.96H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.04l3.01-2.33z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.96l3.01 2.34C4.68 5.18 6.66 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                {linkingGoogle ? "Открываем Google..." : "Войти через Google"}
               </button>
-            </form>
+              {googleError && (
+                <p className="text-xs text-red-500">{googleError}</p>
+              )}
+
+              <div className="flex items-center gap-3 text-xs text-gray-400">
+                <span className="flex-1 h-px bg-gray-100" />
+                <span>или email вручную</span>
+                <span className="flex-1 h-px bg-gray-100" />
+              </div>
+
+              <form onSubmit={handleSaveEmail} className="flex flex-col gap-3">
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  required
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
+                />
+                {emailError && (
+                  <p className="text-xs text-red-500">{emailError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={savingEmail || !emailInput.trim()}
+                  className="bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm"
+                >
+                  {savingEmail ? "Сохраняем..." : "Сохранить и отправить письмо"}
+                </button>
+              </form>
+            </div>
           )}
 
-          {/* Has email, not verified → resend + check */}
+          {/* Has email, not verified → resend + check (+ Google shortcut) */}
           {me.email && !me.email_verified && (
             <div className="flex flex-col gap-2 mt-4">
               {emailJustSent && (
@@ -239,6 +296,30 @@ export default function MentorIdentityPage() {
                   {resending ? "Отправляем..." : "Отправить ещё раз"}
                 </button>
               </div>
+              {/* Google fast-track: if their Google email matches the one
+                  they typed, the link flow auto-marks it as verified —
+                  saves the trip to inbox. */}
+              {!me.has_google && (
+                <button
+                  type="button"
+                  onClick={handleLinkGoogle}
+                  disabled={linkingGoogle}
+                  className="flex items-center justify-center gap-2 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden>
+                    <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.63z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 009 18z" fill="#34A853"/>
+                    <path d="M3.97 10.71A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.71V4.96H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.04l3.01-2.33z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.96l3.01 2.34C4.68 5.18 6.66 3.58 9 3.58z" fill="#EA4335"/>
+                  </svg>
+                  {linkingGoogle
+                    ? "Открываем Google..."
+                    : "Или подтвердить через Google"}
+                </button>
+              )}
+              {googleError && (
+                <p className="text-xs text-red-500">{googleError}</p>
+              )}
             </div>
           )}
         </div>
