@@ -661,7 +661,7 @@ export default function OrderPage({ params }: Props) {
                       <span>{Number(order.subtotal).toLocaleString("ru-RU")} ₸</span>
                     </div>
                     <div className="flex justify-between text-emerald-700">
-                      <span>Приветственный бонус</span>
+                      <span>Промо-скидка −50%</span>
                       <span>−{Number(order.bonus_applied).toLocaleString("ru-RU")} ₸</span>
                     </div>
                     <div className="flex justify-between font-bold text-yellow-900 pt-1 border-t border-yellow-200">

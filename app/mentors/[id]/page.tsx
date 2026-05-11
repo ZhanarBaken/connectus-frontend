@@ -249,20 +249,32 @@ export default function MentorPage({ params }: Props) {
                 the student is in their 30-day signup window. */}
             {consultationService && (() => {
               const fullPrice = Number(consultationService.price)
-              const bonusActive = studentProfile?.welcome_bonus_available ?? false
-              // Welcome promo: 50% discount on every primary consultation
-              // within the first 30 days of registration. Matches backend
-              // WELCOME_BONUS_DISCOUNT_RATE.
+              // Скидка имеет смысл только если есть с чего скидывать.
+              // Ментор имеет право поставить 0 ₸ — тогда показывать
+              // зачёркнутые "0 ₸" и "−50%" нелепо.
+              const bonusActive = (studentProfile?.welcome_bonus_available ?? false) && fullPrice > 0
               const discountedPrice = bonusActive
                 ? Math.round(fullPrice * 0.5)
                 : fullPrice
+              const promoExpiresAt = studentProfile?.welcome_bonus_expires_at
+              const daysLeft = promoExpiresAt
+                ? Math.max(
+                    0,
+                    Math.ceil(
+                      (new Date(promoExpiresAt).getTime() - Date.now()) /
+                        (1000 * 60 * 60 * 24),
+                    ),
+                  )
+                : null
               return (
               <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="relative">
                   <div className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
                     <Icon name="forum" size={14} className="text-white" />
-                    {bonusActive ? (
+                    {fullPrice === 0 ? (
+                      <span>Бесплатно</span>
+                    ) : bonusActive ? (
                       <>
                         <span className="line-through opacity-60">{fullPrice.toLocaleString("ru-RU")} ₸</span>
                         <span>{discountedPrice.toLocaleString("ru-RU")} ₸ с бонусом</span>
@@ -326,6 +338,8 @@ export default function MentorPage({ params }: Props) {
                     >
                       {orderingServiceId === consultationService.id
                         ? "Заказываем..."
+                        : fullPrice === 0
+                        ? "Заказать бесплатно"
                         : bonusActive
                         ? (
                           <span className="inline-flex items-baseline gap-2">
@@ -344,6 +358,9 @@ export default function MentorPage({ params }: Props) {
                   {bonusActive && consultationStatus === "none" && (
                     <p className="text-xs text-indigo-200 mt-2">
                       🎁 Бонус новичку −50%: вместо {fullPrice.toLocaleString("ru-RU")} ₸ — {discountedPrice.toLocaleString("ru-RU")} ₸
+                      {daysLeft !== null && daysLeft > 0 && (
+                        <span className="opacity-80"> · сгорает через {daysLeft} {daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}</span>
+                      )}
                     </p>
                   )}
                 </div>

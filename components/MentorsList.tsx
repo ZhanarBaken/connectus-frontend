@@ -285,6 +285,24 @@ export default function MentorsList({ mentors }: Props) {
                   ))}
                 </div>
 
+                {/* Consultation price strip */}
+                {mentor.consultation_price !== null && (
+                  <div className="flex items-center gap-2 mb-3 text-xs">
+                    <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-medium">
+                      <Icon name="forum" size={12} />
+                      {Number(mentor.consultation_price) === 0
+                        ? "Бесплатная консультация"
+                        : `Консультация ${Number(mentor.consultation_price).toLocaleString("ru-RU")} ₸`}
+                    </span>
+                    {mentor.consultation_duration_minutes !== null && Number(mentor.consultation_price) > 0 && (
+                      <span className="inline-flex items-center gap-1 text-gray-400">
+                        <Icon name="schedule" size={12} />
+                        {mentor.consultation_duration_minutes} мин
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                   {mentor.grant_or_scholarship ? (

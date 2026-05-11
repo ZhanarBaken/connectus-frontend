@@ -66,6 +66,8 @@ export const MOCK_MENTORS: MentorCard[] = [
     is_accepting_bookings: true,
     rating_avg: null,
     rating_count: 0,
+    consultation_price: "10000.00",
+    consultation_duration_minutes: 60,
   },
   {
     id: 2,
@@ -80,6 +82,8 @@ export const MOCK_MENTORS: MentorCard[] = [
     is_accepting_bookings: true,
     rating_avg: null,
     rating_count: 0,
+    consultation_price: "10000.00",
+    consultation_duration_minutes: 60,
   },
   {
     id: 3,
@@ -94,6 +98,8 @@ export const MOCK_MENTORS: MentorCard[] = [
     is_accepting_bookings: true,
     rating_avg: null,
     rating_count: 0,
+    consultation_price: "10000.00",
+    consultation_duration_minutes: 60,
   },
 ]
 

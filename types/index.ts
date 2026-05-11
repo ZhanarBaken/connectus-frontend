@@ -99,6 +99,10 @@ export interface MentorCard {
   is_accepting_bookings: boolean
   rating_avg: number | null
   rating_count: number
+  // Primary consultation price/duration. Null when the mentor hasn't
+  // got an auto-created consultation yet (legacy rows / race during signup).
+  consultation_price: string | null
+  consultation_duration_minutes: number | null
 }
 
 // Matches backend MentorProfilePublicSerializer
