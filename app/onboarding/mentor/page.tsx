@@ -12,7 +12,7 @@ import Logo from "@/components/Logo"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-const STEPS = ["Фото", "О себе", "Университет", "Экспертиза"]
+const STEPS = ["Фото", "О себе", "Университет", "Экспертиза", "Документы"]
 
 const EXPERTISE_OPTIONS = [
   { value: "admission", label: "Поступление", icon: "flag" },
@@ -20,6 +20,29 @@ const EXPERTISE_OPTIONS = [
   { value: "documents", label: "Документы", icon: "article" },
   { value: "visa", label: "Виза", icon: "flight_takeoff" },
 ]
+
+const DOCUMENT_KIND_OPTIONS = [
+  { value: "diploma", label: "Диплом" },
+  { value: "enrollment_certificate", label: "Справка о зачислении" },
+  { value: "passport", label: "Паспорт" },
+  { value: "university_id", label: "Студенческий билет" },
+  { value: "visa", label: "Виза" },
+  { value: "other", label: "Другое" },
+]
+
+interface OnboardingDocument {
+  id: number
+  kind: string
+  original_filename: string
+  size_bytes: number
+  status: "pending" | "approved" | "rejected"
+}
+
+function formatDocSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
@@ -63,6 +86,14 @@ export default function MentorOnboarding() {
   const toggleExpertise = (val: string) => {
     setExpertise((prev) => prev.includes(val) ? prev.filter((e) => e !== val) : [...prev, val])
   }
+
+  // Step 5 — Documents
+  const [documents, setDocuments] = useState<OnboardingDocument[]>([])
+  const [docKind, setDocKind] = useState("diploma")
+  const [docFile, setDocFile] = useState<File | null>(null)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [docError, setDocError] = useState("")
+  const docInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : ""
@@ -121,21 +152,102 @@ export default function MentorOnboarding() {
     }
   }
 
+  const handleSaveProfileFields = async () => {
+    // Сохраняем основные поля до шага документов — чтобы при срыве на
+    // 5-м шаге (закрыл вкладку) уже введённое не пропало. Документы
+    // загружаются собственным эндпоинтом и не зависят от этого PATCH.
+    await updateMentorProfile({
+      full_name: fullName,
+      detailed_bio: bio,
+      countries: countries.map((c) => ({ country: c })),
+      school_or_university: school,
+      major,
+      grant_or_scholarship: grant,
+      gpa,
+      exam_results: examResults,
+      expertise_areas: expertise.map((area) => ({ area: area as ExpertiseArea })),
+    })
+  }
+
+  const handleGoToDocuments = async () => {
+    setSaving(true)
+    setError("")
+    try {
+      await handleSaveProfileFields()
+      await loadDocuments()
+      setStep(5)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка при сохранении")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const loadDocuments = async () => {
+    try {
+      const res = await authFetch(`${BASE_URL}/mentors/documents/`)
+      if (res.ok) {
+        const data = await res.json()
+        setDocuments(Array.isArray(data) ? data : data.results ?? [])
+      }
+    } catch {
+      // Non-fatal: empty list, mentor can still upload.
+    }
+  }
+
+  const handleUploadDocument = async () => {
+    if (!docFile) return
+    if (docFile.size > 15 * 1024 * 1024) {
+      setDocError("Файл слишком большой. Максимум 15 МБ.")
+      return
+    }
+    setUploadingDoc(true)
+    setDocError("")
+    try {
+      const formData = new FormData()
+      formData.append("file", docFile)
+      formData.append("kind", docKind)
+      const res = await authFetch(`${BASE_URL}/mentors/documents/`, {
+        method: "POST",
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        const first = Object.values(err)[0]
+        throw new Error(
+          Array.isArray(first) ? first[0] : err.detail || String(first || "Ошибка загрузки"),
+        )
+      }
+      const doc: OnboardingDocument = await res.json()
+      setDocuments((prev) => [doc, ...prev])
+      setDocFile(null)
+      if (docInputRef.current) docInputRef.current.value = ""
+    } catch (e: unknown) {
+      setDocError(e instanceof Error ? e.message : "Ошибка загрузки")
+    } finally {
+      setUploadingDoc(false)
+    }
+  }
+
+  const handleDeleteDocument = async (id: number) => {
+    try {
+      const res = await authFetch(`${BASE_URL}/mentors/documents/${id}/`, { method: "DELETE" })
+      if (res.ok) {
+        setDocuments((prev) => prev.filter((d) => d.id !== id))
+      }
+    } catch {
+      // Silent — list stays as-is, mentor can retry.
+    }
+  }
+
   const handleFinish = async () => {
     setSaving(true)
     setError("")
     try {
-      await updateMentorProfile({
-        full_name: fullName,
-        detailed_bio: bio,
-        countries: countries.map((c) => ({ country: c })),
-        school_or_university: school,
-        major,
-        grant_or_scholarship: grant,
-        gpa,
-        exam_results: examResults,
-        expertise_areas: expertise.map((area) => ({ area: area as ExpertiseArea })),
-      })
+      // На шаге 5 профиль уже сохранён в handleGoToDocuments — здесь
+      // только переход. Если каким-то путём дошли сюда без сохранения
+      // (skip-link / dev), updateMentorProfile повторно безопасен.
+      await handleSaveProfileFields()
       router.push("/mentor/dashboard")
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка при сохранении")
@@ -459,7 +571,7 @@ export default function MentorOnboarding() {
 
               <div className="bg-gray-100 rounded-xl p-4 mb-6">
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  После заполнения профиль уйдёт на проверку. Мы верифицируем его в течение <strong>48 часов</strong> и опубликуем на платформе.
+                  Последний шаг — документы для проверки. Мы верифицируем профиль в течение <strong>48 часов</strong> и опубликуем на платформе.
                 </p>
               </div>
 
@@ -475,11 +587,136 @@ export default function MentorOnboarding() {
                   ← Назад
                 </button>
                 <button
-                  onClick={handleFinish}
+                  onClick={handleGoToDocuments}
                   disabled={saving || expertise.length === 0}
                   className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
-                  {saving ? "Сохраняем..." : "Отправить профиль →"}
+                  {saving ? "Сохраняем..." : "Продолжить →"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5 — Documents */}
+          {step === 5 && (
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Документы для проверки</h1>
+              <p className="text-gray-400 text-sm mb-6">
+                Загрузи хотя бы один документ, подтверждающий твой статус — диплом, справку о зачислении или паспорт. Это требование платформы; абитуриенты доверяют только верифицированным менторам.
+              </p>
+
+              {/* Upload form */}
+              <div className="border border-gray-200 rounded-2xl p-4 mb-5">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Тип документа</label>
+                <select
+                  value={docKind}
+                  onChange={(e) => setDocKind(e.target.value)}
+                  className={`${inputClass} mb-3`}
+                >
+                  {DOCUMENT_KIND_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const dropped = e.dataTransfer.files[0]
+                    if (dropped) setDocFile(dropped)
+                  }}
+                  onClick={() => docInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 transition-colors mb-3"
+                >
+                  <Icon name="upload_file" size={32} className="text-gray-300 mx-auto mb-2" />
+                  {docFile ? (
+                    <p className="text-sm text-gray-700 font-medium">{docFile.name} ({formatDocSize(docFile.size)})</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500">Перетащи файл сюда или нажми для выбора</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPEG, PNG. Максимум 15 МБ</p>
+                    </>
+                  )}
+                </div>
+                <input
+                  ref={docInputRef}
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  className="hidden"
+                  onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
+                />
+
+                {docError && (
+                  <p className="text-xs text-red-500 mb-2">{docError}</p>
+                )}
+
+                <button
+                  onClick={handleUploadDocument}
+                  disabled={!docFile || uploadingDoc}
+                  className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                  {uploadingDoc ? "Загружаем..." : "Загрузить документ"}
+                </button>
+              </div>
+
+              {/* Documents list */}
+              {documents.length > 0 && (
+                <div className="space-y-2 mb-6">
+                  {documents.map((doc) => {
+                    const kindLabel = DOCUMENT_KIND_OPTIONS.find((o) => o.value === doc.kind)?.label || doc.kind
+                    return (
+                      <div key={doc.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                        <Icon name="description" size={20} className="text-gray-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {doc.original_filename}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {kindLabel} · {formatDocSize(doc.size_bytes)}
+                          </p>
+                        </div>
+                        {doc.status !== "approved" && (
+                          <button
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                            aria-label="Удалить документ"
+                          >
+                            <Icon name="delete" size={18} />
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              <div className="bg-gray-100 rounded-xl p-4 mb-6">
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  После отправки профиль уйдёт на проверку. Мы верифицируем его в течение <strong>48 часов</strong> и опубликуем на платформе.
+                </p>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">{error}</div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(4)}
+                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
+                >
+                  ← Назад
+                </button>
+                <button
+                  onClick={handleFinish}
+                  disabled={saving || documents.length === 0}
+                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+                >
+                  {saving
+                    ? "Отправляем..."
+                    : documents.length === 0
+                      ? "Загрузи хотя бы 1 документ"
+                      : "Отправить профиль →"}
                 </button>
               </div>
             </div>
