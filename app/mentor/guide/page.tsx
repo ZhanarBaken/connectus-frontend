@@ -65,7 +65,7 @@ const SECTIONS: Section[] = [
     icon: "payments",
     iconColor: "text-emerald-600",
     iconBg: "bg-emerald-50",
-    title: "Сколько ты получаешь",
+    title: "Сколько ты получаешь и как",
     body: (
       <>
         <div className="space-y-3">
@@ -89,9 +89,21 @@ const SECTIONS: Section[] = [
               а не из твоих денег. Ты всё равно получишь свои 50 % от цены, которую сам указал.
             </p>
           </div>
+          <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
+            <p className="font-semibold text-amber-900 text-sm inline-flex items-center gap-1.5">
+              ⚠️ Заполни реквизиты для выплаты
+            </p>
+            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+              Платёжный шлюз не интегрирован — мы переводим вручную (Kaspi / банк) после
+              завершения заказа. Без реквизитов в твоём профиле платформа не знает <strong>куда</strong> переводить,
+              и деньги зависнут в статусе «К выплате». Заполни поле <strong>«Реквизиты для выплаты»</strong> на странице
+              профиля, если ещё не сделал.
+            </p>
+          </div>
         </div>
       </>
     ),
+    cta: { label: "Заполнить реквизиты", href: "/mentors/profile" },
   },
   {
     icon: "tune",
