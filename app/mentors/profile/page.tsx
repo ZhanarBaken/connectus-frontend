@@ -51,7 +51,6 @@ export default function MentorProfilePage() {
   const [gpa, setGpa] = useState("")
   const [examResults, setExamResults] = useState("")
   const [bio, setBio] = useState("")
-  const [consultation, setConsultation] = useState("")
   const [linkedin, setLinkedin] = useState("")
   const [expertiseAreas, setExpertiseAreas] = useState<string[]>([])
   const [payoutDetails, setPayoutDetails] = useState("")
@@ -61,9 +60,6 @@ export default function MentorProfilePage() {
   const [isBanned, setIsBanned] = useState(false)
   const [banReason, setBanReason] = useState("")
   const photoInputRef = useRef<HTMLInputElement>(null)
-
-  const CONSULTATION_MIN = 80
-  const CONSULTATION_MAX = 2000
 
   useEffect(() => {
     fetchMentorProfile()
@@ -76,7 +72,6 @@ export default function MentorProfilePage() {
         setGpa(p.gpa ?? "")
         setExamResults(p.exam_results ?? "")
         setBio(p.detailed_bio ?? "")
-        setConsultation(p.consultation ?? "")
         setLinkedin(p.linkedin_url ?? "")
         setExpertiseAreas(p.expertise_areas.map((e) => e.area))
         setPayoutDetails(p.payout_details ?? "")
@@ -139,7 +134,6 @@ export default function MentorProfilePage() {
         gpa,
         exam_results: examResults,
         detailed_bio: bio,
-        consultation,
         linkedin_url: linkedin,
         expertise_areas: expertiseAreas.map((area) => ({ area: area as ExpertiseArea })),
         payout_details: payoutDetails,
@@ -363,31 +357,6 @@ export default function MentorProfilePage() {
             </Field>
           </div>
 
-          {/* Consultation description */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Консультация</h2>
-            <p className="text-sm text-gray-500 mb-5">
-              Это описание увидят абитуриенты на твоём профиле. Расскажи что ты обсудишь на вводной встрече.
-            </p>
-            <Field
-              label="Что обсудим на консультации"
-              hint={`От ${CONSULTATION_MIN} до ${CONSULTATION_MAX} символов · сейчас ${consultation.trim().length}`}
-            >
-              <textarea
-                value={consultation}
-                onChange={(e) => setConsultation(e.target.value)}
-                rows={5}
-                minLength={CONSULTATION_MIN}
-                maxLength={CONSULTATION_MAX}
-                placeholder="Вводная консультация — 60 минут. Обсудим твои цели, текущую ситуацию и составим пошаговый план: какие документы готовить, в какие университеты подаваться и на что обратить внимание в первую очередь."
-                className={`${inputClass} resize-none ${
-                  consultation.trim().length > 0 && consultation.trim().length < CONSULTATION_MIN
-                    ? "border-red-200 focus:ring-red-100 focus:border-red-300"
-                    : ""
-                }`}
-              />
-            </Field>
-          </div>
 
           {/* Expertise */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
