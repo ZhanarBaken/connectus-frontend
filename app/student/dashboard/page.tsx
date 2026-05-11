@@ -155,14 +155,14 @@ export default function StudentDashboard() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Welcome bonus banner — first 30 days only */}
+            {/* 30-day welcome promo — primary consultations are −50% */}
             {profile?.welcome_bonus_available && (
               <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-5">
                 <h3 className="font-bold text-emerald-800 mb-1.5 text-sm inline-flex items-center gap-1.5">
-                  🎁 −5 000 ₸ на первую консультацию
+                  🎁 −50% на первичные консультации
                 </h3>
                 <p className="text-xs text-emerald-700 leading-relaxed">
-                  Подарок новичку. Скидка применится сама — выбирай ментора и заказывай, без промокодов.
+                  Подарок новичку — пробуй сколько хочешь менторов, скидка применится автоматически к каждой первичной консультации. Промокоды не нужны.
                 </p>
                 {profile.welcome_bonus_expires_at && (
                   <p className="text-[11px] font-semibold text-emerald-700 mt-2 inline-flex items-center gap-1">

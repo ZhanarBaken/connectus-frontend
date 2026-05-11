@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import {
   fetchMentorServices,
   fetchMentorProfile,
-  fetchMentor,
   createMentorService,
   updateMentorService,
   deleteMentorService,
+  fetchPrimaryConsultation,
+  updatePrimaryConsultation,
 } from "@/lib/api"
 import { MentorService } from "@/types"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
@@ -37,27 +38,21 @@ export default function MentorServicesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  // Form state — used for both create and edit
-  const [editingId, setEditingId] = useState<number | "new" | null>(null)
+  // Form state — used for create, edit regular service, and edit
+  // the primary consultation (sentinel "consultation").
+  const [editingId, setEditingId] = useState<number | "new" | "consultation" | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState("")
   const [isBanned, setIsBanned] = useState(false)
 
   useEffect(() => {
-    // The /mentors/services/ endpoint excludes both consultation categories
-    // (free intro and paid 10 000 ₸ — both managed by platform). We fetch the
-    // paid_consultation separately via the public mentor endpoint to display
-    // it as a pinned, read-only entry.
+    // /mentors/services/ excludes both consultation categories — they're
+    // managed via the dedicated /mentors/me/consultation/ endpoint, which
+    // also enforces "one consultation per mentor" + price/duration cap'ы.
     Promise.all([
       fetchMentorServices().catch(() => [] as MentorService[]),
-      fetchMentorProfile()
-        .then((p) => {
-          setIsBanned(p.is_banned ?? false)
-          return fetchMentor(p.id)
-        })
-        .then((m) => m.services.find((s) => s.payout_category === "paid_consultation") ?? null)
-        .catch(() => null),
+      fetchPrimaryConsultation().catch(() => null),
     ])
       .then(([list, cons]) => {
         setServices(list)
@@ -65,7 +60,25 @@ export default function MentorServicesPage() {
       })
       .catch(() => setError("Не удалось загрузить услуги"))
       .finally(() => setLoading(false))
+
+    // Separate side-effect: only the is_banned flag is needed from the
+    // profile here, no reason to gate the main render on it.
+    fetchMentorProfile()
+      .then((p) => setIsBanned(p.is_banned ?? false))
+      .catch(() => undefined)
   }, [])
+
+  const startEditConsultation = () => {
+    if (!consultation) return
+    setEditingId("consultation")
+    setForm({
+      title: consultation.title,
+      description: consultation.description,
+      price: consultation.price,
+      duration: String(consultation.duration_minutes),
+    })
+    setFormError("")
+  }
 
   const startCreate = () => {
     setEditingId("new")
@@ -105,6 +118,9 @@ export default function MentorServicesPage() {
       if (editingId === "new") {
         const created = await createMentorService(payload)
         setServices((prev) => [created, ...prev])
+      } else if (editingId === "consultation") {
+        const updated = await updatePrimaryConsultation(payload)
+        setConsultation(updated)
       } else if (typeof editingId === "number") {
         const updated = await updateMentorService(editingId, payload)
         setServices((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
@@ -171,7 +187,11 @@ export default function MentorServicesPage() {
         {isFormOpen && (
           <div className="bg-white rounded-2xl border border-gray-300 p-6 mb-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">
-              {editingId === "new" ? "Новая услуга" : "Редактировать услугу"}
+              {editingId === "new"
+                ? "Новая услуга"
+                : editingId === "consultation"
+                  ? "Первичная консультация"
+                  : "Редактировать услугу"}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -204,8 +224,9 @@ export default function MentorServicesPage() {
                       required
                       type="number"
                       min="0"
+                      max={editingId === "consultation" ? 200000 : 1000000}
                       step="100"
-                      placeholder="25000"
+                      placeholder={editingId === "consultation" ? "5000" : "25000"}
                       className={`${inputClass} pr-10`}
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">₸</span>
@@ -218,8 +239,9 @@ export default function MentorServicesPage() {
                     onChange={(e) => setForm({ ...form, duration: e.target.value })}
                     required
                     type="number"
-                    min="15"
-                    step="15"
+                    min={editingId === "consultation" ? 5 : 15}
+                    max={editingId === "consultation" ? 240 : 480}
+                    step={editingId === "consultation" ? 5 : 15}
                     className={inputClass}
                   />
                 </div>
@@ -253,39 +275,61 @@ export default function MentorServicesPage() {
 
         {(() => {
           const paid = services.filter(
-            (s) => s.payout_category !== "consultation" && s.payout_category !== "paid_consultation"
+            (s) => s.payout_category !== "consultation" && s.payout_category !== "primary_consultation"
           )
+          const mentorEarn = consultation
+            ? Math.round(Number(consultation.price) * 0.5)
+            : 0
 
           return (
             <div className="space-y-6">
-              {/* Paid consultation — pinned, read-only (managed by platform) */}
+              {/* Primary consultation — editable, but pinned (one per mentor) */}
               {consultation && (
                 <div>
-                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Обязательная услуга</h2>
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Первичная консультация</h2>
                   <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="font-semibold text-gray-900">{consultation.title}</h3>
-                      <span className="text-xs bg-white text-indigo-600 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1">
-                        <Icon name="forum" size={12} />
-                        {Number(consultation.price).toLocaleString("ru-RU")} ₸
-                      </span>
-                      <span className="text-xs bg-white text-gray-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                        <Icon name="lock" size={12} />
-                        Управляется платформой
-                      </span>
+                    <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900">{consultation.title}</h3>
+                          <span className="text-xs bg-white text-indigo-600 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1">
+                            <Icon name="forum" size={12} />
+                            {Number(consultation.price).toLocaleString("ru-RU")} ₸
+                          </span>
+                          <span className="text-xs bg-white text-gray-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <Icon name="schedule" size={12} />
+                            {consultation.duration_minutes} мин
+                          </span>
+                        </div>
+                        {consultation.description && (
+                          <p className="text-sm text-gray-600 mt-2">{consultation.description}</p>
+                        )}
+                      </div>
+                      {!isBanned && !isFormOpen && (
+                        <button
+                          onClick={startEditConsultation}
+                          className="text-xs bg-white border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-medium hover:bg-indigo-100 transition-colors inline-flex items-center gap-1 flex-shrink-0"
+                        >
+                          <Icon name="edit" size={14} />
+                          Изменить
+                        </button>
+                      )}
                     </div>
-                    {consultation.description && (
-                      <p className="text-sm text-gray-600 mt-1">{consultation.description}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-xs text-gray-500 inline-flex items-center gap-1">
-                        <Icon name="schedule" size={12} />
-                        {consultation.duration_minutes} мин
-                      </span>
+                    <div className="mt-4 border-t border-indigo-100 pt-3 space-y-2">
+                      <p className="text-xs text-indigo-900 font-semibold uppercase tracking-wider">
+                        Как работает первичная
+                      </p>
+                      <p className="text-xs text-indigo-800 leading-relaxed">
+                        Это короткая встреча-знакомство — основная её цель в том, чтобы ты <strong>продал себя</strong> и студент захотел заказать твои дополнительные услуги. Чем доступнее цена и короче встреча (15-30 минут уже ок), тем больше людей придёт.
+                      </p>
+                      <p className="text-xs text-indigo-800 leading-relaxed">
+                        Платформа берёт <strong>50% комиссии</strong> только с первичной консультации.
+                        Если цена <strong>0 ₸</strong> — комиссия тоже <strong>0%</strong>, потому что новым студентам мы даём <strong>скидку 50% на первые 30 дней</strong> — её платформа оплачивает из своей комиссии.
+                      </p>
+                      <p className="text-xs text-indigo-800 leading-relaxed">
+                        Пример: ты ставишь {Number(consultation.price || 5000).toLocaleString("ru-RU")} ₸ → получаешь {mentorEarn.toLocaleString("ru-RU")} ₸.
+                      </p>
                     </div>
-                    <p className="text-xs text-indigo-700 mt-3 leading-relaxed">
-                      Платная консультация — каждый ментор получает её автоматически с фиксированной ценой 10 000 ₸. Абитуриенты используют её для первого общения с тобой, после чего могут заказывать твои дополнительные услуги.
-                    </p>
                   </div>
                 </div>
               )}

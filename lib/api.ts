@@ -238,6 +238,34 @@ export async function deleteMentorService(id: number): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete service")
 }
 
+// ─── Primary consultation (the auto-created "первичная" service) ─────────────
+// Has its own endpoint because the regular /services/ ViewSet excludes
+// consultation categories — backend invariants forbid creating a second
+// consultation or deleting the one auto-created on registration. Mentor
+// can only edit price / duration / description / title.
+
+export async function fetchPrimaryConsultation(): Promise<import("@/types").MentorService> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/consultation/`)
+  if (!res.ok) throw new Error("Failed to fetch primary consultation")
+  return res.json()
+}
+
+export async function updatePrimaryConsultation(
+  data: Partial<import("@/types").MentorService>,
+): Promise<import("@/types").MentorService> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/consultation/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    const first = Object.values(err)[0]
+    throw new Error(Array.isArray(first) ? first[0] : String(first))
+  }
+  return res.json()
+}
+
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export async function fetchOrders(): Promise<Order[]> {

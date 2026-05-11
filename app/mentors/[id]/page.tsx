@@ -89,10 +89,10 @@ export default function MentorPage({ params }: Props) {
   // offering (10 000 ₸); the legacy free intro is kept on backend as an
   // inactive artifact and is not in the public services list.
   const consultationService: MentorService | undefined = mentor.services.find(
-    (s) => s.payout_category === "paid_consultation"
+    (s) => s.payout_category === "primary_consultation"
   )
   const paidServices = mentor.services.filter(
-    (s) => s.payout_category !== "consultation" && s.payout_category !== "paid_consultation"
+    (s) => s.payout_category !== "consultation" && s.payout_category !== "primary_consultation"
   )
 
   // Find the student's consultation order with this mentor (if any)
@@ -245,12 +245,17 @@ export default function MentorPage({ params }: Props) {
               </div>
             )}
 
-            {/* Consultation — hero block (10 000 ₸; 5 000 ₸ with welcome bonus) */}
+            {/* Consultation — hero block. 50% off (welcome promo) shows when
+                the student is in their 30-day signup window. */}
             {consultationService && (() => {
               const fullPrice = Number(consultationService.price)
               const bonusActive = studentProfile?.welcome_bonus_available ?? false
-              const bonusAmount = 5000  // matches backend WELCOME_BONUS_AMOUNT
-              const discountedPrice = bonusActive ? Math.max(fullPrice - bonusAmount, 0) : fullPrice
+              // Welcome promo: 50% discount on every primary consultation
+              // within the first 30 days of registration. Matches backend
+              // WELCOME_BONUS_DISCOUNT_RATE.
+              const discountedPrice = bonusActive
+                ? Math.round(fullPrice * 0.5)
+                : fullPrice
               return (
               <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
@@ -338,7 +343,7 @@ export default function MentorPage({ params }: Props) {
                   )}
                   {bonusActive && consultationStatus === "none" && (
                     <p className="text-xs text-indigo-200 mt-2">
-                      🎁 Бонус новичку: −5 000 ₸ от базовой {fullPrice.toLocaleString("ru-RU")} ₸
+                      🎁 Бонус новичку −50%: вместо {fullPrice.toLocaleString("ru-RU")} ₸ — {discountedPrice.toLocaleString("ru-RU")} ₸
                     </p>
                   )}
                 </div>

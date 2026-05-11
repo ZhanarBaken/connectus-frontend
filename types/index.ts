@@ -2,7 +2,7 @@ export type Role = "mentor" | "student"
 
 export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 
-export type PayoutCategory = "consultation" | "paid_consultation" | "delivery" | "milestone"
+export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone"
 
 export type OrderStatus =
   | "draft"
@@ -141,8 +141,9 @@ export interface StudentProfile {
   gpa: string
   profile_photo: string | null
   is_public: boolean
-  // Welcome bonus 5 000 ₸ for new students — applies automatically to
-  // paid_consultation orders within 30 days of signup.
+  // Welcome promo: 50% off every primary_consultation order created in
+  // the first 30 days after signup. Mentor still receives their full
+  // 50% share — platform absorbs the discount from its own commission.
   welcome_bonus_available: boolean
   welcome_bonus_expires_at: string | null
   created_at: string
