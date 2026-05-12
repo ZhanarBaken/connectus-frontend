@@ -615,7 +615,7 @@ export default function SettingsPage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <Toggle
               label="Видимость профиля"
-              description="Когда включено, менторы видят твоё имя и учебное заведение в информации о заказе."
+              description="Только менторы, с которыми ты переписываешься или оформил заказ, видят твоё имя и учебное заведение. Если выключить — они увидят только «Абитуриент»."
               icon="visibility"
               checked={studentIsPublic}
               onChange={(val) => {
