@@ -17,7 +17,7 @@ const EXPERTISE_LABELS: Record<string, string> = {
 }
 
 export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
-  const previewMentors = mentors.slice(0, 2)
+  const previewMentors = mentors.slice(0, 3)
 
   return (
     <section className="relative bg-[#fafafa] pt-24 pb-32 px-4 overflow-hidden">
