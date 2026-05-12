@@ -18,6 +18,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
+// Native <select> renders its own grey arrow and uses a system font that
+// looks heavier than the input next to it. We kill the native chrome
+// (appearance-none), match input typography (text-gray-900), and paint
+// the chevron ourselves so the field aligns visually with text inputs.
+const selectClass = `${inputClass} appearance-none text-gray-900 pr-10 bg-no-repeat bg-[right_0.875rem_center] bg-[length:1rem_1rem] cursor-pointer bg-[url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ca3af' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 8 10 12 14 8'/%3E%3C/svg%3E")]`
+
 type Stage = "loading" | "email" | "verify" | "photo" | "name" | "school"
 
 const VERIFY_POLL_INTERVAL_MS = 5000
@@ -423,7 +429,7 @@ export default function StudentOnboarding() {
                       value={schoolGrade}
                       onChange={(e) => setSchoolGrade(e.target.value)}
                       required
-                      className={inputClass}
+                      className={selectClass}
                     >
                       <option value="">Выбери...</option>
                       <optgroup label="В школе">
