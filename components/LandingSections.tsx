@@ -114,7 +114,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
             <div className="lg:sticky lg:top-32">
               <ScrollReveal variant="fade-right" duration={800}>
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
-                  10 стран.{" "}
+                  15+ стран.{" "}
                   <span className="font-[var(--font-display)] italic text-gray-400">
                     Одна платформа.
                   </span>

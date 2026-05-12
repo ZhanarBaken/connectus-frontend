@@ -86,7 +86,7 @@ export default async function HomePage() {
   return (
     <main className="bg-white">
       <MentorRedirect />
-      <LandingHero />
+      <LandingHero mentors={mentors} />
       <LandingSections
         steps={STEPS}
         categories={CATEGORIES}

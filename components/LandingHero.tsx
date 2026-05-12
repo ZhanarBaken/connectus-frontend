@@ -1,14 +1,24 @@
 "use client"
 
 import Link from "next/link"
-import TiltCard from "./TiltCard"
+import { MentorCard } from "@/types"
+import { countriesFlagsCompact } from "@/lib/countries"
 import Icon from "./Icon"
-import AnimatedCounter from "./AnimatedCounter"
 import FloatingOrb from "./FloatingOrb"
 import MagneticButton from "./MagneticButton"
 import ScrollReveal from "./ScrollReveal"
+import TiltCard from "./TiltCard"
 
-export default function LandingHero() {
+const EXPERTISE_LABELS: Record<string, string> = {
+  admission: "Поступление",
+  scholarships: "Стипендии",
+  visa: "Виза",
+  documents: "Документы",
+}
+
+export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
+  const previewMentors = mentors.slice(0, 2)
+
   return (
     <section className="relative bg-[#fafafa] pt-24 pb-32 px-4 overflow-hidden">
       {/* Subtle grid pattern */}
@@ -70,78 +80,68 @@ export default function LandingHero() {
             </ScrollReveal>
           </div>
 
-          {/* Right — 3D tilt card */}
-          <div className="hidden lg:block">
-            <ScrollReveal variant="flip-left" delay={400} duration={1000}>
-              <TiltCard className="rounded-2xl" tiltDeg={8}>
-                <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)]">
-                  {/* University tags */}
-                  <div className="flex items-center gap-3 mb-8">
-                    {["MIT", "Oxford", "ETH"].map((uni) => (
-                      <div
-                        key={uni}
-                        className="h-10 px-4 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-xs font-bold text-gray-400 tracking-wider"
-                      >
-                        {uni}
-                      </div>
-                    ))}
-                    <div className="h-10 px-3 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-500">
-                      +47
-                    </div>
-                  </div>
+          {/* Right — featured mentor cards */}
+          {previewMentors.length > 0 && (
+            <div className="hidden lg:flex flex-col gap-4">
+              {previewMentors.map((mentor, i) => (
+                <ScrollReveal
+                  key={mentor.id}
+                  variant="flip-left"
+                  delay={300 + i * 150}
+                  duration={900}
+                >
+                  <Link href={`/mentors/${mentor.id}`} className="block">
+                    <TiltCard className="rounded-2xl" tiltDeg={6} scale={1.01}>
+                      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] hover:border-gray-300 transition-colors">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {mentor.profile_photo ? (
+                              <img
+                                src={mentor.profile_photo}
+                                alt={mentor.full_name}
+                                className="w-12 h-12 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white font-bold text-lg">
+                                {mentor.full_name.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {mentor.full_name}
+                              </h3>
+                              <Icon name="verified" size={16} filled className="text-indigo-500 flex-shrink-0" />
+                            </div>
+                            <p className="text-sm text-gray-500 mt-0.5 truncate">
+                              {mentor.school_or_university}
+                            </p>
+                            {(mentor.countries ?? []).length > 0 && (
+                              <p className="text-xs text-gray-400 mt-0.5 truncate">
+                                {countriesFlagsCompact(mentor.countries)} помогает поступить
+                              </p>
+                            )}
+                          </div>
+                        </div>
 
-                  {/* Animated stats */}
-                  <div className="grid grid-cols-3 gap-6">
-                    <div>
-                      <div className="text-3xl font-bold text-gray-900 tracking-tight mb-1">
-                        <AnimatedCounter value={50} suffix="+" />
+                        <div className="flex flex-wrap gap-1.5">
+                          {mentor.expertise_areas.slice(0, 3).map((area) => (
+                            <span
+                              key={area.area}
+                              className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-medium"
+                            >
+                              {EXPERTISE_LABELS[area.area] || area.area}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-400 font-medium flex items-center gap-1.5">
-                        <Icon name="people" size={14} className="text-gray-300" />
-                        Менторов
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-bold text-gray-900 tracking-tight mb-1">
-                        <AnimatedCounter value={15} />
-                      </div>
-                      <div className="text-sm text-gray-400 font-medium flex items-center gap-1.5">
-                        <Icon name="public" size={14} className="text-gray-300" />
-                        Стран
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-bold text-gray-900 tracking-tight mb-1">
-                        <AnimatedCounter value={200} suffix="+" />
-                      </div>
-                      <div className="text-sm text-gray-400 font-medium flex items-center gap-1.5">
-                        <Icon name="school" size={14} className="text-gray-300" />
-                        Абитуриентов
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </TiltCard>
-            </ScrollReveal>
-          </div>
-        </div>
-
-        {/* Mobile stats */}
-        <div className="lg:hidden mt-12 grid grid-cols-3 gap-4">
-          {[
-            { value: 50, suffix: "+", label: "Менторов" },
-            { value: 15, suffix: "", label: "Стран" },
-            { value: 200, suffix: "+", label: "Абитуриентов" },
-          ].map((stat, i) => (
-            <ScrollReveal key={stat.label} variant="fade-up" delay={i * 100}>
-              <div className="text-center bg-white rounded-xl border border-gray-100 py-4 px-2">
-                <div className="text-2xl font-bold text-gray-900">
-                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-                </div>
-                <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
-              </div>
-            </ScrollReveal>
-          ))}
+                    </TiltCard>
+                  </Link>
+                </ScrollReveal>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
