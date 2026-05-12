@@ -24,10 +24,33 @@ function resolveStartParamTarget(raw: string | null | undefined): string | null 
   return null
 }
 
+// Parse start_param directly from the URL hash before the WebApp SDK
+// finishes loading. Lets us decide synchronously (during initial render)
+// whether this Mini App visit is a deep-link that requires auto-auth.
+function readStartTargetFromHash(): string | null {
+  if (typeof window === "undefined") return null
+  const hash = window.location.hash.replace(/^#/, "")
+  if (!hash) return null
+  try {
+    const tgData = new URLSearchParams(hash).get("tgWebAppData")
+    if (!tgData) return null
+    return resolveStartParamTarget(
+      new URLSearchParams(tgData).get("start_param"),
+    )
+  } catch {
+    return null
+  }
+}
+
+// Triggers the Mini App login flow from anywhere on the page. The auth
+// buttons in <Header> dispatch this when the user is inside Telegram.
+export const TG_AUTH_EVENT = "tg-auth-required"
+
 // What stage of Mini App auto-login we're at. Drives whether we render
 // a covering overlay (loading or role picker) or step out of the way.
-//   - "idle":      not in a Mini App context (or SDK not yet detected).
-//                  Render nothing — the regular site UI shows through.
+//   - "idle":      not in a Mini App context, or in one but waiting for
+//                  the user to explicitly trigger auth. Render nothing —
+//                  the regular site UI shows through.
 //   - "checking":  in a Mini App, hitting the backend right now. Cover
 //                  the page so the user doesn't see the public
 //                  homepage flash before being redirected/picker-prompted.
@@ -37,37 +60,40 @@ function resolveStartParamTarget(raw: string | null | undefined): string | null 
 type AuthStage = "idle" | "checking" | "needsRole" | "done"
 
 // Mounts globally inside <RootLayout>. Outside Telegram it is a no-op.
-// Inside a Mini App and without a stored access token, it:
-//   1. Posts initData to the backend.
-//   2. On success — saves tokens and routes by role.
-//   3. On `role_required` (first-ever Mini App visit) — surfaces a
-//      role picker so the new user can pick student/mentor without
-//      ever seeing the email/password form.
+// Inside a Mini App without a cached token, it stays idle (lets the
+// user browse the public site) and only fires the login flow when:
+//   1. `start_param` deep-links to an auth-required destination, OR
+//   2. the user taps a "Войти" / "Регистрация" button which dispatches
+//      the `tg-auth-required` event from <Header>.
+// On success — saves tokens and routes by role. On `role_required`
+// (first-ever Mini App visit) — surfaces a role picker so the new user
+// can pick student/mentor without ever seeing the email/password form.
 export default function TelegramAutoLogin() {
   const router = useRouter()
   const { isInTelegram, initData } = useTelegramWebApp()
 
   // Initial stage: synchronously detect Mini App context via URL hash
   // (Telegram sets `#tgWebAppData=...` before any JS runs, well before
-  // the WebApp SDK script finishes loading async). If the hash is
-  // present we immediately show the loading overlay on first paint —
-  // no public-homepage flash before the role picker / redirect.
+  // the WebApp SDK script finishes loading async). If the hash carries
+  // a recognised `start_param` we immediately show the loading overlay
+  // on first paint — no public-homepage flash before the deep-linked
+  // destination loads. Otherwise we stay idle and let the user browse.
   const [stage, setStage] = useState<AuthStage>(() => {
     if (typeof window === "undefined") return "idle"
     const looksLikeMiniApp = window.location.hash.includes("tgWebApp")
     if (!looksLikeMiniApp) return "idle"
     if (localStorage.getItem("access_token")) return "done"
-    return "checking"
+    return readStartTargetFromHash() ? "checking" : "idle"
   })
   const [submittingRole, setSubmittingRole] = useState<Role | null>(null)
   const [error, setError] = useState("")
-  // Guard against re-running auto-login when state updates trigger a
-  // re-render mid-flight. A ref instead of state because nothing in
-  // the UI depends on this flag.
+  // Guard against re-running the initial auto-login when state updates
+  // trigger a re-render mid-flight. A ref instead of state because
+  // nothing in the UI depends on this flag.
   const attempted = useRef(false)
 
   useEffect(() => {
-    if (!isInTelegram || !initData || attempted.current) return
+    if (!isInTelegram || !initData) return
     // start_param is set by Telegram when the user follows a
     // `https://t.me/<bot>/<app>?startapp=<value>` deep link. We use
     // it for in-app routing (e.g. an "open chat" notification puts
@@ -84,9 +110,31 @@ export default function TelegramAutoLogin() {
       return
     }
 
-    attempted.current = true
-    setStage("checking")
-    void runLogin()
+    // Auto-fire only for deep-link targets that require auth. The
+    // plain "open the Mini App" case stays idle until the user taps
+    // a "Войти" / "Регистрация" button (handled by the event listener
+    // below).
+    if (startTarget && !attempted.current) {
+      attempted.current = true
+      setStage("checking")
+      void runLogin()
+    }
+
+    const handleTrigger = () => {
+      // Bail if we already have a token (could happen if the user
+      // logged in via another tab) or if a flow is currently
+      // in-flight.
+      if (localStorage.getItem("access_token")) return
+      if (submittingRole !== null) return
+      setStage("checking")
+      setError("")
+      void runLogin()
+    }
+    window.addEventListener(TG_AUTH_EVENT, handleTrigger)
+
+    return () => {
+      window.removeEventListener(TG_AUTH_EVENT, handleTrigger)
+    }
 
     async function runLogin(role?: Role) {
       try {
@@ -114,7 +162,7 @@ export default function TelegramAutoLogin() {
         setStage("done")
       }
     }
-  }, [isInTelegram, initData, router])
+  }, [isInTelegram, initData, router, submittingRole])
 
   const handlePickRole = async (role: Role) => {
     setSubmittingRole(role)
@@ -142,6 +190,11 @@ export default function TelegramAutoLogin() {
     } finally {
       setSubmittingRole(null)
     }
+  }
+
+  const handleDismiss = () => {
+    setStage("done")
+    setError("")
   }
 
   if (stage === "idle" || stage === "done") return null
@@ -179,6 +232,13 @@ export default function TelegramAutoLogin() {
                 className="border border-gray-300 text-gray-700 py-4 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 {submittingRole === "mentor" ? "Создаём..." : "Я ментор"}
+              </button>
+              <button
+                onClick={handleDismiss}
+                disabled={submittingRole !== null}
+                className="text-sm text-gray-500 hover:text-gray-700 py-2 disabled:opacity-50 transition-colors"
+              >
+                Назад
               </button>
             </div>
 

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { fetchChatUnread } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
+import { TG_AUTH_EVENT } from "./TelegramAutoLogin"
 import Icon from "./Icon"
 import Logo from "./Logo"
 import NotificationBell from "./NotificationBell"
@@ -42,6 +43,16 @@ export default function Header() {
     localStorage.removeItem("role")
     setRole(null)
     router.push("/")
+  }
+
+  // In a Telegram Mini App, "Войти" / "Регистрация" don't open the
+  // email/password form — they trigger telegramMiniAppLogin(initData)
+  // via the global overlay. Backend recognises the user by telegram_id;
+  // for first-time visitors it returns role_required and the overlay
+  // shows a role picker.
+  const triggerTgAuth = () => {
+    setMenuOpen(false)
+    window.dispatchEvent(new Event(TG_AUTH_EVENT))
   }
 
   const isMentor = role === "mentor"
@@ -159,6 +170,21 @@ export default function Header() {
                 </button>
               )}
             </>
+          ) : isInTelegram ? (
+            <>
+              <button
+                onClick={triggerTgAuth}
+                className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors px-3 py-2"
+              >
+                Войти
+              </button>
+              <button
+                onClick={triggerTgAuth}
+                className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
+              >
+                Регистрация
+              </button>
+            </>
           ) : (
             <>
               <Link
@@ -220,6 +246,15 @@ export default function Header() {
                 Выйти
               </button>
             )
+          ) : isInTelegram ? (
+            <div className="flex gap-3 pt-2">
+              <button onClick={triggerTgAuth} className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">
+                Войти
+              </button>
+              <button onClick={triggerTgAuth} className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
+                Регистрация
+              </button>
+            </div>
           ) : (
             <div className="flex gap-3 pt-2">
               <Link href="/auth/login" className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">

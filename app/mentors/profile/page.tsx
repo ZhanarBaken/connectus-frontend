@@ -39,7 +39,6 @@ function Field({
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
       {error ? (
@@ -473,10 +472,7 @@ export default function MentorProfilePage() {
 
           {/* Bio */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="detailed_bio">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">
-              О себе
-              <span className="text-red-500 ml-0.5">*</span>
-            </h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-5">О себе</h2>
             <Field
               label="Расскажи свою историю"
               required
@@ -494,10 +490,7 @@ export default function MentorProfilePage() {
 
           {/* Expertise */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="expertise_areas">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">
-              Специализация
-              <span className="text-red-500 ml-0.5">*</span>
-            </h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">Специализация</h2>
             <p className="text-sm text-gray-400 mb-5">В чём ты помогаешь абитуриентам?</p>
             <div className="flex flex-wrap gap-3">
               {EXPERTISE_OPTIONS.map(({ value, label }) => (
@@ -533,10 +526,7 @@ export default function MentorProfilePage() {
 
           {/* Documents */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="documents">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">
-              Документы для проверки
-              <span className="text-red-500 ml-0.5">*</span>
-            </h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Документы для проверки</h2>
             <p className="text-sm text-gray-400 mb-5">
               Загрузи диплом, справку о зачислении или паспорт — что-то одно подтверждающее твой статус.
             </p>

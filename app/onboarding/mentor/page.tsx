@@ -372,8 +372,7 @@ export default function MentorOnboarding() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Полное имя <span className="text-red-500">*</span>
-                  </label>
+                    Полное имя                  </label>
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -383,8 +382,7 @@ export default function MentorOnboarding() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    О себе <span className="text-red-500">*</span>
-                  </label>
+                    О себе                  </label>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
@@ -396,8 +394,7 @@ export default function MentorOnboarding() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Телефон <span className="text-red-500">*</span>
-                  </label>
+                    Телефон                  </label>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -436,7 +433,7 @@ export default function MentorOnboarding() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Страны <span className="text-red-500">*</span>{" "}
+                    Страны{" "}
                     <span className="text-gray-400 font-normal">(можно несколько)</span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -496,8 +493,7 @@ export default function MentorOnboarding() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Университет <span className="text-red-500">*</span>
-                  </label>
+                    Университет                  </label>
                   <input
                     value={school}
                     onChange={(e) => setSchool(e.target.value)}
@@ -507,8 +503,7 @@ export default function MentorOnboarding() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Специальность <span className="text-red-500">*</span>
-                  </label>
+                    Специальность                  </label>
                   <input
                     value={major}
                     onChange={(e) => setMajor(e.target.value)}
@@ -519,8 +514,7 @@ export default function MentorOnboarding() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Грант / стипендия <span className="text-red-500">*</span>
-                    </label>
+                      Грант / стипендия                    </label>
                     <input
                       value={grant}
                       onChange={(e) => setGrant(e.target.value)}
@@ -530,8 +524,7 @@ export default function MentorOnboarding() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      GPA <span className="text-red-500">*</span>
-                    </label>
+                      GPA                    </label>
                     <input
                       value={gpa}
                       onChange={(e) => setGpa(e.target.value)}
@@ -542,8 +535,7 @@ export default function MentorOnboarding() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Результаты экзаменов <span className="text-red-500">*</span>
-                  </label>
+                    Результаты экзаменов                  </label>
                   <input
                     value={examResults}
                     onChange={(e) => setExamResults(e.target.value)}
