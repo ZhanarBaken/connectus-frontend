@@ -11,6 +11,7 @@ import {
   telegramLinkStart,
 } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { User } from "@/types"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
@@ -23,6 +24,9 @@ import Logo from "@/components/Logo"
 
 export default function MentorIdentityPage() {
   const router = useRouter()
+  // Google SDK is blocked inside Telegram WebView, so the button just
+  // dead-ends. Hide it there and keep only the manual-email path.
+  const { isInTelegram } = useTelegramWebApp()
   const [me, setMe] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -222,32 +226,36 @@ export default function MentorIdentityPage() {
           {/* No email at all → Google one-click OR manual email form */}
           {!me.email && (
             <div className="flex flex-col gap-3 mt-4">
-              {/* Google is the fast path — auto-verifies email in one
-                  click; user falls back to manual entry only if they
-                  don't want Google. */}
-              <button
-                type="button"
-                onClick={handleLinkGoogle}
-                disabled={linkingGoogle}
-                className="flex items-center justify-center gap-2.5 bg-white border border-gray-200 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors text-sm"
-              >
-                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-                  <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.63z" fill="#4285F4"/>
-                  <path d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 009 18z" fill="#34A853"/>
-                  <path d="M3.97 10.71A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.71V4.96H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.04l3.01-2.33z" fill="#FBBC05"/>
-                  <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.96l3.01 2.34C4.68 5.18 6.66 3.58 9 3.58z" fill="#EA4335"/>
-                </svg>
-                {linkingGoogle ? "Открываем Google..." : "Войти через Google"}
-              </button>
-              {googleError && (
-                <p className="text-xs text-red-500">{googleError}</p>
-              )}
+              {!isInTelegram && (
+                <>
+                  {/* Google is the fast path — auto-verifies email in one
+                      click; user falls back to manual entry only if they
+                      don't want Google. Hidden in TG (SDK blocked there). */}
+                  <button
+                    type="button"
+                    onClick={handleLinkGoogle}
+                    disabled={linkingGoogle}
+                    className="flex items-center justify-center gap-2.5 bg-white border border-gray-200 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors text-sm"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+                      <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.63z" fill="#4285F4"/>
+                      <path d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 009 18z" fill="#34A853"/>
+                      <path d="M3.97 10.71A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.71V4.96H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.04l3.01-2.33z" fill="#FBBC05"/>
+                      <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.96l3.01 2.34C4.68 5.18 6.66 3.58 9 3.58z" fill="#EA4335"/>
+                    </svg>
+                    {linkingGoogle ? "Открываем Google..." : "Войти через Google"}
+                  </button>
+                  {googleError && (
+                    <p className="text-xs text-red-500">{googleError}</p>
+                  )}
 
-              <div className="flex items-center gap-3 text-xs text-gray-400">
-                <span className="flex-1 h-px bg-gray-100" />
-                <span>или email вручную</span>
-                <span className="flex-1 h-px bg-gray-100" />
-              </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex-1 h-px bg-gray-100" />
+                    <span>или email вручную</span>
+                    <span className="flex-1 h-px bg-gray-100" />
+                  </div>
+                </>
+              )}
 
               <form onSubmit={handleSaveEmail} className="flex flex-col gap-3">
                 <input
@@ -298,8 +306,8 @@ export default function MentorIdentityPage() {
               </div>
               {/* Google fast-track: if their Google email matches the one
                   they typed, the link flow auto-marks it as verified —
-                  saves the trip to inbox. */}
-              {!me.has_google && (
+                  saves the trip to inbox. Hidden in TG (SDK blocked). */}
+              {!me.has_google && !isInTelegram && (
                 <button
                   type="button"
                   onClick={handleLinkGoogle}
