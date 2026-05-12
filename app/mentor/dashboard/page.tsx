@@ -277,30 +277,63 @@ export default function MentorDashboard() {
                 {submitError && <p className="text-red-500 text-sm mt-3">{submitError}</p>}
 
                 {/* Checklist for submit errors */}
-                {Object.keys(submitErrors).length > 0 && (
-                  <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-4">
-                    <p className="text-xs font-semibold text-red-800 mb-2">Что нужно исправить:</p>
-                    <ul className="space-y-1.5">
-                      {Object.entries(submitErrors).map(([key, msg]) => (
-                        <li key={key} className="text-xs text-red-600 flex items-center gap-1.5 flex-wrap">
-                          <Icon name="close" size={12} className="text-red-400" />
-                          <span>
-                            {key === "email" ? "Email: " : key === "telegram" ? "Telegram: " : ""}
-                            {msg}
-                          </span>
-                          {key === "documents" && (
-                            <Link
-                              href="/mentors/documents"
-                              className="ml-auto text-xs font-semibold text-red-700 underline hover:text-red-900"
-                            >
-                              Загрузить →
-                            </Link>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {Object.keys(submitErrors).length > 0 && (() => {
+                  const FIELD_LABELS: Record<string, string> = {
+                    full_name: "Полное имя",
+                    major: "Специальность",
+                    grant_or_scholarship: "Грант или стипендия",
+                    school_or_university: "Университет",
+                    gpa: "GPA",
+                    exam_results: "Результаты экзаменов",
+                    detailed_bio: "О себе",
+                    expertise_areas: "Направления экспертизы",
+                    countries: "Страны",
+                    profile_photo: "Фото профиля",
+                    documents: "Документы",
+                    email: "Email",
+                    telegram: "Telegram",
+                  }
+                  const FIELD_LINKS: Record<string, { href: string; label: string }> = {
+                    profile_photo: { href: "/mentors/profile", label: "К фото →" },
+                    full_name: { href: "/mentors/profile", label: "Заполнить →" },
+                    major: { href: "/mentors/profile", label: "Заполнить →" },
+                    grant_or_scholarship: { href: "/mentors/profile", label: "Заполнить →" },
+                    school_or_university: { href: "/mentors/profile", label: "Заполнить →" },
+                    gpa: { href: "/mentors/profile", label: "Заполнить →" },
+                    exam_results: { href: "/mentors/profile", label: "Заполнить →" },
+                    detailed_bio: { href: "/mentors/profile", label: "Заполнить →" },
+                    expertise_areas: { href: "/mentors/profile", label: "Выбрать →" },
+                    countries: { href: "/mentors/profile", label: "Выбрать →" },
+                    documents: { href: "/mentors/documents", label: "Загрузить →" },
+                  }
+                  return (
+                    <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-4">
+                      <p className="text-xs font-semibold text-red-800 mb-2">Что нужно исправить:</p>
+                      <ul className="space-y-1.5">
+                        {Object.entries(submitErrors).map(([key, msg]) => {
+                          const label = FIELD_LABELS[key] ?? key
+                          const link = FIELD_LINKS[key]
+                          return (
+                            <li key={key} className="text-xs text-red-600 flex items-center gap-1.5 flex-wrap">
+                              <Icon name="close" size={12} className="text-red-400" />
+                              <span>
+                                <strong>{label}:</strong> {msg}
+                              </span>
+                              {link && (
+                                <Link
+                                  href={link.href}
+                                  className="ml-auto text-xs font-semibold text-red-700 underline hover:text-red-900"
+                                >
+                                  {link.label}
+                                </Link>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )
+                })()}
 
                 {/* Pre-submit checklist */}
                 {me && (
