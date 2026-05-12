@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist, Instrument_Serif } from "next/font/google"
 import "./globals.css"
 import AnalyticsInit from "@/components/AnalyticsInit"
@@ -16,6 +16,16 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Connectus — найди ментора для поступления за рубеж",
   description: "Менторы помогают с поступлением, грантами, визами и документами",
+}
+
+// Telegram Mini App renders inside a narrow modal that resizes with
+// the host window. Locking the viewport keeps the WebView from
+// rendering at a default ~980px width and clipping cards.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

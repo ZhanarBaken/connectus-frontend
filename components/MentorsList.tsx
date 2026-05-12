@@ -214,7 +214,7 @@ export default function MentorsList({ mentors }: Props) {
                 key={mentor.id}
                 href={`/mentors/${mentor.id}`}
                 onClick={() => track("mentor_card_clicked", { mentor_profile_id: mentor.id })}
-                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-gray-300 transition-all group flex flex-col"
+                className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 hover:shadow-lg hover:border-gray-300 transition-all group flex flex-col min-w-0 overflow-hidden"
               >
                 {/* Avatar + name */}
                 <div className="flex items-start gap-4 mb-4">
@@ -269,7 +269,7 @@ export default function MentorsList({ mentors }: Props) {
                 </div>
 
                 {/* Bio */}
-                <p className="text-sm text-gray-500 mb-4 line-clamp-2 leading-relaxed flex-1">
+                <p className="text-sm text-gray-500 mb-4 line-clamp-2 leading-relaxed flex-1 break-words">
                   {mentor.detailed_bio}
                 </p>
 
@@ -287,7 +287,7 @@ export default function MentorsList({ mentors }: Props) {
 
                 {/* Consultation price strip */}
                 {mentor.consultation_price !== null && (
-                  <div className="flex items-center gap-2 mb-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
                     <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-medium">
                       <Icon name="forum" size={12} />
                       {Number(mentor.consultation_price) === 0
