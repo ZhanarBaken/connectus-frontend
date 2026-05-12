@@ -112,6 +112,35 @@ export function getNextDays(count: number, startFrom?: Date): Date[] {
   return days
 }
 
+// Returns a 5- or 6-row calendar grid for the given month, always
+// aligned to a Monday-to-Sunday week. Padding cells before the 1st and
+// after the last day of the month are dates from the neighbouring
+// month — the caller is expected to render them faded so it's obvious
+// they're outside the current month.
+//
+// `month` is 0-indexed (JS Date convention). 35 or 42 dates total
+// depending on how the month aligns to weekday boundaries.
+export function getMonthGrid(year: number, month: number): Date[] {
+  const firstOfMonth = new Date(year, month, 1)
+  const lastOfMonth = new Date(year, month + 1, 0)
+  // ISO weekday: 0=Mon .. 6=Sun. JS getDay() is 0=Sun.
+  const isoFirst = firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1
+  const isoLast = lastOfMonth.getDay() === 0 ? 6 : lastOfMonth.getDay() - 1
+  const padBefore = isoFirst
+  const padAfter = 6 - isoLast
+
+  const gridStart = new Date(year, month, 1 - padBefore)
+  const total = padBefore + lastOfMonth.getDate() + padAfter
+
+  const days: Date[] = []
+  for (let i = 0; i < total; i++) {
+    const d = new Date(gridStart)
+    d.setDate(gridStart.getDate() + i)
+    days.push(d)
+  }
+  return days
+}
+
 // JS Date.getDay() returns 0=Sun ... 6=Sat. Backend uses 0=Mon ... 6=Sun.
 export function isoWeekday(date: Date): number {
   const jsDay = date.getDay()

@@ -5,7 +5,7 @@ import { fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/
 import {
   DAY_LABELS,
   formatDateISO,
-  getNextDays,
+  getMonthGrid,
 } from "@/lib/schedule"
 import Icon from "./Icon"
 
@@ -16,11 +16,12 @@ interface Props {
   onCancel: () => void
 }
 
-// Backend caps lookahead at 90 days; the calendar only shows 4 weeks.
-const MAX_WEEK_OFFSET = 3
+// Backend caps lookahead at 90 days ≈ 3 months. monthOffset is
+// relative to the current month, so {0, 1, 2} covers ~today..+90d.
+const MAX_MONTH_OFFSET = 2
 
 export default function BookingCalendar({ mentorId, durationMinutes, onSelect, onCancel }: Props) {
-  const [weekOffset, setWeekOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
 
@@ -29,29 +30,35 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
   const [slotsError, setSlotsError] = useState("")
   const [timezone, setTimezone] = useState("")
 
-  // Map {YYYY-MM-DD: hasSlots} for the currently visible week. Drives
-  // the dot indicator under each date cell. Fetched once per week
+  // Map {YYYY-MM-DD: hasSlots} for the currently visible month. Drives
+  // the dot indicator under each date cell. Fetched once per month
   // navigation — students don't tap dates to discover availability.
   const [overview, setOverview] = useState<Record<string, boolean>>({})
 
-  // Show 7 days starting from today + offset (skip today on first week — same-day booking is rarely useful)
-  const startDate = useMemo(() => {
+  // The month currently rendered as a grid. year+month (0-indexed)
+  // are memoized off `monthOffset` so the month grid identity is
+  // stable across renders.
+  const visibleMonth = useMemo(() => {
     const d = new Date()
-    d.setDate(d.getDate() + weekOffset * 7)
-    if (weekOffset === 0) d.setDate(d.getDate() + 1)
-    return d
-  }, [weekOffset])
+    d.setDate(1)
+    d.setMonth(d.getMonth() + monthOffset)
+    return { year: d.getFullYear(), month: d.getMonth() }
+  }, [monthOffset])
 
-  const days = useMemo(() => getNextDays(7, startDate), [startDate])
+  const monthGrid = useMemo(
+    () => getMonthGrid(visibleMonth.year, visibleMonth.month),
+    [visibleMonth],
+  )
 
-  // Fetch the {date: hasSlots} map for the currently visible window
-  // whenever the user navigates weeks. One round trip per week swap,
-  // not per date tap. Failure mode is "no dots" — students can still
-  // tap to fetch slots, so we swallow the error silently.
+  // Fetch the {date: hasSlots} map for the visible month. We fetch
+  // ONLY for first-of-month → last-of-month (not the padding cells
+  // from neighbouring months) so we never exceed the backend's 31-day
+  // range cap. Failure → no dots, students can still tap.
   useEffect(() => {
-    if (days.length === 0) return
-    const fromDate = formatDateISO(days[0])
-    const toDate = formatDateISO(days[days.length - 1])
+    const firstOfMonth = new Date(visibleMonth.year, visibleMonth.month, 1)
+    const lastOfMonth = new Date(visibleMonth.year, visibleMonth.month + 1, 0)
+    const fromDate = formatDateISO(firstOfMonth)
+    const toDate = formatDateISO(lastOfMonth)
     let cancelled = false
     fetchMentorAvailabilityOverview(mentorId, fromDate, toDate, durationMinutes)
       .then((res) => {
@@ -61,7 +68,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
         if (!cancelled) setOverview({})
       })
     return () => { cancelled = true }
-  }, [mentorId, durationMinutes, days])
+  }, [mentorId, durationMinutes, visibleMonth])
 
   // Fetch availability when the user picks a date.
   useEffect(() => {
@@ -99,17 +106,10 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
 
   const today = formatDateISO(new Date())
 
-  const formatMonth = (date: Date) =>
-    date.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
-
   const monthLabel = useMemo(() => {
-    const first = days[0]
-    const last = days[days.length - 1]
-    if (first.getMonth() === last.getMonth()) {
-      return formatMonth(first)
-    }
-    return `${first.toLocaleDateString("ru-RU", { month: "short" })} — ${last.toLocaleDateString("ru-RU", { month: "short", year: "numeric" })}`
-  }, [days])
+    const d = new Date(visibleMonth.year, visibleMonth.month, 1)
+    return d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
+  }, [visibleMonth])
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -126,66 +126,78 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
         </p>
       </div>
 
-      {/* Week navigation */}
+      {/* Month navigation */}
       <div className="px-5 py-3 flex items-center justify-between border-b border-gray-50">
         <button
-          onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-          disabled={weekOffset === 0}
+          onClick={() => setMonthOffset(Math.max(0, monthOffset - 1))}
+          disabled={monthOffset === 0}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30"
+          aria-label="Предыдущий месяц"
         >
           <Icon name="chevron_left" size={20} className="text-gray-600" />
         </button>
         <span className="text-sm font-medium text-gray-700 capitalize">{monthLabel}</span>
         <button
-          onClick={() => setWeekOffset(Math.min(MAX_WEEK_OFFSET, weekOffset + 1))}
-          disabled={weekOffset >= MAX_WEEK_OFFSET}
+          onClick={() => setMonthOffset(Math.min(MAX_MONTH_OFFSET, monthOffset + 1))}
+          disabled={monthOffset >= MAX_MONTH_OFFSET}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30"
+          aria-label="Следующий месяц"
         >
           <Icon name="chevron_right" size={20} className="text-gray-600" />
         </button>
       </div>
 
-      {/* Day selector — backend decides what's available; here we just gate past dates. */}
-      <div className="px-4 py-3 grid grid-cols-7 gap-1">
-        {days.map((day) => {
+      {/* Weekday header row */}
+      <div className="px-3 pt-3 grid grid-cols-7 gap-1">
+        {DAY_LABELS.map((label) => (
+          <span
+            key={label}
+            className="text-[10px] font-medium uppercase text-gray-400 text-center py-1"
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {/* Month grid: dates from the visible month + padding cells from
+          neighbouring months (rendered faded, not clickable). */}
+      <div className="px-3 pb-3 grid grid-cols-7 gap-1">
+        {monthGrid.map((day) => {
           const dateStr = formatDateISO(day)
+          const isOutsideMonth = day.getMonth() !== visibleMonth.month
           const isPast = dateStr <= today
-          const jsDay = day.getDay()
-          const isoDay = jsDay === 0 ? 6 : jsDay - 1
+          const isDisabled = isOutsideMonth || isPast
           const isSelected = selectedDate === dateStr
           // `overview` may not have loaded yet — undefined means
           // "don't know", which we render as no dot (not "no slots").
-          // Past dates always render without a dot regardless.
-          const hasFreeSlots = !isPast && overview[dateStr] === true
+          // Disabled cells (past / outside month) never show a dot.
+          const hasFreeSlots = !isDisabled && overview[dateStr] === true
 
           return (
             <button
               key={dateStr}
               onClick={() => {
-                if (!isPast) {
+                if (!isDisabled) {
                   setSelectedDate(dateStr)
                   setSelectedTime(null)
                 }
               }}
-              disabled={isPast}
-              className={`flex flex-col items-center py-2.5 rounded-xl transition-all text-center ${
+              disabled={isDisabled}
+              className={`flex flex-col items-center justify-center py-2 rounded-xl transition-all text-center ${
                 isSelected
                   ? "bg-gray-900 text-white"
-                  : !isPast
-                    ? "hover:bg-gray-100 text-gray-900"
-                    : "text-gray-300 cursor-not-allowed"
+                  : isDisabled
+                    ? isOutsideMonth ? "text-gray-200 cursor-not-allowed" : "text-gray-300 cursor-not-allowed"
+                    : "hover:bg-gray-100 text-gray-900"
               }`}
             >
-              <span className={`text-[10px] font-medium uppercase ${isSelected ? "text-gray-300" : "text-gray-400"}`}>
-                {DAY_LABELS[isoDay]}
-              </span>
-              <span className={`text-lg font-semibold mt-0.5 ${isSelected ? "text-white" : ""}`}>
+              <span className={`text-sm font-semibold ${isSelected ? "text-white" : ""}`}>
                 {day.getDate()}
               </span>
               {/* Availability indicator: small dot for dates with at
                   least one free slot. Reserved-height wrapper keeps
                   every cell the same height even when the dot is
-                  absent, so the row doesn't twitch as overview loads. */}
+                  absent, so the grid doesn't twitch as overview loads. */}
               <span className="h-1.5 mt-1 flex items-center justify-center">
                 {hasFreeSlots && (
                   <span
