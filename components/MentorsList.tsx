@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation"
 import { MentorCard } from "@/types"
 import { track } from "@/lib/analytics"
 import { countryFlag, countryLabel, countriesFlagsCompact } from "@/lib/countries"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -22,6 +24,7 @@ interface Props {
 
 export default function MentorsList({ mentors }: Props) {
   const router = useRouter()
+  const { isInTelegram } = useTelegramWebApp()
   const [authChecked, setAuthChecked] = useState(false)
   const [search, setSearch] = useState("")
   const [country, setCountry] = useState("")
@@ -31,11 +34,20 @@ export default function MentorsList({ mentors }: Props) {
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     if (!token) {
+      // In a Telegram Mini App, jump straight to the auto-login overlay
+      // (handled by <TelegramAutoLogin>) instead of bouncing through the
+      // email/password form. Saves a redirect and keeps the user inside
+      // the one-tap TG flow.
+      if (isInTelegram) {
+        router.replace("/")
+        window.dispatchEvent(new Event(TG_AUTH_EVENT))
+        return
+      }
       router.replace("/auth/login?next=/mentors")
       return
     }
     setAuthChecked(true)
-  }, [router, mentors])
+  }, [router, mentors, isInTelegram])
 
   const countries = useMemo(
     () => Array.from(new Set(mentors.flatMap((m) => (m.countries ?? []).map((c) => c.country)))),
