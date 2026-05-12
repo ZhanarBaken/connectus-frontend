@@ -76,11 +76,11 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                             <Icon name="verified" size={16} filled className="text-indigo-500 flex-shrink-0" />
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 mt-0.5">
+                        <p className="text-sm text-gray-500 mt-0.5 truncate" title={mentor.school_or_university}>
                           {mentor.school_or_university}
                         </p>
                         {(mentor.countries ?? []).length > 0 && (
-                          <p className="text-xs text-gray-400 mt-0.5" title={(mentor.countries ?? []).map((c) => countryLabel(c.country)).join(", ")}>
+                          <p className="text-xs text-gray-400 mt-0.5 truncate" title={(mentor.countries ?? []).map((c) => countryLabel(c.country)).join(", ")}>
                             {countriesFlagsCompact(mentor.countries)} помогает поступить
                           </p>
                         )}
@@ -99,14 +99,16 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                       ))}
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      {mentor.grant_or_scholarship && (
-                        <span className="text-xs text-gray-400 inline-flex items-center gap-1">
+                    <div className="flex items-center justify-between gap-2 pt-4 border-t border-gray-100">
+                      {mentor.grant_or_scholarship ? (
+                        <span className="text-xs text-gray-400 inline-flex items-center gap-1 min-w-0 flex-1" title={mentor.grant_or_scholarship}>
                           <Icon name="military_tech" size={14} />
-                          {mentor.grant_or_scholarship}
+                          <span className="truncate">{mentor.grant_or_scholarship}</span>
                         </span>
+                      ) : (
+                        <span className="flex-1" />
                       )}
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-md ml-auto ${
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-md whitespace-nowrap flex-shrink-0 ${
                         mentor.is_accepting_bookings
                           ? "bg-emerald-50 text-emerald-600"
                           : "bg-gray-100 text-gray-400"
