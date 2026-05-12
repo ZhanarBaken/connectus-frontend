@@ -146,40 +146,17 @@ export default function MentorProfilePage() {
     }
   }
 
-  const validateLocally = (): Record<string, string> => {
-    // Mirror of backend submission_errors() — surface required-field
-    // misses BEFORE we POST, so mentor sees red labels inline rather
-    // than a generic "Ошибка при сохранении" after the round-trip.
-    const errs: Record<string, string> = {}
-    if (!fullName.trim()) errs.full_name = "Обязательное поле"
-    if (!school.trim()) errs.school_or_university = "Обязательное поле"
-    if (!major.trim()) errs.major = "Обязательное поле"
-    if (!grant.trim()) errs.grant_or_scholarship = "Обязательное поле"
-    if (!gpa.trim()) errs.gpa = "Обязательное поле"
-    if (!examResults.trim()) errs.exam_results = "Обязательное поле"
-    if (!bio.trim()) errs.detailed_bio = "Обязательное поле"
-    if (!phone.trim()) errs.phone = "Обязательное поле"
-    if (countries.length === 0) errs.countries = "Выбери хотя бы одну страну"
-    if (expertiseAreas.length === 0) {
-      errs.expertise_areas = "Выбери хотя бы одно направление"
-    }
-    return errs
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const local = validateLocally()
-    if (Object.keys(local).length > 0) {
-      setFieldErrors(local)
-      setError("Заполни поля, отмеченные красным")
-      // Scroll к первому проблемному полю, чтобы юзеру не пришлось
-      // искать его в длинной форме.
-      const firstKey = Object.keys(local)[0]
-      const el = document.querySelector(`[data-field="${firstKey}"]`)
-      el?.scrollIntoView({ behavior: "smooth", block: "center" })
-      return
-    }
-
+    // Не блокируем save если есть пустые required-поля: ментор имеет
+    // право заполнять профиль по частям, уходить и возвращаться. Жёсткая
+    // проверка живёт только на этапе «Отправить на проверку» (бэк ловит
+    // через submission_errors()) — там UX уже свой, на дашборде.
+    //
+    // Сам backend PATCH тоже разрешает пустые. 400 здесь прилетит только
+    // от strip-protection (попытка обнулить уже-заполненное required-
+    // поле); такой ответ парсится в `fieldErrors` ниже и подсвечивает
+    // конкретные инпуты.
     setSaving(true)
     setSaved(false)
     setError("")
