@@ -370,18 +370,6 @@ export default function MentorDashboard() {
                 )}
 
                 <div className="flex gap-3 mt-4 flex-wrap">
-                  <Link
-                    href="/mentors/profile"
-                    className="text-sm border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-colors font-medium"
-                  >
-                    Заполнить профиль
-                  </Link>
-                  <Link
-                    href="/mentors/documents"
-                    className="text-sm border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-colors font-medium"
-                  >
-                    Документы верификации
-                  </Link>
                   <button
                     onClick={handleSubmit}
                     disabled={submitting || completionPercent < 50 || !profile.profile_photo || !profile.has_documents}

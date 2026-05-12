@@ -11,6 +11,7 @@ import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
+import MentorDocumentsUploader from "@/components/MentorDocumentsUploader"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -21,12 +22,31 @@ const EXPERTISE_OPTIONS = [
   { value: "visa", label: "Виза" },
 ]
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  required = false,
+  error,
+  children,
+}: {
+  label: string
+  hint?: string
+  required?: boolean
+  error?: string
+  children: React.ReactNode
+}) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
       {children}
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {error ? (
+        <p className="text-xs text-red-600 mt-1">{error}</p>
+      ) : hint ? (
+        <p className="text-xs text-gray-400 mt-1">{hint}</p>
+      ) : null}
     </div>
   )
 }
@@ -39,6 +59,9 @@ export default function MentorProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
+  // Inline per-field errors filled either from local pre-save validation
+  // or from a backend 400 response.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const [fullName, setFullName] = useState("")
   const [countries, setCountries] = useState<string[]>([])
@@ -123,11 +146,44 @@ export default function MentorProfilePage() {
     }
   }
 
+  const validateLocally = (): Record<string, string> => {
+    // Mirror of backend submission_errors() — surface required-field
+    // misses BEFORE we POST, so mentor sees red labels inline rather
+    // than a generic "Ошибка при сохранении" after the round-trip.
+    const errs: Record<string, string> = {}
+    if (!fullName.trim()) errs.full_name = "Обязательное поле"
+    if (!school.trim()) errs.school_or_university = "Обязательное поле"
+    if (!major.trim()) errs.major = "Обязательное поле"
+    if (!grant.trim()) errs.grant_or_scholarship = "Обязательное поле"
+    if (!gpa.trim()) errs.gpa = "Обязательное поле"
+    if (!examResults.trim()) errs.exam_results = "Обязательное поле"
+    if (!bio.trim()) errs.detailed_bio = "Обязательное поле"
+    if (!phone.trim()) errs.phone = "Обязательное поле"
+    if (countries.length === 0) errs.countries = "Выбери хотя бы одну страну"
+    if (expertiseAreas.length === 0) {
+      errs.expertise_areas = "Выбери хотя бы одно направление"
+    }
+    return errs
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const local = validateLocally()
+    if (Object.keys(local).length > 0) {
+      setFieldErrors(local)
+      setError("Заполни поля, отмеченные красным")
+      // Scroll к первому проблемному полю, чтобы юзеру не пришлось
+      // искать его в длинной форме.
+      const firstKey = Object.keys(local)[0]
+      const el = document.querySelector(`[data-field="${firstKey}"]`)
+      el?.scrollIntoView({ behavior: "smooth", block: "center" })
+      return
+    }
+
     setSaving(true)
     setSaved(false)
     setError("")
+    setFieldErrors({})
     try {
       await updateMentorProfile({
         full_name: fullName,
@@ -146,7 +202,27 @@ export default function MentorProfilePage() {
       setSaved(true)
       setTimeout(() => router.push("/mentor/dashboard"), 1000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при сохранении")
+      // Try to parse field-level errors from backend so we can mark
+      // the specific fields red instead of a generic banner.
+      const msg = e instanceof Error ? e.message : "Ошибка при сохранении"
+      try {
+        const parsed = JSON.parse(msg)
+        if (parsed && typeof parsed === "object") {
+          const errs: Record<string, string> = {}
+          for (const [k, v] of Object.entries(parsed)) {
+            errs[k] = Array.isArray(v) ? String(v[0]) : String(v)
+          }
+          setFieldErrors(errs)
+          setError("Исправь поля, отмеченные красным")
+          const firstKey = Object.keys(errs)[0]
+          document.querySelector(`[data-field="${firstKey}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" })
+        } else {
+          setError(msg)
+        }
+      } catch {
+        setError(msg)
+      }
       setSaving(false)
     }
   }
@@ -267,12 +343,17 @@ export default function MentorProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">Основная информация</h2>
             <div className="grid sm:grid-cols-2 gap-5">
-              <Field label="Полное имя">
-                <input value={fullName} onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Назгуль Ахметова" className={inputClass} />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Страны (можно несколько)">
+              <div data-field="full_name">
+                <Field label="Полное имя" required error={fieldErrors.full_name}>
+                  <input value={fullName} onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Назгуль Ахметова"
+                    className={fieldErrors.full_name
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass} />
+                </Field>
+              </div>
+              <div className="sm:col-span-2" data-field="countries">
+                <Field label="Страны (можно несколько)" required error={fieldErrors.countries}>
                   <div className="flex flex-wrap gap-2">
                     {POPULAR_COUNTRY_CODES.map((c) => (
                       <button
@@ -331,22 +412,42 @@ export default function MentorProfilePage() {
                   onClose={() => setPickerOpen(false)}
                 />
               </div>
-              <Field label="Университет">
-                <input value={school} onChange={(e) => setSchool(e.target.value)}
-                  placeholder="MIT, UCL, TU Munich..." className={inputClass} />
-              </Field>
-              <Field label="Специальность">
-                <input value={major} onChange={(e) => setMajor(e.target.value)}
-                  placeholder="Computer Science" className={inputClass} />
-              </Field>
-              <Field label="Грант / стипендия">
-                <input value={grant} onChange={(e) => setGrant(e.target.value)}
-                  placeholder="Болашак, Chevening, DAAD..." className={inputClass} />
-              </Field>
-              <Field label="GPA">
-                <input value={gpa} onChange={(e) => setGpa(e.target.value)}
-                  placeholder="3.8 / 4.0" className={inputClass} />
-              </Field>
+              <div data-field="school_or_university">
+                <Field label="Университет" required error={fieldErrors.school_or_university}>
+                  <input value={school} onChange={(e) => setSchool(e.target.value)}
+                    placeholder="MIT, UCL, TU Munich..."
+                    className={fieldErrors.school_or_university
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass} />
+                </Field>
+              </div>
+              <div data-field="major">
+                <Field label="Специальность" required error={fieldErrors.major}>
+                  <input value={major} onChange={(e) => setMajor(e.target.value)}
+                    placeholder="Computer Science"
+                    className={fieldErrors.major
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass} />
+                </Field>
+              </div>
+              <div data-field="grant_or_scholarship">
+                <Field label="Грант / стипендия" required error={fieldErrors.grant_or_scholarship}>
+                  <input value={grant} onChange={(e) => setGrant(e.target.value)}
+                    placeholder="Болашак, Chevening, DAAD..."
+                    className={fieldErrors.grant_or_scholarship
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass} />
+                </Field>
+              </div>
+              <div data-field="gpa">
+                <Field label="GPA" required error={fieldErrors.gpa}>
+                  <input value={gpa} onChange={(e) => setGpa(e.target.value)}
+                    placeholder="3.8 / 4.0"
+                    className={fieldErrors.gpa
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass} />
+                </Field>
+              </div>
             </div>
           </div>
 
@@ -354,22 +455,38 @@ export default function MentorProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">Экзамены и ссылки</h2>
             <div className="space-y-5">
-              <Field label="Результаты экзаменов" hint="Укажи баллы: IELTS, TOEFL, SAT, GRE и т.д.">
-                <input value={examResults} onChange={(e) => setExamResults(e.target.value)}
-                  placeholder="IELTS 7.5, SAT 1480, GRE 320..." className={inputClass} />
-              </Field>
-              <Field
-                label="Телефон"
-                hint="Резервный канал связи для команды Connectus. Абитуриенты не видят. Любая страна."
-              >
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="tel"
-                  placeholder="+7 777 123 45 67"
-                  className={inputClass}
-                />
-              </Field>
+              <div data-field="exam_results">
+                <Field
+                  label="Результаты экзаменов"
+                  required
+                  hint="Укажи баллы: IELTS, TOEFL, SAT, GRE и т.д."
+                  error={fieldErrors.exam_results}
+                >
+                  <input value={examResults} onChange={(e) => setExamResults(e.target.value)}
+                    placeholder="IELTS 7.5, SAT 1480, GRE 320..."
+                    className={fieldErrors.exam_results
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass} />
+                </Field>
+              </div>
+              <div data-field="phone">
+                <Field
+                  label="Телефон"
+                  required
+                  hint="Резервный канал связи для команды Connectus. Абитуриенты не видят. Любая страна."
+                  error={fieldErrors.phone}
+                >
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    type="tel"
+                    placeholder="+7 777 123 45 67"
+                    className={fieldErrors.phone
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass}
+                  />
+                </Field>
+              </div>
               <Field label="LinkedIn" hint="Необязательно — помогает абитуриентам убедиться в твоих достижениях">
                 <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)}
                   placeholder="https://linkedin.com/in/..." className={inputClass} />
@@ -378,19 +495,32 @@ export default function MentorProfilePage() {
           </div>
 
           {/* Bio */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">О себе</h2>
-            <Field label="Расскажи свою историю" hint="Минимум 3-4 предложения. Что ты прошёл, как можешь помочь.">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="detailed_bio">
+            <h2 className="text-base font-semibold text-gray-900 mb-5">
+              О себе
+              <span className="text-red-500 ml-0.5">*</span>
+            </h2>
+            <Field
+              label="Расскажи свою историю"
+              required
+              hint="Минимум 3-4 предложения. Что ты прошёл, как можешь помочь."
+              error={fieldErrors.detailed_bio}
+            >
               <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={5}
                 placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю абитуриентам составить план поступления, написать эссе и подать заявки в топ университеты США..."
-                className={`${inputClass} resize-none`} />
+                className={fieldErrors.detailed_bio
+                  ? `${inputClass} resize-none border-red-300 focus:ring-red-100 focus:border-red-400`
+                  : `${inputClass} resize-none`} />
             </Field>
           </div>
 
 
           {/* Expertise */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">Специализация</h2>
+          <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="expertise_areas">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">
+              Специализация
+              <span className="text-red-500 ml-0.5">*</span>
+            </h2>
             <p className="text-sm text-gray-400 mb-5">В чём ты помогаешь абитуриентам?</p>
             <div className="flex flex-wrap gap-3">
               {EXPERTISE_OPTIONS.map(({ value, label }) => (
@@ -409,6 +539,9 @@ export default function MentorProfilePage() {
                 </button>
               ))}
             </div>
+            {fieldErrors.expertise_areas && (
+              <p className="text-xs text-red-600 mt-2">{fieldErrors.expertise_areas}</p>
+            )}
           </div>
 
           {/* Payout */}
@@ -419,6 +552,18 @@ export default function MentorProfilePage() {
               <input value={payoutDetails} onChange={(e) => setPayoutDetails(e.target.value)}
                 placeholder="Kaspi: +7 777 123 45 67 / IBAN: KZ..." className={inputClass} />
             </Field>
+          </div>
+
+          {/* Documents */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="documents">
+            <h2 className="text-base font-semibold text-gray-900 mb-1">
+              Документы для проверки
+              <span className="text-red-500 ml-0.5">*</span>
+            </h2>
+            <p className="text-sm text-gray-400 mb-5">
+              Загрузи диплом, справку о зачислении или паспорт — что-то одно подтверждающее твой статус.
+            </p>
+            <MentorDocumentsUploader isBanned={isBanned} />
           </div>
 
           {error && (
