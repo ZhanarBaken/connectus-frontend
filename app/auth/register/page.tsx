@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { register, resendVerification, googleAuth, telegramStart, fetchMe } from "@/lib/api"
@@ -9,6 +9,7 @@ import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { track } from "@/lib/analytics"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
+import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
 
 type Role = "student" | "mentor"
 
@@ -44,6 +45,18 @@ export default function RegisterPage() {
   // Hide Google button inside Telegram WebView — Google's SDK refuses
   // to render in embedded browsers, so the button would just dead-end.
   const { isInTelegram } = useTelegramWebApp()
+
+  // Inside a Telegram Mini App, the email/password form is dead weight —
+  // we already have a signed initData payload from Telegram. Trigger the
+  // Mini App auto-login overlay (handled by <TelegramAutoLogin>) so any
+  // CTA that links here (landing's "Начать бесплатно", /become-mentor,
+  // etc.) lands on the one-tap TG flow instead of the email form.
+  useEffect(() => {
+    if (!isInTelegram) return
+    if (typeof window === "undefined") return
+    if (localStorage.getItem("access_token")) return
+    window.dispatchEvent(new Event(TG_AUTH_EVENT))
+  }, [isInTelegram])
   // Refs (not state) so flipping the flag doesn't trigger a re-render.
   // We only need to fire the analytics event the very first time this
   // tab interacts with the form. Wired to every entry path (role

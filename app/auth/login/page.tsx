@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { login, fetchMe, resendVerification, googleAuth, telegramStart, AccountNotFoundError } from "@/lib/api"
@@ -8,6 +8,7 @@ import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
+import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
 
 function LoginForm() {
   const router = useRouter()
@@ -29,6 +30,18 @@ function LoginForm() {
   // so users don't tap a dead control. They can still sign in / link
   // Google later from a regular browser tab.
   const { isInTelegram } = useTelegramWebApp()
+
+  // Inside a Telegram Mini App, the email/password form is dead weight —
+  // we already have a signed initData payload from Telegram. Trigger the
+  // Mini App auto-login overlay (handled by <TelegramAutoLogin>) so any
+  // CTA / redirect that lands here picks up the one-tap TG flow instead
+  // of the email form.
+  useEffect(() => {
+    if (!isInTelegram) return
+    if (typeof window === "undefined") return
+    if (localStorage.getItem("access_token")) return
+    window.dispatchEvent(new Event(TG_AUTH_EVENT))
+  }, [isInTelegram])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
