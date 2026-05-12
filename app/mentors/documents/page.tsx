@@ -6,6 +6,7 @@ import { authFetch, fetchMentorProfile } from "@/lib/api"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
 import Icon from "@/components/Icon"
 import BackButton from "@/components/BackButton"
+import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -151,6 +152,7 @@ export default function MentorDocumentsPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <MentorStatusBanner />
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">

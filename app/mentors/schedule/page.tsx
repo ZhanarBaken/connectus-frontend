@@ -15,6 +15,7 @@ import {
 } from "@/lib/schedule"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const TIME_OPTIONS: string[] = []
 for (let h = 0; h < 24; h++) {
@@ -156,6 +157,7 @@ export default function MentorSchedulePage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <MentorStatusBanner />
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* ── Header ─────────────────────────────────────── */}
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />

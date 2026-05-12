@@ -3,6 +3,7 @@
 import Link from "next/link"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 // Памятка ментора. Опускаем сюда всё что мог бы упустить новый ментор:
 // первичная редактируется, без расписания клиенты не запишутся, и
@@ -131,6 +132,7 @@ const SECTIONS: Section[] = [
 export default function MentorGuidePage() {
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <MentorStatusBanner />
       <div className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
           <BackButton fallbackHref="/mentor/dashboard" />

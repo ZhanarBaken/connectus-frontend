@@ -12,6 +12,7 @@ import { calcProfileCompletion } from "@/lib/profileCompletion"
 import { MentorProfile, MentorService, Order } from "@/types"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
+import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   draft: "Запрос",
@@ -146,6 +147,10 @@ export default function MentorDashboard() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <MentorStatusBanner
+        isSubmitted={profile.is_submitted}
+        isApproved={profile.is_approved}
+      />
       <div className="max-w-6xl mx-auto px-4 py-10">
 
         {/* Header */}

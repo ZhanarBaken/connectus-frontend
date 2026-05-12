@@ -10,6 +10,7 @@ import BackButton from "@/components/BackButton"
 import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
+import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -172,6 +173,7 @@ export default function MentorProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <MentorStatusBanner />
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

@@ -14,6 +14,7 @@ import { MentorService } from "@/types"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
@@ -151,6 +152,7 @@ export default function MentorServicesPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <MentorStatusBanner />
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

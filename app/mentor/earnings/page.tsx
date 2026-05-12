@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { fetchMentorEarnings, type MentorEarnings } from "@/lib/api"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
+import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const METHOD_LABEL: Record<string, string> = {
   kaspi: "Kaspi",
@@ -70,6 +71,7 @@ export default function MentorEarningsPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <MentorStatusBanner />
       <div className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
           <BackButton fallbackHref="/mentor/dashboard" />
