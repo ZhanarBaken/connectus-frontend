@@ -81,7 +81,14 @@ const FAQS = [
 ]
 
 export default async function HomePage() {
-  const mentors = await safeFetchMentors()
+  const allMentors = await safeFetchMentors()
+  // Landing-only filter: only surface mentors who are currently
+  // taking new students. The catalog page (/mentors) still shows
+  // everyone — that's where a student lands when they want to
+  // browse and possibly favourite someone who's on a break.
+  // Backend's .public() queryset already excludes banned profiles,
+  // so is_accepting_bookings is the one flag we layer on top here.
+  const mentors = allMentors.filter((m) => m.is_accepting_bookings)
 
   return (
     <main className="bg-white">
