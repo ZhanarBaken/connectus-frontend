@@ -417,20 +417,35 @@ export default function StudentOnboarding() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Класс <span className="text-red-500">*</span>
+                      Сейчас ты <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={schoolGrade}
                       onChange={(e) => setSchoolGrade(e.target.value)}
                       required
-                      placeholder="11"
                       className={inputClass}
-                    />
+                    >
+                      <option value="">Выбери...</option>
+                      <optgroup label="В школе">
+                        <option value="11 класс">11 класс</option>
+                        <option value="12 класс">12 класс</option>
+                        <option value="10 класс">10 класс</option>
+                        <option value="9 класс">9 класс</option>
+                        <option value="8 класс">8 класс</option>
+                        <option value="7 класс">7 класс</option>
+                        <option value="6 класс">6 класс</option>
+                        <option value="5 класс">5 класс</option>
+                      </optgroup>
+                      <optgroup label="Другое">
+                        <option value="Уже окончил(а) школу">Уже окончил(а) школу</option>
+                        <option value="Студент вуза">Студент вуза</option>
+                        <option value="Колледж / училище">Колледж / училище</option>
+                      </optgroup>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Год выпуска <span className="text-red-500">*</span>
+                      Год окончания школы <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
