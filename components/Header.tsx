@@ -171,20 +171,18 @@ export default function Header() {
               )}
             </>
           ) : isInTelegram ? (
-            <>
-              <button
-                onClick={triggerTgAuth}
-                className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors px-3 py-2"
-              >
-                Войти
-              </button>
-              <button
-                onClick={triggerTgAuth}
-                className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
-              >
-                Регистрация
-              </button>
-            </>
+            // Only "Регистрация" in Mini App. The single TG entry calls
+            // telegramMiniAppLogin(initData), which logs in existing
+            // users by telegram_id and creates an account for new ones
+            // — covers both login and signup. A separate "Войти" would
+            // either lead to the email form (which can't link telegram
+            // safely) or duplicate the same TG flow.
+            <button
+              onClick={triggerTgAuth}
+              className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
+            >
+              Регистрация
+            </button>
           ) : (
             <>
               <Link
@@ -248,9 +246,6 @@ export default function Header() {
             )
           ) : isInTelegram ? (
             <div className="flex gap-3 pt-2">
-              <button onClick={triggerTgAuth} className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">
-                Войти
-              </button>
               <button onClick={triggerTgAuth} className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
                 Регистрация
               </button>
