@@ -112,13 +112,71 @@ export default function MentorOnboarding() {
           router.replace("/onboarding/mentor/identity")
           return
         }
-        // Photo may already be set (mentor returning mid-flow). Read once
-        // so the avatar preview is accurate and the gate doesn't block them.
+        // Resume mid-flow: подтягиваем всё что уже было сохранено в БД,
+        // прокидываем в state, и определяем с какого шага начинать —
+        // первый незаполненный. Так мент, бросивший wizard на половине
+        // и зашедший снова из Telegram, не теряет прогресс.
         try {
           const profile = await fetchMentorProfile()
           setProfilePhoto(profile.profile_photo ?? null)
+          setFullName(profile.full_name ?? "")
+          setBio(profile.detailed_bio ?? "")
+          setPhone(profile.phone ?? "")
+          setSchool(profile.school_or_university ?? "")
+          setMajor(profile.major ?? "")
+          setGrant(profile.grant_or_scholarship ?? "")
+          setGpa(profile.gpa ?? "")
+          setExamResults(profile.exam_results ?? "")
+          setCountries((profile.countries ?? []).map((c) => c.country))
+          setExpertise((profile.expertise_areas ?? []).map((e) => e.area))
+
+          // Документы тянем чтобы понять, прошёл ли мент шаг 5.
+          let docsList: OnboardingDocument[] = []
+          try {
+            const docsRes = await authFetch(`${BASE_URL}/mentors/documents/`)
+            if (docsRes.ok) {
+              const docsData = await docsRes.json()
+              docsList = Array.isArray(docsData) ? docsData : docsData.results ?? []
+              setDocuments(docsList)
+            }
+          } catch {
+            // Non-fatal — мент в худшем случае увидит wizard с шага 5
+            // и догрузит документы заново.
+          }
+
+          // Определяем стартовый шаг как первый незавершённый.
+          const step1Done = Boolean(profile.profile_photo)
+          const step2Done = Boolean(
+            (profile.full_name ?? "").trim()
+              && (profile.detailed_bio ?? "").trim()
+              && (profile.phone ?? "").trim(),
+          )
+          const step3Done = Boolean(
+            (profile.school_or_university ?? "").trim()
+              && (profile.major ?? "").trim()
+              && (profile.grant_or_scholarship ?? "").trim()
+              && (profile.gpa ?? "").trim()
+              && (profile.exam_results ?? "").trim()
+              && (profile.countries?.length ?? 0) > 0,
+          )
+          const step4Done = (profile.expertise_areas?.length ?? 0) > 0
+          const step5Done = docsList.length > 0
+
+          // Все 5 шагов выполнены — wizard'у больше нечего делать,
+          // отправляем на дашборд (там submit-кнопка).
+          if (step1Done && step2Done && step3Done && step4Done && step5Done) {
+            router.replace("/mentor/dashboard")
+            return
+          }
+
+          let initial = 1
+          if (step1Done) initial = 2
+          if (step1Done && step2Done) initial = 3
+          if (step1Done && step2Done && step3Done) initial = 4
+          if (step1Done && step2Done && step3Done && step4Done) initial = 5
+          setStep(initial)
         } catch {
-          // Non-fatal — onboarding still proceeds with empty photo state.
+          // Non-fatal — wizard стартует со шага 1 с пустыми полями.
         }
         setIdentityReady(true)
       })
@@ -154,9 +212,10 @@ export default function MentorOnboarding() {
   }
 
   const handleSaveProfileFields = async () => {
-    // Сохраняем основные поля до шага документов — чтобы при срыве на
-    // 5-м шаге (закрыл вкладку) уже введённое не пропало. Документы
-    // загружаются собственным эндпоинтом и не зависят от этого PATCH.
+    // Сохраняем все основные поля одним PATCH'ем (вызывается на шаге
+    // 4 → 5 и при финальном «Отправить профиль»). Шаги 2 и 3 имеют
+    // свои узкие save-функции ниже — чтобы прогресс прилипал по ходу,
+    // а не только в конце.
     await updateMentorProfile({
       full_name: fullName,
       detailed_bio: bio,
@@ -169,6 +228,45 @@ export default function MentorOnboarding() {
       exam_results: examResults,
       expertise_areas: expertise.map((area) => ({ area: area as ExpertiseArea })),
     })
+  }
+
+  const handleNextFromStep2 = async () => {
+    setSaving(true)
+    setError("")
+    try {
+      // Только поля шага 2 — не трогаем countries/expertise чтобы
+      // не угрожать strip-protection на ещё не заполненных списках.
+      await updateMentorProfile({
+        full_name: fullName,
+        detailed_bio: bio,
+        phone,
+      })
+      setStep(3)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Не удалось сохранить")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleNextFromStep3 = async () => {
+    setSaving(true)
+    setError("")
+    try {
+      await updateMentorProfile({
+        countries: countries.map((c) => ({ country: c })),
+        school_or_university: school,
+        major,
+        grant_or_scholarship: grant,
+        gpa,
+        exam_results: examResults,
+      })
+      setStep(4)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Не удалось сохранить")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleGoToDocuments = async () => {
@@ -415,11 +513,11 @@ export default function MentorOnboarding() {
                   ← Назад
                 </button>
                 <button
-                  onClick={() => setStep(3)}
-                  disabled={!fullName.trim() || !bio.trim() || !phone.trim()}
+                  onClick={handleNextFromStep2}
+                  disabled={saving || !fullName.trim() || !bio.trim() || !phone.trim()}
                   className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
-                  Продолжить →
+                  {saving ? "Сохраняем..." : "Продолжить →"}
                 </button>
               </div>
             </div>
@@ -552,9 +650,10 @@ export default function MentorOnboarding() {
                   ← Назад
                 </button>
                 <button
-                  onClick={() => setStep(4)}
+                  onClick={handleNextFromStep3}
                   disabled={
-                    countries.length === 0
+                    saving
+                    || countries.length === 0
                     || !school.trim()
                     || !major.trim()
                     || !grant.trim()
@@ -563,7 +662,7 @@ export default function MentorOnboarding() {
                   }
                   className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
-                  Продолжить →
+                  {saving ? "Сохраняем..." : "Продолжить →"}
                 </button>
               </div>
             </div>
