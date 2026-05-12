@@ -353,7 +353,7 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
                   <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)]">
                     <div className="flex items-center gap-3 mb-6">
                       <img
-                        src="https://randomuser.me/api/portraits/women/79.jpg"
+                        src="/landing/mentor-sample.png"
                         alt="Назгуль А."
                         className="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow-sm"
                         loading="lazy"
