@@ -39,6 +39,9 @@ function Field({
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
+        {required && (
+          <span className="ml-1.5 text-xs font-normal text-gray-400">обязательно</span>
+        )}
       </label>
       {children}
       {error ? (
@@ -261,6 +264,16 @@ export default function MentorProfilePage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <fieldset disabled={isBanned} className="space-y-6">
+          {/* Soft hint about what "обязательно" means here. Profile saves
+              partial state on PATCH; the dashboard submit-button is what
+              actually checks completeness. */}
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-900">
+            <p>
+              <strong>Сохранять можно по кускам.</strong> Поля, помеченные{" "}
+              <span className="text-xs text-gray-500 font-normal bg-white border border-gray-200 rounded px-1.5 py-0.5">обязательно</span>
+              , нужны только когда ты нажмёшь <strong>«Отправить на проверку»</strong> в кабинете.
+            </p>
+          </div>
           {/* Avatar upload */}
           <div className="flex flex-col items-center">
             <input
@@ -490,7 +503,10 @@ export default function MentorProfilePage() {
 
           {/* Expertise */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="expertise_areas">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">Специализация</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">
+              Специализация
+              <span className="ml-1.5 text-xs font-normal text-gray-400">обязательно</span>
+            </h2>
             <p className="text-sm text-gray-400 mb-5">В чём ты помогаешь абитуриентам?</p>
             <div className="flex flex-wrap gap-3">
               {EXPERTISE_OPTIONS.map(({ value, label }) => (
@@ -526,7 +542,10 @@ export default function MentorProfilePage() {
 
           {/* Documents */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="documents">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Документы для проверки</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-1">
+              Документы для проверки
+              <span className="ml-1.5 text-xs font-normal text-gray-400">обязательно</span>
+            </h2>
             <p className="text-sm text-gray-400 mb-5">
               Загрузи диплом, справку о зачислении или паспорт — что-то одно подтверждающее твой статус.
             </p>
