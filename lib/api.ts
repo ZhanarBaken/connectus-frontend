@@ -1010,6 +1010,40 @@ export async function fetchMentorAvailability(
   return res.json()
 }
 
+export interface AvailabilityOverviewResponse {
+  timezone: string
+  duration_minutes: number
+  dates: Record<string, boolean>
+}
+
+// Returns a {date: has_free_slots} map for the visible calendar window.
+// Used to render a dot indicator under date cells so students don't
+// have to cold-tap every day to discover availability.
+export async function fetchMentorAvailabilityOverview(
+  mentorId: number,
+  fromDate: string,
+  toDate: string,
+  durationMinutes: number,
+): Promise<AvailabilityOverviewResponse> {
+  const params = new URLSearchParams({
+    from: fromDate,
+    to: toDate,
+    duration_minutes: String(durationMinutes),
+  })
+  const res = await authFetch(
+    `${BASE_URL}/mentors/${mentorId}/availability/overview/?${params.toString()}`,
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const first = Object.values(err)[0]
+    throw new Error(
+      err.detail ||
+        (Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось загрузить календарь")),
+    )
+  }
+  return res.json()
+}
+
 // ─── Auth helpers ───────────────────────────────────────────────────────────
 
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {

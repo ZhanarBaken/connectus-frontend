@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { fetchMentorAvailability } from "@/lib/api"
+import { fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/api"
 import {
   DAY_LABELS,
   formatDateISO,
@@ -29,6 +29,11 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
   const [slotsError, setSlotsError] = useState("")
   const [timezone, setTimezone] = useState("")
 
+  // Map {YYYY-MM-DD: hasSlots} for the currently visible week. Drives
+  // the dot indicator under each date cell. Fetched once per week
+  // navigation — students don't tap dates to discover availability.
+  const [overview, setOverview] = useState<Record<string, boolean>>({})
+
   // Show 7 days starting from today + offset (skip today on first week — same-day booking is rarely useful)
   const startDate = useMemo(() => {
     const d = new Date()
@@ -38,6 +43,25 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
   }, [weekOffset])
 
   const days = useMemo(() => getNextDays(7, startDate), [startDate])
+
+  // Fetch the {date: hasSlots} map for the currently visible window
+  // whenever the user navigates weeks. One round trip per week swap,
+  // not per date tap. Failure mode is "no dots" — students can still
+  // tap to fetch slots, so we swallow the error silently.
+  useEffect(() => {
+    if (days.length === 0) return
+    const fromDate = formatDateISO(days[0])
+    const toDate = formatDateISO(days[days.length - 1])
+    let cancelled = false
+    fetchMentorAvailabilityOverview(mentorId, fromDate, toDate, durationMinutes)
+      .then((res) => {
+        if (!cancelled) setOverview(res.dates)
+      })
+      .catch(() => {
+        if (!cancelled) setOverview({})
+      })
+    return () => { cancelled = true }
+  }, [mentorId, durationMinutes, days])
 
   // Fetch availability when the user picks a date.
   useEffect(() => {
@@ -129,6 +153,10 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
           const jsDay = day.getDay()
           const isoDay = jsDay === 0 ? 6 : jsDay - 1
           const isSelected = selectedDate === dateStr
+          // `overview` may not have loaded yet — undefined means
+          // "don't know", which we render as no dot (not "no slots").
+          // Past dates always render without a dot regardless.
+          const hasFreeSlots = !isPast && overview[dateStr] === true
 
           return (
             <button
@@ -153,6 +181,20 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
               </span>
               <span className={`text-lg font-semibold mt-0.5 ${isSelected ? "text-white" : ""}`}>
                 {day.getDate()}
+              </span>
+              {/* Availability indicator: small dot for dates with at
+                  least one free slot. Reserved-height wrapper keeps
+                  every cell the same height even when the dot is
+                  absent, so the row doesn't twitch as overview loads. */}
+              <span className="h-1.5 mt-1 flex items-center justify-center">
+                {hasFreeSlots && (
+                  <span
+                    className={`block w-1.5 h-1.5 rounded-full ${
+                      isSelected ? "bg-white/80" : "bg-emerald-500"
+                    }`}
+                    aria-label="Есть свободные слоты"
+                  />
+                )}
               </span>
             </button>
           )
