@@ -19,11 +19,11 @@ export interface MentorDocument {
 }
 
 const KIND_OPTIONS: { value: string; label: string }[] = [
+  // Паспорт / виза убраны (не подтверждают поступление). Существующие
+  // документы с этими kind конвертированы миграцией в `other`.
   { value: "diploma", label: "Диплом" },
   { value: "enrollment_certificate", label: "Справка о зачислении" },
-  { value: "passport", label: "Паспорт" },
   { value: "university_id", label: "Студенческий билет" },
-  { value: "visa", label: "Виза" },
   { value: "other", label: "Другое" },
 ]
 

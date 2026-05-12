@@ -22,11 +22,11 @@ const EXPERTISE_OPTIONS = [
 ]
 
 const DOCUMENT_KIND_OPTIONS = [
+  // Паспорт / виза убраны — они не подтверждают факт поступления.
+  // Существующие документы с этими kind конвертируются миграцией в `other`.
   { value: "diploma", label: "Диплом" },
   { value: "enrollment_certificate", label: "Справка о зачислении" },
-  { value: "passport", label: "Паспорт" },
   { value: "university_id", label: "Студенческий билет" },
-  { value: "visa", label: "Виза" },
   { value: "other", label: "Другое" },
 ]
 
