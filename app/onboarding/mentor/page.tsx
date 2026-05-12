@@ -66,6 +66,7 @@ export default function MentorOnboarding() {
   // Step 2 — Bio
   const [fullName, setFullName] = useState("")
   const [bio, setBio] = useState("")
+  const [phone, setPhone] = useState("")
 
   // Step 3 — University
   const [countries, setCountries] = useState<string[]>([])
@@ -159,6 +160,7 @@ export default function MentorOnboarding() {
     await updateMentorProfile({
       full_name: fullName,
       detailed_bio: bio,
+      phone,
       countries: countries.map((c) => ({ country: c })),
       school_or_university: school,
       major,
@@ -388,6 +390,19 @@ export default function MentorOnboarding() {
                   />
                   <p className="text-xs text-gray-400 mt-1">Минимум 2-3 предложения — это влияет на доверие абитуриентов</p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Телефон</label>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    type="tel"
+                    placeholder="+7 777 123 45 67"
+                    className={inputClass}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Резервный канал связи для команды Connectus. Абитуриенты не видят.
+                  </p>
+                </div>
               </div>
               <div className="flex gap-3 mt-6">
                 <button
@@ -398,7 +413,7 @@ export default function MentorOnboarding() {
                 </button>
                 <button
                   onClick={() => setStep(3)}
-                  disabled={!fullName.trim() || !bio.trim()}
+                  disabled={!fullName.trim() || !bio.trim() || !phone.trim()}
                   className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
                 >
                   Продолжить →

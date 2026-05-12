@@ -53,6 +53,7 @@ export default function MentorProfilePage() {
   const [gpa, setGpa] = useState("")
   const [examResults, setExamResults] = useState("")
   const [bio, setBio] = useState("")
+  const [phone, setPhone] = useState("")
   const [linkedin, setLinkedin] = useState("")
   const [expertiseAreas, setExpertiseAreas] = useState<string[]>([])
   const [payoutDetails, setPayoutDetails] = useState("")
@@ -74,6 +75,7 @@ export default function MentorProfilePage() {
         setGpa(p.gpa ?? "")
         setExamResults(p.exam_results ?? "")
         setBio(p.detailed_bio ?? "")
+        setPhone(p.phone ?? "")
         setLinkedin(p.linkedin_url ?? "")
         setExpertiseAreas(p.expertise_areas.map((e) => e.area))
         setPayoutDetails(p.payout_details ?? "")
@@ -136,6 +138,7 @@ export default function MentorProfilePage() {
         gpa,
         exam_results: examResults,
         detailed_bio: bio,
+        phone,
         linkedin_url: linkedin,
         expertise_areas: expertiseAreas.map((area) => ({ area: area as ExpertiseArea })),
         payout_details: payoutDetails,
@@ -354,6 +357,18 @@ export default function MentorProfilePage() {
               <Field label="Результаты экзаменов" hint="Укажи баллы: IELTS, TOEFL, SAT, GRE и т.д.">
                 <input value={examResults} onChange={(e) => setExamResults(e.target.value)}
                   placeholder="IELTS 7.5, SAT 1480, GRE 320..." className={inputClass} />
+              </Field>
+              <Field
+                label="Телефон"
+                hint="Резервный канал связи для команды Connectus. Абитуриенты не видят. Любая страна."
+              >
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  type="tel"
+                  placeholder="+7 777 123 45 67"
+                  className={inputClass}
+                />
               </Field>
               <Field label="LinkedIn" hint="Необязательно — помогает абитуриентам убедиться в твоих достижениях">
                 <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)}

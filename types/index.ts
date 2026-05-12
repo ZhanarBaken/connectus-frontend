@@ -71,6 +71,7 @@ export interface MentorProfile {
   profile_photo: string | null
   expertise_areas: MentorExpertise[]
   contacts: string
+  phone: string
   payout_details: string
   graduation_year_or_current_course: string
   is_approved: boolean
