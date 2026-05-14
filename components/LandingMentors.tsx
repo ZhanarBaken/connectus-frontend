@@ -43,12 +43,12 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* "Наши менторы" shows the last three of the catalog — Hero
+          {/* "Наши менторы" shows the last fifteen of the catalog — Hero
               already takes the top three (highest rating), so this
               section surfaces different faces and reduces duplication
               across the page on larger lists. */}
-          {mentors.slice(-3).map((mentor, i) => (
-            <ScrollReveal key={mentor.id} variant="fade-up" delay={i * 150} duration={800}>
+          {mentors.slice(-15).map((mentor, i) => (
+            <ScrollReveal key={mentor.id} variant="fade-up" delay={Math.min(i, 6) * 100} duration={800}>
               <Link
                 href={`/mentors/${mentor.id}`}
                 onClick={() => track("mentor_card_clicked", { mentor_profile_id: mentor.id })}
