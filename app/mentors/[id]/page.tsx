@@ -524,39 +524,41 @@ export default function MentorPage({ params }: Props) {
 
       {/* Booking calendar modal */}
       {bookingService && mentor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setBookingService(null)}
           />
-          <div className="relative w-full max-w-md">
-            <div className="mb-3 bg-white rounded-xl px-4 py-3 border border-gray-200">
-              <p className="text-sm font-semibold text-gray-900">{bookingService.title}</p>
-              <p className="text-xs text-gray-400">
-                {bookingService.duration_minutes} мин · {Number(bookingService.price).toLocaleString("ru-RU")} ₸
-              </p>
+          <div className="relative min-h-full flex items-center justify-center p-4">
+            <div className="relative w-full max-w-md my-4">
+              <div className="mb-3 bg-white rounded-xl px-4 py-3 border border-gray-200">
+                <p className="text-sm font-semibold text-gray-900">{bookingService.title}</p>
+                <p className="text-xs text-gray-400">
+                  {bookingService.duration_minutes} мин · {Number(bookingService.price).toLocaleString("ru-RU")} ₸
+                </p>
+              </div>
+              <BookingCalendar
+                mentorId={mentor.id}
+                durationMinutes={bookingService.duration_minutes}
+                onSelect={async (date, time) => {
+                  setBookingService(null)
+                  setOrderingServiceId(bookingService.id)
+                  setOrderError("")
+                  // Backend SCHEDULE_TIMEZONE is Asia/Almaty (+05:00, no
+                  // DST). Hardcoded so a student in another browser TZ
+                  // still books the mentor's local slot correctly.
+                  const scheduledAt = `${date}T${time}:00+05:00`
+                  try {
+                    const created = await createOrder(bookingService.id, scheduledAt)
+                    router.push(`/orders/${created.id}`)
+                  } catch (err: unknown) {
+                    setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
+                    setOrderingServiceId(null)
+                  }
+                }}
+                onCancel={() => setBookingService(null)}
+              />
             </div>
-            <BookingCalendar
-              mentorId={mentor.id}
-              durationMinutes={bookingService.duration_minutes}
-              onSelect={async (date, time) => {
-                setBookingService(null)
-                setOrderingServiceId(bookingService.id)
-                setOrderError("")
-                // Backend SCHEDULE_TIMEZONE is Asia/Almaty (+05:00, no
-                // DST). Hardcoded so a student in another browser TZ
-                // still books the mentor's local slot correctly.
-                const scheduledAt = `${date}T${time}:00+05:00`
-                try {
-                  const created = await createOrder(bookingService.id, scheduledAt)
-                  router.push(`/orders/${created.id}`)
-                } catch (err: unknown) {
-                  setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
-                  setOrderingServiceId(null)
-                }
-              }}
-              onCancel={() => setBookingService(null)}
-            />
           </div>
         </div>
       )}

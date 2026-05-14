@@ -220,7 +220,7 @@ export default function MentorsList({ mentors }: Props) {
             </button>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((mentor) => (
               <Link
                 key={mentor.id}
@@ -316,17 +316,17 @@ export default function MentorsList({ mentors }: Props) {
                 )}
 
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                <div className="flex items-center justify-between gap-2 pt-4 border-t border-gray-50">
                   {mentor.grant_or_scholarship ? (
-                    <span className="text-xs text-gray-400 truncate mr-2 inline-flex items-center gap-1">
-                      <Icon name="military_tech" size={12} />
-                      {mentor.grant_or_scholarship}
+                    <span className="text-xs text-gray-400 inline-flex items-center gap-1 min-w-0 flex-1">
+                      <Icon name="military_tech" size={12} className="flex-shrink-0" />
+                      <span className="truncate">{mentor.grant_or_scholarship}</span>
                     </span>
                   ) : (
-                    <span />
+                    <span className="flex-1" />
                   )}
                   <span
-                    className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${
+                    className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${
                       mentor.is_accepting_bookings
                         ? "bg-green-50 text-green-600"
                         : "bg-gray-100 text-gray-400"

@@ -155,7 +155,11 @@ export default function MessagesPage() {
               return (
                 <Link
                   key={order.conversation_id ?? order.id}
-                  href={`/orders/${order.id}`}
+                  // Inside the Mini App, the order page hides the chat behind a CTA
+                  // by default — but from the inbox the user clearly wants the chat,
+                  // so reuse the existing `?chat=open` deep-link param that TG
+                  // notifications already use to land straight in the fullscreen chat.
+                  href={isInTelegram ? `/orders/${order.id}?chat=open` : `/orders/${order.id}`}
                   className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors ${
                     i < conversations.length - 1 ? "border-b border-gray-50" : ""
                   }`}
