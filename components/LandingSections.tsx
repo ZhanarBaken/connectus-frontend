@@ -528,7 +528,11 @@ export default function LandingSections({ steps, categories, faqs, mentors }: Pr
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-sm">&copy; 2026 Connectus. Все права защищены.</p>
-            <p className="text-sm">Сделано для абитуриентов Казахстана</p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+              <Link href="/terms" className="hover:text-white transition-colors">Условия</Link>
+              <Link href="/platform-rules" className="hover:text-white transition-colors">Правила</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">Политика конфиденциальности</Link>
+            </div>
           </div>
         </div>
       </footer>

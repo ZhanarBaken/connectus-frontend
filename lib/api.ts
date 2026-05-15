@@ -107,6 +107,9 @@ async function readCooldown(res: Response, fallbackMessage: string): Promise<Coo
 export interface PublicSettings {
   dispute_window_hours: number
   terms_text: string
+  platform_rules_text: string
+  data_consent_text: string
+  privacy_policy_text: string
 }
 
 export async function fetchPublicSettings(): Promise<PublicSettings> {

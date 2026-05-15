@@ -1,0 +1,59 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { fetchPublicSettings } from "@/lib/api"
+import Logo from "@/components/Logo"
+
+type Status = "loading" | "ready" | "error"
+
+export default function PrivacyPage() {
+  const [status, setStatus] = useState<Status>("loading")
+  const [text, setText] = useState("")
+
+  useEffect(() => {
+    fetchPublicSettings()
+      .then((s) => {
+        setText(s.privacy_policy_text)
+        setStatus("ready")
+      })
+      .catch(() => setStatus("error"))
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-[#fafafa] px-4 py-12">
+      <div className="max-w-3xl mx-auto">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 justify-center">
+            <Logo size={32} className="text-gray-900" />
+            <span className="text-xl font-bold text-gray-900">Connectus</span>
+          </Link>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 sm:p-10">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Политика конфиденциальности</h1>
+
+          {status === "loading" && (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {status === "error" && (
+            <p className="text-sm text-red-600">Не удалось загрузить текст. Попробуй обновить страницу.</p>
+          )}
+
+          {status === "ready" && text.trim() === "" && (
+            <p className="text-sm text-gray-500">Политика пока не опубликована.</p>
+          )}
+
+          {status === "ready" && text.trim() !== "" && (
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              {text}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -7,9 +7,14 @@ import { register, resendVerification, googleAuth, telegramStart, fetchMe } from
 import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { track } from "@/lib/analytics"
+import DataConsentModal from "@/components/DataConsentModal"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
+
+// Which signup flow was started before consent was required. Set when
+// the user taps a CTA, cleared after the consent modal resolves.
+type PendingAuth = "email" | "google" | "telegram" | null
 
 type Role = "student" | "mentor"
 
@@ -42,6 +47,13 @@ export default function RegisterPage() {
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
   const [resendError, setResendError] = useState("")
+  // PD consent — Закон РК №94-V requires an explicit, informed act of
+  // consent before we process any personal data. Once given in this
+  // session, all three signup flows (email/Google/Telegram) can run
+  // without re-asking; closing the page resets the state.
+  const [consentGiven, setConsentGiven] = useState(false)
+  const [consentModalOpen, setConsentModalOpen] = useState(false)
+  const [pendingAuth, setPendingAuth] = useState<PendingAuth>(null)
   // Hide Google button inside Telegram WebView — Google's SDK refuses
   // to render in embedded browsers, so the button would just dead-end.
   const { isInTelegram } = useTelegramWebApp()
@@ -71,8 +83,9 @@ export default function RegisterPage() {
     track("signup_form_started", { role })
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Inner registration logic. Split from `handleSubmit` so the consent
+  // modal can call this directly once the user gives consent.
+  const doEmailRegister = async () => {
     setError("")
     setLoading(true)
     try {
@@ -88,8 +101,17 @@ export default function RegisterPage() {
     }
   }
 
-  const handleGoogleRegister = async () => {
-    handleFirstInteraction()
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!consentGiven) {
+      setPendingAuth("email")
+      setConsentModalOpen(true)
+      return
+    }
+    void doEmailRegister()
+  }
+
+  const doGoogleRegister = async () => {
     // Belt-and-braces: useTelegramWebApp may not have settled yet
     // when the user taps very fast on first paint, so the button
     // visibility gate could miss. Re-check synchronously off the
@@ -129,8 +151,17 @@ export default function RegisterPage() {
     }
   }
 
-  const handleTelegramRegister = async () => {
+  const handleGoogleRegister = () => {
     handleFirstInteraction()
+    if (!consentGiven) {
+      setPendingAuth("google")
+      setConsentModalOpen(true)
+      return
+    }
+    void doGoogleRegister()
+  }
+
+  const doTelegramRegister = async () => {
     setLoading(true)
     setError("")
     try {
@@ -141,6 +172,46 @@ export default function RegisterPage() {
       setError(e instanceof Error ? e.message : "Ошибка регистрации через Telegram")
       setLoading(false)
     }
+  }
+
+  const handleTelegramRegister = () => {
+    handleFirstInteraction()
+    if (!consentGiven) {
+      setPendingAuth("telegram")
+      setConsentModalOpen(true)
+      return
+    }
+    void doTelegramRegister()
+  }
+
+  // Resumes whichever signup flow opened the consent modal. Switch
+  // form (over the PendingAuth union) so TypeScript flags any flow
+  // added later that forgets to wire up its resume path.
+  const handleConsentGiven = () => {
+    setConsentGiven(true)
+    setConsentModalOpen(false)
+    const auth = pendingAuth
+    setPendingAuth(null)
+    switch (auth) {
+      case "email":
+        void doEmailRegister()
+        break
+      case "google":
+        void doGoogleRegister()
+        break
+      case "telegram":
+        void doTelegramRegister()
+        break
+      case null:
+        // No flow was pending — modal was confirmed without a CTA
+        // trigger (e.g. consent button double-tap). Nothing to do.
+        break
+    }
+  }
+
+  const handleConsentCancel = () => {
+    setConsentModalOpen(false)
+    setPendingAuth(null)
   }
 
   const handleResend = async () => {
@@ -423,12 +494,12 @@ export default function RegisterPage() {
                     </Link>
                     {" "}и{" "}
                     <Link
-                      href="/terms"
+                      href="/platform-rules"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-indigo-600 font-medium hover:underline"
                     >
-                      политику конфиденциальности
+                      правила платформы
                     </Link>
                   </div>
                 </div>
@@ -458,6 +529,12 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
+
+      <DataConsentModal
+        open={consentModalOpen}
+        onConsent={handleConsentGiven}
+        onCancel={handleConsentCancel}
+      />
     </div>
   )
 }
