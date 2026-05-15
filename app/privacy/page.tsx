@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { fetchPublicSettings } from "@/lib/api"
 import Logo from "@/components/Logo"
+import MarkdownText from "@/components/MarkdownText"
 
 type Status = "loading" | "ready" | "error"
 
@@ -48,9 +49,7 @@ export default function PrivacyPage() {
           )}
 
           {status === "ready" && text.trim() !== "" && (
-            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-              {text}
-            </div>
+            <MarkdownText text={text} className="text-sm" />
           )}
         </div>
       </div>

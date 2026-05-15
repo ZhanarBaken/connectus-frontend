@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { fetchPublicSettings } from "@/lib/api"
 import Icon from "./Icon"
+import MarkdownText from "./MarkdownText"
 
 type Status = "loading" | "ready" | "error"
 
@@ -105,9 +106,7 @@ export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
               </p>
             )}
             {status === "ready" && text.trim() !== "" && (
-              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {text}
-              </div>
+              <MarkdownText text={text} className="text-sm" />
             )}
           </div>
 
