@@ -40,19 +40,12 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
           {/* Left — text */}
           <div>
             <ScrollReveal variant="fade-up" duration={800}>
-              <h1 className="text-[clamp(2.5rem,5vw,4rem)] font-bold text-gray-900 leading-[1.08] tracking-tight mb-6">
+              <h1 className="text-[clamp(2.5rem,5vw,4rem)] font-bold text-gray-900 leading-[1.08] tracking-tight mb-10">
                 Поступи в университет мечты{" "}
                 <span className="font-[var(--font-display)] italic text-indigo-600">
                   с&nbsp;ментором
                 </span>
               </h1>
-            </ScrollReveal>
-
-            <ScrollReveal variant="fade-up" delay={200} duration={800}>
-              <p className="text-lg text-gray-500 max-w-lg mb-10 leading-relaxed">
-                Выпускники MIT, Oxford, TU Munich — помогут составить план,
-                написать эссе и пройти весь путь от заявки до зачисления.
-              </p>
             </ScrollReveal>
 
             <ScrollReveal variant="fade-up" delay={300} duration={800}>
