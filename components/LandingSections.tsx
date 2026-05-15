@@ -164,11 +164,11 @@ export default function LandingSections({ categories, mentors }: Props) {
                     >
                       <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-indigo-50 transition-colors">
                         <img
-                          src={`https://flagcdn.com/24x18/${cat.code.toLowerCase()}.png`}
+                          src={`https://flagcdn.com/w40/${cat.code.toLowerCase()}.png`}
                           alt={loc.label}
                           width={24}
                           height={18}
-                          className="rounded-sm"
+                          className="rounded-sm w-6 h-[18px] object-cover"
                           loading="lazy"
                         />
                       </div>

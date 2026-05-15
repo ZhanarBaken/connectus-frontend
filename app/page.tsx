@@ -25,7 +25,6 @@ async function safeFetchMentors() {
 // preserves the curated visual order; everything else falls through to
 // the dynamic builder below with a generic subtitle.
 const KNOWN_CATEGORIES: Record<string, { label: string; desc: string }> = {
-  KZ: { label: "Казахстан", desc: "Назарбаев Университет, КИМЭП" },
   US: { label: "США", desc: "Ivy League и топ университеты" },
   GB: { label: "Великобритания", desc: "Oxbridge, Russell Group" },
   DE: { label: "Германия", desc: "TU Munich, LMU и другие" },
@@ -36,6 +35,7 @@ const KNOWN_CATEGORIES: Record<string, { label: string; desc: string }> = {
   CA: { label: "Канада", desc: "Toronto, McGill, UBC" },
   AU: { label: "Австралия", desc: "Melbourne, Sydney, ANU" },
   CH: { label: "Швейцария", desc: "ETH Zurich, EPFL" },
+  KZ: { label: "Казахстан", desc: "Назарбаев Университет, КИМЭП" },
 }
 const KNOWN_CATEGORY_ORDER = Object.keys(KNOWN_CATEGORIES)
 
