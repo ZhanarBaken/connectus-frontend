@@ -10,7 +10,6 @@ import FloatingOrb from "./FloatingOrb"
 import MagneticButton from "./MagneticButton"
 import TiltCard from "./TiltCard"
 import FaqList from "./FaqList"
-import PlatformReviews from "./PlatformReviews"
 import LandingMentors from "./LandingMentors"
 import {
   SUPPORT_EMAIL,
@@ -283,26 +282,6 @@ export default function LandingSections({ categories, mentors }: Props) {
               </ScrollReveal>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ─── Testimonials ──────────────────────────────────────────── */}
-      <section className="py-28 px-4 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <ScrollReveal variant="fade-up">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
-              {t("testi.title_1")}{" "}
-              <span className="font-[var(--font-display)] italic">{t("testi.title_2")}</span>
-            </h2>
-          </ScrollReveal>
-          <ScrollReveal variant="blur-in" delay={200}>
-            <p className="text-gray-500 text-lg text-center mb-16">
-              {t("testi.subtitle")}
-            </p>
-          </ScrollReveal>
-          <ScrollReveal variant="fade-up" delay={300}>
-            <PlatformReviews />
-          </ScrollReveal>
         </div>
       </section>
 
