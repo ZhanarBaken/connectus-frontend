@@ -25,6 +25,7 @@ async function safeFetchMentors() {
 // preserves the curated visual order; everything else falls through to
 // the dynamic builder below with a generic subtitle.
 const KNOWN_CATEGORIES: Record<string, { label: string; desc: string }> = {
+  KZ: { label: "Казахстан", desc: "Назарбаев Университет, КИМЭП" },
   US: { label: "США", desc: "Ivy League и топ университеты" },
   GB: { label: "Великобритания", desc: "Oxbridge, Russell Group" },
   DE: { label: "Германия", desc: "TU Munich, LMU и другие" },
@@ -43,9 +44,6 @@ function buildCategoriesFromMentors(mentors: MentorCard[]) {
   for (const m of mentors) {
     for (const c of m.countries) {
       const code = c.country.toUpperCase()
-      // KZ excluded — the platform serves Kazakhstan, so showing the
-      // home country alongside foreign destinations is misleading.
-      if (code === "KZ") continue
       codes.add(code)
     }
   }
