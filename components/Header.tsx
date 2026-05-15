@@ -9,10 +9,13 @@ import { TG_AUTH_EVENT } from "./TelegramAutoLogin"
 import Icon from "./Icon"
 import Logo from "./Logo"
 import NotificationBell from "./NotificationBell"
+import LocaleSwitcher from "./LocaleSwitcher"
+import { useT } from "@/lib/i18n/LocaleProvider"
 
 export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
+  const t = useT()
   const [role, setRole] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [chatUnread, setChatUnread] = useState(0)
@@ -69,27 +72,27 @@ export default function Header() {
   }
 
   const mentorNav: NavLink[] = [
-    { href: "/mentor/dashboard", label: "Кабинет", icon: "dashboard" },
-    { href: "/mentors/profile", label: "Профиль", icon: "person" },
-    { href: "/mentors/schedule", label: "Расписание", icon: "calendar_month" },
-    { href: "/mentors/services", label: "Услуги", icon: "description" },
-    { href: "/orders", label: "Клиенты", icon: "people", matchPrefixes: ["/orders"], badge: chatUnread || undefined },
-    { href: "/settings", label: "Настройки", icon: "settings" },
+    { href: "/mentor/dashboard", label: t("nav.dashboard"), icon: "dashboard" },
+    { href: "/mentors/profile", label: t("nav.profile"), icon: "person" },
+    { href: "/mentors/schedule", label: t("nav.schedule"), icon: "calendar_month" },
+    { href: "/mentors/services", label: t("nav.services"), icon: "description" },
+    { href: "/orders", label: t("nav.clients"), icon: "people", matchPrefixes: ["/orders"], badge: chatUnread || undefined },
+    { href: "/settings", label: t("nav.settings"), icon: "settings" },
   ]
 
   const studentNav: NavLink[] = [
-    { href: "/student/dashboard", label: "Кабинет", icon: "dashboard" },
-    { href: "/mentors", label: "Найти ментора", icon: "search" },
-    { href: "/messages", label: "Сообщения", icon: "chat", badge: chatUnread || undefined },
-    { href: "/students/profile", label: "Профиль", icon: "person" },
-    { href: "/settings", label: "Настройки", icon: "settings" },
+    { href: "/student/dashboard", label: t("nav.dashboard"), icon: "dashboard" },
+    { href: "/mentors", label: t("nav.find_mentor"), icon: "search" },
+    { href: "/messages", label: t("nav.messages"), icon: "chat", badge: chatUnread || undefined },
+    { href: "/students/profile", label: t("nav.profile"), icon: "person" },
+    { href: "/settings", label: t("nav.settings"), icon: "settings" },
   ]
 
   const guestNav: NavLink[] = [
-    { href: "/mentors", label: "Менторы" },
-    { href: "/#how-it-works", label: "Как это работает" },
-    { href: "/#categories", label: "Направления" },
-    { href: "/become-mentor", label: "Стать ментором" },
+    { href: "/mentors", label: t("nav.mentors") },
+    { href: "/#how-it-works", label: t("nav.how_it_works") },
+    { href: "/#categories", label: t("nav.categories") },
+    { href: "/become-mentor", label: t("nav.become_mentor") },
   ]
 
   const navLinks: NavLink[] = isMentor ? mentorNav : isStudent ? studentNav : guestNav
@@ -158,6 +161,7 @@ export default function Header() {
 
         {/* Auth buttons */}
         <div className="hidden md:flex items-center gap-2">
+          <LocaleSwitcher />
           {role ? (
             <>
               <NotificationBell />
@@ -166,7 +170,7 @@ export default function Header() {
                   onClick={handleLogout}
                   className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors px-2 py-2"
                 >
-                  Выйти
+                  {t("header.logout")}
                 </button>
               )}
             </>
@@ -181,7 +185,7 @@ export default function Header() {
               onClick={triggerTgAuth}
               className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
             >
-              Регистрация
+              {t("header.signup")}
             </button>
           ) : (
             <>
@@ -189,13 +193,13 @@ export default function Header() {
                 href="/auth/login"
                 className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors px-3 py-2"
               >
-                Войти
+                {t("header.login")}
               </Link>
               <Link
                 href="/auth/register"
                 className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
               >
-                Регистрация
+                {t("header.signup")}
               </Link>
             </>
           )}
@@ -241,25 +245,28 @@ export default function Header() {
           {role ? (
             !isInTelegram && (
               <button onClick={handleLogout} className="text-sm text-gray-500 text-left py-1">
-                Выйти
+                {t("header.logout")}
               </button>
             )
           ) : isInTelegram ? (
             <div className="flex gap-3 pt-2">
               <button onClick={triggerTgAuth} className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
-                Регистрация
+                {t("header.signup")}
               </button>
             </div>
           ) : (
             <div className="flex gap-3 pt-2">
               <Link href="/auth/login" className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">
-                Войти
+                {t("header.login")}
               </Link>
               <Link href="/auth/register" className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
-                Регистрация
+                {t("header.signup")}
               </Link>
             </div>
           )}
+          <div className="pt-3">
+            <LocaleSwitcher />
+          </div>
         </div>
       )}
     </header>

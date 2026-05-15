@@ -4,6 +4,7 @@ import "./globals.css"
 import AnalyticsInit from "@/components/AnalyticsInit"
 import Header from "@/components/Header"
 import TelegramAutoLogin from "@/components/TelegramAutoLogin"
+import { LocaleProvider } from "@/lib/i18n/LocaleProvider"
 
 const geist = Geist({ subsets: ["latin"] })
 const instrumentSerif = Instrument_Serif({
@@ -51,10 +52,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src="https://telegram.org/js/telegram-web-app.js" async defer></script>
       </head>
       <body className={`${geist.className} ${instrumentSerif.variable}`}>
-        <AnalyticsInit />
-        <TelegramAutoLogin />
-        <Header />
-        {children}
+        <LocaleProvider>
+          <AnalyticsInit />
+          <TelegramAutoLogin />
+          <Header />
+          {children}
+        </LocaleProvider>
       </body>
     </html>
   )

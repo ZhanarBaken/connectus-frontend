@@ -8,15 +8,18 @@ import FloatingOrb from "./FloatingOrb"
 import MagneticButton from "./MagneticButton"
 import ScrollReveal from "./ScrollReveal"
 import TiltCard from "./TiltCard"
+import { useT } from "@/lib/i18n/LocaleProvider"
 
-const EXPERTISE_LABELS: Record<string, string> = {
-  admission: "Поступление",
-  scholarships: "Стипендии",
-  visa: "Виза",
-  documents: "Документы",
+const EXPERTISE_KEYS: Record<string, string> = {
+  admission: "expertise.admission",
+  scholarships: "expertise.scholarships",
+  visa: "expertise.visa",
+  documents: "expertise.documents",
+  essay: "expertise.essay",
 }
 
 export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
+  const t = useT()
   const previewMentors = mentors.slice(0, 3)
 
   return (
@@ -41,9 +44,9 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
           <div>
             <ScrollReveal variant="fade-up" duration={800}>
               <h1 className="text-[clamp(2.5rem,5vw,4rem)] font-bold text-gray-900 leading-[1.08] tracking-tight mb-10">
-                Поступи в университет мечты{" "}
+                {t("hero.title_1")}{" "}
                 <span className="font-[var(--font-display)] italic text-indigo-600">
-                  с&nbsp;ментором
+                  {t("hero.title_2")}
                 </span>
               </h1>
             </ScrollReveal>
@@ -55,7 +58,7 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                     href="/mentors"
                     className="group bg-gray-900 text-white px-7 py-4 rounded-xl text-[15px] font-semibold hover:bg-gray-800 transition-colors inline-flex items-center gap-2"
                   >
-                    Найти ментора
+                    {t("hero.cta_find")}
                     <Icon
                       name="arrow_forward"
                       size={18}
@@ -67,7 +70,7 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                   href="/become-mentor"
                   className="text-sm text-gray-500 hover:text-gray-900 transition-colors underline-offset-4 hover:underline self-start sm:self-auto"
                 >
-                  Хочу стать ментором →
+                  {t("hero.cta_become")}
                 </Link>
               </div>
             </ScrollReveal>
@@ -112,21 +115,24 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                             </p>
                             {(mentor.countries ?? []).length > 0 && (
                               <p className="text-xs text-gray-400 mt-0.5 truncate">
-                                {countriesFlagsCompact(mentor.countries)} помогает поступить
+                                {countriesFlagsCompact(mentor.countries)} {t("hero.helps")}
                               </p>
                             )}
                           </div>
                         </div>
 
                         <div className="flex flex-wrap gap-1.5">
-                          {mentor.expertise_areas.slice(0, 3).map((area) => (
-                            <span
-                              key={area.area}
-                              className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-medium"
-                            >
-                              {EXPERTISE_LABELS[area.area] || area.area}
-                            </span>
-                          ))}
+                          {mentor.expertise_areas.slice(0, 3).map((area) => {
+                            const key = EXPERTISE_KEYS[area.area]
+                            return (
+                              <span
+                                key={area.area}
+                                className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-medium"
+                              >
+                                {key ? t(key) : area.area}
+                              </span>
+                            )
+                          })}
                         </div>
                       </div>
                     </TiltCard>

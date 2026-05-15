@@ -1,13 +1,8 @@
 import { fetchMentors } from "@/lib/api"
 import { countryLabel } from "@/lib/countries"
 import { MentorCard } from "@/types"
-import Link from "next/link"
-import FaqList from "@/components/FaqList"
 import MentorRedirect from "@/components/MentorRedirect"
-import PlatformReviews from "@/components/PlatformReviews"
-import Icon from "@/components/Icon"
 import LandingHero from "@/components/LandingHero"
-import LandingMentors from "@/components/LandingMentors"
 import LandingSections from "@/components/LandingSections"
 
 // Render on each request — backend isn't reachable at Vercel build
@@ -73,50 +68,6 @@ function buildCategoriesFromMentors(mentors: MentorCard[]) {
   return [...known, ...unknown]
 }
 
-const STEPS = [
-  {
-    number: "01",
-    title: "Найди ментора",
-    desc: "Просмотри профили выпускников топ университетов из разных стран",
-    icon: "search",
-  },
-  {
-    number: "02",
-    title: "Консультация",
-    desc: "Запроси знакомство — обсудите цели и составьте план",
-    icon: "chat",
-  },
-  {
-    number: "03",
-    title: "Начни подготовку",
-    desc: "Закажи нужную услугу и получи пошаговый план поступления",
-    icon: "rocket_launch",
-  },
-]
-
-const FAQS = [
-  {
-    q: "Кто такие менторы на Connectus?",
-    a: "Менторы — это абитуриенты и выпускники топ университетов мира, которые прошли через процесс поступления сами и теперь помогают другим. Многие из них — стипендиаты Болашак, Chevening, DAAD и других программ. Каждый ментор проходит проверку и аутентификацию: на платформе работают только аккуратно подобранные кандидаты, которых мы проверили на компетентность.",
-  },
-  {
-    q: "Сколько стоят услуги?",
-    a: "Первая консультация — это знакомство, на котором вы обсудите цели и план. Цены на услуги менторы устанавливают сами, и вы видите полную стоимость заранее. Никаких скрытых платежей.",
-  },
-  {
-    q: "Как проходит консультация?",
-    a: "Абитуриент отправляет ментору запрос на консультацию. Ментор может принять или отклонить запрос — например, если у него уже много активных абитуриентов. После принятия открывается чат прямо на платформе, и всё общение ведётся только внутри Connectus.\n\nВажно про безопасность: все переговоры должны оставаться на платформе. Если вы обменялись личными контактами (телефон, мессенджеры, email) и работали вне Connectus — мы не несём ответственности за качество работы и не сможем помочь в случае спора.",
-  },
-  {
-    q: "Что если ментор не подошёл?",
-    a: "Первая консультация — это знакомство. Если вы поняли, что ментор не подходит, вы можете выбрать другого.",
-  },
-  {
-    q: "Зачем Connectus родителям?",
-    a: "Поступление за рубеж — это сотни деталей: выбор страны и университета, экзамены, эссе, дедлайны, гранты, виза. Разобраться во всём этом самим почти нереально, а ошибка может стоить года или мечты ребёнка.\n\nConnectus даёт вам прямой доступ к тем, кто уже прошёл этот путь — выпускникам MIT, Oxbridge, TU Munich, стипендиатам Болашак и Chevening. Они расскажут как это работает на самом деле, помогут составить план под вашего ребёнка и сэкономят вам месяцы поиска информации в интернете.",
-  },
-]
-
 export default async function HomePage() {
   const allMentors = await safeFetchMentors()
   // Landing-only filter: only surface mentors who are currently
@@ -134,12 +85,7 @@ export default async function HomePage() {
     <main className="bg-white">
       <MentorRedirect />
       <LandingHero mentors={mentors} />
-      <LandingSections
-        steps={STEPS}
-        categories={categories}
-        faqs={FAQS}
-        mentors={mentors}
-      />
+      <LandingSections categories={categories} mentors={mentors} />
     </main>
   )
 }
