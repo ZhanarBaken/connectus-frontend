@@ -164,6 +164,7 @@ export default function SettingsPage() {
     const tgToken = params.get("tg_link_token")
     if (tgToken) {
       setLinkingAction("telegram")
+      setMergeConflict(false)
       telegramLinkFinalize(tgToken)
         .then(() => {
           setSuccess("Telegram привязан!")

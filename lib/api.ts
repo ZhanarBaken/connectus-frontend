@@ -862,7 +862,7 @@ export async function setEmail(email: string): Promise<void> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     if (err.code === "email_taken_link_telegram") {
-      throw new EmailTakenError(err.email || err.detail || "Эта почта уже привязана к другому аккаунту")
+      throw new EmailTakenError(err.email?.[0] || err.email || err.detail || "Эта почта уже привязана к другому аккаунту")
     }
     throw new Error(err.email?.[0] || err.email || err.detail || "Не удалось установить email")
   }
@@ -879,7 +879,7 @@ export async function updateUnverifiedEmail(currentEmail: string, newEmail: stri
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.new_email || err.detail || "Не удалось изменить email")
+    throw new Error(err.new_email?.[0] || err.new_email || err.detail || "Не удалось изменить email")
   }
 }
 

@@ -237,14 +237,14 @@ export default function TelegramAutoLogin() {
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => { setPendingRole("student"); setConsentOpen(true) }}
-                disabled={submittingRole !== null}
+                disabled={submittingRole !== null || consentOpen}
                 className="bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
                 {submittingRole === "student" ? "Создаём..." : "Я абитуриент или родитель"}
               </button>
               <button
                 onClick={() => { setPendingRole("mentor"); setConsentOpen(true) }}
-                disabled={submittingRole !== null}
+                disabled={submittingRole !== null || consentOpen}
                 className="border border-gray-300 text-gray-700 py-4 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 {submittingRole === "mentor" ? "Создаём..." : "Я ментор"}
