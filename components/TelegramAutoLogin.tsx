@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { telegramMiniAppLogin, fetchMe } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
+import DataConsentModal from "@/components/DataConsentModal"
 import type { Role } from "@/types"
 
 
@@ -87,6 +88,8 @@ export default function TelegramAutoLogin() {
   })
   const [submittingRole, setSubmittingRole] = useState<Role | null>(null)
   const [error, setError] = useState("")
+  const [pendingRole, setPendingRole] = useState<Role | null>(null)
+  const [consentOpen, setConsentOpen] = useState(false)
   // Guard against re-running the initial auto-login when state updates
   // trigger a re-render mid-flight. A ref instead of state because
   // nothing in the UI depends on this flag.
@@ -202,6 +205,19 @@ export default function TelegramAutoLogin() {
   // Both checking and needsRole share the same full-screen frame so
   // there is no flash between them — only the inner content swaps.
   return (
+    <>
+    <DataConsentModal
+      open={consentOpen}
+      onConsent={() => {
+        setConsentOpen(false)
+        if (pendingRole) void handlePickRole(pendingRole)
+        setPendingRole(null)
+      }}
+      onCancel={() => {
+        setConsentOpen(false)
+        setPendingRole(null)
+      }}
+    />
     <div className="fixed inset-0 z-50 bg-[#fafafa] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {stage === "checking" ? (
@@ -220,14 +236,14 @@ export default function TelegramAutoLogin() {
 
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => handlePickRole("student")}
+                onClick={() => { setPendingRole("student"); setConsentOpen(true) }}
                 disabled={submittingRole !== null}
                 className="bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
                 {submittingRole === "student" ? "Создаём..." : "Я абитуриент или родитель"}
               </button>
               <button
-                onClick={() => handlePickRole("mentor")}
+                onClick={() => { setPendingRole("mentor"); setConsentOpen(true) }}
                 disabled={submittingRole !== null}
                 className="border border-gray-300 text-gray-700 py-4 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
@@ -249,5 +265,6 @@ export default function TelegramAutoLogin() {
         )}
       </div>
     </div>
+    </>
   )
 }
