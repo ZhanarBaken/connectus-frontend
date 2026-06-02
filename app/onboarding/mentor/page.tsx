@@ -1,8 +1,14 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { authFetch, fetchMe, fetchMentorProfile, updateMentorProfile } from "@/lib/api"
+import {
+  authFetch,
+  fetchMe,
+  fetchMentorProfile,
+  updateMentorProfile,
+  submitMentorProfile,
+} from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { ExpertiseArea } from "@/types"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
@@ -12,22 +18,28 @@ import Logo from "@/components/Logo"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-const STEPS = ["Фото", "О себе", "Университет", "Экспертиза", "Документы"]
+type Tab = "photo" | "about" | "education" | "expertise" | "documents"
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "photo",     label: "Фото"       },
+  { id: "about",     label: "О себе"     },
+  { id: "education", label: "Образование"},
+  { id: "expertise", label: "Экспертиза" },
+  { id: "documents", label: "Документы"  },
+]
 
 const EXPERTISE_OPTIONS = [
-  { value: "admission", label: "Поступление", icon: "flag" },
-  { value: "scholarships", label: "Стипендии", icon: "military_tech" },
-  { value: "documents", label: "Документы", icon: "article" },
-  { value: "visa", label: "Виза", icon: "flight_takeoff" },
+  { value: "admission",    label: "Поступление", icon: "flag"            },
+  { value: "scholarships", label: "Стипендии",   icon: "military_tech"   },
+  { value: "documents",    label: "Документы",   icon: "article"         },
+  { value: "visa",         label: "Виза",        icon: "flight_takeoff"  },
 ]
 
 const DOCUMENT_KIND_OPTIONS = [
-  // Паспорт / виза убраны — они не подтверждают факт поступления.
-  // Существующие документы с этими kind конвертируются миграцией в `other`.
-  { value: "diploma", label: "Диплом" },
-  { value: "enrollment_certificate", label: "Справка о зачислении" },
-  { value: "university_id", label: "Студенческий билет" },
-  { value: "other", label: "Другое" },
+  { value: "diploma",               label: "Диплом"                  },
+  { value: "enrollment_certificate",label: "Справка о зачислении"    },
+  { value: "university_id",         label: "Студенческий билет"      },
+  { value: "other",                 label: "Другое"                  },
 ]
 
 interface OnboardingDocument {
@@ -44,64 +56,55 @@ function formatDocSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
+const inputClass =
+  "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
 export default function MentorOnboarding() {
   const router = useRouter()
-  const [step, setStep] = useState(1)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-  // Until we've checked that the user passed the identity gate
-  // (verified email + linked Telegram), don't render the form —
-  // otherwise a returning user could land here mid-flow without
-  // satisfying the backend submit requirements.
-  const [identityReady, setIdentityReady] = useState(false)
+  const [ready, setReady]     = useState(false)
+  const [tab, setTab]         = useState<Tab>("photo")
+  const [saved, setSaved]     = useState(false)
+  const [saveError, setSaveError] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<Record<string, string>>({})
+  const [submitted, setSubmitted] = useState(false)
 
-  // Step 1 — Photo
+  // Photo
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
-  const [pickedFile, setPickedFile] = useState<File | null>(null)
+  const [pickedFile, setPickedFile]     = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // Step 2 — Bio
+  // About
   const [fullName, setFullName] = useState("")
-  const [bio, setBio] = useState("")
-  const [phone, setPhone] = useState("")
+  const [bio, setBio]           = useState("")
+  const [phone, setPhone]       = useState("")
 
-  // Step 3 — University
-  const [countries, setCountries] = useState<string[]>([])
-  const [pickerOpen, setPickerOpen] = useState(false)
-
-  const toggleCountry = (c: string) => {
-    setCountries((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])
-  }
-  const [school, setSchool] = useState("")
-  const [major, setMajor] = useState("")
-  const [grant, setGrant] = useState("")
-  const [gpa, setGpa] = useState("")
+  // Education
+  const [countries, setCountries]     = useState<string[]>([])
+  const [pickerOpen, setPickerOpen]   = useState(false)
+  const [school, setSchool]           = useState("")
+  const [major, setMajor]             = useState("")
+  const [grant, setGrant]             = useState("")
+  const [gpa, setGpa]                 = useState("")
   const [examResults, setExamResults] = useState("")
 
-  // Step 4 — Expertise
+  // Expertise
   const [expertise, setExpertise] = useState<string[]>([])
 
-  const toggleExpertise = (val: string) => {
-    setExpertise((prev) => prev.includes(val) ? prev.filter((e) => e !== val) : [...prev, val])
-  }
-
-  // Step 5 — Documents
-  const [documents, setDocuments] = useState<OnboardingDocument[]>([])
-  const [docKind, setDocKind] = useState("diploma")
-  const [docFile, setDocFile] = useState<File | null>(null)
+  // Documents
+  const [documents, setDocuments]   = useState<OnboardingDocument[]>([])
+  const [docKind, setDocKind]       = useState("diploma")
+  const [docFile, setDocFile]       = useState<File | null>(null)
   const [uploadingDoc, setUploadingDoc] = useState(false)
-  const [docError, setDocError] = useState("")
+  const [docError, setDocError]     = useState("")
   const docInputRef = useRef<HTMLInputElement>(null)
 
+  // ─── Load profile on mount ─────────────────────────────────────
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : ""
-    if (!token) {
-      router.replace("/auth/login")
-      return
-    }
+    if (!token) { router.replace("/auth/login"); return }
+
     fetchMe(token)
       .then(async (me) => {
         if (me.role !== "mentor") {
@@ -112,146 +115,53 @@ export default function MentorOnboarding() {
           router.replace("/onboarding/mentor/identity")
           return
         }
-        // Resume mid-flow: подтягиваем всё что уже было сохранено в БД,
-        // прокидываем в state, и определяем с какого шага начинать —
-        // первый незаполненный. Так мент, бросивший wizard на половине
-        // и зашедший снова из Telegram, не теряет прогресс.
         try {
-          const profile = await fetchMentorProfile()
-          setProfilePhoto(profile.profile_photo ?? null)
-          setFullName(profile.full_name ?? "")
-          setBio(profile.detailed_bio ?? "")
-          setPhone(profile.phone ?? "")
-          setSchool(profile.school_or_university ?? "")
-          setMajor(profile.major ?? "")
-          setGrant(profile.grant_or_scholarship ?? "")
-          setGpa(profile.gpa ?? "")
-          setExamResults(profile.exam_results ?? "")
-          setCountries((profile.countries ?? []).map((c) => c.country))
-          setExpertise((profile.expertise_areas ?? []).map((e) => e.area))
-
-          // Документы тянем чтобы понять, прошёл ли мент шаг 5.
-          let docsList: OnboardingDocument[] = []
-          try {
-            const docsRes = await authFetch(`${BASE_URL}/mentors/documents/`)
-            if (docsRes.ok) {
-              const docsData = await docsRes.json()
-              docsList = Array.isArray(docsData) ? docsData : docsData.results ?? []
-              setDocuments(docsList)
-            }
-          } catch {
-            // Non-fatal — мент в худшем случае увидит wizard с шага 5
-            // и догрузит документы заново.
-          }
-
-          // Определяем стартовый шаг как первый незавершённый.
-          const step1Done = Boolean(profile.profile_photo)
-          const step2Done = Boolean(
-            (profile.full_name ?? "").trim()
-              && (profile.detailed_bio ?? "").trim()
-              && (profile.phone ?? "").trim(),
-          )
-          const step3Done = Boolean(
-            (profile.school_or_university ?? "").trim()
-              && (profile.major ?? "").trim()
-              && (profile.grant_or_scholarship ?? "").trim()
-              && (profile.gpa ?? "").trim()
-              && (profile.exam_results ?? "").trim()
-              && (profile.countries?.length ?? 0) > 0,
-          )
-          const step4Done = (profile.expertise_areas?.length ?? 0) > 0
-          const step5Done = docsList.length > 0
-
-          // Все 5 шагов выполнены — wizard'у больше нечего делать,
-          // отправляем на дашборд (там submit-кнопка).
-          if (step1Done && step2Done && step3Done && step4Done && step5Done) {
+          const p = await fetchMentorProfile()
+          if (p.is_submitted || p.is_approved) {
             router.replace("/mentor/dashboard")
             return
           }
-
-          let initial = 1
-          if (step1Done) initial = 2
-          if (step1Done && step2Done) initial = 3
-          if (step1Done && step2Done && step3Done) initial = 4
-          if (step1Done && step2Done && step3Done && step4Done) initial = 5
-          setStep(initial)
-        } catch {
-          // Non-fatal — wizard стартует со шага 1 с пустыми полями.
-        }
-        setIdentityReady(true)
+          setProfilePhoto(p.profile_photo ?? null)
+          setFullName(p.full_name ?? "")
+          setBio(p.detailed_bio ?? "")
+          setPhone(p.phone ?? "")
+          setSchool(p.school_or_university ?? "")
+          setMajor(p.major ?? "")
+          setGrant(p.grant_or_scholarship ?? "")
+          setGpa(p.gpa ?? "")
+          setExamResults(p.exam_results ?? "")
+          setCountries((p.countries ?? []).map((c: { country: string }) => c.country))
+          setExpertise((p.expertise_areas ?? []).map((e: { area: string }) => e.area))
+        } catch { /* start fresh */ }
+        try {
+          const res = await authFetch(`${BASE_URL}/mentors/documents/`)
+          if (res.ok) {
+            const d = await res.json()
+            setDocuments(Array.isArray(d) ? d : d.results ?? [])
+          }
+        } catch { /* non-fatal */ }
+        setReady(true)
       })
       .catch(() => router.replace("/auth/login"))
   }, [router])
 
-  const uploadCroppedPhoto = async (blob: Blob) => {
-    setUploadingPhoto(true)
-    setError("")
+  // ─── Auto-save helpers ─────────────────────────────────────────
+  const flashSaved = useCallback(() => {
+    setSaved(true)
+    setSaveError("")
+    setTimeout(() => setSaved(false), 1500)
+  }, [])
+
+  const saveAbout = useCallback(async () => {
     try {
-      const formData = new FormData()
-      formData.append("profile_photo", blob, "avatar.jpg")
-      const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, {
-        method: "PATCH",
-        body: formData,
-      })
-      if (!res.ok) {
-        let msg = "Не удалось загрузить фото"
-        try {
-          const err = await res.json()
-          if (err.profile_photo) msg = Array.isArray(err.profile_photo) ? err.profile_photo[0] : err.profile_photo
-          else if (err.detail) msg = err.detail
-        } catch {}
-        throw new Error(msg)
-      }
-      const data = await res.json()
-      setProfilePhoto(data.profile_photo ?? null)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
-    } finally {
-      setUploadingPhoto(false)
+      await updateMentorProfile({ full_name: fullName, detailed_bio: bio, phone })
+      flashSaved()
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
     }
-  }
+  }, [fullName, bio, phone, flashSaved])
 
-  const handleSaveProfileFields = async () => {
-    // Сохраняем все основные поля одним PATCH'ем (вызывается на шаге
-    // 4 → 5 и при финальном «Отправить профиль»). Шаги 2 и 3 имеют
-    // свои узкие save-функции ниже — чтобы прогресс прилипал по ходу,
-    // а не только в конце.
-    await updateMentorProfile({
-      full_name: fullName,
-      detailed_bio: bio,
-      phone,
-      countries: countries.map((c) => ({ country: c })),
-      school_or_university: school,
-      major,
-      grant_or_scholarship: grant,
-      gpa,
-      exam_results: examResults,
-      expertise_areas: expertise.map((area) => ({ area: area as ExpertiseArea })),
-    })
-  }
-
-  const handleNextFromStep2 = async () => {
-    setSaving(true)
-    setError("")
-    try {
-      // Только поля шага 2 — не трогаем countries/expertise чтобы
-      // не угрожать strip-protection на ещё не заполненных списках.
-      await updateMentorProfile({
-        full_name: fullName,
-        detailed_bio: bio,
-        phone,
-      })
-      setStep(3)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось сохранить")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleNextFromStep3 = async () => {
-    setSaving(true)
-    setError("")
+  const saveEducation = useCallback(async () => {
     try {
       await updateMentorProfile({
         countries: countries.map((c) => ({ country: c })),
@@ -261,68 +171,77 @@ export default function MentorOnboarding() {
         gpa,
         exam_results: examResults,
       })
-      setStep(4)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось сохранить")
-    } finally {
-      setSaving(false)
+      flashSaved()
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
     }
-  }
+  }, [countries, school, major, grant, gpa, examResults, flashSaved])
 
-  const handleGoToDocuments = async () => {
-    setSaving(true)
-    setError("")
+  const saveExpertise = useCallback(async (areas: string[]) => {
     try {
-      await handleSaveProfileFields()
-      await loadDocuments()
-      setStep(5)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при сохранении")
-    } finally {
-      setSaving(false)
+      await updateMentorProfile({
+        expertise_areas: areas.map((a) => ({ area: a as ExpertiseArea })),
+      })
+      flashSaved()
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
     }
-  }
+  }, [flashSaved])
 
-  const loadDocuments = async () => {
+  const saveCountries = useCallback(async (next: string[]) => {
     try {
-      const res = await authFetch(`${BASE_URL}/mentors/documents/`)
-      if (res.ok) {
-        const data = await res.json()
-        setDocuments(Array.isArray(data) ? data : data.results ?? [])
+      await updateMentorProfile({ countries: next.map((c) => ({ country: c })) })
+      flashSaved()
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
+    }
+  }, [flashSaved])
+
+  // ─── Photo upload ──────────────────────────────────────────────
+  const uploadCroppedPhoto = async (blob: Blob) => {
+    setUploadingPhoto(true)
+    setSaveError("")
+    try {
+      const fd = new FormData()
+      fd.append("profile_photo", blob, "avatar.jpg")
+      const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, { method: "PATCH", body: fd })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(
+          err.profile_photo?.[0] || err.profile_photo || err.detail || "Не удалось загрузить фото"
+        )
       }
-    } catch {
-      // Non-fatal: empty list, mentor can still upload.
+      const data = await res.json()
+      setProfilePhoto(data.profile_photo ?? null)
+      flashSaved()
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
+    } finally {
+      setUploadingPhoto(false)
     }
   }
 
+  // ─── Document upload / delete ──────────────────────────────────
   const handleUploadDocument = async () => {
     if (!docFile) return
-    if (docFile.size > 15 * 1024 * 1024) {
-      setDocError("Файл слишком большой. Максимум 15 МБ.")
-      return
-    }
+    if (docFile.size > 15 * 1024 * 1024) { setDocError("Максимум 15 МБ"); return }
     setUploadingDoc(true)
     setDocError("")
     try {
-      const formData = new FormData()
-      formData.append("file", docFile)
-      formData.append("kind", docKind)
-      const res = await authFetch(`${BASE_URL}/mentors/documents/`, {
-        method: "POST",
-        body: formData,
-      })
+      const fd = new FormData()
+      fd.append("file", docFile)
+      fd.append("kind", docKind)
+      const res = await authFetch(`${BASE_URL}/mentors/documents/`, { method: "POST", body: fd })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         const first = Object.values(err)[0]
-        throw new Error(
-          Array.isArray(first) ? first[0] : err.detail || String(first || "Ошибка загрузки"),
-        )
+        throw new Error(Array.isArray(first) ? first[0] : err.detail || String(first || "Ошибка"))
       }
       const doc: OnboardingDocument = await res.json()
       setDocuments((prev) => [doc, ...prev])
       setDocFile(null)
       if (docInputRef.current) docInputRef.current.value = ""
-    } catch (e: unknown) {
+    } catch (e) {
       setDocError(e instanceof Error ? e.message : "Ошибка загрузки")
     } finally {
       setUploadingDoc(false)
@@ -332,30 +251,67 @@ export default function MentorOnboarding() {
   const handleDeleteDocument = async (id: number) => {
     try {
       const res = await authFetch(`${BASE_URL}/mentors/documents/${id}/`, { method: "DELETE" })
-      if (res.ok) {
-        setDocuments((prev) => prev.filter((d) => d.id !== id))
-      }
-    } catch {
-      // Silent — list stays as-is, mentor can retry.
-    }
+      if (res.ok) setDocuments((prev) => prev.filter((d) => d.id !== id))
+    } catch { /* silent */ }
   }
 
-  const handleFinish = async () => {
-    setSaving(true)
-    setError("")
+  // ─── Submit ────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    setSubmitError({})
     try {
-      // На шаге 5 профиль уже сохранён в handleGoToDocuments — здесь
-      // только переход. Если каким-то путём дошли сюда без сохранения
-      // (skip-link / dev), updateMentorProfile повторно безопасен.
-      await handleSaveProfileFields()
-      router.push("/mentor/dashboard")
+      // Save all text fields first so backend sees latest values.
+      await updateMentorProfile({
+        full_name: fullName,
+        detailed_bio: bio,
+        phone,
+        countries: countries.map((c) => ({ country: c })),
+        school_or_university: school,
+        major,
+        grant_or_scholarship: grant,
+        gpa,
+        exam_results: examResults,
+        expertise_areas: expertise.map((a) => ({ area: a as ExpertiseArea })),
+      })
+      await submitMentorProfile()
+      setSubmitted(true)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при сохранении")
-      setSaving(false)
+      // Backend returns field-level errors on validation failure.
+      if (e instanceof Error) {
+        try {
+          const parsed = JSON.parse(e.message)
+          if (typeof parsed === "object" && parsed !== null) {
+            setSubmitError(parsed as Record<string, string>)
+            // Jump to the first tab that has an error.
+            const errorTab = tabForError(parsed)
+            if (errorTab) setTab(errorTab)
+          } else {
+            setSubmitError({ detail: e.message })
+          }
+        } catch {
+          setSubmitError({ detail: e.message })
+        }
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  if (!identityReady) {
+  // ─── Completion checks ─────────────────────────────────────────
+  const tabDone: Record<Tab, boolean> = {
+    photo:     Boolean(profilePhoto),
+    about:     Boolean(fullName.trim() && bio.trim() && phone.trim()),
+    education: Boolean(
+      countries.length > 0 && school.trim() && major.trim()
+      && grant.trim() && gpa.trim() && examResults.trim()
+    ),
+    expertise: expertise.length > 0,
+    documents: documents.length > 0,
+  }
+  const allDone = Object.values(tabDone).every(Boolean)
+
+  // ─── Loading ───────────────────────────────────────────────────
+  if (!ready) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
@@ -363,63 +319,97 @@ export default function MentorOnboarding() {
     )
   }
 
-  return (
-    <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 justify-center mb-2">
-            <Logo size={32} className="text-gray-900" />
-            <span className="text-xl font-bold text-gray-900">Connectus</span>
+  // ─── Success ───────────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+            <Icon name="check_circle" size={36} className="text-emerald-600" filled />
           </div>
-          <p className="text-gray-500 text-sm">Создай профиль — абитуриенты увидят тебя после проверки</p>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Профиль отправлен на проверку</h1>
+          <p className="text-gray-500 text-sm mb-6">
+            Мы проверим его в течение 48 часов и опубликуем на платформе. Следи за статусом в личном кабинете.
+          </p>
+          <button
+            onClick={() => router.push("/mentor/dashboard")}
+            className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors text-sm"
+          >
+            Перейти в кабинет →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#fafafa] px-4 py-10">
+      <div className="w-full max-w-lg mx-auto">
+
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 justify-center mb-1">
+            <Logo size={28} className="text-gray-900" />
+            <span className="text-lg font-bold text-gray-900">Connectus</span>
+          </div>
+          <p className="text-gray-400 text-xs">Заполни профиль — абитуриенты увидят тебя после проверки</p>
         </div>
 
-        {/* Steps */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {STEPS.map((label, i) => {
-            const s = i + 1
-            return (
-              <div key={label} className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                  step === s ? "bg-gray-900 text-white" : step > s ? "bg-gray-200 text-gray-600" : "bg-gray-100 text-gray-400"
-                }`}>
-                  {step > s ? "✓" : s}. {label}
-                </div>
-                {i < STEPS.length - 1 && <div className={`w-6 h-0.5 ${step > s ? "bg-gray-300" : "bg-gray-100"}`} />}
-              </div>
-            )
-          })}
+        {/* Tabs */}
+        <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-6 overflow-x-auto">
+          {TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1 py-2 px-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                tab === id
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tabDone[id] && (
+                <Icon name="check_circle" size={13} className="text-emerald-500 flex-shrink-0" filled />
+              )}
+              {label}
+            </button>
+          ))}
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+        {/* Save status */}
+        <div className="h-5 mb-2 text-center">
+          {saved && <p className="text-xs text-emerald-600">Сохранено ✓</p>}
+          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+        </div>
 
-          {/* Step 1 — Photo (required) */}
-          {step === 1 && (
+        {/* Tab content */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
+
+          {/* ── ФОТО ── */}
+          {tab === "photo" && (
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Загрузи фото</h1>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Фото профиля</h2>
               <p className="text-gray-400 text-sm mb-6">
-                Абитуриенты охотнее доверяют менторам с реальной фотографией. Без фото профиль нельзя отправить на проверку.
+                Обязательное поле. Абитуриенты охотнее доверяют менторам с реальной фотографией.
               </p>
-              <div className="flex flex-col items-center mb-6">
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      if (file.size > 5 * 1024 * 1024) {
-                        setError("Фото не должно превышать 5 МБ")
-                      } else {
-                        setError("")
-                        setPickedFile(file)
-                      }
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                      setSaveError("Фото не должно превышать 5 МБ")
+                    } else {
+                      setSaveError("")
+                      setPickedFile(file)
                     }
-                    e.target.value = ""
-                  }}
-                />
+                  }
+                  e.target.value = ""
+                }}
+              />
+              <div className="flex flex-col items-center">
                 <button
                   type="button"
                   onClick={() => photoInputRef.current?.click()}
@@ -446,297 +436,251 @@ export default function MentorOnboarding() {
                   )}
                 </button>
                 <p className="text-xs text-gray-400 mt-3">
-                  {profilePhoto ? "Нажмите чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                  {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
                 </p>
               </div>
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">{error}</div>
-              )}
-              <button
-                onClick={() => setStep(2)}
-                disabled={!profilePhoto || uploadingPhoto}
-                className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-              >
-                Продолжить →
-              </button>
             </div>
           )}
 
-          {/* Step 2 — Basic info */}
-          {step === 2 && (
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Расскажи о себе</h1>
-              <p className="text-gray-400 text-sm mb-6">Абитуриенты увидят это на твоей странице</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Полное имя</label>
-                  <input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Назгуль Ахметова"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    О себе</label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    rows={4}
-                    placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю абитуриентам составить план поступления, написать эссе и подать заявки в топ университеты..."
-                    className={`${inputClass} resize-none`}
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Минимум 2-3 предложения — это влияет на доверие абитуриентов</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Телефон</label>
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    type="tel"
-                    placeholder="+7 777 123 45 67"
-                    className={inputClass}
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Резервный канал связи для команды Connectus. Абитуриенты не видят.
-                  </p>
-                </div>
+          {/* ── О СЕБЕ ── */}
+          {tab === "about" && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">О себе</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Полное имя <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  onBlur={saveAbout}
+                  placeholder="Назгуль Ахметова"
+                  className={inputClass}
+                />
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
-                >
-                  ← Назад
-                </button>
-                <button
-                  onClick={handleNextFromStep2}
-                  disabled={saving || !fullName.trim() || !bio.trim() || !phone.trim()}
-                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-                >
-                  {saving ? "Сохраняем..." : "Продолжить →"}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  О себе <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  onBlur={saveAbout}
+                  rows={4}
+                  placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю абитуриентам составить план поступления, написать эссе и подать заявки в топ университеты..."
+                  className={`${inputClass} resize-none`}
+                />
+                <p className="text-xs text-gray-400 mt-1">Минимум 2–3 предложения — это влияет на доверие</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Телефон <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onBlur={saveAbout}
+                  type="tel"
+                  placeholder="+7 777 123 45 67"
+                  className={inputClass}
+                />
+                <p className="text-xs text-gray-400 mt-1">Резервный канал для команды Connectus. Абитуриенты не видят.</p>
               </div>
             </div>
           )}
 
-          {/* Step 3 — University */}
-          {step === 3 && (
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Твой университет</h1>
-              <p className="text-gray-400 text-sm mb-6">Это главное доказательство твоей экспертизы</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Страны{" "}
-                    <span className="text-gray-400 font-normal">(можно несколько)</span>
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {POPULAR_COUNTRY_CODES.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => toggleCountry(c)}
-                        className={`px-2 py-2 rounded-xl text-xs border-2 font-medium transition-all text-left ${
-                          countries.includes(c)
-                            ? "border-gray-900 bg-gray-50 text-gray-900"
-                            : "border-gray-100 text-gray-600 hover:border-gray-200"
-                        }`}
-                      >
-                        {countries.includes(c) && <span className="mr-1">✓</span>}
-                        {countryFlag(c)} {countryLabel(c)}
-                      </button>
-                    ))}
+          {/* ── ОБРАЗОВАНИЕ ── */}
+          {tab === "education" && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Образование</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Страны <span className="text-red-400">*</span>{" "}
+                  <span className="text-gray-400 font-normal">(можно несколько)</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {POPULAR_COUNTRY_CODES.map((c) => (
                     <button
+                      key={c}
                       type="button"
-                      onClick={() => setPickerOpen(true)}
-                      className="col-span-3 px-2 py-2 rounded-xl text-xs border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 font-medium transition-all"
+                      onClick={() => {
+                        const next = countries.includes(c)
+                          ? countries.filter((x) => x !== c)
+                          : [...countries, c]
+                        setCountries(next)
+                        void saveCountries(next)
+                      }}
+                      className={`px-2 py-2 rounded-xl text-xs border-2 font-medium transition-all text-left ${
+                        countries.includes(c)
+                          ? "border-gray-900 bg-gray-50 text-gray-900"
+                          : "border-gray-100 text-gray-600 hover:border-gray-200"
+                      }`}
                     >
-                      + Другая страна
+                      {countries.includes(c) && <span className="mr-1">✓</span>}
+                      {countryFlag(c)} {countryLabel(c)}
                     </button>
-                  </div>
-                  {/* Selected exotic countries (not in the popular grid) */}
-                  {countries.filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never)).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {countries
-                        .filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never))
-                        .map((c) => (
-                          <span
-                            key={c}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border-2 border-gray-900 text-xs font-medium text-gray-900"
-                          >
-                            {countryFlag(c)} {countryLabel(c)}
-                            <button
-                              type="button"
-                              onClick={() => toggleCountry(c)}
-                              aria-label={`Убрать ${countryLabel(c)}`}
-                              className="ml-0.5 text-gray-400 hover:text-red-500"
-                            >
-                              ✕
-                            </button>
-                          </span>
-                        ))}
-                    </div>
-                  )}
-                  <CountryPickerModal
-                    open={pickerOpen}
-                    selected={countries}
-                    hiddenCodes={[...POPULAR_COUNTRY_CODES]}
-                    onSelect={(code) => toggleCountry(code)}
-                    onClose={() => setPickerOpen(false)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Университет</label>
-                  <input
-                    value={school}
-                    onChange={(e) => setSchool(e.target.value)}
-                    placeholder="MIT, UCL, TU Munich..."
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Специальность</label>
-                  <input
-                    value={major}
-                    onChange={(e) => setMajor(e.target.value)}
-                    placeholder="Computer Science, Economics..."
-                    className={inputClass}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Грант / стипендия</label>
-                    <input
-                      value={grant}
-                      onChange={(e) => setGrant(e.target.value)}
-                      placeholder="Болашак, Chevening..."
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      GPA</label>
-                    <input
-                      value={gpa}
-                      onChange={(e) => setGpa(e.target.value)}
-                      placeholder="3.8 / 4.0"
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Результаты экзаменов</label>
-                  <input
-                    value={examResults}
-                    onChange={(e) => setExamResults(e.target.value)}
-                    placeholder="IELTS 7.5, SAT 1480..."
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
-                >
-                  ← Назад
-                </button>
-                <button
-                  onClick={handleNextFromStep3}
-                  disabled={
-                    saving
-                    || countries.length === 0
-                    || !school.trim()
-                    || !major.trim()
-                    || !grant.trim()
-                    || !gpa.trim()
-                    || !examResults.trim()
-                  }
-                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-                >
-                  {saving ? "Сохраняем..." : "Продолжить →"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4 — Expertise */}
-          {step === 4 && (
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Чем ты помогаешь?</h1>
-              <p className="text-gray-400 text-sm mb-6">Выбери свои направления — можно несколько</p>
-
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {EXPERTISE_OPTIONS.map((opt) => (
+                  ))}
                   <button
-                    key={opt.value}
                     type="button"
-                    onClick={() => toggleExpertise(opt.value)}
-                    className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
-                      expertise.includes(opt.value)
-                        ? "border-gray-900 bg-gray-50"
-                        : "border-gray-100 hover:border-gray-200"
-                    }`}
+                    onClick={() => setPickerOpen(true)}
+                    className="col-span-3 px-2 py-2 rounded-xl text-xs border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 font-medium transition-all"
                   >
-                    <Icon
-                      name={opt.icon}
-                      size={24}
-                      filled={expertise.includes(opt.value)}
-                      className={expertise.includes(opt.value) ? "text-gray-900" : "text-gray-400"}
-                    />
-                    <span className={`text-sm font-medium ${expertise.includes(opt.value) ? "text-gray-900" : "text-gray-700"}`}>
-                      {opt.label}
-                    </span>
+                    + Другая страна
                   </button>
-                ))}
+                </div>
+                {countries.filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never)).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {countries
+                      .filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never))
+                      .map((c) => (
+                        <span
+                          key={c}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border-2 border-gray-900 text-xs font-medium text-gray-900"
+                        >
+                          {countryFlag(c)} {countryLabel(c)}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = countries.filter((x) => x !== c)
+                              setCountries(next)
+                              void saveCountries(next)
+                            }}
+                            aria-label={`Убрать ${countryLabel(c)}`}
+                            className="ml-0.5 text-gray-400 hover:text-red-500"
+                          >✕</button>
+                        </span>
+                      ))}
+                  </div>
+                )}
+                <CountryPickerModal
+                  open={pickerOpen}
+                  selected={countries}
+                  hiddenCodes={[...POPULAR_COUNTRY_CODES]}
+                  onSelect={(code) => {
+                    const next = countries.includes(code)
+                      ? countries.filter((x) => x !== code)
+                      : [...countries, code]
+                    setCountries(next)
+                    void saveCountries(next)
+                  }}
+                  onClose={() => setPickerOpen(false)}
+                />
               </div>
-
-              <div className="bg-gray-100 rounded-xl p-4 mb-6">
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  Последний шаг — документы для проверки. Мы верифицируем профиль в течение <strong>48 часов</strong> и опубликуем на платформе.
-                </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Университет <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  onBlur={saveEducation}
+                  placeholder="MIT, UCL, TU Munich..."
+                  className={inputClass}
+                />
               </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">{error}</div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
-                >
-                  ← Назад
-                </button>
-                <button
-                  onClick={handleGoToDocuments}
-                  disabled={saving || expertise.length === 0}
-                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-                >
-                  {saving ? "Сохраняем..." : "Продолжить →"}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Специальность <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={major}
+                  onChange={(e) => setMajor(e.target.value)}
+                  onBlur={saveEducation}
+                  placeholder="Computer Science, Economics..."
+                  className={inputClass}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Грант / стипендия <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    value={grant}
+                    onChange={(e) => setGrant(e.target.value)}
+                    onBlur={saveEducation}
+                    placeholder="Болашак, Chevening..."
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    GPA <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    value={gpa}
+                    onChange={(e) => setGpa(e.target.value)}
+                    onBlur={saveEducation}
+                    placeholder="3.8 / 4.0"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Результаты экзаменов <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={examResults}
+                  onChange={(e) => setExamResults(e.target.value)}
+                  onBlur={saveEducation}
+                  placeholder="IELTS 7.5, SAT 1480..."
+                  className={inputClass}
+                />
               </div>
             </div>
           )}
 
-          {/* Step 5 — Documents */}
-          {step === 5 && (
+          {/* ── ЭКСПЕРТИЗА ── */}
+          {tab === "expertise" && (
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Документы для проверки</h1>
-              <p className="text-gray-400 text-sm mb-6">
-                Загрузи хотя бы один документ, подтверждающий твой статус — диплом, справку о зачислении или паспорт. Это требование платформы; абитуриенты доверяют только верифицированным менторам.
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Экспертиза</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                Выбери чем ты помогаешь <span className="text-red-400">*</span>
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {EXPERTISE_OPTIONS.map((opt) => {
+                  const active = expertise.includes(opt.value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        const next = active
+                          ? expertise.filter((e) => e !== opt.value)
+                          : [...expertise, opt.value]
+                        setExpertise(next)
+                        void saveExpertise(next)
+                      }}
+                      className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                        active ? "border-gray-900 bg-gray-50" : "border-gray-100 hover:border-gray-200"
+                      }`}
+                    >
+                      <Icon
+                        name={opt.icon}
+                        size={24}
+                        filled={active}
+                        className={active ? "text-gray-900" : "text-gray-400"}
+                      />
+                      <span className={`text-sm font-medium ${active ? "text-gray-900" : "text-gray-700"}`}>
+                        {opt.label}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── ДОКУМЕНТЫ ── */}
+          {tab === "documents" && (
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Документы для проверки</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                Загрузи хотя бы один документ, подтверждающий твой статус — диплом, справку о зачислении или студенческий билет. <span className="text-red-400">*</span>
               </p>
 
-              {/* Upload form */}
-              <div className="border border-gray-200 rounded-2xl p-4 mb-5">
+              <div className="border border-gray-200 rounded-2xl p-4 mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Тип документа</label>
                 <select
                   value={docKind}
@@ -750,11 +694,7 @@ export default function MentorOnboarding() {
 
                 <div
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    const dropped = e.dataTransfer.files[0]
-                    if (dropped) setDocFile(dropped)
-                  }}
+                  onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setDocFile(f) }}
                   onClick={() => docInputRef.current?.click()}
                   className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 transition-colors mb-3"
                 >
@@ -763,8 +703,8 @@ export default function MentorOnboarding() {
                     <p className="text-sm text-gray-700 font-medium">{docFile.name} ({formatDocSize(docFile.size)})</p>
                   ) : (
                     <>
-                      <p className="text-sm text-gray-500">Перетащи файл сюда или нажми для выбора</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, JPEG, PNG. Максимум 15 МБ</p>
+                      <p className="text-sm text-gray-500">Перетащи файл или нажми для выбора</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPEG, PNG до 15 МБ</p>
                     </>
                   )}
                 </div>
@@ -775,11 +715,7 @@ export default function MentorOnboarding() {
                   className="hidden"
                   onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
                 />
-
-                {docError && (
-                  <p className="text-xs text-red-500 mb-2">{docError}</p>
-                )}
-
+                {docError && <p className="text-xs text-red-500 mb-2">{docError}</p>}
                 <button
                   onClick={handleUploadDocument}
                   disabled={!docFile || uploadingDoc}
@@ -789,27 +725,22 @@ export default function MentorOnboarding() {
                 </button>
               </div>
 
-              {/* Documents list */}
               {documents.length > 0 && (
-                <div className="space-y-2 mb-6">
+                <div className="space-y-2">
                   {documents.map((doc) => {
-                    const kindLabel = DOCUMENT_KIND_OPTIONS.find((o) => o.value === doc.kind)?.label || doc.kind
+                    const kindLabel = DOCUMENT_KIND_OPTIONS.find((o) => o.value === doc.kind)?.label ?? doc.kind
                     return (
                       <div key={doc.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
                         <Icon name="description" size={20} className="text-gray-400 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {doc.original_filename}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {kindLabel} · {formatDocSize(doc.size_bytes)}
-                          </p>
+                          <p className="text-sm font-medium text-gray-900 truncate">{doc.original_filename}</p>
+                          <p className="text-xs text-gray-400">{kindLabel} · {formatDocSize(doc.size_bytes)}</p>
                         </div>
                         {doc.status !== "approved" && (
                           <button
                             onClick={() => handleDeleteDocument(doc.id)}
                             className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
-                            aria-label="Удалить документ"
+                            aria-label="Удалить"
                           >
                             <Icon name="delete" size={18} />
                           </button>
@@ -819,52 +750,62 @@ export default function MentorOnboarding() {
                   })}
                 </div>
               )}
-
-              <div className="bg-gray-100 rounded-xl p-4 mb-6">
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  После отправки профиль уйдёт на проверку. Мы верифицируем его в течение <strong>48 часов</strong> и опубликуем на платформе.
-                </p>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">{error}</div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(4)}
-                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
-                >
-                  ← Назад
-                </button>
-                <button
-                  onClick={handleFinish}
-                  disabled={saving || documents.length === 0}
-                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-                >
-                  {saving
-                    ? "Отправляем..."
-                    : documents.length === 0
-                      ? "Загрузи хотя бы 1 документ"
-                      : "Отправить профиль →"}
-                </button>
-              </div>
             </div>
           )}
         </div>
-        <AvatarCropperModal
-          file={pickedFile}
-          onClose={() => setPickedFile(null)}
-          onSave={async (blob) => {
-            setPickedFile(null)
-            await uploadCroppedPhoto(blob)
-          }}
-        />
+
+        {/* Submit errors */}
+        {Object.keys(submitError).length > 0 && (
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4">
+            <p className="text-sm font-semibold text-red-700 mb-1">Исправь ошибки перед отправкой:</p>
+            <ul className="text-xs text-red-600 space-y-0.5 list-disc list-inside">
+              {Object.entries(submitError).map(([k, v]) => (
+                <li key={k}>{v}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Submit button */}
+        <button
+          onClick={handleSubmit}
+          disabled={submitting || !allDone}
+          className="w-full bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+        >
+          {submitting
+            ? "Отправляем..."
+            : !allDone
+              ? "Заполни все вкладки чтобы отправить"
+              : "Отправить профиль на проверку →"
+          }
+        </button>
 
         <p className="text-center text-xs text-gray-300 mt-4">
-          Можно изменить позже в личном кабинете
+          Данные сохраняются автоматически · Можно вернуться позже
         </p>
       </div>
+
+      <AvatarCropperModal
+        file={pickedFile}
+        onClose={() => setPickedFile(null)}
+        onSave={async (blob) => {
+          setPickedFile(null)
+          await uploadCroppedPhoto(blob)
+        }}
+      />
     </div>
   )
+}
+
+// Map backend error keys to tabs.
+function tabForError(errors: Record<string, string>): Tab | null {
+  if (errors.profile_photo) return "photo"
+  if (errors.full_name || errors.detailed_bio || errors.phone) return "about"
+  if (
+    errors.countries || errors.school_or_university || errors.major
+    || errors.grant_or_scholarship || errors.gpa || errors.exam_results
+  ) return "education"
+  if (errors.expertise_areas) return "expertise"
+  if (errors.documents) return "documents"
+  return null
 }
