@@ -106,6 +106,7 @@ async function readCooldown(res: Response, fallbackMessage: string): Promise<Coo
 
 export interface PublicSettings {
   dispute_window_hours: number
+  support_url: string
   terms_text: string
   platform_rules_text: string
   data_consent_text: string
@@ -754,6 +755,13 @@ export async function telegramLinkStart(): Promise<{ token: string; bot_url: str
   return res.json()
 }
 
+export class MergeRequiresSupportError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "MergeRequiresSupportError"
+  }
+}
+
 export async function telegramLinkFinalize(token: string): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/telegram/link/finalize/`, {
     method: "POST",
@@ -762,6 +770,9 @@ export async function telegramLinkFinalize(token: string): Promise<void> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
+    if (res.status === 409 && err.code === "merge_requires_support") {
+      throw new MergeRequiresSupportError(err.detail || "Требуется помощь поддержки")
+    }
     throw new Error(err.detail || "Не удалось завершить привязку Telegram")
   }
 }

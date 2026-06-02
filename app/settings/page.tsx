@@ -12,11 +12,12 @@ import {
   setPassword,
   CooldownError,
   formatCooldownShort,
+  MergeRequiresSupportError,
 } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { User } from "@/types"
-import { SUPPORT_EMAIL } from "@/lib/contacts"
+import { SUPPORT_EMAIL, SUPPORT_TELEGRAM_URL } from "@/lib/contacts"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 
@@ -82,6 +83,7 @@ export default function SettingsPage() {
   const [studentIsPublic, setStudentIsPublic] = useState(true)
 
   // Linking UI
+  const [mergeConflict, setMergeConflict] = useState(false)
   const [linkingAction, setLinkingAction] = useState("")
   const [emailInput, setEmailInput] = useState("")
   const [passwordInput, setPasswordInput] = useState("")
@@ -166,10 +168,15 @@ export default function SettingsPage() {
         .then(() => {
           setSuccess("Telegram привязан!")
           loadMe()
-          // Clean URL
           window.history.replaceState({}, "", "/settings")
         })
-        .catch((e) => setError(e instanceof Error ? e.message : "Не удалось привязать Telegram"))
+        .catch((e) => {
+          if (e instanceof MergeRequiresSupportError) {
+            setMergeConflict(true)
+          } else {
+            setError(e instanceof Error ? e.message : "Не удалось привязать Telegram")
+          }
+        })
         .finally(() => setLinkingAction(""))
     }
   }, [])
@@ -351,6 +358,38 @@ export default function SettingsPage() {
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">Настройки</h1>
         <p className="text-sm text-gray-500 mb-8">Управляй аккаунтом и видимостью</p>
+
+        {mergeConflict && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <Icon name="warning" size={20} className="text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-900">Telegram уже привязан к другому аккаунту</p>
+                <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                  У этого Telegram есть другой аккаунт с активностью — чатами или заказами.
+                  Автоматически объединить нельзя. Напишите нам — разберёмся вручную.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <a
+                    href={SUPPORT_TELEGRAM_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+                  >
+                    <Icon name="send" size={14} />
+                    Написать в поддержку
+                  </a>
+                  <button
+                    onClick={() => setMergeConflict(false)}
+                    className="text-xs text-amber-600 hover:text-amber-800 px-3 py-2"
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-6 flex items-center gap-2">
