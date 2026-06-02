@@ -17,6 +17,10 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Connectus — найди ментора для поступления за рубеж",
   description: "Менторы помогают с поступлением, грантами, визами и документами",
+  // Staging should never be indexed by search engines.
+  robots: process.env.NEXT_PUBLIC_IS_STAGING === "true"
+    ? { index: false, follow: false }
+    : undefined,
 }
 
 // Telegram Mini App renders inside a narrow modal that resizes with
