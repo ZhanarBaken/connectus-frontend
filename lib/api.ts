@@ -868,6 +868,21 @@ export async function setEmail(email: string): Promise<void> {
   }
 }
 
+export async function updateUnverifiedEmail(currentEmail: string, newEmail: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/email/update-unverified/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_email: currentEmail, new_email: newEmail }),
+  })
+  if (res.status === 429) {
+    throw await readCooldown(res, "Слишком много попыток, подождите")
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.new_email || err.detail || "Не удалось изменить email")
+  }
+}
+
 export async function changeEmail(email: string): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/email/change/`, {
     method: "POST",

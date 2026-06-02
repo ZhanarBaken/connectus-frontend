@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { register, resendVerification, googleAuth, telegramStart, fetchMe } from "@/lib/api"
+import { register, resendVerification, updateUnverifiedEmail, googleAuth, telegramStart, fetchMe } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { track } from "@/lib/analytics"
@@ -47,6 +47,11 @@ export default function RegisterPage() {
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
   const [resendError, setResendError] = useState("")
+  const [showCorrectEmail, setShowCorrectEmail] = useState(false)
+  const [newEmail, setNewEmail] = useState("")
+  const [correctingEmail, setCorrectingEmail] = useState(false)
+  const [correctEmailError, setCorrectEmailError] = useState("")
+  const [emailCorrected, setEmailCorrected] = useState(false)
   // PD consent — Закон РК №94-V requires an explicit, informed act of
   // consent before we process any personal data. Once given in this
   // session, all three signup flows (email/Google/Telegram) can run
@@ -227,6 +232,23 @@ export default function RegisterPage() {
     }
   }
 
+  const handleCorrectEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCorrectingEmail(true)
+    setCorrectEmailError("")
+    try {
+      await updateUnverifiedEmail(email, newEmail.trim())
+      setEmail(newEmail.trim())
+      setEmailCorrected(true)
+      setShowCorrectEmail(false)
+      setResent(false)
+    } catch (err) {
+      setCorrectEmailError(err instanceof Error ? err.message : "Не удалось изменить email")
+    } finally {
+      setCorrectingEmail(false)
+    }
+  }
+
   // ─── Post-registration screen ──────────────────────────────────
   if (registered) {
     return (
@@ -252,6 +274,9 @@ export default function RegisterPage() {
               Перейди по ссылке из письма, чтобы активировать аккаунт. После этого ты сможешь войти и заполнить профиль.
             </p>
 
+            {emailCorrected && (
+              <p className="text-sm text-emerald-600 font-medium mb-2">Email обновлён, письмо отправлено ✓</p>
+            )}
             {resent ? (
               <p className="text-sm text-emerald-600 font-medium">Письмо отправлено повторно ✓</p>
             ) : (
@@ -265,6 +290,46 @@ export default function RegisterPage() {
             )}
             {resendError && (
               <p className="text-xs text-red-500 mt-2">{resendError}</p>
+            )}
+
+            {!showCorrectEmail ? (
+              <button
+                onClick={() => { setShowCorrectEmail(true); setNewEmail("") }}
+                className="text-xs text-gray-400 hover:text-gray-600 mt-4 transition-colors"
+              >
+                Опечатался в email? Исправить
+              </button>
+            ) : (
+              <form onSubmit={handleCorrectEmail} className="mt-4 flex flex-col gap-2 text-left">
+                <p className="text-xs text-gray-500 font-medium">Укажи правильный email:</p>
+                <input
+                  type="email"
+                  placeholder="correct@example.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  required
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                />
+                {correctEmailError && (
+                  <p className="text-xs text-red-500">{correctEmailError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={correctingEmail || !newEmail.trim()}
+                    className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                  >
+                    {correctingEmail ? "Сохраняем..." : "Сохранить"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowCorrectEmail(false); setCorrectEmailError("") }}
+                    className="text-sm text-gray-500 hover:text-gray-700 px-3"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </form>
             )}
           </div>
 
