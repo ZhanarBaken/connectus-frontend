@@ -251,8 +251,14 @@ export default function MentorOnboarding() {
   const handleDeleteDocument = async (id: number) => {
     try {
       const res = await authFetch(`${BASE_URL}/mentors/documents/${id}/`, { method: "DELETE" })
-      if (res.ok) setDocuments((prev) => prev.filter((d) => d.id !== id))
-    } catch { /* silent */ }
+      if (res.ok) {
+        setDocuments((prev) => prev.filter((d) => d.id !== id))
+      } else {
+        setDocError("Не удалось удалить документ. Попробуй ещё раз.")
+      }
+    } catch {
+      setDocError("Не удалось удалить документ. Попробуй ещё раз.")
+    }
   }
 
   // ─── Submit ────────────────────────────────────────────────────
@@ -282,7 +288,6 @@ export default function MentorOnboarding() {
           const parsed = JSON.parse(e.message)
           if (typeof parsed === "object" && parsed !== null) {
             setSubmitError(parsed as Record<string, string>)
-            // Jump to the first tab that has an error.
             const errorTab = tabForError(parsed)
             if (errorTab) setTab(errorTab)
           } else {
@@ -291,6 +296,8 @@ export default function MentorOnboarding() {
         } catch {
           setSubmitError({ detail: e.message })
         }
+      } else {
+        setSubmitError({ detail: "Неизвестная ошибка при отправке" })
       }
     } finally {
       setSubmitting(false)

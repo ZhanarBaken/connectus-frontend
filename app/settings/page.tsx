@@ -172,6 +172,7 @@ export default function SettingsPage() {
           window.history.replaceState({}, "", "/settings")
         })
         .catch((e) => {
+          window.history.replaceState({}, "", "/settings")
           if (e instanceof MergeRequiresSupportError) {
             setMergeConflict(true)
           } else {
