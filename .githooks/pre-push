@@ -1,0 +1,12 @@
+#!/bin/sh
+# Блокирует прямой пуш в main. Работай в staging, мержи через PR.
+while read local_ref local_sha remote_ref remote_sha; do
+    if [ "$remote_ref" = "refs/heads/main" ]; then
+        echo ""
+        echo "  ОШИБКА: прямой пуш в main запрещён."
+        echo "  Пуш делай в staging, потом создавай PR в main."
+        echo ""
+        exit 1
+    fi
+done
+exit 0
