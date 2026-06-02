@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
+  changeEmail as changeEmailApi,
   fetchMe,
   googleLink,
   resendVerification,
@@ -36,6 +37,7 @@ export default function MentorIdentityPage() {
   const [emailError, setEmailError] = useState("")
   const [emailJustSent, setEmailJustSent] = useState(false)
   const [resending, setResending] = useState(false)
+  const [changingEmail, setChangingEmail] = useState(false)
 
   // Google link state
   const [linkingGoogle, setLinkingGoogle] = useState(false)
@@ -113,6 +115,22 @@ export default function MentorIdentityPage() {
       await reload()
     } catch (e) {
       setEmailError(e instanceof Error ? e.message : "Не удалось сохранить email")
+    } finally {
+      setSavingEmail(false)
+    }
+  }
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingEmail(true)
+    setEmailError("")
+    try {
+      await changeEmailApi(emailInput.trim())
+      setChangingEmail(false)
+      setEmailJustSent(true)
+      await reload()
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Не удалось изменить email")
     } finally {
       setSavingEmail(false)
     }
@@ -223,6 +241,37 @@ export default function MentorIdentityPage() {
             </div>
           </div>
 
+          {/* Has email, not verified, user wants to change it → show change form */}
+          {me.email && !me.email_verified && changingEmail && (
+            <form onSubmit={handleChangeEmail} className="flex flex-col gap-3 mt-4">
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                required
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
+              />
+              {emailError && (
+                <p className="text-xs text-red-500">{emailError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={savingEmail || !emailInput.trim()}
+                className="bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm"
+              >
+                {savingEmail ? "Сохраняем..." : "Сохранить и отправить письмо"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setChangingEmail(false); setEmailError("") }}
+                className="text-gray-500 hover:text-gray-700 text-sm"
+              >
+                Отмена
+              </button>
+            </form>
+          )}
+
           {/* No email at all → Google one-click OR manual email form */}
           {!me.email && (
             <div className="flex flex-col gap-3 mt-4">
@@ -281,7 +330,7 @@ export default function MentorIdentityPage() {
           )}
 
           {/* Has email, not verified → resend + check (+ Google shortcut) */}
-          {me.email && !me.email_verified && (
+          {me.email && !me.email_verified && !changingEmail && (
             <div className="flex flex-col gap-2 mt-4">
               {emailJustSent && (
                 <p className="text-xs text-emerald-600">Письмо отправлено повторно ✓</p>
@@ -328,6 +377,13 @@ export default function MentorIdentityPage() {
               {googleError && (
                 <p className="text-xs text-red-500">{googleError}</p>
               )}
+              <button
+                type="button"
+                onClick={() => { setChangingEmail(true); setEmailInput(""); setEmailError("") }}
+                className="text-gray-500 hover:text-gray-700 text-sm mt-1"
+              >
+                Указать другой email
+              </button>
             </div>
           )}
         </div>
