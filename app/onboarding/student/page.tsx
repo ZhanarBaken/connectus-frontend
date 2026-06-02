@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   authFetch,
   CooldownError,
+  EmailTakenError,
   fetchMe,
   fetchStudentProfile,
   setEmail,
@@ -39,6 +40,7 @@ export default function StudentOnboarding() {
   const [email, setEmailValue] = useState("")
   const [verifyEmail, setVerifyEmail] = useState("")
   const [verifyChecking, setVerifyChecking] = useState(false)
+  const [emailTaken, setEmailTaken] = useState(false)
 
   // Step: Photo (optional)
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
@@ -131,10 +133,14 @@ export default function StudentOnboarding() {
     setError("")
     try {
       await setEmail(email.trim())
+      setEmailTaken(false)
       setVerifyEmail(email.trim())
       setStage("verify")
     } catch (e: unknown) {
-      if (e instanceof CooldownError) {
+      if (e instanceof EmailTakenError) {
+        setEmailTaken(true)
+        setError("")
+      } else if (e instanceof CooldownError) {
         setError(e.message)
       } else {
         setError(e instanceof Error ? e.message : "Не удалось отправить письмо")
@@ -247,10 +253,24 @@ export default function StudentOnboarding() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmailValue(e.target.value)}
+                onChange={(e) => { setEmailValue(e.target.value); setEmailTaken(false) }}
                 placeholder="you@example.com"
                 className={inputClass}
               />
+              {emailTaken && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800 leading-relaxed mt-3">
+                  Эта почта уже зарегистрирована.{" "}
+                  <a
+                    href="/auth/login"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold underline underline-offset-2"
+                  >
+                    Войди через сайт
+                  </a>
+                  {" "}и привяжи Telegram в Настройках.
+                </div>
+              )}
               {error && (
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mt-4">{error}</div>
               )}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   changeEmail as changeEmailApi,
+  EmailTakenError,
   fetchMe,
   googleLink,
   resendVerification,
@@ -38,6 +39,7 @@ export default function MentorIdentityPage() {
   const [emailJustSent, setEmailJustSent] = useState(false)
   const [resending, setResending] = useState(false)
   const [changingEmail, setChangingEmail] = useState(false)
+  const [emailTaken, setEmailTaken] = useState(false)
 
   // Google link state
   const [linkingGoogle, setLinkingGoogle] = useState(false)
@@ -111,10 +113,16 @@ export default function MentorIdentityPage() {
     setEmailError("")
     try {
       await setEmailApi(emailInput.trim())
+      setEmailTaken(false)
       setEmailJustSent(true)
       await reload()
     } catch (e) {
-      setEmailError(e instanceof Error ? e.message : "Не удалось сохранить email")
+      if (e instanceof EmailTakenError) {
+        setEmailTaken(true)
+        setEmailError("")
+      } else {
+        setEmailError(e instanceof Error ? e.message : "Не удалось сохранить email")
+      }
     } finally {
       setSavingEmail(false)
     }
@@ -311,12 +319,26 @@ export default function MentorIdentityPage() {
                   type="email"
                   placeholder="you@example.com"
                   value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
+                  onChange={(e) => { setEmailInput(e.target.value); setEmailTaken(false) }}
                   required
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
                 />
                 {emailError && (
                   <p className="text-xs text-red-500">{emailError}</p>
+                )}
+                {emailTaken && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800 leading-relaxed">
+                    Эта почта уже зарегистрирована.{" "}
+                    <a
+                      href="/auth/login"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold underline underline-offset-2"
+                    >
+                      Войди через сайт
+                    </a>
+                    {" "}и привяжи Telegram в Настройках.
+                  </div>
                 )}
                 <button
                   type="submit"

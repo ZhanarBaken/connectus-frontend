@@ -755,6 +755,13 @@ export async function telegramLinkStart(): Promise<{ token: string; bot_url: str
   return res.json()
 }
 
+export class EmailTakenError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "EmailTakenError"
+  }
+}
+
 export class MergeRequiresSupportError extends Error {
   constructor(message: string) {
     super(message)
@@ -854,7 +861,10 @@ export async function setEmail(email: string): Promise<void> {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.email?.[0] || err.detail || "Не удалось установить email")
+    if (err.code === "email_taken_link_telegram") {
+      throw new EmailTakenError(err.email || err.detail || "Эта почта уже привязана к другому аккаунту")
+    }
+    throw new Error(err.email?.[0] || err.email || err.detail || "Не удалось установить email")
   }
 }
 
