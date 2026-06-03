@@ -54,11 +54,16 @@ export interface MentorCountry {
   country: string
 }
 
+export interface MentorLanguage {
+  language: string
+}
+
 export interface MentorProfile {
   id: number
   full_name: string
   age: number
   countries: MentorCountry[]
+  languages: MentorLanguage[]
   school_or_university: string
   major: string
   grant_or_scholarship: string
@@ -93,6 +98,7 @@ export interface MentorCard {
   profile_photo: string | null
   full_name: string
   countries: MentorCountry[]
+  languages: MentorLanguage[]
   school_or_university: string
   grant_or_scholarship: string
   major: string
@@ -113,6 +119,7 @@ export interface Mentor {
   id: number
   full_name: string
   countries: MentorCountry[]
+  languages: MentorLanguage[]
   school_or_university: string
   major: string
   grant_or_scholarship: string

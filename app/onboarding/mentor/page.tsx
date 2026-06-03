@@ -35,6 +35,24 @@ const EXPERTISE_OPTIONS = [
   { value: "visa",         label: "Виза",        icon: "flight_takeoff"  },
 ]
 
+const LANGUAGE_OPTIONS = [
+  { value: "ru", label: "Русский"   },
+  { value: "kz", label: "Қазақша"  },
+  { value: "en", label: "English"  },
+  { value: "de", label: "Deutsch"  },
+  { value: "fr", label: "Français" },
+  { value: "tr", label: "Türkçe"   },
+  { value: "zh", label: "中文"      },
+  { value: "ar", label: "العربية"  },
+  { value: "es", label: "Español"  },
+  { value: "it", label: "Italiano" },
+  { value: "ja", label: "日本語"    },
+  { value: "ko", label: "한국어"    },
+  { value: "pl", label: "Polski"   },
+  { value: "pt", label: "Português"},
+  { value: "uk", label: "Українська"},
+]
+
 const DOCUMENT_KIND_OPTIONS = [
   { value: "diploma",               label: "Диплом"                  },
   { value: "enrollment_certificate",label: "Справка о зачислении"    },
@@ -80,6 +98,7 @@ export default function MentorOnboarding() {
   const [bio, setBio]                 = useState("")
   const [phone, setPhone]             = useState("")
   const [isUniversal, setIsUniversal] = useState(false)
+  const [languages, setLanguages]     = useState<string[]>([])
 
   // Education
   const [countries, setCountries]     = useState<string[]>([])
@@ -127,6 +146,7 @@ export default function MentorOnboarding() {
           setBio(p.detailed_bio ?? "")
           setPhone(p.phone ?? "")
           setIsUniversal(p.is_universal ?? false)
+          setLanguages((p.languages ?? []).map((l: { language: string }) => l.language))
           setSchool(p.school_or_university ?? "")
           setMajor(p.major ?? "")
           setGrant(p.grant_or_scholarship ?? "")
@@ -156,12 +176,18 @@ export default function MentorOnboarding() {
 
   const saveAbout = useCallback(async () => {
     try {
-      await updateMentorProfile({ full_name: fullName, detailed_bio: bio, phone, is_universal: isUniversal })
+      await updateMentorProfile({
+        full_name: fullName,
+        detailed_bio: bio,
+        phone,
+        is_universal: isUniversal,
+        languages: languages.map((l) => ({ language: l })),
+      })
       flashSaved()
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
     }
-  }, [fullName, bio, phone, isUniversal, flashSaved])
+  }, [fullName, bio, phone, isUniversal, languages, flashSaved])
 
   const saveEducation = useCallback(async () => {
     try {
@@ -273,6 +299,8 @@ export default function MentorOnboarding() {
         full_name: fullName,
         detailed_bio: bio,
         phone,
+        is_universal: isUniversal,
+        languages: languages.map((l) => ({ language: l })),
         countries: countries.map((c) => ({ country: c })),
         school_or_university: school,
         major,
@@ -309,7 +337,7 @@ export default function MentorOnboarding() {
   // ─── Completion checks ─────────────────────────────────────────
   const tabDone: Record<Tab, boolean> = {
     photo:     Boolean(profilePhoto),
-    about:     Boolean(fullName.trim() && bio.trim() && phone.trim()),
+    about:     Boolean(fullName.trim() && bio.trim() && phone.trim() && languages.length > 0),
     education: Boolean(
       countries.length > 0 && school.trim() && major.trim()
       && grant.trim() && gpa.trim() && examResults.trim()
@@ -494,6 +522,36 @@ export default function MentorOnboarding() {
                   className={inputClass}
                 />
                 <p className="text-xs text-gray-400 mt-1">Резервный канал для команды Connectus. Абитуриенты не видят.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Языки общения <span className="text-red-400">*</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {LANGUAGE_OPTIONS.map(({ value, label }) => {
+                    const active = languages.includes(value)
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          const next = active
+                            ? languages.filter((l) => l !== value)
+                            : [...languages, value]
+                          setLanguages(next)
+                          updateMentorProfile({ languages: next.map((l) => ({ language: l })) }).then(flashSaved).catch(() => {})
+                        }}
+                        className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-all ${
+                          active
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
               <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 cursor-pointer hover:border-violet-300 hover:bg-violet-50/40 transition-all group">
                 <input
@@ -824,7 +882,7 @@ export default function MentorOnboarding() {
 // Map backend error keys to tabs.
 function tabForError(errors: Record<string, string>): Tab | null {
   if (errors.profile_photo) return "photo"
-  if (errors.full_name || errors.detailed_bio || errors.phone) return "about"
+  if (errors.full_name || errors.detailed_bio || errors.phone || errors.languages) return "about"
   if (
     errors.countries || errors.school_or_university || errors.major
     || errors.grant_or_scholarship || errors.gpa || errors.exam_results

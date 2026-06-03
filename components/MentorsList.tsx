@@ -18,6 +18,13 @@ const EXPERTISE_LABELS: Record<string, string> = {
   documents: "Документы",
 }
 
+const LANGUAGE_LABELS: Record<string, string> = {
+  ru: "Русский", kz: "Қазақша", en: "English", de: "Deutsch",
+  fr: "Français", tr: "Türkçe", zh: "中文", ar: "العربية",
+  es: "Español", it: "Italiano", ja: "日本語", ko: "한국어",
+  pl: "Polski", pt: "Português", uk: "Українська",
+}
+
 interface Props {
   mentors: MentorCard[]
 }
@@ -31,6 +38,7 @@ export default function MentorsList({ mentors }: Props) {
   const [expertise, setExpertise] = useState("")
   const [onlyAccepting, setOnlyAccepting] = useState(false)
   const [onlyUniversal, setOnlyUniversal] = useState(false)
+  const [language, setLanguage] = useState("")
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -66,11 +74,12 @@ export default function MentorsList({ mentors }: Props) {
       if (expertise && !m.expertise_areas.some((a) => a.area === expertise)) return false
       if (onlyAccepting && !m.is_accepting_bookings) return false
       if (onlyUniversal && !m.is_universal) return false
+      if (language && !(m.languages ?? []).some((l) => l.language === language)) return false
       return true
     })
-  }, [mentors, search, country, expertise, onlyAccepting, onlyUniversal])
+  }, [mentors, search, country, expertise, onlyAccepting, onlyUniversal, language])
 
-  const hasFilters = search || country || expertise || onlyAccepting || onlyUniversal
+  const hasFilters = search || country || expertise || onlyAccepting || onlyUniversal || language
 
   if (!authChecked) {
     return (
@@ -162,6 +171,26 @@ export default function MentorsList({ mentors }: Props) {
               </svg>
             </div>
 
+            {/* Language filter */}
+            <div className="relative">
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="appearance-none text-sm font-medium border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 bg-white text-gray-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+              >
+                <option value="">Все языки</option>
+                {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                  <option key={code} value={code}>{label}</option>
+                ))}
+              </select>
+              <svg
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+
             {/* Accepting bookings toggle */}
             <button
               type="button"
@@ -219,7 +248,7 @@ export default function MentorsList({ mentors }: Props) {
             {/* Clear filters */}
             {hasFilters && (
               <button
-                onClick={() => { setSearch(""); setCountry(""); setExpertise(""); setOnlyAccepting(false); setOnlyUniversal(false) }}
+                onClick={() => { setSearch(""); setCountry(""); setExpertise(""); setLanguage(""); setOnlyAccepting(false); setOnlyUniversal(false) }}
                 className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2"
               >
                 Сбросить фильтры
@@ -333,6 +362,20 @@ export default function MentorsList({ mentors }: Props) {
                     </span>
                   ))}
                 </div>
+
+                {/* Languages */}
+                {(mentor.languages ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {mentor.languages.slice(0, 4).map((l) => (
+                      <span key={l.language} className="text-xs bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full font-medium">
+                        {LANGUAGE_LABELS[l.language] ?? l.language}
+                      </span>
+                    ))}
+                    {mentor.languages.length > 4 && (
+                      <span className="text-xs text-gray-400">+{mentor.languages.length - 4}</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Consultation price strip */}
                 {mentor.consultation_price !== null && (

@@ -19,6 +19,13 @@ const EXPERTISE_LABELS: Record<string, string> = {
   documents: "Документы",
 }
 
+const LANGUAGE_LABELS: Record<string, string> = {
+  ru: "Русский", kz: "Қазақша", en: "English", de: "Deutsch",
+  fr: "Français", tr: "Türkçe", zh: "中文", ar: "العربية",
+  es: "Español", it: "Italiano", ja: "日本語", ko: "한국어",
+  pl: "Polski", pt: "Português", uk: "Українська",
+}
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -198,6 +205,18 @@ export default function MentorPage({ params }: Props) {
                         className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium"
                       >
                         {countryFlag(c.country)} {countryLabel(c.country)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {(mentor.languages ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {mentor.languages.map((l) => (
+                      <span
+                        key={l.language}
+                        className="inline-flex items-center gap-1 text-xs bg-teal-50 text-teal-600 px-2.5 py-1 rounded-full font-medium"
+                      >
+                        {LANGUAGE_LABELS[l.language] ?? l.language}
                       </span>
                     ))}
                   </div>
