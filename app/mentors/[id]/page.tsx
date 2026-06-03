@@ -175,6 +175,15 @@ export default function MentorPage({ params }: Props) {
                     <Icon name="verified" size={14} className="text-indigo-600" filled />
                     Проверен
                   </span>
+                  {mentor.is_universal && (
+                    <span
+                      className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                      title="Ментор помогает сразу по нескольким направлениям"
+                    >
+                      <Icon name="auto_awesome" size={14} className="text-violet-600" filled />
+                      Универсальный
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
                   {mentor.school_or_university}

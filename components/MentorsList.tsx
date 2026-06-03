@@ -30,6 +30,7 @@ export default function MentorsList({ mentors }: Props) {
   const [country, setCountry] = useState("")
   const [expertise, setExpertise] = useState("")
   const [onlyAccepting, setOnlyAccepting] = useState(false)
+  const [onlyUniversal, setOnlyUniversal] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -64,11 +65,12 @@ export default function MentorsList({ mentors }: Props) {
       if (country && !(m.countries ?? []).some((c) => c.country === country)) return false
       if (expertise && !m.expertise_areas.some((a) => a.area === expertise)) return false
       if (onlyAccepting && !m.is_accepting_bookings) return false
+      if (onlyUniversal && !m.is_universal) return false
       return true
     })
-  }, [mentors, search, country, expertise, onlyAccepting])
+  }, [mentors, search, country, expertise, onlyAccepting, onlyUniversal])
 
-  const hasFilters = search || country || expertise || onlyAccepting
+  const hasFilters = search || country || expertise || onlyAccepting || onlyUniversal
 
   if (!authChecked) {
     return (
@@ -172,7 +174,6 @@ export default function MentorsList({ mentors }: Props) {
               }`}
               style={{ WebkitBackfaceVisibility: "hidden" }}
             >
-              {/* Switch indicator */}
               <span
                 className={`relative inline-flex w-8 h-[18px] rounded-full transition-colors duration-200 ${
                   onlyAccepting ? "bg-white/30" : "bg-gray-200 group-hover:bg-gray-300"
@@ -188,10 +189,37 @@ export default function MentorsList({ mentors }: Props) {
               <span>Принимает записи</span>
             </button>
 
+            {/* Universal mentor toggle */}
+            <button
+              type="button"
+              onClick={() => setOnlyUniversal(!onlyUniversal)}
+              aria-pressed={onlyUniversal}
+              className={`group relative inline-flex items-center gap-2.5 text-sm px-4 py-2.5 rounded-xl border font-medium transform-gpu transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out [-webkit-tap-highlight-color:transparent] active:scale-95 ${
+                onlyUniversal
+                  ? "bg-violet-600 border-violet-600 text-white shadow-sm shadow-violet-200 hover:bg-violet-700 hover:border-violet-700"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-violet-300 hover:text-violet-600"
+              }`}
+              style={{ WebkitBackfaceVisibility: "hidden" }}
+            >
+              <span
+                className={`relative inline-flex w-8 h-[18px] rounded-full transition-colors duration-200 ${
+                  onlyUniversal ? "bg-white/30" : "bg-gray-200 group-hover:bg-gray-300"
+                }`}
+                aria-hidden
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-[14px] h-[14px] rounded-full transform-gpu transition-[transform,background-color] duration-200 ease-out ${
+                    onlyUniversal ? "translate-x-[14px] bg-white" : "translate-x-0 bg-white shadow-sm"
+                  }`}
+                />
+              </span>
+              <span>Универсальный ментор</span>
+            </button>
+
             {/* Clear filters */}
             {hasFilters && (
               <button
-                onClick={() => { setSearch(""); setCountry(""); setExpertise(""); setOnlyAccepting(false) }}
+                onClick={() => { setSearch(""); setCountry(""); setExpertise(""); setOnlyAccepting(false); setOnlyUniversal(false) }}
                 className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2"
               >
                 Сбросить фильтры
@@ -244,7 +272,7 @@ export default function MentorsList({ mentors }: Props) {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
                         {mentor.full_name}
                       </h3>
@@ -254,6 +282,15 @@ export default function MentorsList({ mentors }: Props) {
                       <span title="Платформа подтвердила документы ментора">
                         <Icon name="verified" size={14} filled className="text-indigo-500 flex-shrink-0" />
                       </span>
+                      {mentor.is_universal && (
+                        <span
+                          className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                          title="Ментор помогает сразу по нескольким направлениям"
+                        >
+                          <Icon name="auto_awesome" size={11} filled />
+                          Универсальный
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5 truncate">
                       {mentor.school_or_university}

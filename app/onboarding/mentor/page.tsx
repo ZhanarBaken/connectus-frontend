@@ -76,9 +76,10 @@ export default function MentorOnboarding() {
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   // About
-  const [fullName, setFullName] = useState("")
-  const [bio, setBio]           = useState("")
-  const [phone, setPhone]       = useState("")
+  const [fullName, setFullName]       = useState("")
+  const [bio, setBio]                 = useState("")
+  const [phone, setPhone]             = useState("")
+  const [isUniversal, setIsUniversal] = useState(false)
 
   // Education
   const [countries, setCountries]     = useState<string[]>([])
@@ -125,6 +126,7 @@ export default function MentorOnboarding() {
           setFullName(p.full_name ?? "")
           setBio(p.detailed_bio ?? "")
           setPhone(p.phone ?? "")
+          setIsUniversal(p.is_universal ?? false)
           setSchool(p.school_or_university ?? "")
           setMajor(p.major ?? "")
           setGrant(p.grant_or_scholarship ?? "")
@@ -154,12 +156,12 @@ export default function MentorOnboarding() {
 
   const saveAbout = useCallback(async () => {
     try {
-      await updateMentorProfile({ full_name: fullName, detailed_bio: bio, phone })
+      await updateMentorProfile({ full_name: fullName, detailed_bio: bio, phone, is_universal: isUniversal })
       flashSaved()
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
     }
-  }, [fullName, bio, phone, flashSaved])
+  }, [fullName, bio, phone, isUniversal, flashSaved])
 
   const saveEducation = useCallback(async () => {
     try {
@@ -493,6 +495,21 @@ export default function MentorOnboarding() {
                 />
                 <p className="text-xs text-gray-400 mt-1">Резервный канал для команды Connectus. Абитуриенты не видят.</p>
               </div>
+              <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 cursor-pointer hover:border-violet-300 hover:bg-violet-50/40 transition-all group">
+                <input
+                  type="checkbox"
+                  checked={isUniversal}
+                  onChange={(e) => {
+                    setIsUniversal(e.target.checked)
+                    updateMentorProfile({ is_universal: e.target.checked }).catch(() => {})
+                  }}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-violet-600 flex-shrink-0"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-800 group-hover:text-violet-700">Универсальный ментор</span>
+                  <p className="text-xs text-gray-400 mt-0.5">Помогаю сразу по нескольким направлениям — поступление, стипендии, виза, документы</p>
+                </div>
+              </label>
             </div>
           )}
 

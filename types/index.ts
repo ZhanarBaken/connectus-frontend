@@ -78,6 +78,7 @@ export interface MentorProfile {
   is_submitted: boolean
   is_public: boolean
   is_accepting_bookings: boolean
+  is_universal: boolean
   is_banned: boolean
   ban_reason: string
   has_documents: boolean
@@ -98,6 +99,7 @@ export interface MentorCard {
   expertise_areas: MentorExpertise[]
   detailed_bio: string
   is_accepting_bookings: boolean
+  is_universal: boolean
   rating_avg: number | null
   rating_count: number
   // Primary consultation price/duration. Null when the mentor hasn't
@@ -124,6 +126,7 @@ export interface Mentor {
   profile_photo: string | null
   is_public: boolean
   is_accepting_bookings: boolean
+  is_universal: boolean
   rating_avg: number | null
   rating_count: number
   services: MentorService[]
