@@ -18,14 +18,12 @@ import Logo from "@/components/Logo"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-type Tab = "photo" | "about" | "education" | "expertise" | "documents"
+type Tab = "about" | "education" | "expertise"
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "photo",     label: "Фото"       },
   { id: "about",     label: "О себе"     },
   { id: "education", label: "Образование"},
   { id: "expertise", label: "Экспертиза" },
-  { id: "documents", label: "Документы"  },
 ]
 
 const EXPERTISE_OPTIONS = [
@@ -80,12 +78,13 @@ const inputClass =
 export default function MentorOnboarding() {
   const router = useRouter()
   const [ready, setReady]     = useState(false)
-  const [tab, setTab]         = useState<Tab>("photo")
+  const [tab, setTab]         = useState<Tab>("about")
   const [saved, setSaved]     = useState(false)
   const [saveError, setSaveError] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
+  const [earlySubmitHint, setEarlySubmitHint] = useState(false)
 
   // Photo
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
@@ -336,14 +335,12 @@ export default function MentorOnboarding() {
 
   // ─── Completion checks ─────────────────────────────────────────
   const tabDone: Record<Tab, boolean> = {
-    photo:     Boolean(profilePhoto),
-    about:     Boolean(fullName.trim() && bio.trim() && phone.trim() && languages.length > 0),
+    about:     Boolean(profilePhoto && fullName.trim() && bio.trim() && phone.trim() && languages.length > 0),
     education: Boolean(
       countries.length > 0 && school.trim() && major.trim()
       && grant.trim() && gpa.trim() && examResults.trim()
     ),
-    expertise: expertise.length > 0,
-    documents: documents.length > 0,
+    expertise: expertise.length > 0 && documents.length > 0,
   }
   const allDone = Object.values(tabDone).every(Boolean)
 
@@ -412,6 +409,26 @@ export default function MentorOnboarding() {
           ))}
         </div>
 
+        {/* Progress bar */}
+        {(() => {
+          const doneCount = Object.values(tabDone).filter(Boolean).length
+          const total = TABS.length
+          return (
+            <div className="mb-4">
+              <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                <span>Прогресс заполнения</span>
+                <span>{doneCount} из {total}</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${(doneCount / total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Save status */}
         <div className="h-5 mb-2 text-center">
           {saved && <p className="text-xs text-emerald-600">Сохранено ✓</p>}
@@ -421,68 +438,66 @@ export default function MentorOnboarding() {
         {/* Tab content */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
 
-          {/* ── ФОТО ── */}
-          {tab === "photo" && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-1">Фото профиля</h2>
-              <p className="text-gray-400 text-sm mb-6">
-                Обязательное поле. Абитуриенты охотнее доверяют менторам с реальной фотографией.
-              </p>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                      setSaveError("Фото не должно превышать 5 МБ")
-                    } else {
-                      setSaveError("")
-                      setPickedFile(file)
-                    }
-                  }
-                  e.target.value = ""
-                }}
-              />
-              <div className="flex flex-col items-center">
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="relative w-32 h-32 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50"
-                >
-                  {profilePhoto ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                      <Icon name="photo_camera" size={36} className="text-white" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Icon name="edit" size={28} className="text-white" />
-                    </span>
-                  </div>
-                  {uploadingPhoto && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <div className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  )}
-                </button>
-                <p className="text-xs text-gray-400 mt-3">
-                  {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* ── О СЕБЕ ── */}
           {tab === "about" && (
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-gray-900 mb-1">О себе</h2>
+
+              {/* Фото профиля */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Фото профиля <span className="text-red-400">*</span>
+                </label>
+                <p className="text-xs text-gray-400 mb-3">Абитуриенты охотнее доверяют менторам с реальной фотографией.</p>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        setSaveError("Фото не должно превышать 5 МБ")
+                      } else {
+                        setSaveError("")
+                        setPickedFile(file)
+                      }
+                    }
+                    e.target.value = ""
+                  }}
+                />
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="relative w-20 h-20 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50 flex-shrink-0"
+                  >
+                    {profilePhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                        <Icon name="photo_camera" size={28} className="text-white" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Icon name="edit" size={20} className="text-white" />
+                      </span>
+                    </div>
+                    {uploadingPhoto && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-400">
+                    {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                  </p>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Полное имя <span className="text-red-400">*</span>
@@ -751,15 +766,15 @@ export default function MentorOnboarding() {
                   )
                 })}
               </div>
-            </div>
-          )}
 
-          {/* ── ДОКУМЕНТЫ ── */}
-          {tab === "documents" && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-1">Документы для проверки</h2>
+              {/* ── ДОКУМЕНТЫ ── */}
+              <div className="mt-6 pt-6 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-base font-bold text-gray-900">Документы для проверки</h3>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">можно несколько</span>
+              </div>
               <p className="text-gray-400 text-sm mb-4">
-                Загрузи хотя бы один документ, подтверждающий твой статус — диплом, справку о зачислении или студенческий билет. <span className="text-red-400">*</span>
+                Диплом, справка о зачислении или студенческий билет. <span className="text-red-400">*</span>
               </p>
 
               <div className="border border-gray-200 rounded-2xl p-4 mb-4">
@@ -803,7 +818,7 @@ export default function MentorOnboarding() {
                   disabled={!docFile || uploadingDoc}
                   className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {uploadingDoc ? "Загружаем..." : "Загрузить документ"}
+                  {uploadingDoc ? "Загружаем..." : documents.length > 0 ? "Загрузить ещё один" : "Загрузить документ"}
                 </button>
               </div>
 
@@ -832,6 +847,7 @@ export default function MentorOnboarding() {
                   })}
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -850,17 +866,34 @@ export default function MentorOnboarding() {
 
         {/* Submit button */}
         <button
-          onClick={handleSubmit}
-          disabled={submitting || !allDone}
-          className="w-full bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
+          onClick={() => {
+            if (!allDone) {
+              setEarlySubmitHint(true)
+              setTimeout(() => setEarlySubmitHint(false), 4000)
+            } else {
+              handleSubmit()
+            }
+          }}
+          disabled={submitting}
+          className={`w-full py-4 rounded-xl font-semibold transition-colors text-sm text-white ${
+            allDone
+              ? "bg-gray-900 hover:bg-gray-800"
+              : "bg-gray-400 cursor-not-allowed"
+          }`}
         >
-          {submitting
-            ? "Отправляем..."
-            : !allDone
-              ? "Заполни все вкладки чтобы отправить"
-              : "Отправить профиль на проверку →"
-          }
+          {submitting ? "Отправляем..." : "Отправить профиль на проверку →"}
         </button>
+        {earlySubmitHint && (
+          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <p className="text-xs font-semibold text-amber-700 mb-1">Ещё не всё заполнено:</p>
+            <ul className="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
+              {!tabDone.about && <li>О себе — фото, имя, описание, телефон, языки</li>}
+              {!tabDone.education && <li>Образование — страна, университет, специальность, грант, GPA, экзамены</li>}
+              {!tabDone.expertise && <li>Экспертиза — выбери направление и загрузи документ</li>}
+            </ul>
+          </div>
+        )}
+
 
         <p className="text-center text-xs text-gray-300 mt-4">
           Данные сохраняются автоматически · Можно вернуться позже
@@ -881,13 +914,11 @@ export default function MentorOnboarding() {
 
 // Map backend error keys to tabs.
 function tabForError(errors: Record<string, string>): Tab | null {
-  if (errors.profile_photo) return "photo"
-  if (errors.full_name || errors.detailed_bio || errors.phone || errors.languages) return "about"
+  if (errors.profile_photo || errors.full_name || errors.detailed_bio || errors.phone || errors.languages) return "about"
   if (
     errors.countries || errors.school_or_university || errors.major
     || errors.grant_or_scholarship || errors.gpa || errors.exam_results
   ) return "education"
-  if (errors.expertise_areas) return "expertise"
-  if (errors.documents) return "documents"
+  if (errors.expertise_areas || errors.documents) return "expertise"
   return null
 }
