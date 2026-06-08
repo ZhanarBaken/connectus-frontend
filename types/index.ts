@@ -142,7 +142,8 @@ export interface Mentor {
 export interface StudentProfile {
   id: number
   full_name: string
-  age: number
+  date_of_birth: string | null
+  age: number | null
   current_school_or_university: string
   contacts: string
   // Pre-consultation context the mentor reads before booking. The

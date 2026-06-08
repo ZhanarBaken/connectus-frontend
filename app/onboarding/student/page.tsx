@@ -50,7 +50,7 @@ export default function StudentOnboarding() {
 
   // О себе
   const [fullName, setFullName] = useState("")
-  const [age, setAge] = useState("")
+  const [dateOfBirth, setDateOfBirth] = useState("")
 
   // Учёба
   const [school, setSchool] = useState("")
@@ -164,17 +164,12 @@ export default function StudentOnboarding() {
   }
 
   const handleFinish = async () => {
-    const ageNum = Number(age)
-    if (!Number.isInteger(ageNum) || ageNum < 10 || ageNum > 60) {
-      setError("Укажи возраст от 10 до 60")
-      return
-    }
     setSaving(true)
     setError("")
     try {
       await updateStudentProfile({
         full_name: fullName,
-        age: ageNum,
+        date_of_birth: dateOfBirth || null,
         current_school_or_university: school,
         school_grade: schoolGrade,
         city: city,
@@ -192,7 +187,7 @@ export default function StudentOnboarding() {
   }
 
   const allDone = Boolean(
-    fullName.trim() && age && Number(age) >= 10 && Number(age) <= 60
+    fullName.trim() && dateOfBirth
     && schoolGrade && city.trim() && graduationYear
   )
 
@@ -359,15 +354,13 @@ export default function StudentOnboarding() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Возраст <span className="text-red-500">*</span>
+                  Дата рождения <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  placeholder="17"
-                  min={10}
-                  max={60}
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
                   className={inputClass}
                 />
               </div>
@@ -519,7 +512,7 @@ export default function StudentOnboarding() {
                 <p className="text-xs font-semibold text-amber-700 mb-1">Ещё не всё заполнено:</p>
                 <ul className="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
                   {!fullName.trim() && <li>Укажи полное имя</li>}
-                  {(!age || Number(age) < 10 || Number(age) > 60) && <li>Укажи возраст от 10 до 60</li>}
+                  {!dateOfBirth && <li>Укажи дату рождения</li>}
                   {!schoolGrade && <li>Выбери статус учёбы</li>}
                   {!city.trim() && <li>Укажи город</li>}
                   {!graduationYear && <li>Укажи год окончания школы</li>}
