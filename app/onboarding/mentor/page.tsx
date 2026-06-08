@@ -852,6 +852,26 @@ export default function MentorOnboarding() {
           )}
         </div>
 
+        {/* Tab navigation */}
+        <div className="flex gap-3 mt-4">
+          {tab !== TABS[0].id && (
+            <button
+              onClick={() => setTab(TABS[TABS.findIndex((t) => t.id === tab) - 1].id)}
+              className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
+            >
+              ← Назад
+            </button>
+          )}
+          {tab !== TABS[TABS.length - 1].id && (
+            <button
+              onClick={() => setTab(TABS[TABS.findIndex((t) => t.id === tab) + 1].id)}
+              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors text-sm"
+            >
+              Вперёд →
+            </button>
+          )}
+        </div>
+
         {/* Submit errors */}
         {Object.keys(submitError).length > 0 && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4">
