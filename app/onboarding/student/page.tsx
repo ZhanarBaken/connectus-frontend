@@ -26,12 +26,6 @@ const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm f
 const selectClass = `${inputClass} appearance-none text-gray-900 pr-10 bg-no-repeat bg-[right_0.875rem_center] bg-[length:1rem_1rem] cursor-pointer bg-[url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ca3af' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 8 10 12 14 8'/%3E%3C/svg%3E")]`
 
 type EmailStage = "loading" | "email" | "verify" | "form"
-type Tab = "about" | "school"
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "about",  label: "О себе" },
-  { id: "school", label: "Учёба"  },
-]
 
 const VERIFY_POLL_INTERVAL_MS = 5000
 
@@ -40,7 +34,6 @@ export default function StudentOnboarding() {
   const [emailStage, setEmailStage] = useState<EmailStage>("loading")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [tab, setTab] = useState<Tab>("about")
   const [earlySubmitHint, setEarlySubmitHint] = useState(false)
 
   // Email stage
@@ -198,11 +191,10 @@ export default function StudentOnboarding() {
     }
   }
 
-  const tabDone: Record<Tab, boolean> = {
-    about:  Boolean(fullName.trim() && age && Number(age) >= 10 && Number(age) <= 60),
-    school: Boolean(schoolGrade && city.trim() && graduationYear),
-  }
-  const allDone = Object.values(tabDone).every(Boolean)
+  const allDone = Boolean(
+    fullName.trim() && age && Number(age) >= 10 && Number(age) <= 60
+    && schoolGrade && city.trim() && graduationYear
+  )
 
   if (emailStage === "loading") {
     return (
@@ -295,263 +287,209 @@ export default function StudentOnboarding() {
             </div>
           )}
 
-          {/* ── FORM (tabbed) ── */}
+          {/* ── FORM (single scroll) ── */}
           {emailStage === "form" && (
-            <div>
-              {/* Tabs */}
-              <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-5">
-                {TABS.map(({ id, label }) => (
+            <div className="space-y-5">
+              <h1 className="text-xl font-bold text-gray-900">О себе</h1>
+
+              {/* Photo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Фото профиля</label>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        setError("Фото не должно превышать 5 МБ")
+                      } else {
+                        setError("")
+                        setPickedFile(file)
+                      }
+                    }
+                    e.target.value = ""
+                  }}
+                />
+                <div className="flex items-center gap-4">
                   <button
-                    key={id}
-                    onClick={() => setTab(id)}
-                    className={`flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all ${
-                      tab === id
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="relative w-20 h-20 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50 flex-shrink-0"
                   >
-                    {tabDone[id] && (
-                      <Icon name="check_circle" size={13} className="text-emerald-500 flex-shrink-0" filled />
+                    {profilePhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                        <Icon name="photo_camera" size={28} className="text-white" />
+                      </div>
                     )}
-                    {label}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Icon name="edit" size={20} className="text-white" />
+                      </span>
+                    </div>
+                    {uploadingPhoto && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                   </button>
-                ))}
+                  <p className="text-xs text-gray-400">
+                    {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                  </p>
+                </div>
               </div>
 
-              {/* Progress bar */}
-              {(() => {
-                const doneCount = Object.values(tabDone).filter(Boolean).length
-                const total = TABS.length
-                return (
-                  <div className="mb-5">
-                    <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                      <span>Прогресс заполнения</span>
-                      <span>{doneCount} из {total}</span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${(doneCount / total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })()}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Полное имя <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Айгерим Бекова"
+                  className={inputClass}
+                />
+              </div>
 
-              {/* ── О СЕБЕ ── */}
-              {tab === "about" && (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-bold text-gray-900 mb-1">О себе</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Возраст <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="17"
+                  min={10}
+                  max={60}
+                  className={inputClass}
+                />
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Фото профиля</label>
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          if (file.size > 5 * 1024 * 1024) {
-                            setError("Фото не должно превышать 5 МБ")
-                          } else {
-                            setError("")
-                            setPickedFile(file)
-                          }
-                        }
-                        e.target.value = ""
-                      }}
-                    />
-                    <div className="flex items-center gap-4">
-                      <button
-                        type="button"
-                        onClick={() => photoInputRef.current?.click()}
-                        disabled={uploadingPhoto}
-                        className="relative w-20 h-20 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50 flex-shrink-0"
-                      >
-                        {profilePhoto ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                            <Icon name="photo_camera" size={28} className="text-white" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Icon name="edit" size={20} className="text-white" />
-                          </span>
-                        </div>
-                        {uploadingPhoto && (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          </div>
-                        )}
-                      </button>
-                      <p className="text-xs text-gray-400">
-                        {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Полное имя <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Айгерим Бекова"
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Возраст <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
-                      placeholder="17"
-                      min={10}
-                      max={60}
-                      className={inputClass}
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Сейчас ты <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={schoolGrade}
+                    onChange={(e) => setSchoolGrade(e.target.value)}
+                    className={selectClass}
+                  >
+                    <option value="">Выбери...</option>
+                    <optgroup label="В школе">
+                      <option value="11 класс">11 класс</option>
+                      <option value="12 класс">12 класс</option>
+                      <option value="10 класс">10 класс</option>
+                      <option value="9 класс">9 класс</option>
+                      <option value="8 класс">8 класс</option>
+                      <option value="7 класс">7 класс</option>
+                      <option value="6 класс">6 класс</option>
+                      <option value="5 класс">5 класс</option>
+                    </optgroup>
+                    <optgroup label="Другое">
+                      <option value="Уже окончил(а) школу">Уже окончил(а) школу</option>
+                      <option value="Студент вуза">Студент вуза</option>
+                      <option value="Колледж / училище">Колледж / училище</option>
+                    </optgroup>
+                  </select>
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Год окончания <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={graduationYear}
+                    onChange={(e) => setGraduationYear(e.target.value)}
+                    min={1990}
+                    max={2050}
+                    placeholder="2026"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
 
-              {/* ── УЧЁБА ── */}
-              {tab === "school" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Город <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Алматы"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
+                <input
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  placeholder="НИШ Алматы, школа №1..."
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  Советуем заполнить — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
+                </p>
                 <div className="space-y-4">
-                  <h2 className="text-lg font-bold text-gray-900 mb-1">Учёба</h2>
-                  <p className="text-gray-400 text-sm">
-                    Поможет ментору понять твой уровень ещё до консультации.
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Сейчас ты <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={schoolGrade}
-                        onChange={(e) => setSchoolGrade(e.target.value)}
-                        className={selectClass}
-                      >
-                        <option value="">Выбери...</option>
-                        <optgroup label="В школе">
-                          <option value="11 класс">11 класс</option>
-                          <option value="12 класс">12 класс</option>
-                          <option value="10 класс">10 класс</option>
-                          <option value="9 класс">9 класс</option>
-                          <option value="8 класс">8 класс</option>
-                          <option value="7 класс">7 класс</option>
-                          <option value="6 класс">6 класс</option>
-                          <option value="5 класс">5 класс</option>
-                        </optgroup>
-                        <optgroup label="Другое">
-                          <option value="Уже окончил(а) школу">Уже окончил(а) школу</option>
-                          <option value="Студент вуза">Студент вуза</option>
-                          <option value="Колледж / училище">Колледж / училище</option>
-                        </optgroup>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Год окончания <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={graduationYear}
-                        onChange={(e) => setGraduationYear(e.target.value)}
-                        min={1990}
-                        max={2050}
-                        placeholder="2026"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Город <span className="text-red-500">*</span>
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
                     <input
                       type="text"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="Алматы"
+                      value={desiredMajor}
+                      onChange={(e) => setDesiredMajor(e.target.value)}
+                      placeholder="Computer Science, Business, Medicine..."
                       className={inputClass}
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
                     <input
-                      value={school}
-                      onChange={(e) => setSchool(e.target.value)}
-                      placeholder="НИШ Алматы, школа №1..."
+                      type="text"
+                      value={desiredCountries}
+                      onChange={(e) => setDesiredCountries(e.target.value)}
+                      placeholder="США, Канада, Германия..."
                       className={inputClass}
                     />
                   </div>
-
-                  <div className="pt-4 border-t border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h3>
-                    <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                      Советуем заполнить — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
-                    </p>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
-                        <input
-                          type="text"
-                          value={desiredMajor}
-                          onChange={(e) => setDesiredMajor(e.target.value)}
-                          placeholder="Computer Science, Business, Medicine..."
-                          className={inputClass}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
-                        <input
-                          type="text"
-                          value={desiredCountries}
-                          onChange={(e) => setDesiredCountries(e.target.value)}
-                          placeholder="США, Канада, Германия..."
-                          className={inputClass}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
-                        <input
-                          type="text"
-                          value={examResults}
-                          onChange={(e) => setExamResults(e.target.value)}
-                          placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
-                          className={inputClass}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
-                        <input
-                          type="text"
-                          value={gpa}
-                          onChange={(e) => setGpa(e.target.value)}
-                          placeholder="4.5 / 5.0  или  3.8 / 4.0"
-                          className={inputClass}
-                        />
-                      </div>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
+                    <input
+                      type="text"
+                      value={examResults}
+                      onChange={(e) => setExamResults(e.target.value)}
+                      placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
+                    <input
+                      type="text"
+                      value={gpa}
+                      onChange={(e) => setGpa(e.target.value)}
+                      placeholder="4.5 / 5.0  или  3.8 / 4.0"
+                      className={inputClass}
+                    />
                   </div>
                 </div>
-              )}
+              </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mt-4">{error}</div>
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
               )}
             </div>
           )}
@@ -580,8 +518,11 @@ export default function StudentOnboarding() {
               <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                 <p className="text-xs font-semibold text-amber-700 mb-1">Ещё не всё заполнено:</p>
                 <ul className="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
-                  {!tabDone.about && <li>О себе — имя и возраст</li>}
-                  {!tabDone.school && <li>Учёба — статус, город и год окончания</li>}
+                  {!fullName.trim() && <li>Укажи полное имя</li>}
+                  {(!age || Number(age) < 10 || Number(age) > 60) && <li>Укажи возраст от 10 до 60</li>}
+                  {!schoolGrade && <li>Выбери статус учёбы</li>}
+                  {!city.trim() && <li>Укажи город</li>}
+                  {!graduationYear && <li>Укажи год окончания школы</li>}
                 </ul>
               </div>
             )}
