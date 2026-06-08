@@ -25,34 +25,41 @@ const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm f
 // the chevron ourselves so the field aligns visually with text inputs.
 const selectClass = `${inputClass} appearance-none text-gray-900 pr-10 bg-no-repeat bg-[right_0.875rem_center] bg-[length:1rem_1rem] cursor-pointer bg-[url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ca3af' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 8 10 12 14 8'/%3E%3C/svg%3E")]`
 
-type Stage = "loading" | "email" | "verify" | "photo" | "name" | "school"
+type EmailStage = "loading" | "email" | "verify" | "form"
+type Tab = "about" | "school"
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "about",  label: "О себе" },
+  { id: "school", label: "Учёба"  },
+]
 
 const VERIFY_POLL_INTERVAL_MS = 5000
 
 export default function StudentOnboarding() {
   const router = useRouter()
-  const [stage, setStage] = useState<Stage>("loading")
-  const [needsEmail, setNeedsEmail] = useState(false)
+  const [emailStage, setEmailStage] = useState<EmailStage>("loading")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [tab, setTab] = useState<Tab>("about")
+  const [earlySubmitHint, setEarlySubmitHint] = useState(false)
 
-  // Step: Email
+  // Email stage
   const [email, setEmailValue] = useState("")
   const [verifyEmail, setVerifyEmail] = useState("")
   const [verifyChecking, setVerifyChecking] = useState(false)
   const [emailTaken, setEmailTaken] = useState(false)
 
-  // Step: Photo (optional)
+  // Photo (optional, lives inside О себе tab)
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [pickedFile, setPickedFile] = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // Step: Name
+  // О себе
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
 
-  // Step: School + pre-consultation context
+  // Учёба
   const [school, setSchool] = useState("")
   const [schoolGrade, setSchoolGrade] = useState("")
   const [city, setCity] = useState("")
@@ -69,8 +76,6 @@ export default function StudentOnboarding() {
     fetchMe()
       .then(async (me) => {
         if (cancelled) return
-        // Pre-fill the photo so the picker shows the existing avatar if
-        // the student returns mid-flow.
         try {
           const profile = await fetchStudentProfile()
           if (!cancelled) setProfilePhoto(profile.profile_photo ?? null)
@@ -79,14 +84,12 @@ export default function StudentOnboarding() {
         }
         if (cancelled) return
         if (me.email && me.email_verified) {
-          setStage("photo")
+          setEmailStage("form")
         } else if (me.email) {
           setVerifyEmail(me.email)
-          setNeedsEmail(true)
-          setStage("verify")
+          setEmailStage("verify")
         } else {
-          setNeedsEmail(true)
-          setStage("email")
+          setEmailStage("email")
         }
       })
       .catch(() => {
@@ -97,16 +100,16 @@ export default function StudentOnboarding() {
   }, [router])
 
   useEffect(() => {
-    if (stage !== "verify") return
+    if (emailStage !== "verify") return
     const tick = async () => {
       const me = await fetchMe().catch(() => null)
-      if (me?.email_verified) setStage("photo")
+      if (me?.email_verified) setEmailStage("form")
     }
     pollTimer.current = setInterval(tick, VERIFY_POLL_INTERVAL_MS)
     return () => {
       if (pollTimer.current) clearInterval(pollTimer.current)
     }
-  }, [stage])
+  }, [emailStage])
 
   const uploadCroppedPhoto = async (blob: Blob) => {
     setUploadingPhoto(true)
@@ -135,7 +138,7 @@ export default function StudentOnboarding() {
       await setEmail(email.trim())
       setEmailTaken(false)
       setVerifyEmail(email.trim())
-      setStage("verify")
+      setEmailStage("verify")
     } catch (e: unknown) {
       if (e instanceof EmailTakenError) {
         setEmailTaken(true)
@@ -156,7 +159,7 @@ export default function StudentOnboarding() {
     try {
       const me = await fetchMe()
       if (me.email_verified) {
-        setStage("name")
+        setEmailStage("form")
       } else {
         setError("Email пока не подтверждён. Проверь почту, в том числе папку «Спам».")
       }
@@ -195,55 +198,36 @@ export default function StudentOnboarding() {
     }
   }
 
-  const stepsForUser = needsEmail
-    ? ["Email", "Фото", "Основное", "Учёба"]
-    : ["Фото", "Основное", "Учёба"]
-  const currentStepIndex = (() => {
-    if (stage === "email" || stage === "verify") return 1
-    if (stage === "photo") return needsEmail ? 2 : 1
-    if (stage === "name") return needsEmail ? 3 : 2
-    if (stage === "school") return needsEmail ? 4 : 3
-    return 0
-  })()
+  const tabDone: Record<Tab, boolean> = {
+    about:  Boolean(fullName.trim() && age && Number(age) >= 10 && Number(age) <= 60),
+    school: Boolean(schoolGrade && city.trim() && graduationYear),
+  }
+  const allDone = Object.values(tabDone).every(Boolean)
+
+  if (emailStage === "loading") {
+    return (
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 justify-center mb-2">
-            <Logo size={32} className="text-gray-900" />
-            <span className="text-xl font-bold text-gray-900">Connectus</span>
+    <div className="min-h-screen bg-[#fafafa] px-4 py-10">
+      <div className="w-full max-w-lg mx-auto">
+
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 justify-center mb-1">
+            <Logo size={28} className="text-gray-900" />
+            <span className="text-lg font-bold text-gray-900">Connectus</span>
           </div>
-          <p className="text-gray-500 text-sm">Расскажи о себе — это займёт минуту</p>
+          <p className="text-gray-400 text-xs">Расскажи о себе — это займёт минуту</p>
         </div>
 
-        {stage !== "loading" && (
-          <div className="flex items-center justify-center gap-2 mb-8">
-            {stepsForUser.map((label, i) => {
-              const s = i + 1
-              return (
-                <div key={label} className="flex items-center gap-2">
-                  <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                    currentStepIndex === s ? "bg-gray-900 text-white" : currentStepIndex > s ? "bg-gray-200 text-gray-600" : "bg-gray-100 text-gray-400"
-                  }`}>
-                    {currentStepIndex > s ? "✓" : s}. {label}
-                  </div>
-                  {i < stepsForUser.length - 1 && <div className={`w-6 h-0.5 ${currentStepIndex > s ? "bg-gray-300" : "bg-gray-100"}`} />}
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-
-          {stage === "loading" && (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-
-          {stage === "email" && (
+          {/* ── EMAIL ── */}
+          {emailStage === "email" && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Добавь email</h1>
               <p className="text-gray-400 text-sm mb-6">
@@ -284,7 +268,8 @@ export default function StudentOnboarding() {
             </div>
           )}
 
-          {stage === "verify" && (
+          {/* ── VERIFY ── */}
+          {emailStage === "verify" && (
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">Проверь почту</h1>
               <p className="text-gray-400 text-sm mb-6">
@@ -302,7 +287,7 @@ export default function StudentOnboarding() {
                 {verifyChecking ? "Проверяем..." : "Я подтвердил email"}
               </button>
               <button
-                onClick={() => { setStage("email"); setError("") }}
+                onClick={() => { setEmailStage("email"); setError("") }}
                 className="w-full mt-3 text-gray-500 hover:text-gray-700 text-sm"
               >
                 Указать другой email
@@ -310,284 +295,304 @@ export default function StudentOnboarding() {
             </div>
           )}
 
-          {stage === "photo" && (
+          {/* ── FORM (tabbed) ── */}
+          {emailStage === "form" && (
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Загрузи фото</h1>
-              <p className="text-gray-400 text-sm mb-6">
-                Менторам приятнее общаться, когда они видят кто перед ними. Можно пропустить и добавить позже.
-              </p>
-              <div className="flex flex-col items-center mb-6">
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      if (file.size > 5 * 1024 * 1024) {
-                        setError("Фото не должно превышать 5 МБ")
-                      } else {
-                        setError("")
-                        setPickedFile(file)
-                      }
-                    }
-                    e.target.value = ""
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="relative w-32 h-32 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50"
-                >
-                  {profilePhoto ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                      <Icon name="photo_camera" size={36} className="text-white" />
+              {/* Tabs */}
+              <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-5">
+                {TABS.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    onClick={() => setTab(id)}
+                    className={`flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all ${
+                      tab === id
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {tabDone[id] && (
+                      <Icon name="check_circle" size={13} className="text-emerald-500 flex-shrink-0" filled />
+                    )}
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Progress bar */}
+              {(() => {
+                const doneCount = Object.values(tabDone).filter(Boolean).length
+                const total = TABS.length
+                return (
+                  <div className="mb-5">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                      <span>Прогресс заполнения</span>
+                      <span>{doneCount} из {total}</span>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Icon name="edit" size={28} className="text-white" />
-                    </span>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${(doneCount / total) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                  {uploadingPhoto && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <div className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )
+              })()}
+
+              {/* ── О СЕБЕ ── */}
+              {tab === "about" && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-gray-900 mb-1">О себе</h2>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Фото профиля</label>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            setError("Фото не должно превышать 5 МБ")
+                          } else {
+                            setError("")
+                            setPickedFile(file)
+                          }
+                        }
+                        e.target.value = ""
+                      }}
+                    />
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={uploadingPhoto}
+                        className="relative w-20 h-20 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50 flex-shrink-0"
+                      >
+                        {profilePhoto ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                            <Icon name="photo_camera" size={28} className="text-white" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Icon name="edit" size={20} className="text-white" />
+                          </span>
+                        </div>
+                        {uploadingPhoto && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </button>
+                      <p className="text-xs text-gray-400">
+                        {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                      </p>
                     </div>
-                  )}
-                </button>
-                <p className="text-xs text-gray-400 mt-3">
-                  {profilePhoto ? "Нажмите чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
-                </p>
-              </div>
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">{error}</div>
-              )}
-              <button
-                onClick={() => setStage("name")}
-                disabled={uploadingPhoto}
-                className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-              >
-                {profilePhoto ? "Продолжить →" : "Пропустить"}
-              </button>
-            </div>
-          )}
+                  </div>
 
-          {stage === "name" && (
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Как тебя зовут?</h1>
-              <p className="text-gray-400 text-sm mb-6">Эту информацию увидит твой ментор</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Полное имя</label>
-                  <input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Айгерим Бекова"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Возраст</label>
-                  <input
-                    type="number"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="17"
-                    min={10}
-                    max={60}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setStage("photo")}
-                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
-                >
-                  ← Назад
-                </button>
-                <button
-                  onClick={() => setStage("school")}
-                  disabled={!fullName.trim()}
-                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-                >
-                  Продолжить →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {stage === "school" && (
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Где ты учишься?</h1>
-              <p className="text-gray-400 text-sm mb-6">
-                Эта информация поможет ментору понять твой уровень ещё до консультации.
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
-                  <input
-                    value={school}
-                    onChange={(e) => setSchool(e.target.value)}
-                    placeholder="НИШ Алматы, школа №1..."
-                    className={inputClass}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Сейчас ты <span className="text-red-500">*</span>
+                      Полное имя <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      value={schoolGrade}
-                      onChange={(e) => setSchoolGrade(e.target.value)}
-                      required
-                      className={selectClass}
-                    >
-                      <option value="">Выбери...</option>
-                      <optgroup label="В школе">
-                        <option value="11 класс">11 класс</option>
-                        <option value="12 класс">12 класс</option>
-                        <option value="10 класс">10 класс</option>
-                        <option value="9 класс">9 класс</option>
-                        <option value="8 класс">8 класс</option>
-                        <option value="7 класс">7 класс</option>
-                        <option value="6 класс">6 класс</option>
-                        <option value="5 класс">5 класс</option>
-                      </optgroup>
-                      <optgroup label="Другое">
-                        <option value="Уже окончил(а) школу">Уже окончил(а) школу</option>
-                        <option value="Студент вуза">Студент вуза</option>
-                        <option value="Колледж / училище">Колледж / училище</option>
-                      </optgroup>
-                    </select>
+                    <input
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Айгерим Бекова"
+                      className={inputClass}
+                    />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Год окончания школы <span className="text-red-500">*</span>
+                      Возраст <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
-                      value={graduationYear}
-                      onChange={(e) => setGraduationYear(e.target.value)}
-                      min={1990}
-                      max={2050}
-                      required
-                      placeholder="2026"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      placeholder="17"
+                      min={10}
+                      max={60}
                       className={inputClass}
                     />
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Город <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    required
-                    placeholder="Алматы"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              {/* Optional context block — same hint as in the profile
-                  editor so the copy stays consistent across both
-                  surfaces. Mentors get more useful pre-call context
-                  the more of these the student fills. */}
-              <div className="pt-5 mt-5 border-t border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h2>
-                <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Советуем заполнить эти данные — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
-                </p>
-
+              {/* ── УЧЁБА ── */}
+              {tab === "school" && (
                 <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-gray-900 mb-1">Учёба</h2>
+                  <p className="text-gray-400 text-sm">
+                    Поможет ментору понять твой уровень ещё до консультации.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Сейчас ты <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={schoolGrade}
+                        onChange={(e) => setSchoolGrade(e.target.value)}
+                        className={selectClass}
+                      >
+                        <option value="">Выбери...</option>
+                        <optgroup label="В школе">
+                          <option value="11 класс">11 класс</option>
+                          <option value="12 класс">12 класс</option>
+                          <option value="10 класс">10 класс</option>
+                          <option value="9 класс">9 класс</option>
+                          <option value="8 класс">8 класс</option>
+                          <option value="7 класс">7 класс</option>
+                          <option value="6 класс">6 класс</option>
+                          <option value="5 класс">5 класс</option>
+                        </optgroup>
+                        <optgroup label="Другое">
+                          <option value="Уже окончил(а) школу">Уже окончил(а) школу</option>
+                          <option value="Студент вуза">Студент вуза</option>
+                          <option value="Колледж / училище">Колледж / училище</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Год окончания <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={graduationYear}
+                        onChange={(e) => setGraduationYear(e.target.value)}
+                        min={1990}
+                        max={2050}
+                        placeholder="2026"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Город <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
-                      value={desiredMajor}
-                      onChange={(e) => setDesiredMajor(e.target.value)}
-                      placeholder="Computer Science, Business, Medicine..."
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Алматы"
                       className={inputClass}
                     />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
                     <input
-                      type="text"
-                      value={desiredCountries}
-                      onChange={(e) => setDesiredCountries(e.target.value)}
-                      placeholder="США, Канада, Германия..."
+                      value={school}
+                      onChange={(e) => setSchool(e.target.value)}
+                      placeholder="НИШ Алматы, школа №1..."
                       className={inputClass}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
-                    <input
-                      type="text"
-                      value={examResults}
-                      onChange={(e) => setExamResults(e.target.value)}
-                      placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
-                    <input
-                      type="text"
-                      value={gpa}
-                      onChange={(e) => setGpa(e.target.value)}
-                      placeholder="4.5 / 5.0  или  3.8 / 4.0"
-                      className={inputClass}
-                    />
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                      Советуем заполнить — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
+                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
+                        <input
+                          type="text"
+                          value={desiredMajor}
+                          onChange={(e) => setDesiredMajor(e.target.value)}
+                          placeholder="Computer Science, Business, Medicine..."
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
+                        <input
+                          type="text"
+                          value={desiredCountries}
+                          onChange={(e) => setDesiredCountries(e.target.value)}
+                          placeholder="США, Канада, Германия..."
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
+                        <input
+                          type="text"
+                          value={examResults}
+                          onChange={(e) => setExamResults(e.target.value)}
+                          placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
+                        <input
+                          type="text"
+                          value={gpa}
+                          onChange={(e) => setGpa(e.target.value)}
+                          placeholder="4.5 / 5.0  или  3.8 / 4.0"
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mt-4">{error}</div>
               )}
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setStage("name")}
-                  className="flex-1 border border-gray-200 text-gray-600 py-3.5 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
-                >
-                  ← Назад
-                </button>
-                <button
-                  onClick={handleFinish}
-                  disabled={
-                    saving
-                    || !school.trim()
-                    || !schoolGrade.trim()
-                    || !city.trim()
-                    || !graduationYear.trim()
-                  }
-                  className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
-                >
-                  {saving ? "Сохраняем..." : "Готово →"}
-                </button>
-              </div>
             </div>
           )}
         </div>
+
+        {/* Submit button — only in form stage, outside the card */}
+        {emailStage === "form" && (
+          <>
+            <button
+              onClick={() => {
+                if (!allDone) {
+                  setEarlySubmitHint(true)
+                  setTimeout(() => setEarlySubmitHint(false), 4000)
+                } else {
+                  void handleFinish()
+                }
+              }}
+              disabled={saving}
+              className={`w-full mt-4 py-4 rounded-xl font-semibold transition-colors text-sm text-white ${
+                allDone ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {saving ? "Сохраняем..." : "Готово →"}
+            </button>
+            {earlySubmitHint && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-xs font-semibold text-amber-700 mb-1">Ещё не всё заполнено:</p>
+                <ul className="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
+                  {!tabDone.about && <li>О себе — имя и возраст</li>}
+                  {!tabDone.school && <li>Учёба — статус, город и год окончания</li>}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
 
         <p className="text-center text-xs text-gray-300 mt-4">
           Можно изменить позже в профиле
         </p>
       </div>
+
       <AvatarCropperModal
         file={pickedFile}
         onClose={() => setPickedFile(null)}
