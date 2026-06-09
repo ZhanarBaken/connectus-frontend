@@ -60,8 +60,9 @@ export default function Header() {
 
   const isMentor = role === "mentor"
   const isStudent = role === "student"
-  const isAuthed = isMentor || isStudent
-  const homeHref = isMentor ? "/mentor/dashboard" : "/"
+  const isAdmin = role === "admin"
+  const isAuthed = isMentor || isStudent || isAdmin
+  const homeHref = isMentor ? "/mentor/dashboard" : isAdmin ? "/crm" : "/"
 
   interface NavLink {
     href: string
@@ -95,7 +96,11 @@ export default function Header() {
     { href: "/become-mentor", label: t("nav.become_mentor") },
   ]
 
-  const navLinks: NavLink[] = isMentor ? mentorNav : isStudent ? studentNav : guestNav
+  const adminNav: NavLink[] = [
+    { href: "/crm", label: "CRM", icon: "admin_panel_settings" },
+  ]
+
+  const navLinks: NavLink[] = isMentor ? mentorNav : isStudent ? studentNav : isAdmin ? adminNav : guestNav
 
   const isActive = (link: NavLink) => {
     if (pathname === link.href) return true

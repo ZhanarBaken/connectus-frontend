@@ -244,3 +244,113 @@ export interface ChatMessage {
   created_at: string
   attachments?: ChatAttachment[]
 }
+
+// ─── CRM admin types ──────────────────────────────────────────────────────────
+
+export interface AdminMentorProfile extends MentorProfile {
+  user_email: string
+  telegram_username: string
+  telegram_id: string
+}
+
+export interface AdminDispute {
+  id: number
+  order: number
+  opened_by: number
+  opened_by_email: string
+  reason: string
+  opened_at: string
+  resolution: string | null
+  resolved_by: number | null
+  resolved_by_email: string | null
+  resolved_at: string | null
+  refund_amount: string | null
+}
+
+export interface AdminConversation {
+  id: number
+  mentor: number
+  mentor_name: string
+  mentor_email: string
+  student: number
+  student_name: string
+  student_email: string
+  created_at: string
+  closed_at: string | null
+  last_message_at: string | null
+}
+
+export interface SiteSettings {
+  id: number
+  dispute_window_hours: number
+  terms_text: string
+  platform_rules_text: string
+  data_consent_text: string
+  privacy_policy_text: string
+  support_url: string
+  payment_account_details: string
+  whatsapp_number: string
+  consultation_complete_chat_message: string
+  // Email: verify
+  verify_email_subject: string
+  verify_email_heading: string
+  verify_email_body: string
+  // Email: password reset
+  password_reset_email_subject: string
+  password_reset_email_heading: string
+  password_reset_email_body: string
+  // Email: consultation complete (to student)
+  consultation_complete_email_subject: string
+  consultation_complete_email_heading: string
+  consultation_complete_email_body: string
+  // Email: order created (to mentor)
+  order_created_email_subject: string
+  order_created_email_heading: string
+  order_created_email_body: string
+  // Email: order completed (to student)
+  order_completed_email_subject: string
+  order_completed_email_heading: string
+  order_completed_email_body: string
+  // Email: consultation confirmed (to student)
+  consultation_confirmed_email_subject: string
+  consultation_confirmed_email_heading: string
+  consultation_confirmed_email_body: string
+  // Email: review reply (to student)
+  review_reply_email_subject: string
+  review_reply_email_heading: string
+  review_reply_email_body: string
+  // Email: new chat message
+  new_chat_message_email_subject: string
+  new_chat_message_email_heading: string
+  new_chat_message_email_body: string
+  // Email: payment events
+  payment_confirmed_email_subject: string
+  payment_confirmed_email_heading: string
+  payment_confirmed_email_body: string
+  payment_received_email_subject: string
+  payment_received_email_heading: string
+  payment_received_email_body: string
+  payment_rejected_email_subject: string
+  payment_rejected_email_heading: string
+  payment_rejected_email_body: string
+  payment_expired_student_email_subject: string
+  payment_expired_student_email_heading: string
+  payment_expired_student_email_body: string
+  payment_expired_mentor_email_subject: string
+  payment_expired_mentor_email_heading: string
+  payment_expired_mentor_email_body: string
+  // Telegram bot messages
+  bot_payment_requisites_message: string
+  bot_payment_received_student: string
+  bot_payment_received_mentor: string
+  bot_payment_rejected_student: string
+  // In-app notification titles
+  notif_order_created_title: string
+  notif_review_new_title: string
+  notif_payment_receipt_pending_title: string
+  notif_payment_confirmed_student_title: string
+  notif_payment_received_mentor_title: string
+  notif_payment_rejected_student_title: string
+  notif_payment_expired_student_title: string
+  notif_payment_expired_mentor_title: string
+}
