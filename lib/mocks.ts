@@ -161,6 +161,7 @@ export const MOCK_ORDERS: Order[] = [
 export const MOCK_STUDENT_PROFILE: StudentProfile = {
   id: 1,
   full_name: "Айгерим Бекова",
+  date_of_birth: "2007-03-15",
   age: 18,
   current_school_or_university: "НИШ Алматы",
   contacts: "",
