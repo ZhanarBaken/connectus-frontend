@@ -2,7 +2,7 @@
 // Switch USE_MOCKS to false when backend is ready
 
 import { MOCK_MENTORS, getMockMentor, getMockServices, MOCK_ORDERS, MOCK_STUDENT_PROFILE } from "./mocks"
-import { Dispute, Mentor, MentorCard, MentorProfile, Order, StudentProfile } from "@/types"
+import { AdminConversation, AdminDispute, AdminMentorProfile, Dispute, Mentor, MentorCard, MentorProfile, Order, SiteSettings, StudentProfile } from "@/types"
 
 const USE_MOCKS = false
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -688,6 +688,18 @@ export async function telegramStart(role: string): Promise<{ token: string; bot_
   return res.json()
 }
 
+export async function setUserRole(role: "student" | "mentor"): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/me/role/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось установить роль")
+  }
+}
+
 export async function telegramLogin(token: string): Promise<{
   user_id: number
   access: string
@@ -1084,6 +1096,116 @@ export async function fetchMentorAvailabilityOverview(
 }
 
 // ─── Auth helpers ───────────────────────────────────────────────────────────
+
+// ─── CRM admin API ───────────────────────────────────────────────────────────
+
+export async function fetchAdminMentors(filter?: "submitted" | "banned" | "all"): Promise<AdminMentorProfile[]> {
+  const params = filter === "submitted" ? "?submitted=true" : filter === "banned" ? "?banned=true" : ""
+  const res = await authFetch(`${BASE_URL}/mentors/admin/${params}`)
+  if (!res.ok) throw new Error("Failed to fetch admin mentors")
+  return res.json()
+}
+
+export async function approveMentor(id: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/approve/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось одобрить ментора")
+  }
+}
+
+export async function rejectMentor(id: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/reject/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить ментора")
+  }
+}
+
+export async function banMentor(id: number, reason: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/ban/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось заблокировать ментора")
+  }
+}
+
+export async function unbanMentor(id: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/unban/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось разблокировать ментора")
+  }
+}
+
+export async function rejectOrderPayment(id: number, reason: string): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/reject_payment/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить платёж")
+  }
+  return res.json()
+}
+
+export async function fetchAdminDisputes(): Promise<AdminDispute[]> {
+  const res = await authFetch(`${BASE_URL}/orders/disputes/`)
+  if (!res.ok) throw new Error("Failed to fetch disputes")
+  return res.json()
+}
+
+export async function resolveDispute(id: number, resolution: "full_refund" | "payout_mentor"): Promise<AdminDispute> {
+  const res = await authFetch(`${BASE_URL}/orders/disputes/${id}/resolve/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resolution }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось разрешить спор")
+  }
+  return res.json()
+}
+
+export async function fetchAdminConversations(): Promise<AdminConversation[]> {
+  const res = await authFetch(`${BASE_URL}/chat/admin/`)
+  if (!res.ok) throw new Error("Failed to fetch conversations")
+  return res.json()
+}
+
+export async function fetchAdminSettings(): Promise<SiteSettings> {
+  const res = await authFetch(`${BASE_URL}/settings/admin/`)
+  if (!res.ok) throw new Error("Failed to fetch settings")
+  return res.json()
+}
+
+export async function updateAdminSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
+  const res = await authFetch(`${BASE_URL}/settings/admin/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const first = Object.values(err)[0]
+    throw new Error(Array.isArray(first) ? first[0] : String(first ?? "Не удалось сохранить настройки"))
+  }
+  return res.json()
+}
+
+export async function fetchChatMessages(conversationId: number): Promise<import("@/types").ChatMessage[]> {
+  const res = await authFetch(`${BASE_URL}/chat/${conversationId}/messages/`)
+  if (!res.ok) throw new Error("Failed to fetch messages")
+  const data = await res.json()
+  return data.results ?? data
+}
 
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const buildHeaders = (token: string): HeadersInit => {

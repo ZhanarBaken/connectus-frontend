@@ -25,7 +25,6 @@ function LoginForm() {
   const [needsVerification, setNeedsVerification] = useState(false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
-  const [tgRolePicker, setTgRolePicker] = useState(false)
   // Google Sign-In SDK is blocked inside Telegram's WebView (Google
   // refuses to render its prompt in embedded browsers); hide the button
   // so users don't tap a dead control. They can still sign in / link
@@ -120,12 +119,11 @@ function LoginForm() {
     }
   }
 
-  const handleTelegramLogin = async (role: "student" | "mentor") => {
-    setTgRolePicker(false)
+  const handleTelegramLogin = async () => {
     setLoading(true)
     setError("")
     try {
-      const data = await telegramStart(role)
+      const data = await telegramStart("student")
       localStorage.setItem("tg_signup_token", data.token)
       window.location.href = data.bot_url
     } catch (e: unknown) {
@@ -171,46 +169,17 @@ function LoginForm() {
               the flow already. */}
           {!isInTelegram && (
             <div className="flex flex-col gap-3 mb-6">
-              {tgRolePicker ? (
-                <div className="flex flex-col gap-2 border border-gray-200 rounded-xl p-3">
-                  <p className="text-xs text-gray-500 text-center mb-1">Кто вы?</p>
-                  <button
-                    type="button"
-                    onClick={() => handleTelegramLogin("student")}
-                    disabled={loading}
-                    className="w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                  >
-                    Абитуриент или родитель
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTelegramLogin("mentor")}
-                    disabled={loading}
-                    className="w-full py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    Ментор
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTgRolePicker(false)}
-                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
-                  >
-                    Назад
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setTgRolePicker(true)}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-3 bg-[#2AABEE] hover:bg-[#229ED9] text-white rounded-xl py-3.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                  </svg>
-                  Войти через Telegram
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleTelegramLogin}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 bg-[#2AABEE] hover:bg-[#229ED9] text-white rounded-xl py-3.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                </svg>
+                Войти через Telegram
+              </button>
               <button
                 type="button"
                 onClick={handleGoogleLogin}
