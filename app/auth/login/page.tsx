@@ -31,6 +31,15 @@ function LoginForm() {
   // Google later from a regular browser tab.
   const { isInTelegram } = useTelegramWebApp()
 
+  // Redirect already-authenticated users to their dashboard.
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    const role = localStorage.getItem("role")
+    if (!token) return
+    if (role === "mentor") router.replace("/mentor/dashboard")
+    else router.replace("/student/dashboard")
+  }, [router])
+
   // Inside a Telegram Mini App, the email/password form is dead weight —
   // we already have a signed initData payload from Telegram. Trigger the
   // Mini App auto-login overlay (handled by <TelegramAutoLogin>) so any
