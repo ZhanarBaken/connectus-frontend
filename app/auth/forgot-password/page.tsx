@@ -1,16 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { requestPasswordReset, CooldownError, formatCooldownShort } from "@/lib/api"
 import Logo from "@/components/Logo"
 
 export default function ForgotPasswordPage() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    const role = localStorage.getItem("role")
+    if (!token) return
+    if (role === "mentor") router.replace("/mentor/dashboard")
+    else router.replace("/student/dashboard")
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -65,6 +65,15 @@ export default function RegisterPage() {
 
   // Inside a Telegram Mini App, the email/password form is dead weight —
   // we already have a signed initData payload from Telegram. Trigger the
+  // Redirect already-authenticated users to their dashboard.
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    const role = localStorage.getItem("role")
+    if (!token) return
+    if (role === "mentor") router.replace("/mentor/dashboard")
+    else router.replace("/student/dashboard")
+  }, [router])
+
   // Mini App auto-login overlay (handled by <TelegramAutoLogin>) so any
   // CTA that links here (landing's "Начать бесплатно", /become-mentor,
   // etc.) lands on the one-tap TG flow instead of the email form.
