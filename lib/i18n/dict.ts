@@ -31,7 +31,7 @@ export const dict: Record<Locale, Dict> = {
     "nav.become_mentor": "Стать ментором",
 
     // Hero
-    "hero.title_1": "Поступи в университет мечты",
+    "hero.title_1": "Поступи в университет мечты ✓",
     "hero.title_2": "с ментором",
     "hero.cta_find": "Найти ментора",
     "hero.cta_become": "Хочу стать ментором →",
