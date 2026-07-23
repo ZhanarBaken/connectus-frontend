@@ -205,6 +205,10 @@ export interface Order {
   order_status: OrderStatus
   payment_instructions: PaymentInstructions | null
   conversation_id: number | null
+  // Set only for a support-engagement monthly installment — null for a
+  // free intro-call, a free session booked under an active engagement,
+  // and every non-support order.
+  installment_number: number | null
   completed_at: string | null
   created_at: string
   updated_at: string

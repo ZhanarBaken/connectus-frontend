@@ -12,6 +12,9 @@ import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
 import Icon from "@/components/Icon"
 
+// Matches apps.services.models.SUPPORT_INTRO_CALL_DURATION_MINUTES on the backend.
+const SUPPORT_INTRO_CALL_DURATION_MINUTES = 15
+
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
   scholarships: "Стипендии",
@@ -41,6 +44,7 @@ export default function MentorPage({ params }: Props) {
   const [orderError, setOrderError] = useState("")
   const [reviews, setReviews] = useState<Review[]>([])
   const [bookingService, setBookingService] = useState<MentorService | null>(null)
+  const [bookingIsIntroCall, setBookingIsIntroCall] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -432,7 +436,19 @@ export default function MentorPage({ params }: Props) {
                   Долгосрочная программа — цена и сроки обсуждаются с ментором в чате
                 </p>
                 <div className="space-y-3">
-                  {supportServices.map((service) => (
+                  {supportServices.map((service) => {
+                    // Any non-installment order against this exact service
+                    // is, today, the free intro-call (the other zero-cost
+                    // case — a session under an active engagement — isn't
+                    // reachable from this page yet, that's a separate
+                    // follow-up once the engagement-status UI exists).
+                    const introCallOrder = orders.find(
+                      (o) =>
+                        o.mentor_service === service.id &&
+                        o.installment_number === null &&
+                        ["draft", "pending_payment", "in_progress"].includes(o.order_status),
+                    )
+                    return (
                     <div key={service.id} className="border rounded-2xl p-5 border-gray-200 hover:border-gray-300 transition-all">
                       <div className="flex justify-between items-start gap-4 flex-wrap">
                         <div className="flex-1 min-w-0">
@@ -474,7 +490,7 @@ export default function MentorPage({ params }: Props) {
                           )}
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
                         {hasOpenChat ? (
                           <Link
                             href="/orders"
@@ -488,9 +504,28 @@ export default function MentorPage({ params }: Props) {
                             Доступно в чате после первой оплаченной консультации
                           </p>
                         )}
+                        {service.intro_call_enabled && (
+                          introCallOrder ? (
+                            <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-1">
+                              <Icon name="event_available" size={14} />
+                              Intro-call забронирован
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setBookingIsIntroCall(true)
+                                setBookingService(service)
+                              }}
+                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-colors"
+                            >
+                              Забронировать intro-call
+                            </button>
+                          )
+                        )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -654,36 +689,42 @@ export default function MentorPage({ params }: Props) {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setBookingService(null)}
+            onClick={() => { setBookingService(null); setBookingIsIntroCall(false) }}
           />
           <div className="relative min-h-full flex items-center justify-center p-4">
             <div className="relative w-full max-w-md my-4">
               <div className="mb-3 bg-white rounded-xl px-4 py-3 border border-gray-200">
-                <p className="text-sm font-semibold text-gray-900">{bookingService.title}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {bookingIsIntroCall ? `Intro-call · ${bookingService.title}` : bookingService.title}
+                </p>
                 <p className="text-xs text-gray-400">
-                  {bookingService.duration_minutes} мин · {Number(bookingService.price).toLocaleString("ru-RU")} ₸
+                  {bookingIsIntroCall
+                    ? `${SUPPORT_INTRO_CALL_DURATION_MINUTES} мин · бесплатно`
+                    : `${bookingService.duration_minutes} мин · ${Number(bookingService.price).toLocaleString("ru-RU")} ₸`}
                 </p>
               </div>
               <BookingCalendar
                 mentorId={mentor.id}
-                durationMinutes={bookingService.duration_minutes}
+                durationMinutes={bookingIsIntroCall ? SUPPORT_INTRO_CALL_DURATION_MINUTES : bookingService.duration_minutes}
                 onSelect={async (date, time) => {
+                  const serviceId = bookingService.id
                   setBookingService(null)
-                  setOrderingServiceId(bookingService.id)
+                  setBookingIsIntroCall(false)
+                  setOrderingServiceId(serviceId)
                   setOrderError("")
                   // Backend SCHEDULE_TIMEZONE is Asia/Almaty (+05:00, no
                   // DST). Hardcoded so a student in another browser TZ
                   // still books the mentor's local slot correctly.
                   const scheduledAt = `${date}T${time}:00+05:00`
                   try {
-                    const created = await createOrder(bookingService.id, scheduledAt)
+                    const created = await createOrder(serviceId, scheduledAt)
                     router.push(`/orders/${created.id}`)
                   } catch (err: unknown) {
                     setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
                     setOrderingServiceId(null)
                   }
                 }}
-                onCancel={() => setBookingService(null)}
+                onCancel={() => { setBookingService(null); setBookingIsIntroCall(false) }}
               />
             </div>
           </div>
