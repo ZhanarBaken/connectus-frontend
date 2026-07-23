@@ -209,6 +209,15 @@ export interface Order {
   // free intro-call, a free session booked under an active engagement,
   // and every non-support order.
   installment_number: number | null
+  engagement_duration_months: number | null
+  // Live status of the parent SupportEngagement — null unless this order
+  // belongs to one. "paused" means an installment went unpaid past its
+  // grace period; a replacement invoice is due immediately.
+  engagement_status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled" | null
+  // Real due date for an auto-generated installment (month 2+), sent
+  // SUPPORT_REMINDER_LEAD_DAYS before it's due — null for month 1 and
+  // every non-support order, where due = creation.
+  due_at: string | null
   completed_at: string | null
   created_at: string
   updated_at: string

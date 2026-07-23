@@ -442,6 +442,25 @@ export default function OrderPage({ params }: Props) {
                 {STATUS_LABEL[order.order_status] || order.order_status}
               </div>
 
+              {order.engagement_status === "paused" ? (
+                <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
+                  <Icon name="error" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                  <span>
+                    Сопровождение приостановлено из-за неоплаты. Оплатите текущий счёт,
+                    чтобы возобновить — иначе оно будет архивировано.
+                  </span>
+                </div>
+              ) : (
+                order.order_status === "pending_payment" &&
+                order.due_at &&
+                new Date(order.due_at) < new Date() && (
+                  <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
+                    <Icon name="error" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                    <span>Оплата просрочена — пожалуйста, оплатите как можно скорее.</span>
+                  </div>
+                )
+              )}
+
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Сумма</span>
@@ -627,14 +646,36 @@ export default function OrderPage({ params }: Props) {
 
             {/* Student: pending payment — details + cancel */}
             {order.order_status === "pending_payment" && role !== "mentor" && (() => {
-              // Backend auto-cancels PENDING_PAYMENT orders after
-              // ORDER_PAYMENT_DEADLINE_DAYS (default 7) via Celery beat.
-              // Mirror the constant client-side; not exposed in the API.
-              const PAYMENT_DEADLINE_DAYS = 7
-              const deadlineMs =
-                new Date(order.created_at).getTime() +
-                PAYMENT_DEADLINE_DAYS * 24 * 60 * 60 * 1000 -
-                Date.now()
+              // Installments 2+ (auto-generated) don't follow the generic
+              // created_at+7d auto-cancel rule at all — they're excluded
+              // from that sweep and instead run on due_at-based grace/
+              // pause/archive cutoffs (apps.orders.services). Mirroring
+              // both sets of day constants client-side since neither is
+              // exposed in the API.
+              const ORDER_PAYMENT_DEADLINE_DAYS = 7
+              const SUPPORT_GRACE_DAYS = 7
+              const SUPPORT_ARCHIVE_DAYS = 7
+              const isLaterInstallment = order.installment_number !== null && order.installment_number > 1
+
+              let deadlineMs = 0
+              let deadlineLabel = "Заказ автоотменится через"
+              if (isLaterInstallment && order.due_at) {
+                const dueAtMs = new Date(order.due_at).getTime()
+                if (order.engagement_status === "paused") {
+                  deadlineMs = dueAtMs + SUPPORT_ARCHIVE_DAYS * 24 * 60 * 60 * 1000 - Date.now()
+                  deadlineLabel = "Сопровождение будет архивировано через"
+                } else if (dueAtMs <= Date.now()) {
+                  deadlineMs = dueAtMs + SUPPORT_GRACE_DAYS * 24 * 60 * 60 * 1000 - Date.now()
+                  deadlineLabel = "Сопровождение будет приостановлено через"
+                }
+                // Not yet due: nothing auto-cancels before the due date —
+                // no countdown to show at all.
+              } else {
+                deadlineMs =
+                  new Date(order.created_at).getTime() +
+                  ORDER_PAYMENT_DEADLINE_DAYS * 24 * 60 * 60 * 1000 -
+                  Date.now()
+              }
               const hasReceipt = orderDocs.some((d) => d.kind === "payment_receipt")
               return (
               <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
@@ -664,7 +705,7 @@ export default function OrderPage({ params }: Props) {
 
                 {deadlineMs > 0 && (
                   <p className="text-[11px] text-yellow-700 bg-yellow-100/60 border border-yellow-200 rounded-lg px-3 py-2">
-                    Заказ автоотменится через {formatRemaining(deadlineMs)}, если не будет оплачен.
+                    {deadlineLabel} {formatRemaining(deadlineMs)}, если не будет оплачен.
                   </p>
                 )}
 

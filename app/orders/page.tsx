@@ -32,6 +32,18 @@ const STATUS_STYLE: Record<Order["order_status"], string> = {
   cancelled: "bg-gray-100 text-gray-400",
 }
 
+// Small extra tag alongside the status pill for a support installment
+// that's overdue or paused — null when neither applies.
+function dunningTag(order: Order): { text: string; className: string } | null {
+  if (order.engagement_status === "paused") {
+    return { text: "Приостановлено", className: "bg-red-50 text-red-700" }
+  }
+  if (order.order_status === "pending_payment" && order.due_at && new Date(order.due_at) < new Date()) {
+    return { text: "Просрочено", className: "bg-red-50 text-red-700" }
+  }
+  return null
+}
+
 interface ClientGroup {
   studentId: number
   studentName: string
@@ -195,6 +207,11 @@ export default function OrdersPage() {
                             </p>
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
+                            {dunningTag(order) && (
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${dunningTag(order)!.className}`}>
+                                {dunningTag(order)!.text}
+                              </span>
+                            )}
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[order.order_status]}`}>
                               {STATUS_LABEL[order.order_status]}
                             </span>
@@ -234,6 +251,11 @@ export default function OrdersPage() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  {dunningTag(order) && (
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${dunningTag(order)!.className}`}>
+                      {dunningTag(order)!.text}
+                    </span>
+                  )}
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[order.order_status]}`}>
                     {STATUS_LABEL[order.order_status]}
                   </span>
