@@ -1,7 +1,6 @@
 import { fetchMentors } from "@/lib/api"
 import { countryLabel } from "@/lib/countries"
 import { MentorCard } from "@/types"
-import MentorRedirect from "@/components/MentorRedirect"
 import LandingHero from "@/components/LandingHero"
 import LandingSections from "@/components/LandingSections"
 
@@ -81,7 +80,6 @@ export default async function HomePage() {
 
   return (
     <main className="bg-white">
-      <MentorRedirect />
       <LandingHero mentors={mentors} />
       <LandingSections categories={categories} mentors={mentors} />
     </main>

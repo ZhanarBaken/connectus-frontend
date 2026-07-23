@@ -939,6 +939,6 @@ function tabForError(errors: Record<string, string>): Tab | null {
     errors.countries || errors.school_or_university || errors.major
     || errors.grant_or_scholarship || errors.gpa || errors.exam_results
   ) return "education"
-  if (errors.expertise_areas || errors.documents) return "expertise"
+  if (errors.expertise_areas || errors.diploma_document || errors.enrollment_document) return "expertise"
   return null
 }
