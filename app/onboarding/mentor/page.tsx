@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   authFetch,
+  clearAuth,
   fetchMe,
   fetchMentorProfile,
   updateMentorProfile,
@@ -163,7 +164,14 @@ export default function MentorOnboarding() {
         } catch { /* non-fatal */ }
         setReady(true)
       })
-      .catch(() => router.replace("/auth/login"))
+      .catch(() => {
+        // Clear the stale/invalid token before bouncing back — otherwise
+        // the login page's token-presence check sends the user straight
+        // back to a page that fails the same way, forming an infinite
+        // redirect loop instead of a clean re-login.
+        clearAuth()
+        router.replace("/auth/login")
+      })
   }, [router])
 
   // ─── Auto-save helpers ─────────────────────────────────────────

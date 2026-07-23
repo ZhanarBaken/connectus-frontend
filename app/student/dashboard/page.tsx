@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchStudentProfile, fetchOrders, fetchMentors } from "@/lib/api"
+import { fetchStudentProfile, fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
 import { StudentProfile, Order } from "@/types"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
@@ -47,7 +47,15 @@ export default function StudentDashboard() {
         for (const m of mentors) map[m.id] = m.full_name
         setMentorNames(map)
       })
-      .catch(() => router.replace("/auth/login"))
+      .catch(() => {
+        // A stale/invalid token would otherwise send the login page
+        // straight back here (it only checks token presence), and this
+        // catch straight back to login — an infinite redirect loop the
+        // browser eventually kills as a hard navigation failure. Clearing
+        // the token here is what breaks the cycle.
+        clearAuth()
+        router.replace("/auth/login")
+      })
       .finally(() => setLoading(false))
   }, [router])
 

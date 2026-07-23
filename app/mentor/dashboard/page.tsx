@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation, fetchMe } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation, fetchMe, clearAuth } from "@/lib/api"
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/contacts"
 import { User } from "@/types"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
@@ -69,7 +69,15 @@ export default function MentorDashboard() {
         const token = localStorage.getItem("access_token")
         if (token) fetchMe(token).then(setMe).catch(() => {})
       })
-      .catch(() => router.replace("/auth/login"))
+      .catch(() => {
+        // Clear the stale/invalid token before bouncing back — otherwise
+        // the login page's token-presence check sends the user straight
+        // back here, this catch sends them straight back to login, and
+        // so on: an infinite redirect loop that ends in a hard browser
+        // navigation failure instead of a clean re-login.
+        clearAuth()
+        router.replace("/auth/login")
+      })
       .finally(() => setLoading(false))
   }, [router])
 

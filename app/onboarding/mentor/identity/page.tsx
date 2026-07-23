@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   changeEmail as changeEmailApi,
+  clearAuth,
   EmailTakenError,
   fetchMe,
   googleLink,
@@ -60,6 +61,11 @@ export default function MentorIdentityPage() {
       setMe(fresh)
       return fresh
     } catch {
+      // Clear the stale/invalid token before bouncing back — otherwise
+      // the login page's token-presence check sends the user straight
+      // back here, forming an infinite redirect loop instead of a clean
+      // re-login.
+      clearAuth()
       router.replace("/auth/login")
       return null
     }

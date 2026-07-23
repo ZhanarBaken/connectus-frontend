@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   authFetch,
+  clearAuth,
   CooldownError,
   EmailTakenError,
   fetchMe,
@@ -87,6 +88,11 @@ export default function StudentOnboarding() {
       })
       .catch(() => {
         if (cancelled) return
+        // Clear the stale/invalid token before bouncing back — otherwise
+        // the login page's token-presence check sends the user straight
+        // back to a dashboard that fails the same way, forming an
+        // infinite redirect loop instead of a clean re-login.
+        clearAuth()
         router.replace("/auth/login")
       })
     return () => { cancelled = true }

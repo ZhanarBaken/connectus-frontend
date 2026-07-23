@@ -67,11 +67,21 @@ function TgCallbackContent() {
     try {
       if (role === "mentor") {
         await setUserRole("mentor")
-        localStorage.setItem("role", "mentor")
       }
+      // Always confirm the ACTUAL role from the backend before navigating
+      // — this screen can show up for an account that already has a role
+      // (e.g. this "pick role" step re-appearing for an already-registered
+      // user). The "student" branch used to skip verification entirely and
+      // just trust the button clicked, which could silently desync the
+      // client from an existing mentor account. Route by whatever the
+      // backend says is true, not by what was clicked.
+      const token = localStorage.getItem("access_token")
+      const me = token ? await fetchMe(token) : null
+      if (!me) throw new Error("Сессия истекла. Попробуйте войти снова.")
+      localStorage.setItem("role", me.role)
       setStatus("success")
       setTimeout(() => {
-        router.push(role === "mentor" ? "/onboarding/mentor/identity" : "/onboarding/student")
+        router.push(me.role === "mentor" ? "/onboarding/mentor/identity" : "/onboarding/student")
       }, 800)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ошибка. Попробуйте снова.")

@@ -557,7 +557,7 @@ function getRefreshToken(): string {
   return localStorage.getItem("refresh_token") ?? ""
 }
 
-function clearAuth() {
+export function clearAuth() {
   if (typeof window === "undefined") return
   localStorage.removeItem("access_token")
   localStorage.removeItem("refresh_token")
