@@ -348,7 +348,12 @@ export default function MentorOnboarding() {
       countries.length > 0 && school.trim() && major.trim()
       && grant.trim() && gpa.trim() && examResults.trim()
     ),
-    expertise: expertise.length > 0 && documents.length > 0,
+    // Matches the backend's actual submit requirement (apps.mentors.models
+    // MentorProfile.submission_errors) — a diploma AND an enrollment
+    // certificate specifically, not just any one document.
+    expertise: expertise.length > 0 &&
+      documents.some((d) => d.kind === "diploma") &&
+      documents.some((d) => d.kind === "enrollment_certificate"),
   }
   const allDone = Object.values(tabDone).every(Boolean)
 
