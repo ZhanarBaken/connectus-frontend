@@ -92,24 +92,30 @@ export default function MentorPage({ params }: Props) {
     )
   }
 
-  // Split services. Paid consultation is the platform-default consultation
-  // offering (10 000 ₸); the legacy free intro is kept on backend as an
-  // inactive artifact and is not in the public services list.
-  const consultationService: MentorService | undefined = mentor.services.find(
+  // Split services. Mentors can list any number of paid consultations now
+  // (no more singleton) — the legacy free intro is kept on backend as an
+  // inactive artifact and is not in the public services list. "support"
+  // (long-running mentorship) is sold through chat, not this one-click flow.
+  const consultationServices = mentor.services.filter(
     (s) => s.payout_category === "primary_consultation"
   )
   const paidServices = mentor.services.filter(
-    (s) => s.payout_category !== "consultation" && s.payout_category !== "primary_consultation"
+    (s) =>
+      s.payout_category !== "consultation" &&
+      s.payout_category !== "primary_consultation" &&
+      s.payout_category !== "support"
   )
+  const supportServices = mentor.services.filter((s) => s.payout_category === "support")
 
-  // Find the student's consultation order with this mentor (if any)
-  const consultationOrder = consultationService
-    ? orders.find(
-        (o) =>
-          o.mentor_service === consultationService.id &&
-          ["pending_payment", "in_progress"].includes(o.order_status)
-      )
-    : undefined
+  // Only one active consultation (of any of the mentor's consultation
+  // services) per mentor-student pair — a mentor-wide invariant, not a
+  // per-service one, so this must be found across the whole set.
+  const consultationServiceIds = new Set(consultationServices.map((s) => s.id))
+  const consultationOrder = orders.find(
+    (o) =>
+      consultationServiceIds.has(o.mentor_service) &&
+      ["pending_payment", "in_progress"].includes(o.order_status)
+  )
   const consultationStatus: "none" | "pending_payment" | "in_progress" =
     !consultationOrder
       ? "none"
@@ -273,10 +279,12 @@ export default function MentorPage({ params }: Props) {
               </div>
             )}
 
-            {/* Consultation — hero block. 50% off (welcome promo) shows when
-                the student is in their 30-day signup window. */}
-            {consultationService && (() => {
-              const fullPrice = Number(consultationService.price)
+            {/* Consultations — hero blocks. 50% off (welcome promo) shows
+                when the student is in their 30-day signup window. Mentors
+                can list more than one — each gets its own card, but only
+                one active order across ALL of them is allowed at a time. */}
+            {consultationServices.map((consultationService) => {
+              const fullPrice = Number(consultationService.price ?? 0)
               // Скидка имеет смысл только если есть с чего скидывать.
               // Ментор имеет право поставить 0 ₸ — тогда показывать
               // зачёркнутые "0 ₸" и "−50%" нелепо.
@@ -294,8 +302,12 @@ export default function MentorPage({ params }: Props) {
                     ),
                   )
                 : null
+              // Does the mentor-wide active order belong to THIS card, or
+              // to a different consultation service of the same mentor?
+              const isThisOrder = consultationOrder?.mentor_service === consultationService.id
+              const blockedByOtherConsultation = consultationStatus !== "none" && !isThisOrder
               return (
-              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
+              <div key={consultationService.id} className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="relative">
                   <div className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
@@ -311,7 +323,7 @@ export default function MentorPage({ params }: Props) {
                       <span>{fullPrice.toLocaleString("ru-RU")} ₸</span>
                     )}
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">Консультация</h2>
+                  <h2 className="text-2xl font-bold mb-2">{consultationService.title || "Консультация"}</h2>
                   <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line">
                     {consultationService.description ||
                       "Индивидуальный разбор твоей ситуации, выбор программ и пошаговый план дальнейшей работы."}
@@ -321,6 +333,15 @@ export default function MentorPage({ params }: Props) {
                       <Icon name="schedule" size={14} />
                       {consultationService.duration_minutes} мин
                     </span>
+                    {(consultationService.grade_min !== null || consultationService.grade_max !== null) && (
+                      <>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="school" size={14} />
+                          {consultationService.grade_min ?? "?"}–{consultationService.grade_max ?? "?"} класс
+                        </span>
+                      </>
+                    )}
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
                       <Icon name="chat" size={14} />
@@ -328,7 +349,7 @@ export default function MentorPage({ params }: Props) {
                     </span>
                   </div>
 
-                  {consultationStatus === "in_progress" ? (
+                  {isThisOrder && consultationStatus === "in_progress" ? (
                     <div className="flex items-center gap-3">
                       <Link
                         href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
@@ -339,13 +360,20 @@ export default function MentorPage({ params }: Props) {
                       </Link>
                       <span className="text-xs text-indigo-200">Консультация активна</span>
                     </div>
-                  ) : consultationStatus === "pending_payment" ? (
+                  ) : isThisOrder && consultationStatus === "pending_payment" ? (
                     <Link
                       href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
                       className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
                     >
                       Перейти к оплате
                       <Icon name="arrow_forward" size={16} />
+                    </Link>
+                  ) : blockedByOtherConsultation ? (
+                    <Link
+                      href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                      className="text-xs text-indigo-200 underline hover:text-white transition-colors"
+                    >
+                      У тебя уже есть активная консультация с этим ментором →
                     </Link>
                   ) : (
                     <button
@@ -394,7 +422,78 @@ export default function MentorPage({ params }: Props) {
                 </div>
               </div>
               )
-            })()}
+            })}
+
+            {/* Support ("сопровождение") — sold through chat, not this flow */}
+            {supportServices.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">Сопровождение</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Долгосрочная программа — цена и сроки обсуждаются с ментором в чате
+                </p>
+                <div className="space-y-3">
+                  {supportServices.map((service) => (
+                    <div key={service.id} className="border rounded-2xl p-5 border-gray-200 hover:border-gray-300 transition-all">
+                      <div className="flex justify-between items-start gap-4 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900">{service.title}</h3>
+                          {service.description && (
+                            <p className="text-sm mt-1 text-gray-500">{service.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-2 flex-wrap text-xs text-gray-400">
+                            {service.meetings_min !== null && (
+                              <span className="inline-flex items-center gap-1">
+                                <Icon name="event_repeat" size={12} />
+                                {service.meetings_min}–{service.meetings_max} встреч
+                              </span>
+                            )}
+                            {service.duration_months_min !== null && (
+                              <span className="inline-flex items-center gap-1">
+                                <Icon name="calendar_month" size={12} />
+                                {service.duration_months_min}–{service.duration_months_max} мес
+                              </span>
+                            )}
+                            {(service.grade_min !== null || service.grade_max !== null) && (
+                              <span className="inline-flex items-center gap-1">
+                                <Icon name="school" size={12} />
+                                {service.grade_min ?? "?"}–{service.grade_max ?? "?"} класс
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-lg font-bold text-gray-900">
+                            {service.is_price_negotiable || service.price === null
+                              ? "Договорная"
+                              : `${Number(service.price).toLocaleString("ru-RU")} ₸`}
+                          </div>
+                          {service.intro_call_enabled && (
+                            <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
+                              Intro-call 15 мин бесплатно
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        {hasOpenChat ? (
+                          <Link
+                            href="/orders"
+                            className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                          >
+                            <Icon name="chat" size={16} />
+                            Написать в чат
+                          </Link>
+                        ) : (
+                          <p className="text-xs text-gray-400">
+                            Доступно в чате после первой оплаченной консультации
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Paid services */}
             {paidServices.length > 0 && (

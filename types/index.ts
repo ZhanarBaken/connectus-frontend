@@ -2,7 +2,7 @@ export type Role = "mentor" | "student"
 
 export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 
-export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone"
+export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone" | "support"
 
 export type OrderStatus =
   | "draft"
@@ -38,10 +38,22 @@ export interface MentorService {
   id: number
   title: string
   description: string
-  price: string
+  // null when is_price_negotiable is true — backend masks the stored value,
+  // students only ever see "Договорная".
+  price: string | null
   currency: string
   duration_minutes: number
   payout_category: PayoutCategory
+  // Target audience — "useful for grades X-Y". Optional for every category.
+  grade_min: number | null
+  grade_max: number | null
+  // SUPPORT-only fields (null for every other category).
+  meetings_min: number | null
+  meetings_max: number | null
+  duration_months_min: number | null
+  duration_months_max: number | null
+  is_price_negotiable: boolean
+  intro_call_enabled: boolean
   is_active: boolean
 }
 
@@ -70,7 +82,6 @@ export interface MentorProfile {
   gpa: string
   exam_results: string
   detailed_bio: string
-  consultation: string
   linkedin_url: string
   university_email: string
   profile_photo: string | null
@@ -108,10 +119,6 @@ export interface MentorCard {
   is_universal: boolean
   rating_avg: number | null
   rating_count: number
-  // Primary consultation price/duration. Null when the mentor hasn't
-  // got an auto-created consultation yet (legacy rows / race during signup).
-  consultation_price: string | null
-  consultation_duration_minutes: number | null
 }
 
 // Matches backend MentorProfilePublicSerializer
@@ -127,8 +134,6 @@ export interface Mentor {
   exam_results: string
   expertise_areas: MentorExpertise[]
   detailed_bio: string
-  // null when the mentor is not accepting bookings — frontend should hide the section
-  consultation: string | null
   linkedin_url: string
   profile_photo: string | null
   is_public: boolean

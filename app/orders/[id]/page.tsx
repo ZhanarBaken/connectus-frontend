@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder, fetchMentor, fetchMentorProfile, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage, OrderDocument } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -41,7 +41,6 @@ export default function OrderPage({ params }: Props) {
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
-  const [consultationText, setConsultationText] = useState<string | null>(null)
   const [studentOrders, setStudentOrders] = useState<Order[]>([]) // mentor: all orders with this student
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
@@ -127,23 +126,15 @@ export default function OrderPage({ params }: Props) {
     fetchOrder(Number(id))
       .then(async (found) => {
         setOrder(found)
-        // Student needs the mentor's name + consultation text
+        // Student needs the mentor's name
         if (r !== "mentor") {
           try {
             const m = await fetchMentor(found.mentor)
             setMentor(m)
-            if (m.consultation) setConsultationText(m.consultation)
           } catch {
             // ignore — fallback name will be used
           }
         } else {
-          // Mentor sees their own consultation text via own profile
-          try {
-            const own = await fetchMentorProfile()
-            if (own.consultation) setConsultationText(own.consultation)
-          } catch {
-            // ignore
-          }
           // Mentor: load all orders to show service history with this student
           try {
             const all = await fetchOrders()

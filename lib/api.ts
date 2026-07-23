@@ -139,7 +139,6 @@ export async function fetchMentor(id: number): Promise<Mentor> {
       gpa: "",
       exam_results: "",
       linkedin_url: "",
-      consultation: null,
       is_public: true,
       services,
     }
@@ -239,19 +238,20 @@ export async function deleteMentorService(id: number): Promise<void> {
   const res = await authFetch(`${BASE_URL}/mentors/services/${id}/`, {
     method: "DELETE",
   })
-  if (!res.ok) throw new Error("Failed to delete service")
-}
-
-// ─── Primary consultation (the auto-created "первичная" service) ─────────────
-// Has its own endpoint because the regular /services/ ViewSet excludes
-// consultation categories — backend invariants forbid creating a second
-// consultation or deleting the one auto-created on registration. Mentor
-// can only edit price / duration / description / title.
-
-export async function fetchPrimaryConsultation(): Promise<import("@/types").MentorService> {
-  const res = await authFetch(`${BASE_URL}/mentors/me/consultation/`)
-  if (!res.ok) throw new Error("Failed to fetch primary consultation")
-  return res.json()
+  if (!res.ok) {
+    // Backend returns a plain-string 400 (e.g. "last active service" guard),
+    // not always a field-keyed error object like create/update.
+    const text = await res.text()
+    let message = text || "Failed to delete service"
+    try {
+      const err = JSON.parse(text)
+      const first = Array.isArray(err) ? err[0] : Object.values(err)[0]
+      message = Array.isArray(first) ? first[0] : String(first ?? message)
+    } catch {
+      // Not JSON — keep the raw text as the message.
+    }
+    throw new Error(message)
+  }
 }
 
 export interface MentorEarnings {
@@ -270,22 +270,6 @@ export interface MentorEarnings {
 export async function fetchMentorEarnings(): Promise<MentorEarnings> {
   const res = await authFetch(`${BASE_URL}/mentors/me/earnings/`)
   if (!res.ok) throw new Error("Не удалось загрузить финансы")
-  return res.json()
-}
-
-export async function updatePrimaryConsultation(
-  data: Partial<import("@/types").MentorService>,
-): Promise<import("@/types").MentorService> {
-  const res = await authFetch(`${BASE_URL}/mentors/me/consultation/`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) {
-    const err = await res.json()
-    const first = Object.values(err)[0]
-    throw new Error(Array.isArray(first) ? first[0] : String(first))
-  }
   return res.json()
 }
 
