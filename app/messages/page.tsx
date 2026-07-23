@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrders, fetchMentors } from "@/lib/api"
+import { fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -88,7 +88,10 @@ export default function MessagesPage() {
           }
         }
       })
-      .catch(() => router.replace("/auth/login"))
+      .catch(() => {
+        clearAuth()
+        router.replace("/auth/login")
+      })
       .finally(() => setLoading(false))
   }, [router])
 
