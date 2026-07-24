@@ -123,6 +123,17 @@ export async function sendChatMessage(
   return res.json()
 }
 
+// Close code 4003 means the backend checked and this user has no access
+// to the conversation — retrying with a fresh token changes nothing, so
+// it's the only code that shouldn't trigger a reconnect. Everything else
+// (a dropped connection, a server restart, even 4001 stale-token — the
+// next attempt refreshes the token first) is worth retrying.
+const WS_PERMANENT_CLOSE_CODES = [4003]
+
+const WS_RECONNECT_MAX_ATTEMPTS = 8
+const WS_RECONNECT_BASE_DELAY_MS = 1000
+const WS_RECONNECT_MAX_DELAY_MS = 15000
+
 export function connectChat(
   conversationId: number,
   handlers: {
@@ -135,6 +146,22 @@ export function connectChat(
 ): ChatConnection {
   let ws: WebSocket | null = null
   let closed = false
+  let reconnectAttempt = 0
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+  const scheduleReconnect = () => {
+    if (closed) return
+    if (reconnectAttempt >= WS_RECONNECT_MAX_ATTEMPTS) {
+      handlers.onError?.()
+      return
+    }
+    const delay = Math.min(
+      WS_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempt,
+      WS_RECONNECT_MAX_DELAY_MS,
+    )
+    reconnectAttempt += 1
+    reconnectTimer = setTimeout(() => { void connect() }, delay)
+  }
 
   // Refresh the access token if it's near expiry BEFORE opening the
   // socket — WS handshakes aren't covered by authFetch's 401-retry,
@@ -142,7 +169,7 @@ export function connectChat(
   // not a transparent retry. Returning the controller synchronously
   // preserves the existing API; close() handles the "ws not yet
   // created" case via the `closed` flag.
-  ;(async () => {
+  const connect = async () => {
     let token: string | null
     try {
       token = await getFreshAccessToken()
@@ -162,6 +189,7 @@ export function connectChat(
     ws = new WebSocket(url)
 
     ws.onopen = () => {
+      reconnectAttempt = 0
       handlers.onOpen?.()
     }
 
@@ -194,8 +222,13 @@ export function connectChat(
 
     ws.onclose = (event) => {
       handlers.onClose?.(event.code)
+      if (!closed && !WS_PERMANENT_CLOSE_CODES.includes(event.code)) {
+        scheduleReconnect()
+      }
     }
-  })()
+  }
+
+  void connect()
 
   return {
     send: (text: string) => {
@@ -205,6 +238,10 @@ export function connectChat(
     },
     close: () => {
       closed = true
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
       if (ws) {
         // Detach handlers so a delayed close event doesn't fire callbacks
         // after the component has unmounted.

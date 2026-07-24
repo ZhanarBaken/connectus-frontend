@@ -160,6 +160,12 @@ function LoginForm() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+          {searchParams.get("session_expired") === "1" && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-700 mb-6">
+              Сессия истекла. Войдите снова — мы вернём вас туда, где вы остановились.
+            </div>
+          )}
+
           {/* OAuth buttons — placed on top so the one-tap flow is
               the primary CTA; email/password is the fallback below.
               Telegram first to match the register page ordering.

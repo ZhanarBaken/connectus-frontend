@@ -440,15 +440,16 @@ export default function MentorPage({ params }: Props) {
                     const hasActiveEngagement = orders.some(
                       (o) => o.mentor_service === service.id && o.engagement_status === "active",
                     )
-                    // Any non-installment order against this exact service,
-                    // when there's no active engagement, is the free
-                    // intro-call (the other zero-cost case — a session
-                    // under an active engagement — is handled separately
-                    // above via hasActiveEngagement).
+                    // A real intro-call order is never attached to a
+                    // SupportEngagement (engagement_status === null) —
+                    // unlike a free session booked under one (active or
+                    // paused), which shares the same installment_number:
+                    // null but must never be mistaken for the intro-call.
                     const introCallOrder = !hasActiveEngagement && orders.find(
                       (o) =>
                         o.mentor_service === service.id &&
                         o.installment_number === null &&
+                        o.engagement_status === null &&
                         ["draft", "pending_payment", "in_progress"].includes(o.order_status),
                     )
                     return (
@@ -737,6 +738,11 @@ export default function MentorPage({ params }: Props) {
                   } catch (err: unknown) {
                     setOrderError(err instanceof Error ? err.message : "Ошибка при заказе")
                     setOrderingServiceId(null)
+                    // The engagement may have just paused (or an intro-call
+                    // been used up) while this modal was open — refetch so
+                    // hasActiveEngagement/introCallOrder recompute and the
+                    // buttons stop offering an action that will fail again.
+                    fetchOrders().then(setOrders).catch(() => {})
                   }
                 }}
                 onCancel={() => { setBookingService(null); setBookingIsIntroCall(false) }}

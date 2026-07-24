@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, confirmConsultation, fetchMe, clearAuth } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, fetchMe, clearAuth } from "@/lib/api"
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/contacts"
 import { User } from "@/types"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
@@ -11,7 +11,6 @@ import { countriesLabelInline } from "@/lib/countries"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
 import { MentorProfile, MentorService, Order } from "@/types"
 import Icon from "@/components/Icon"
-import { Avatar } from "@/components/Avatar"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -51,8 +50,6 @@ export default function MentorDashboard() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
-  const [acceptingId, setAcceptingId] = useState<number | null>(null)
-  const [acceptError, setAcceptError] = useState("")
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -80,19 +77,6 @@ export default function MentorDashboard() {
       })
       .finally(() => setLoading(false))
   }, [router])
-
-  const handleAcceptConsultation = async (orderId: number) => {
-    setAcceptingId(orderId)
-    setAcceptError("")
-    try {
-      const updated = await confirmConsultation(orderId)
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)))
-    } catch (e: unknown) {
-      setAcceptError(e instanceof Error ? e.message : "Не удалось принять запрос")
-    } finally {
-      setAcceptingId(null)
-    }
-  }
 
   const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({})
 
@@ -140,11 +124,6 @@ export default function MentorDashboard() {
 
   if (!profile) return null
 
-  // Backend rule: only consultation orders are created in `draft` status
-  // (paid services go straight to `pending_payment`). So every draft order
-  // is a free consultation request waiting for accept/decline.
-  const consultationRequests = orders.filter((o) => o.order_status === "draft")
-  const otherOrders = orders.filter((o) => o.order_status !== "draft")
   const activeOrders = orders.filter((o) => ["paid", "in_progress"].includes(o.order_status))
   const pendingOrders = orders.filter((o) => o.order_status === "pending_payment")
   const totalEarned = orders
@@ -423,70 +402,14 @@ export default function MentorDashboard() {
           {/* Orders */}
           <div className="lg:col-span-2 space-y-8">
 
-            {/* Consultation requests */}
-            {consultationRequests.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-gray-900">Запросы на консультацию</h2>
-                    <span className="text-xs bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
-                      {consultationRequests.length}
-                    </span>
-                  </div>
-                </div>
-                {acceptError && (
-                  <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-3">
-                    {acceptError}
-                  </div>
-                )}
-                <div className="space-y-3">
-                  {consultationRequests.map((order) => {
-                    const busy = acceptingId === order.id
-                    return (
-                      <div key={order.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
-                        <div className="flex items-start gap-4 mb-4">
-                          <Avatar
-                            src={order.student_info?.profile_photo}
-                            name={order.student_info?.full_name || "С"}
-                            className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500"
-                            letterClassName="text-white font-bold"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h3 className="font-semibold text-gray-900 truncate">
-                                {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
-                              </h3>
-                            </div>
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                              хочет провести консультацию
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleAcceptConsultation(order.id)}
-                          disabled={busy}
-                          className="w-full bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                        >
-                          {acceptingId === order.id ? "Принимаем..." : "✓ Принять"}
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Other orders */}
+            {/* Orders */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900">Заказы</h2>
-                <span className="text-sm text-gray-400">{otherOrders.length} всего</span>
+                <span className="text-sm text-gray-400">{orders.length} всего</span>
               </div>
 
-              {otherOrders.length === 0 ? (
+              {orders.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
                   <div className="mb-4 flex justify-center">
                     <Icon name="inbox" size={48} className="text-gray-300" />
@@ -498,7 +421,7 @@ export default function MentorDashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {otherOrders.map((order) => (
+                  {orders.map((order) => (
                     <Link
                       key={order.id}
                       href={`/orders/${order.id}`}

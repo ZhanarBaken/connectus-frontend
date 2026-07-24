@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, fetchMentorServices, createSupportInvoice } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, fetchMentorServices, createSupportInvoice, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage, OrderDocument, MentorService } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -30,6 +30,30 @@ const STATUS_STYLE: Record<string, string> = {
   completed: "bg-green-50 text-green-700 border-green-200",
   disputed: "bg-red-50 text-red-700 border-red-200",
   cancelled: "bg-gray-50 text-gray-500 border-gray-200",
+}
+
+// A forced session-expiry redirect (lib/api.ts:refreshAccessToken) tears
+// down all React state before the mentor can submit this form — stash the
+// in-progress fields here so they survive the round trip through login.
+function invoiceDraftKey(orderId: string): string {
+  return `invoice_draft_${orderId}`
+}
+
+// The backend's create_support_invoice raises plain English ValueErrors —
+// translate the ones a mentor can realistically hit; anything unrecognized
+// falls back to the raw message rather than showing nothing.
+function translateInvoiceErrorMessage(raw: string): string {
+  const lower = raw.toLowerCase()
+  if (lower.includes("already a live engagement")) {
+    return "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку."
+  }
+  if (lower.includes("no open conversation")) {
+    return "Нет открытого чата с этим студентом — заявку можно отправить только внутри существующей переписки."
+  }
+  if (lower.includes("does not belong to this mentor") || lower.includes("not a support-category service")) {
+    return "Эта услуга недоступна для отправки заявки."
+  }
+  return raw
 }
 
 interface Props {
@@ -124,6 +148,37 @@ export default function OrderPage({ params }: Props) {
       })
       .catch(() => {})
   }, [])
+
+  // Restore an invoice-form draft left behind by a forced session-expiry
+  // redirect (see the save effect below) — one-shot, consumed immediately.
+  useEffect(() => {
+    const raw = sessionStorage.getItem(invoiceDraftKey(id))
+    if (!raw) return
+    sessionStorage.removeItem(invoiceDraftKey(id))
+    try {
+      const draft = JSON.parse(raw)
+      setInvoiceServiceId(draft.invoiceServiceId ?? null)
+      setInvoicePrice(draft.invoicePrice ?? "")
+      setInvoiceMonths(draft.invoiceMonths ?? "")
+      setInvoiceFormOpen(true)
+    } catch {
+      // corrupt draft — nothing to restore
+    }
+  }, [id])
+
+  // lib/api.ts fires this right before it wipes tokens and hard-redirects
+  // to /auth/login on a failed token refresh — save the in-progress
+  // invoice form so it isn't just silently lost.
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      if (!invoiceFormOpen) return
+      sessionStorage.setItem(invoiceDraftKey(id), JSON.stringify({
+        invoiceServiceId, invoicePrice, invoiceMonths,
+      }))
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+  }, [id, invoiceFormOpen, invoiceServiceId, invoicePrice, invoiceMonths])
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -680,7 +735,7 @@ export default function OrderPage({ params }: Props) {
                       />
                     </div>
                     {invoiceError && (
-                      <p className="text-xs text-red-600">{invoiceError}</p>
+                      <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError)}</p>
                     )}
                     <div className="flex gap-2">
                       <button

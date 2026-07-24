@@ -597,6 +597,11 @@ export function clearAuth() {
 // Single in-flight refresh promise so concurrent 401s share one refresh call.
 let refreshPromise: Promise<string> | null = null
 
+// Dispatched right before the hard redirect to /auth/login below, so any
+// page holding unsaved form state (e.g. the mentor's support-invoice form)
+// can stash a draft to sessionStorage first instead of losing it silently.
+export const SESSION_EXPIRED_EVENT = "session-expired"
+
 async function refreshAccessToken(): Promise<string> {
   if (refreshPromise) return refreshPromise
 
@@ -611,7 +616,11 @@ async function refreshAccessToken(): Promise<string> {
     })
     if (!res.ok) {
       clearAuth()
-      if (typeof window !== "undefined") window.location.href = "/auth/login"
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+        const next = encodeURIComponent(window.location.pathname + window.location.search)
+        window.location.href = `/auth/login?session_expired=1&next=${next}`
+      }
       throw new Error("Refresh failed")
     }
     const data = await res.json()
