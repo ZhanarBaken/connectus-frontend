@@ -35,10 +35,14 @@ const STATUS_STYLE: Record<Order["order_status"], string> = {
 // Small extra tag alongside the status pill for a support installment
 // that's overdue or paused — null when neither applies.
 function dunningTag(order: Order): { text: string; className: string } | null {
+  // engagement_status is shared by every order tied to that engagement
+  // (paid installments, free sessions, even cancelled ones) — only the
+  // one still-payable order should actually show the paused/overdue tag.
+  if (order.order_status !== "pending_payment") return null
   if (order.engagement_status === "paused") {
     return { text: "Приостановлено", className: "bg-red-50 text-red-700" }
   }
-  if (order.order_status === "pending_payment" && order.due_at && new Date(order.due_at) < new Date()) {
+  if (order.due_at && new Date(order.due_at) < new Date()) {
     return { text: "Просрочено", className: "bg-red-50 text-red-700" }
   }
   return null

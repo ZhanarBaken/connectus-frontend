@@ -442,22 +442,27 @@ export default function OrderPage({ params }: Props) {
                 {STATUS_LABEL[order.order_status] || order.order_status}
               </div>
 
-              {order.engagement_status === "paused" ? (
-                <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-                  <Icon name="error" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-                  <span>
-                    Сопровождение приостановлено из-за неоплаты. Оплатите текущий счёт,
-                    чтобы возобновить — иначе оно будет архивировано.
-                  </span>
-                </div>
-              ) : (
-                order.order_status === "pending_payment" &&
-                order.due_at &&
-                new Date(order.due_at) < new Date() && (
+              {/* engagement_status is shared by every order tied to that
+                  engagement (paid installments, free sessions, even
+                  cancelled ones) — only the still-payable order should
+                  show the paused/overdue banner. */}
+              {order.order_status === "pending_payment" && (
+                order.engagement_status === "paused" ? (
                   <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
                     <Icon name="error" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-                    <span>Оплата просрочена — пожалуйста, оплатите как можно скорее.</span>
+                    <span>
+                      Сопровождение приостановлено из-за неоплаты. Оплатите текущий счёт,
+                      чтобы возобновить — иначе оно будет архивировано.
+                    </span>
                   </div>
+                ) : (
+                  order.due_at &&
+                  new Date(order.due_at) < new Date() && (
+                    <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
+                      <Icon name="error" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                      <span>Оплата просрочена — пожалуйста, оплатите как можно скорее.</span>
+                    </div>
+                  )
                 )
               )}
 
