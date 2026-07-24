@@ -437,12 +437,15 @@ export default function MentorPage({ params }: Props) {
                 </p>
                 <div className="space-y-3">
                   {supportServices.map((service) => {
-                    // Any non-installment order against this exact service
-                    // is, today, the free intro-call (the other zero-cost
-                    // case — a session under an active engagement — isn't
-                    // reachable from this page yet, that's a separate
-                    // follow-up once the engagement-status UI exists).
-                    const introCallOrder = orders.find(
+                    const hasActiveEngagement = orders.some(
+                      (o) => o.mentor_service === service.id && o.engagement_status === "active",
+                    )
+                    // Any non-installment order against this exact service,
+                    // when there's no active engagement, is the free
+                    // intro-call (the other zero-cost case — a session
+                    // under an active engagement — is handled separately
+                    // above via hasActiveEngagement).
+                    const introCallOrder = !hasActiveEngagement && orders.find(
                       (o) =>
                         o.mentor_service === service.id &&
                         o.installment_number === null &&
@@ -504,7 +507,17 @@ export default function MentorPage({ params }: Props) {
                             Доступно в чате после первой оплаченной консультации
                           </p>
                         )}
-                        {service.intro_call_enabled && (
+                        {hasActiveEngagement ? (
+                          <button
+                            onClick={() => {
+                              setBookingIsIntroCall(false)
+                              setBookingService(service)
+                            }}
+                            className="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors"
+                          >
+                            Забронировать сессию
+                          </button>
+                        ) : service.intro_call_enabled && (
                           introCallOrder ? (
                             <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-1">
                               <Icon name="event_available" size={14} />
@@ -700,7 +713,9 @@ export default function MentorPage({ params }: Props) {
                 <p className="text-xs text-gray-400">
                   {bookingIsIntroCall
                     ? `${SUPPORT_INTRO_CALL_DURATION_MINUTES} мин · бесплатно`
-                    : `${bookingService.duration_minutes} мин · ${Number(bookingService.price).toLocaleString("ru-RU")} ₸`}
+                    : bookingService.payout_category === "support"
+                      ? `${bookingService.duration_minutes} мин · включено в сопровождение`
+                      : `${bookingService.duration_minutes} мин · ${Number(bookingService.price).toLocaleString("ru-RU")} ₸`}
                 </p>
               </div>
               <BookingCalendar

@@ -303,6 +303,36 @@ export async function createOrder(
   return res.json()
 }
 
+// Mentor sends a "заявка" for a support engagement inside an existing
+// chat — price/duration are negotiated per student, not the catalog
+// listing. Backend creates the SupportEngagement + month-1 Order and
+// posts it as a chat message (POST /orders/support-invoice/).
+export async function createSupportInvoice(
+  mentorServiceId: number,
+  studentId: number,
+  totalPrice: string,
+  durationMonths: number,
+): Promise<import("@/types").Order> {
+  const res = await authFetch(`${BASE_URL}/orders/support-invoice/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mentor_service: mentorServiceId,
+      student: studentId,
+      total_price: totalPrice,
+      duration_months: durationMonths,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    const first = Object.values(err)[0]
+    throw new Error(
+      err.detail || (Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось отправить заявку")),
+    )
+  }
+  return res.json()
+}
+
 export async function fetchOrder(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch order")
