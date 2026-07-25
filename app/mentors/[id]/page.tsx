@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { fetchMentor, createOrder, fetchOrders, fetchStudentProfile } from "@/lib/api"
+import { fetchMentor, createOrder, fetchOrders, fetchStudentProfile, fetchPublicSettings } from "@/lib/api"
 import { track } from "@/lib/analytics"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
@@ -12,8 +12,10 @@ import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
 import Icon from "@/components/Icon"
 
-// Matches apps.services.models.SUPPORT_INTRO_CALL_DURATION_MINUTES on the backend.
-const SUPPORT_INTRO_CALL_DURATION_MINUTES = 15
+// Fallback while /settings/public/ hasn't resolved yet — overwritten by
+// the fetched value below so this page never hardcodes what's actually
+// apps.services.models.SUPPORT_INTRO_CALL_DURATION_MINUTES on the backend.
+const DEFAULT_INTRO_CALL_DURATION_MINUTES = 15
 
 const EXPERTISE_LABELS: Record<string, string> = {
   admission: "Поступление",
@@ -45,6 +47,7 @@ export default function MentorPage({ params }: Props) {
   const [reviews, setReviews] = useState<Review[]>([])
   const [bookingService, setBookingService] = useState<MentorService | null>(null)
   const [bookingIsIntroCall, setBookingIsIntroCall] = useState(false)
+  const [introCallDurationMinutes, setIntroCallDurationMinutes] = useState(DEFAULT_INTRO_CALL_DURATION_MINUTES)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -52,6 +55,10 @@ export default function MentorPage({ params }: Props) {
       router.replace(`/auth/login?next=/mentors/${id}`)
       return
     }
+
+    fetchPublicSettings()
+      .then((s) => setIntroCallDurationMinutes(s.support_intro_call_duration_minutes))
+      .catch(() => {})
 
     Promise.all([fetchMentor(Number(id)), fetchOrders()])
       .then(([m, o]) => {
@@ -489,7 +496,7 @@ export default function MentorPage({ params }: Props) {
                           </div>
                           {service.intro_call_enabled && (
                             <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
-                              Intro-call 15 мин бесплатно
+                              Intro-call {introCallDurationMinutes} мин бесплатно
                             </span>
                           )}
                         </div>
@@ -713,7 +720,7 @@ export default function MentorPage({ params }: Props) {
                 </p>
                 <p className="text-xs text-gray-400">
                   {bookingIsIntroCall
-                    ? `${SUPPORT_INTRO_CALL_DURATION_MINUTES} мин · бесплатно`
+                    ? `${introCallDurationMinutes} мин · бесплатно`
                     : bookingService.payout_category === "support"
                       ? `${bookingService.duration_minutes} мин · включено в сопровождение`
                       : `${bookingService.duration_minutes} мин · ${Number(bookingService.price).toLocaleString("ru-RU")} ₸`}
@@ -721,7 +728,7 @@ export default function MentorPage({ params }: Props) {
               </div>
               <BookingCalendar
                 mentorId={mentor.id}
-                durationMinutes={bookingIsIntroCall ? SUPPORT_INTRO_CALL_DURATION_MINUTES : bookingService.duration_minutes}
+                durationMinutes={bookingIsIntroCall ? introCallDurationMinutes : bookingService.duration_minutes}
                 onSelect={async (date, time) => {
                   const serviceId = bookingService.id
                   setBookingService(null)

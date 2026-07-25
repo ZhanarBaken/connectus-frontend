@@ -111,6 +111,7 @@ export interface PublicSettings {
   platform_rules_text: string
   data_consent_text: string
   privacy_policy_text: string
+  support_intro_call_duration_minutes: number
 }
 
 export async function fetchPublicSettings(): Promise<PublicSettings> {
