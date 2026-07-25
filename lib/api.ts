@@ -465,7 +465,11 @@ export async function updateStudentProfile(data: Partial<StudentProfile>): Promi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error("Failed to update profile")
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    const first = err ? Object.values(err)[0] : null
+    throw new Error(first ? (Array.isArray(first) ? first[0] : String(first)) : "Failed to update profile")
+  }
   return res.json()
 }
 

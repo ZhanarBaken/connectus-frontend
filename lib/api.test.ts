@@ -11,6 +11,7 @@ import {
   register,
   resendVerification,
   SESSION_EXPIRED_EVENT,
+  updateStudentProfile,
 } from "./api"
 
 describe("formatCooldown", () => {
@@ -324,6 +325,29 @@ describe("createSupportInvoice", () => {
   it("returns the parsed order on success", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ id: 7 }, { status: 201 }))
     await expect(call()).resolves.toEqual({ id: 7 })
+  })
+})
+
+describe("updateStudentProfile", () => {
+  const call = () => updateStudentProfile({ gpa: "3.8/4.0" })
+
+  it("surfaces the first field error from the response body", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ gpa: ["Ensure this field has no more than 50 characters."] }, { status: 400 }),
+    )
+    await expect(call()).rejects.toThrow("Ensure this field has no more than 50 characters.")
+  })
+
+  it("falls back to a generic message when the error body isn't JSON", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response("<html>502 Bad Gateway</html>", { status: 502 }),
+    )
+    await expect(call()).rejects.toThrow("Failed to update profile")
+  })
+
+  it("returns the parsed profile on success", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ id: 1, gpa: "3.8/4.0" }))
+    await expect(call()).resolves.toEqual({ id: 1, gpa: "3.8/4.0" })
   })
 })
 

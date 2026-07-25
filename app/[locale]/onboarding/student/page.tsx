@@ -30,6 +30,18 @@ type EmailStage = "loading" | "email" | "verify" | "form"
 
 const VERIFY_POLL_INTERVAL_MS = 5000
 
+// Mirrors apps/students/models.py's MIN_STUDENT_AGE/MAX_STUDENT_AGE — the
+// date picker's own bounds so an out-of-range birth date can't be picked
+// in the first place, instead of only being caught by the backend later.
+const MIN_STUDENT_AGE = 14
+const MAX_STUDENT_AGE = 100
+
+function dateYearsAgo(years: number): string {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() - years)
+  return d.toISOString().split("T")[0]
+}
+
 export default function StudentOnboarding() {
   const router = useRouter()
   const [emailStage, setEmailStage] = useState<EmailStage>("loading")
@@ -366,7 +378,8 @@ export default function StudentOnboarding() {
                   type="date"
                   value={dateOfBirth}
                   onChange={(e) => setDateOfBirth(e.target.value)}
-                  max={new Date().toISOString().split("T")[0]}
+                  min={dateYearsAgo(MAX_STUDENT_AGE)}
+                  max={dateYearsAgo(MIN_STUDENT_AGE)}
                   className={inputClass}
                 />
               </div>
@@ -481,6 +494,7 @@ export default function StudentOnboarding() {
                       value={gpa}
                       onChange={(e) => setGpa(e.target.value)}
                       placeholder="4.5 / 5.0  или  3.8 / 4.0"
+                      maxLength={50}
                       className={inputClass}
                     />
                   </div>
