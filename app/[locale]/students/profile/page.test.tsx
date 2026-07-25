@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import StudentProfilePage from "./page"
 import type { StudentProfile } from "@/types"
 

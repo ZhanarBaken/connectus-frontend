@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import { fetchStudentProfile, updateStudentProfile, authFetch } from "@/lib/api"
 import { StudentProfile } from "@/types"
 import BackButton from "@/components/BackButton"
@@ -19,6 +20,8 @@ const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm f
 const selectClass = `${inputClass} appearance-none text-gray-900 pr-10 bg-no-repeat bg-[right_0.875rem_center] bg-[length:1rem_1rem] cursor-pointer bg-[url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ca3af' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 8 10 12 14 8'/%3E%3C/svg%3E")]`
 
 export default function StudentProfilePage() {
+  const t = useTranslations("Students.Profile")
+  const tOnboarding = useTranslations("Onboarding.Student")
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -60,8 +63,9 @@ export default function StudentProfilePage() {
         setGpa(p.gpa ?? "")
         setProfilePhoto(p.profile_photo ?? null)
       })
-      .catch(() => setError("Не удалось загрузить профиль"))
+      .catch(() => setError(t("loadProfileError")))
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const uploadCroppedPhoto = async (blob: Blob) => {
@@ -74,11 +78,11 @@ export default function StudentProfilePage() {
         method: "PATCH",
         body: formData,
       })
-      if (!res.ok) throw new Error("Не удалось загрузить фото")
+      if (!res.ok) throw new Error(t("photoUploadErrorDefault"))
       const data = await res.json()
       setProfilePhoto(data.profile_photo ?? null)
     } catch {
-      setError("Ошибка при загрузке фото")
+      setError(t("photoUploadErrorGeneric"))
     } finally {
       setUploadingPhoto(false)
     }
@@ -105,7 +109,7 @@ export default function StudentProfilePage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при сохранении")
+      setError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     } finally {
       setSaving(false)
     }
@@ -126,8 +130,8 @@ export default function StudentProfilePage() {
         <div className="mb-8">
           <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-2 transition-colors group [-webkit-tap-highlight-color:transparent]" />
 
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Мой профиль</h1>
-          <p className="text-sm text-gray-500 mt-1">Эту информацию увидит твой ментор</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t("pageTitle")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t("pageSubtitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 space-y-5">
@@ -142,7 +146,7 @@ export default function StudentProfilePage() {
                 const file = e.target.files?.[0]
                 if (file) {
                   if (file.size > 5 * 1024 * 1024) {
-                    setError("Фото не должно превышать 5 МБ")
+                    setError(t("photoTooLarge"))
                   } else {
                     setError("")
                     setPickedFile(file)
@@ -158,7 +162,7 @@ export default function StudentProfilePage() {
               className="relative w-16 h-16 rounded-full overflow-hidden group cursor-pointer flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50"
             >
               {profilePhoto ? (
-                <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                <img src={profilePhoto} alt={tOnboarding("photoAlt")} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
                   <span className="text-white font-bold text-2xl">
@@ -178,25 +182,25 @@ export default function StudentProfilePage() {
               )}
             </button>
             <div className="min-w-0">
-              <p className="font-semibold text-gray-900 truncate">{fullName.trim() || "Без имени"}</p>
-              <p className="text-xs text-gray-400">Нажмите на аватар чтобы загрузить фото</p>
+              <p className="font-semibold text-gray-900 truncate">{fullName.trim() || t("noName")}</p>
+              <p className="text-xs text-gray-400">{t("changePhotoHint")}</p>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Полное имя</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("fullNameLabel")}</label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              placeholder="Айгерим Бекова"
+              placeholder={t("fullNamePlaceholder")}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Возраст</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("ageLabel")}</label>
             <input
               type="number"
               value={age}
@@ -209,22 +213,22 @@ export default function StudentProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("institutionLabel")}</label>
             <input
               type="text"
               value={school}
               onChange={(e) => setSchool(e.target.value)}
-              placeholder="НИШ Алматы, школа №1..."
+              placeholder={t("institutionPlaceholder")}
               className={inputClass}
             />
-            <p className="text-xs text-gray-400 mt-1">Школа, колледж или университет где ты сейчас учишься</p>
+            <p className="text-xs text-gray-400 mt-1">{t("institutionHint")}</p>
           </div>
 
           {/* Required pre-consultation fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Сейчас ты <span className="text-red-500">*</span>
+                {t("currentStatusLabel")} <span className="text-red-500">*</span>
               </label>
               <select
                 value={schoolGrade}
@@ -232,27 +236,27 @@ export default function StudentProfilePage() {
                 required
                 className={selectClass}
               >
-                <option value="">Выбери...</option>
-                <optgroup label="В школе">
-                  <option value="11 класс">11 класс</option>
-                  <option value="12 класс">12 класс</option>
-                  <option value="10 класс">10 класс</option>
-                  <option value="9 класс">9 класс</option>
-                  <option value="8 класс">8 класс</option>
-                  <option value="7 класс">7 класс</option>
-                  <option value="6 класс">6 класс</option>
-                  <option value="5 класс">5 класс</option>
+                <option value="">{t("choosePlaceholder")}</option>
+                <optgroup label={tOnboarding("groupSchool")}>
+                  <option value="11 класс">{tOnboarding("grade11")}</option>
+                  <option value="12 класс">{tOnboarding("grade12")}</option>
+                  <option value="10 класс">{tOnboarding("grade10")}</option>
+                  <option value="9 класс">{tOnboarding("grade9")}</option>
+                  <option value="8 класс">{tOnboarding("grade8")}</option>
+                  <option value="7 класс">{tOnboarding("grade7")}</option>
+                  <option value="6 класс">{tOnboarding("grade6")}</option>
+                  <option value="5 класс">{tOnboarding("grade5")}</option>
                 </optgroup>
-                <optgroup label="Другое">
-                  <option value="Уже окончил(а) школу">Уже окончил(а) школу</option>
-                  <option value="Студент вуза">Студент вуза</option>
-                  <option value="Колледж / училище">Колледж / училище</option>
+                <optgroup label={tOnboarding("groupOther")}>
+                  <option value="Уже окончил(а) школу">{tOnboarding("alreadyGraduated")}</option>
+                  <option value="Студент вуза">{tOnboarding("universityStudent")}</option>
+                  <option value="Колледж / училище">{tOnboarding("college")}</option>
                 </optgroup>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Год окончания школы <span className="text-red-500">*</span>
+                {t("graduationYearLabel")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -269,63 +273,63 @@ export default function StudentProfilePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Город <span className="text-red-500">*</span>
+              {t("cityLabel")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               required
-              placeholder="Алматы"
+              placeholder={t("cityPlaceholder")}
               className={inputClass}
             />
           </div>
 
           {/* Optional context block */}
           <div className="pt-2 mt-2 border-t border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">{t("optionalSectionTitle")}</h2>
             <p className="text-xs text-gray-500 leading-relaxed mb-4">
-              Советуем заполнить эти данные — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
+              {t("optionalSectionBody")}
             </p>
 
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("desiredMajorLabel")}</label>
                 <input
                   type="text"
                   value={desiredMajor}
                   onChange={(e) => setDesiredMajor(e.target.value)}
-                  placeholder="Computer Science, Business, Medicine..."
+                  placeholder={t("desiredMajorPlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("desiredCountriesLabel")}</label>
                 <input
                   type="text"
                   value={desiredCountries}
                   onChange={(e) => setDesiredCountries(e.target.value)}
-                  placeholder="США, Канада, Германия..."
+                  placeholder={t("desiredCountriesPlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("examResultsLabel")}</label>
                 <input
                   type="text"
                   value={examResults}
                   onChange={(e) => setExamResults(e.target.value)}
-                  placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
+                  placeholder={t("examResultsPlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("gpaLabel")}</label>
                 <input
                   type="text"
                   value={gpa}
                   onChange={(e) => setGpa(e.target.value)}
-                  placeholder="4.5 / 5.0  или  3.8 / 4.0"
+                  placeholder={t("gpaPlaceholder")}
                   className={inputClass}
                 />
               </div>
@@ -344,12 +348,12 @@ export default function StudentProfilePage() {
               disabled={saving || !fullName.trim() || !schoolGrade.trim() || !city.trim() || !graduationYear.trim()}
               className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
-              {saving ? "Сохраняем..." : "Сохранить"}
+              {saving ? t("saving") : t("save")}
             </button>
             {saved && (
               <span className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center text-[10px]">✓</span>
-                Сохранено
+                {t("saved")}
               </span>
             )}
           </div>

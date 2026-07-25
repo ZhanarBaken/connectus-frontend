@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import { fetchMentorProfile, updateMentorProfile, authFetch } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
@@ -15,23 +16,18 @@ import MentorDocumentsUploader from "@/components/MentorDocumentsUploader"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-const EXPERTISE_OPTIONS = [
-  { value: "admission", label: "Поступление" },
-  { value: "documents", label: "Документы" },
-  { value: "scholarships", label: "Стипендии" },
-  { value: "visa", label: "Виза" },
-]
-
 function Field({
   label,
   hint,
   required = false,
+  requiredLabel,
   error,
   children,
 }: {
   label: string
   hint?: string
   required?: boolean
+  requiredLabel?: string
   error?: string
   children: React.ReactNode
 }) {
@@ -40,7 +36,7 @@ function Field({
       <label className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
         {required && (
-          <span className="ml-1.5 text-xs font-normal text-gray-400">обязательно</span>
+          <span className="ml-1.5 text-xs font-normal text-gray-400">{requiredLabel}</span>
         )}
       </label>
       {children}
@@ -55,7 +51,16 @@ function Field({
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
+const richTags = {
+  strong: (chunks: React.ReactNode) => <strong>{chunks}</strong>,
+  badge: (chunks: React.ReactNode) => (
+    <span className="text-xs text-gray-500 font-normal bg-white border border-gray-200 rounded px-1.5 py-0.5">{chunks}</span>
+  ),
+}
+
 export default function MentorProfilePage() {
+  const t = useTranslations("Mentors.Profile")
+  const tExpertise = useTranslations("Landing.Expertise")
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -64,6 +69,13 @@ export default function MentorProfilePage() {
   // Inline per-field errors filled either from local pre-save validation
   // or from a backend 400 response.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const EXPERTISE_OPTIONS = [
+    { value: "admission", label: tExpertise("admission") },
+    { value: "documents", label: tExpertise("documents") },
+    { value: "scholarships", label: tExpertise("scholarships") },
+    { value: "visa", label: tExpertise("visa") },
+  ]
 
   const [fullName, setFullName] = useState("")
   const [countries, setCountries] = useState<string[]>([])
@@ -108,8 +120,9 @@ export default function MentorProfilePage() {
         setIsBanned(p.is_banned ?? false)
         setBanReason(p.ban_reason ?? "")
       })
-      .catch(() => setError("Не удалось загрузить профиль"))
+      .catch(() => setError(t("loadProfileError")))
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const toggleExpertise = (area: string) => {
@@ -129,7 +142,7 @@ export default function MentorProfilePage() {
         body: formData,
       })
       if (!res.ok) {
-        let msg = "Не удалось загрузить фото"
+        let msg = t("photoUploadErrorDefault")
         try {
           const err = await res.json()
           if (err.profile_photo) msg = Array.isArray(err.profile_photo) ? err.profile_photo[0] : err.profile_photo
@@ -142,7 +155,7 @@ export default function MentorProfilePage() {
       const data = await res.json()
       setProfilePhoto(data.profile_photo ?? null)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
+      setError(e instanceof Error ? e.message : t("photoUploadErrorGeneric"))
     } finally {
       setUploadingPhoto(false)
     }
@@ -183,7 +196,7 @@ export default function MentorProfilePage() {
     } catch (e: unknown) {
       // Try to parse field-level errors from backend so we can mark
       // the specific fields red instead of a generic banner.
-      const msg = e instanceof Error ? e.message : "Ошибка при сохранении"
+      const msg = e instanceof Error ? e.message : t("saveErrorGeneric")
       try {
         const parsed = JSON.parse(msg)
         if (parsed && typeof parsed === "object") {
@@ -192,7 +205,7 @@ export default function MentorProfilePage() {
             errs[k] = Array.isArray(v) ? String(v[0]) : String(v)
           }
           setFieldErrors(errs)
-          setError("Исправь поля, отмеченные красным")
+          setError(t("fixRedFields"))
           const firstKey = Object.keys(errs)[0]
           document.querySelector(`[data-field="${firstKey}"]`)
             ?.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -238,11 +251,11 @@ export default function MentorProfilePage() {
           <div>
             <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-2 transition-colors group [-webkit-tap-highlight-color:transparent]" />
 
-            <h1 className="text-2xl font-bold text-gray-900">Редактировать профиль</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-indigo-600">{completionPercent}%</div>
-            <div className="text-xs text-gray-400">заполнено</div>
+            <div className="text-xs text-gray-400">{t("filledLabel")}</div>
           </div>
         </div>
 
@@ -255,9 +268,9 @@ export default function MentorProfilePage() {
           <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
             <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
+              <p className="font-semibold text-red-800 text-sm">{t("bannedTitle")}</p>
               {banReason && <p className="text-xs text-red-600 mt-0.5">{banReason}</p>}
-              <p className="text-xs text-red-500 mt-1">Редактирование профиля недоступно.</p>
+              <p className="text-xs text-red-500 mt-1">{t("bannedBody")}</p>
             </div>
           </div>
         )}
@@ -269,9 +282,7 @@ export default function MentorProfilePage() {
               actually checks completeness. */}
           <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-900">
             <p>
-              <strong>Сохранять можно по кускам.</strong> Поля, помеченные{" "}
-              <span className="text-xs text-gray-500 font-normal bg-white border border-gray-200 rounded px-1.5 py-0.5">обязательно</span>
-              , нужны только когда ты нажмёшь <strong>«Отправить на проверку»</strong> в кабинете.
+              {t.rich("saveInChunksNotice", richTags)}
             </p>
           </div>
           {/* Avatar upload */}
@@ -285,7 +296,7 @@ export default function MentorProfilePage() {
                 const file = e.target.files?.[0]
                 if (file) {
                   if (file.size > 5 * 1024 * 1024) {
-                    setError("Фото не должно превышать 5 МБ")
+                    setError(t("photoTooLarge"))
                   } else {
                     setError("")
                     setPickedFile(file)
@@ -301,7 +312,7 @@ export default function MentorProfilePage() {
               className="relative w-24 h-24 rounded-full overflow-hidden group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 disabled:opacity-50"
             >
               {profilePhoto ? (
-                <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                <img src={profilePhoto} alt={t("photoAlt")} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
                   <span className="text-white font-bold text-3xl">
@@ -321,28 +332,28 @@ export default function MentorProfilePage() {
               )}
             </button>
             <p className="text-xs text-gray-400 mt-2">
-              {profilePhoto ? "Нажмите чтобы изменить фото" : "Загрузите фото профиля"}
+              {profilePhoto ? t("changePhoto") : t("uploadPhoto")}
             </p>
             {!profilePhoto && (
-              <p className="text-xs text-red-500 mt-1 font-medium">Обязательно для верификации</p>
+              <p className="text-xs text-red-500 mt-1 font-medium">{t("photoRequiredForVerification")}</p>
             )}
           </div>
 
           {/* Basic info */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">Основная информация</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-5">{t("basicInfoTitle")}</h2>
             <div className="grid sm:grid-cols-2 gap-5">
               <div data-field="full_name">
-                <Field label="Полное имя" required error={fieldErrors.full_name}>
+                <Field label={t("fullNameLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.full_name}>
                   <input value={fullName} onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Назгуль Ахметова"
+                    placeholder={t("fullNamePlaceholder")}
                     className={fieldErrors.full_name
                       ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                       : inputClass} />
                 </Field>
               </div>
               <div className="sm:col-span-2" data-field="countries">
-                <Field label="Страны (можно несколько)" required error={fieldErrors.countries}>
+                <Field label={t("countriesLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.countries}>
                   <div className="flex flex-wrap gap-2">
                     {POPULAR_COUNTRY_CODES.map((c) => (
                       <button
@@ -364,7 +375,7 @@ export default function MentorProfilePage() {
                       onClick={() => setPickerOpen(true)}
                       className="px-3 py-1.5 rounded-lg text-sm font-medium border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 transition-all"
                     >
-                      + Другая страна
+                      {t("otherCountry")}
                     </button>
                   </div>
                   {/* Selected countries that aren't in the popular row —
@@ -383,7 +394,7 @@ export default function MentorProfilePage() {
                             <button
                               type="button"
                               onClick={() => toggleCountry(c)}
-                              aria-label={`Убрать ${countryLabel(c)}`}
+                              aria-label={t("removeCountry", { country: countryLabel(c) })}
                               className="ml-0.5 text-gray-400 hover:text-red-500"
                             >
                               ✕
@@ -402,36 +413,36 @@ export default function MentorProfilePage() {
                 />
               </div>
               <div data-field="school_or_university">
-                <Field label="Университет" required error={fieldErrors.school_or_university}>
+                <Field label={t("universityLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.school_or_university}>
                   <input value={school} onChange={(e) => setSchool(e.target.value)}
-                    placeholder="MIT, UCL, TU Munich..."
+                    placeholder={t("universityPlaceholder")}
                     className={fieldErrors.school_or_university
                       ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                       : inputClass} />
                 </Field>
               </div>
               <div data-field="major">
-                <Field label="Специальность" required error={fieldErrors.major}>
+                <Field label={t("majorLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.major}>
                   <input value={major} onChange={(e) => setMajor(e.target.value)}
-                    placeholder="Computer Science"
+                    placeholder={t("majorPlaceholder")}
                     className={fieldErrors.major
                       ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                       : inputClass} />
                 </Field>
               </div>
               <div data-field="grant_or_scholarship">
-                <Field label="Грант / стипендия" required error={fieldErrors.grant_or_scholarship}>
+                <Field label={t("grantLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.grant_or_scholarship}>
                   <input value={grant} onChange={(e) => setGrant(e.target.value)}
-                    placeholder="Болашак, Chevening, DAAD..."
+                    placeholder={t("grantPlaceholder")}
                     className={fieldErrors.grant_or_scholarship
                       ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                       : inputClass} />
                 </Field>
               </div>
               <div data-field="gpa">
-                <Field label="GPA" required error={fieldErrors.gpa}>
+                <Field label={t("gpaLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.gpa}>
                   <input value={gpa} onChange={(e) => setGpa(e.target.value)}
-                    placeholder="3.8 / 4.0"
+                    placeholder={t("gpaPlaceholder")}
                     className={fieldErrors.gpa
                       ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                       : inputClass} />
@@ -442,17 +453,18 @@ export default function MentorProfilePage() {
 
           {/* Exams & social */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">Экзамены и ссылки</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-5">{t("examsLinksTitle")}</h2>
             <div className="space-y-5">
               <div data-field="exam_results">
                 <Field
-                  label="Результаты экзаменов"
+                  label={t("examResultsLabel")}
                   required
-                  hint="Укажи баллы: IELTS, TOEFL, SAT, GRE и т.д."
+                  requiredLabel={t("requiredLabel")}
+                  hint={t("examResultsHint")}
                   error={fieldErrors.exam_results}
                 >
                   <input value={examResults} onChange={(e) => setExamResults(e.target.value)}
-                    placeholder="IELTS 7.5, SAT 1480, GRE 320..."
+                    placeholder={t("examResultsPlaceholder")}
                     className={fieldErrors.exam_results
                       ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                       : inputClass} />
@@ -460,40 +472,42 @@ export default function MentorProfilePage() {
               </div>
               <div data-field="phone">
                 <Field
-                  label="Телефон"
+                  label={t("phoneLabel")}
                   required
-                  hint="Резервный канал связи для команды Connectus. Абитуриенты не видят. Любая страна."
+                  requiredLabel={t("requiredLabel")}
+                  hint={t("phoneHint")}
                   error={fieldErrors.phone}
                 >
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     type="tel"
-                    placeholder="+7 777 123 45 67"
+                    placeholder={t("phonePlaceholder")}
                     className={fieldErrors.phone
                       ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                       : inputClass}
                   />
                 </Field>
               </div>
-              <Field label="LinkedIn" hint="Необязательно — помогает абитуриентам убедиться в твоих достижениях">
+              <Field label={t("linkedinLabel")} hint={t("linkedinHint")}>
                 <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)}
-                  placeholder="https://linkedin.com/in/..." className={inputClass} />
+                  placeholder={t("linkedinPlaceholder")} className={inputClass} />
               </Field>
             </div>
           </div>
 
           {/* Bio */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="detailed_bio">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">О себе</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-5">{t("aboutTitle")}</h2>
             <Field
-              label="Расскажи свою историю"
+              label={t("aboutLabel")}
               required
-              hint="Минимум 3-4 предложения. Что ты прошёл, как можешь помочь."
+              requiredLabel={t("requiredLabel")}
+              hint={t("aboutHint")}
               error={fieldErrors.detailed_bio}
             >
               <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={5}
-                placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю абитуриентам составить план поступления, написать эссе и подать заявки в топ университеты США..."
+                placeholder={t("aboutPlaceholder")}
                 className={fieldErrors.detailed_bio
                   ? `${inputClass} resize-none border-red-300 focus:ring-red-100 focus:border-red-400`
                   : `${inputClass} resize-none`} />
@@ -504,10 +518,10 @@ export default function MentorProfilePage() {
           {/* Expertise */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="expertise_areas">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
-              Специализация
-              <span className="ml-1.5 text-xs font-normal text-gray-400">обязательно</span>
+              {t("specializationTitle")}
+              <span className="ml-1.5 text-xs font-normal text-gray-400">{t("requiredLabel")}</span>
             </h2>
-            <p className="text-sm text-gray-400 mb-5">В чём ты помогаешь абитуриентам?</p>
+            <p className="text-sm text-gray-400 mb-5">{t("specializationSubtitle")}</p>
             <div className="flex flex-wrap gap-3">
               {EXPERTISE_OPTIONS.map(({ value, label }) => (
                 <button
@@ -532,22 +546,22 @@ export default function MentorProfilePage() {
 
           {/* Payout */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">Реквизиты для выплаты</h2>
-            <p className="text-sm text-gray-400 mb-5">Видно только администратору платформы — не абитуриентам</p>
-            <Field label="Реквизиты">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">{t("payoutTitle")}</h2>
+            <p className="text-sm text-gray-400 mb-5">{t("payoutSubtitle")}</p>
+            <Field label={t("payoutLabel")}>
               <input value={payoutDetails} onChange={(e) => setPayoutDetails(e.target.value)}
-                placeholder="Kaspi: +7 777 123 45 67 / IBAN: KZ..." className={inputClass} />
+                placeholder={t("payoutPlaceholder")} className={inputClass} />
             </Field>
           </div>
 
           {/* Documents */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="documents">
             <h2 className="text-base font-semibold text-gray-900 mb-1">
-              Документы для проверки
-              <span className="ml-1.5 text-xs font-normal text-gray-400">обязательно</span>
+              {t("documentsTitle")}
+              <span className="ml-1.5 text-xs font-normal text-gray-400">{t("requiredLabel")}</span>
             </h2>
             <p className="text-sm text-gray-400 mb-5">
-              Загрузи диплом, справку о зачислении или паспорт — что-то одно подтверждающее твой статус.
+              {t("documentsSubtitle")}
             </p>
             <MentorDocumentsUploader isBanned={isBanned} />
           </div>
@@ -560,7 +574,7 @@ export default function MentorProfilePage() {
 
           {saved && (
             <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-700">
-              ✓ Профиль сохранён! Перенаправляем...
+              {t("savedNotice")}
             </div>
           )}
 
@@ -571,7 +585,7 @@ export default function MentorProfilePage() {
             disabled={saving || isBanned}
             className="w-full bg-gray-900 text-white py-4 rounded-2xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 text-sm"
           >
-            {saving ? "Сохраняем..." : "Сохранить профиль"}
+            {saving ? t("saving") : t("saveProfile")}
           </button>
         </form>
       </div>

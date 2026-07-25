@@ -1,9 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { fetchMentorProfile } from "@/lib/api"
 import Icon from "@/components/Icon"
+
+const richTags = {
+  strong: (chunks: React.ReactNode) => <strong>{chunks}</strong>,
+}
 
 // Sticky-баннер для менторов с тремя состояниями:
 //   красный — профиль не подан на проверку, студенты пока не видят
@@ -25,6 +30,7 @@ export default function MentorStatusBanner({
   isSubmitted: isSubmittedProp,
   isApproved: isApprovedProp,
 }: Props) {
+  const t = useTranslations("MentorStatusBanner")
   const [fetched, setFetched] = useState<{
     isSubmitted: boolean
     isApproved: boolean
@@ -61,7 +67,7 @@ export default function MentorStatusBanner({
         <div className="max-w-6xl mx-auto flex items-center gap-2 text-sm text-amber-900">
           <Icon name="hourglass_empty" size={18} className="text-amber-600 flex-shrink-0" />
           <p>
-            <strong>Профиль на проверке.</strong> Обычно одобряем в течение 48 часов — мы напишем в Telegram как только всё готово.
+            {t.rich("underReviewBody", richTags)}
           </p>
         </div>
       </div>
@@ -74,14 +80,14 @@ export default function MentorStatusBanner({
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Icon name="warning" size={18} className="text-red-600 flex-shrink-0" filled />
           <p>
-            <strong>Профиль на проверку не отправлен.</strong> Студенты пока тебя не видят — заполни обязательные поля и нажми «Отправить на проверку».
+            {t.rich("notSubmittedBody", richTags)}
           </p>
         </div>
         <Link
           href="/mentor/dashboard"
           className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
         >
-          Перейти к подаче
+          {t("goToSubmit")}
           <Icon name="arrow_forward" size={14} />
         </Link>
       </div>

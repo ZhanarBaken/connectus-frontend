@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import BackButton from "./BackButton"
 
 function setHistoryLength(length: number) {

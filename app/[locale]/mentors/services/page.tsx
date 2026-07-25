@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import {
   fetchMentorServices,
   fetchMentorProfile,
@@ -15,20 +16,6 @@ import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
-
-const formatPrice = (service: MentorService) => {
-  if (service.is_price_negotiable || service.price === null) return "Договорная"
-  const n = Number(service.price)
-  if (Number.isNaN(n)) return `${service.price} ₸`
-  return `${n.toLocaleString("ru-RU")} ₸`
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  primary_consultation: "Консультация",
-  support: "Сопровождение",
-  delivery: "Услуга",
-  milestone: "Услуга",
-}
 
 // "consultation" (the retired free-intro category) never appears here —
 // the backend blocks creating/editing into it and no longer surfaces it.
@@ -71,6 +58,22 @@ function formCategoryOf(service: MentorService): FormCategory {
 }
 
 export default function MentorServicesPage() {
+  const t = useTranslations("Mentors.Services")
+
+  const formatPrice = (service: MentorService) => {
+    if (service.is_price_negotiable || service.price === null) return t("negotiablePrice")
+    const n = Number(service.price)
+    if (Number.isNaN(n)) return `${service.price} ₸`
+    return `${n.toLocaleString("ru-RU")} ₸`
+  }
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    primary_consultation: t("categoryConsultation"),
+    support: t("categorySupport"),
+    delivery: t("categoryService"),
+    milestone: t("categoryService"),
+  }
+
   const [services, setServices] = useState<MentorService[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -91,12 +94,13 @@ export default function MentorServicesPage() {
   useEffect(() => {
     fetchMentorServices()
       .then(setServices)
-      .catch(() => setError("Не удалось загрузить услуги"))
+      .catch(() => setError(t("loadServicesError")))
       .finally(() => setLoading(false))
 
     fetchMentorProfile()
       .then((p) => setIsBanned(p.is_banned ?? false))
       .catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const startCreate = (category: FormCategory) => {
@@ -181,20 +185,20 @@ export default function MentorServicesPage() {
       }
       cancelForm()
     } catch (e: unknown) {
-      setFormError(e instanceof Error ? e.message : "Ошибка при сохранении")
+      setFormError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Удалить эту услугу?")) return
+    if (!confirm(t("confirmDelete"))) return
     setDeleteError("")
     try {
       await deleteMentorService(id)
       setServices((prev) => prev.map((s) => (s.id === id ? { ...s, is_active: false } : s)))
     } catch (e: unknown) {
-      setDeleteError(e instanceof Error ? e.message : "Не удалось удалить услугу")
+      setDeleteError(e instanceof Error ? e.message : t("deleteErrorGeneric"))
     }
   }
 
@@ -223,7 +227,7 @@ export default function MentorServicesPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-2 transition-colors group [-webkit-tap-highlight-color:transparent]" />
-            <h1 className="text-2xl font-bold text-gray-900">Мои услуги</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
           </div>
           {!isFormOpen && !isBanned && (
             <button
@@ -233,7 +237,7 @@ export default function MentorServicesPage() {
               }}
               className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
             >
-              + Добавить
+              {t("addButton")}
             </button>
           )}
         </div>
@@ -242,8 +246,8 @@ export default function MentorServicesPage() {
           <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
             <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
-              <p className="text-xs text-red-500 mt-1">Редактирование недоступно. Обратитесь в поддержку: {SUPPORT_EMAIL}</p>
+              <p className="font-semibold text-red-800 text-sm">{t("bannedTitle")}</p>
+              <p className="text-xs text-red-500 mt-1">{t("bannedBody", { email: SUPPORT_EMAIL })}</p>
             </div>
           </div>
         )}
@@ -258,7 +262,7 @@ export default function MentorServicesPage() {
         {/* Step 1 of "new": pick a type */}
         {isPickingCategory && (
           <div className="bg-white rounded-2xl border border-gray-300 p-6 mb-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Какую услугу добавить?</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-4">{t("pickTypeTitle")}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 onClick={() => startCreate("primary_consultation")}
@@ -266,9 +270,9 @@ export default function MentorServicesPage() {
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Icon name="forum" size={18} className="text-indigo-600" />
-                  <span className="font-semibold text-gray-900">Консультация</span>
+                  <span className="font-semibold text-gray-900">{t("consultationOptionTitle")}</span>
                 </div>
-                <p className="text-xs text-gray-500">Фиксированная цена, запись через календарь после оплаты.</p>
+                <p className="text-xs text-gray-500">{t("consultationOptionBody")}</p>
               </button>
               <button
                 onClick={() => startCreate("support")}
@@ -276,9 +280,9 @@ export default function MentorServicesPage() {
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Icon name="groups" size={18} className="text-indigo-600" />
-                  <span className="font-semibold text-gray-900">Сопровождение</span>
+                  <span className="font-semibold text-gray-900">{t("supportOptionTitle")}</span>
                 </div>
-                <p className="text-xs text-gray-500">Долгосрочная программа, запись только через чат с ментором.</p>
+                <p className="text-xs text-gray-500">{t("supportOptionBody")}</p>
               </button>
             </div>
             <button
@@ -286,7 +290,7 @@ export default function MentorServicesPage() {
               onClick={cancelForm}
               className="mt-4 text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
-              Отмена
+              {t("cancel")}
             </button>
           </div>
         )}
@@ -296,24 +300,24 @@ export default function MentorServicesPage() {
           <div className="bg-white rounded-2xl border border-gray-300 p-6 mb-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">
               {editingId === "new"
-                ? `Новая услуга — ${CATEGORY_LABELS[activeCategory === "other" ? "delivery" : activeCategory]}`
-                : "Редактировать услугу"}
+                ? t("newServiceTitle", { category: CATEGORY_LABELS[activeCategory === "other" ? "delivery" : activeCategory] })
+                : t("editServiceTitle")}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Название</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("nameLabel")}</label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   required
-                  placeholder={activeCategory === "support" ? "Поступление в 3 вуза" : "Первичная консультация"}
+                  placeholder={activeCategory === "support" ? t("namePlaceholderSupport") : t("namePlaceholderConsultation")}
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Описание {activeCategory === "primary_consultation" && (
-                    <span className="text-gray-400 font-normal">(минимум 80 символов)</span>
+                  {t("descriptionLabel")} {activeCategory === "primary_consultation" && (
+                    <span className="text-gray-400 font-normal">{t("descriptionMinChars")}</span>
                   )}
                 </label>
                 <textarea
@@ -322,8 +326,8 @@ export default function MentorServicesPage() {
                   rows={3}
                   placeholder={
                     activeCategory === "support"
-                      ? "Что входит в сопровождение — какие этапы, что делаем вместе..."
-                      : "Разбираем твою ситуацию, составляем план поступления..."
+                      ? t("descriptionPlaceholderSupport")
+                      : t("descriptionPlaceholderConsultation")
                   }
                   className={`${inputClass} resize-none`}
                 />
@@ -332,7 +336,7 @@ export default function MentorServicesPage() {
               {activeCategory === "primary_consultation" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Цена (₸)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("priceLabel")}</label>
                     <div className="relative">
                       <input
                         value={form.price}
@@ -349,7 +353,7 @@ export default function MentorServicesPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Длительность (мин)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("durationLabel")}</label>
                     <input
                       value={form.duration}
                       onChange={(e) => setForm({ ...form, duration: e.target.value })}
@@ -367,7 +371,7 @@ export default function MentorServicesPage() {
               {activeCategory === "other" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Цена (₸)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("priceLabel")}</label>
                     <div className="relative">
                       <input
                         value={form.price}
@@ -384,7 +388,7 @@ export default function MentorServicesPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Длительность (мин)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("durationLabel")}</label>
                     <input
                       value={form.duration}
                       onChange={(e) => setForm({ ...form, duration: e.target.value })}
@@ -403,7 +407,7 @@ export default function MentorServicesPage() {
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Встреч от</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("meetingsMinLabel")}</label>
                       <input
                         value={form.meetingsMin}
                         onChange={(e) => setForm({ ...form, meetingsMin: e.target.value })}
@@ -416,7 +420,7 @@ export default function MentorServicesPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Встреч до</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("meetingsMaxLabel")}</label>
                       <input
                         value={form.meetingsMax}
                         onChange={(e) => setForm({ ...form, meetingsMax: e.target.value })}
@@ -431,7 +435,7 @@ export default function MentorServicesPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Длительность от (мес)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("durationMonthsMinLabel")}</label>
                       <input
                         value={form.durationMonthsMin}
                         onChange={(e) => setForm({ ...form, durationMonthsMin: e.target.value })}
@@ -444,7 +448,7 @@ export default function MentorServicesPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Длительность до (мес)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("durationMonthsMaxLabel")}</label>
                       <input
                         value={form.durationMonthsMax}
                         onChange={(e) => setForm({ ...form, durationMonthsMax: e.target.value })}
@@ -465,11 +469,11 @@ export default function MentorServicesPage() {
                       onChange={(e) => setForm({ ...form, isPriceNegotiable: e.target.checked })}
                       className="rounded border-gray-300"
                     />
-                    Цена договорная (обсуждается с каждым студентом отдельно)
+                    {t("priceNegotiableLabel")}
                   </label>
                   {!form.isPriceNegotiable && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Цена (₸)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("priceLabel")}</label>
                       <div className="relative">
                         <input
                           value={form.price}
@@ -494,7 +498,7 @@ export default function MentorServicesPage() {
                       onChange={(e) => setForm({ ...form, introCallEnabled: e.target.checked })}
                       className="rounded border-gray-300"
                     />
-                    Бесплатный intro-call (15 минут) для знакомства с ментором
+                    {t("introCallLabel")}
                   </label>
                 </>
               )}
@@ -502,7 +506,7 @@ export default function MentorServicesPage() {
               {(activeCategory === "primary_consultation" || activeCategory === "support") && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Класс от (необязательно)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("gradeMinLabel")}</label>
                     <input
                       value={form.gradeMin}
                       onChange={(e) => setForm({ ...form, gradeMin: e.target.value })}
@@ -514,7 +518,7 @@ export default function MentorServicesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Класс до (необязательно)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("gradeMaxLabel")}</label>
                     <input
                       value={form.gradeMax}
                       onChange={(e) => setForm({ ...form, gradeMax: e.target.value })}
@@ -538,17 +542,17 @@ export default function MentorServicesPage() {
                   className="bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   {submitting
-                    ? "Сохраняем..."
+                    ? t("saving")
                     : editingId === "new"
-                      ? "Добавить услугу"
-                      : "Сохранить"}
+                      ? t("addService")
+                      : t("save")}
                 </button>
                 <button
                   type="button"
                   onClick={cancelForm}
                   className="border border-gray-200 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
                 >
-                  Отмена
+                  {t("cancel")}
                 </button>
               </div>
             </form>
@@ -558,12 +562,13 @@ export default function MentorServicesPage() {
         <div className="space-y-6">
           {/* Consultations */}
           <div>
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Консультации</h2>
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("consultationsHeading")}</h2>
             {consultations.length === 0 ? (
               <EmptyState
                 icon="forum"
-                title="Пока нет ни одной консультации"
-                hint="Студенты не смогут записаться к тебе, пока не появится хотя бы одна услуга."
+                title={t("noConsultationsTitle")}
+                hint={t("noConsultationsHint")}
+                addLabel={t("addButton")}
                 isBanned={isBanned}
                 onAdd={() => startCreate("primary_consultation")}
               />
@@ -576,6 +581,8 @@ export default function MentorServicesPage() {
                     isBanned={isBanned}
                     onEdit={() => startEdit(service)}
                     onDelete={() => handleDelete(service.id)}
+                    formatPrice={formatPrice}
+                    t={t}
                   />
                 ))}
               </div>
@@ -584,12 +591,13 @@ export default function MentorServicesPage() {
 
           {/* Support */}
           <div>
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Сопровождение</h2>
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("supportHeading")}</h2>
             {supports.length === 0 ? (
               <EmptyState
                 icon="groups"
-                title="Пока нет программ сопровождения"
-                hint="Долгосрочные программы студенты заказывают через чат, а не с одного клика."
+                title={t("noSupportTitle")}
+                hint={t("noSupportHint")}
+                addLabel={t("addButton")}
                 isBanned={isBanned}
                 onAdd={() => startCreate("support")}
               />
@@ -602,6 +610,8 @@ export default function MentorServicesPage() {
                     isBanned={isBanned}
                     onEdit={() => startEdit(service)}
                     onDelete={() => handleDelete(service.id)}
+                    formatPrice={formatPrice}
+                    t={t}
                   />
                 ))}
               </div>
@@ -611,7 +621,7 @@ export default function MentorServicesPage() {
           {/* Legacy delivery/milestone services, if any */}
           {other.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Другое</h2>
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t("otherHeading")}</h2>
               <div className="space-y-3">
                 {other.map((service) => (
                   <ServiceCard
@@ -620,6 +630,8 @@ export default function MentorServicesPage() {
                     isBanned={isBanned}
                     onEdit={() => startEdit(service)}
                     onDelete={() => handleDelete(service.id)}
+                    formatPrice={formatPrice}
+                    t={t}
                   />
                 ))}
               </div>
@@ -635,12 +647,14 @@ function EmptyState({
   icon,
   title,
   hint,
+  addLabel,
   isBanned,
   onAdd,
 }: {
   icon: string
   title: string
   hint: string
+  addLabel: string
   isBanned: boolean
   onAdd: () => void
 }) {
@@ -656,7 +670,7 @@ function EmptyState({
           onClick={onAdd}
           className="inline-flex bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
         >
-          + Добавить
+          {addLabel}
         </button>
       )}
     </div>
@@ -668,11 +682,15 @@ function ServiceCard({
   isBanned,
   onEdit,
   onDelete,
+  formatPrice,
+  t,
 }: {
   service: MentorService
   isBanned: boolean
   onEdit: () => void
   onDelete: () => void
+  formatPrice: (service: MentorService) => string
+  t: ReturnType<typeof useTranslations>
 }) {
   const isSupport = service.payout_category === "support"
   return (
@@ -682,7 +700,7 @@ function ServiceCard({
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-gray-900">{service.title}</h3>
             {!service.is_active && (
-              <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Неактивна</span>
+              <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">{t("inactiveBadge")}</span>
             )}
           </div>
           {service.description && (
@@ -694,31 +712,31 @@ function ServiceCard({
                 {service.meetings_min !== null && (
                   <span className="text-xs text-gray-400 inline-flex items-center gap-1">
                     <Icon name="event_repeat" size={12} />
-                    {service.meetings_min}–{service.meetings_max} встреч
+                    {t("meetingsRange", { min: service.meetings_min, max: service.meetings_max ?? "" })}
                   </span>
                 )}
                 {service.duration_months_min !== null && (
                   <span className="text-xs text-gray-400 inline-flex items-center gap-1">
                     <Icon name="calendar_month" size={12} />
-                    {service.duration_months_min}–{service.duration_months_max} мес
+                    {t("monthsRange", { min: service.duration_months_min, max: service.duration_months_max ?? "" })}
                   </span>
                 )}
                 {service.intro_call_enabled && (
                   <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">
-                    Intro-call 15 мин бесплатно
+                    {t("introCallBadge")}
                   </span>
                 )}
               </>
             ) : (
               <span className="text-xs text-gray-400 inline-flex items-center gap-1">
                 <Icon name="schedule" size={12} />
-                {service.duration_minutes} мин
+                {t("durationMinutes", { minutes: service.duration_minutes })}
               </span>
             )}
             {(service.grade_min !== null || service.grade_max !== null) && (
               <span className="text-xs text-gray-400 inline-flex items-center gap-1">
                 <Icon name="school" size={12} />
-                {service.grade_min ?? "?"}–{service.grade_max ?? "?"} класс
+                {t("gradeRange", { min: service.grade_min ?? "?", max: service.grade_max ?? "?" })}
               </span>
             )}
             <span className="text-xs text-gray-300">·</span>
@@ -731,12 +749,12 @@ function ServiceCard({
               onClick={onEdit}
               className="text-xs text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 font-medium"
             >
-              Изменить
+              {t("edit")}
             </button>
             <button
               onClick={onDelete}
               className="text-xs text-gray-300 hover:text-red-500 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50"
-              aria-label="Удалить"
+              aria-label={t("deleteAria")}
             >
               ✕
             </button>

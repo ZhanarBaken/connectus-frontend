@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import MentorSchedulePage from "./page"
 import { fetchMyMentorSchedule, saveMyMentorSchedule, fetchMentorProfile } from "@/lib/api"
 import type { MentorSchedule } from "@/lib/schedule"

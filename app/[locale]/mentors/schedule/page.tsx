@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import { fetchMyMentorSchedule, saveMyMentorSchedule } from "@/lib/api"
 import {
-  DAY_LABELS_FULL,
   emptyWeekSchedule,
   flatToWeekSchedule,
   formatDateISO,
@@ -27,7 +27,12 @@ for (let h = 0; h < 24; h++) {
 }
 
 export default function MentorSchedulePage() {
+  const t = useTranslations("Mentors.Schedule")
   const router = useRouter()
+  const DAY_LABELS_FULL = [
+    t("monday"), t("tuesday"), t("wednesday"), t("thursday"),
+    t("friday"), t("saturday"), t("sunday"),
+  ]
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -56,9 +61,10 @@ export default function MentorSchedulePage() {
         setTimezone(schedule.timezone)
       })
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Не удалось загрузить расписание"),
+        setError(err instanceof Error ? err.message : t("loadError")),
       )
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   /* ── Day toggle ──────────────────────────────────────────── */
@@ -137,7 +143,7 @@ export default function MentorSchedulePage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить расписание")
+      setError(err instanceof Error ? err.message : t("saveError"))
     } finally {
       setSaving(false)
     }
@@ -162,13 +168,13 @@ export default function MentorSchedulePage() {
         {/* ── Header ─────────────────────────────────────── */}
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
-          Расписание
+          {t("pageTitle")}
         </h1>
         <p className="text-sm text-gray-500 mb-1">
-          Настрой доступные часы для записи
+          {t("pageSubtitle")}
         </p>
         {timezone && (
-          <p className="text-xs text-gray-400 mb-8">Часовой пояс: {timezone}</p>
+          <p className="text-xs text-gray-400 mb-8">{t("timezoneLabel", { timezone })}</p>
         )}
 
         {/* ── Alerts ─────────────────────────────────────── */}
@@ -193,7 +199,7 @@ export default function MentorSchedulePage() {
               className="text-emerald-600"
               filled
             />
-            Расписание сохранено
+            {t("saved")}
           </div>
         )}
 
@@ -248,9 +254,9 @@ export default function MentorSchedulePage() {
                           }
                           className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
                         >
-                          {TIME_OPTIONS.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
+                          {TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
                             </option>
                           ))}
                         </select>
@@ -264,9 +270,9 @@ export default function MentorSchedulePage() {
                           }
                           className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
                         >
-                          {TIME_OPTIONS.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
+                          {TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
                             </option>
                           ))}
                         </select>
@@ -275,7 +281,7 @@ export default function MentorSchedulePage() {
                           type="button"
                           onClick={() => removeSlot(day, idx)}
                           className="ml-1 p-1 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-                          aria-label="Удалить окно"
+                          aria-label={t("removeSlot")}
                         >
                           <Icon name="close" size={16} />
                         </button>
@@ -288,7 +294,7 @@ export default function MentorSchedulePage() {
                       className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 font-medium mt-1 transition-colors"
                     >
                       <Icon name="add" size={14} />
-                      Добавить окно
+                      {t("addSlot")}
                     </button>
                   </div>
                 )}
@@ -300,16 +306,16 @@ export default function MentorSchedulePage() {
         {/* ── Blocked dates ──────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
           <h2 className="text-sm font-semibold text-gray-900 mb-1">
-            Заблокированные даты
+            {t("blockedDatesTitle")}
           </h2>
           <p className="text-xs text-gray-500 mb-5">
-            Дни когда ты точно недоступен (отпуск, учёба)
+            {t("blockedDatesSubtitle")}
           </p>
 
           {/* Add form */}
           <div className="flex flex-wrap items-end gap-2 mb-5">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Дата</label>
+              <label className="block text-xs text-gray-500 mb-1">{t("dateLabel")}</label>
               <input
                 type="date"
                 value={newBlockedDate}
@@ -320,13 +326,13 @@ export default function MentorSchedulePage() {
             </div>
             <div className="flex-1 min-w-[140px]">
               <label className="block text-xs text-gray-500 mb-1">
-                Причина (необязательно)
+                {t("reasonLabel")}
               </label>
               <input
                 type="text"
                 value={newBlockedReason}
                 onChange={(e) => setNewBlockedReason(e.target.value)}
-                placeholder="Отпуск, экзамен..."
+                placeholder={t("reasonPlaceholder")}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
             </div>
@@ -336,13 +342,13 @@ export default function MentorSchedulePage() {
               disabled={!newBlockedDate}
               className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Добавить
+              {t("add")}
             </button>
           </div>
 
           {/* List */}
           {futureBlockedDates.length === 0 ? (
-            <p className="text-xs text-gray-400">Нет заблокированных дат</p>
+            <p className="text-xs text-gray-400">{t("noBlockedDates")}</p>
           ) : (
             <div className="space-y-2">
               {futureBlockedDates.map((b) => (
@@ -365,7 +371,7 @@ export default function MentorSchedulePage() {
                     type="button"
                     onClick={() => removeBlockedDate(b.date)}
                     className="ml-auto p-1 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-                    aria-label="Удалить дату"
+                    aria-label={t("removeDate")}
                   >
                     <Icon name="close" size={14} />
                   </button>
@@ -387,7 +393,7 @@ export default function MentorSchedulePage() {
           ) : (
             <>
               <Icon name="save" size={18} className="text-white" />
-              Сохранить расписание
+              {t("saveSchedule")}
             </>
           )}
         </button>

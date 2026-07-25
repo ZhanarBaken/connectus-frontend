@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import { authFetch, fetchMentorProfile } from "@/lib/api"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
 import Icon from "@/components/Icon"
@@ -22,20 +23,6 @@ interface MentorDocument {
   download_url: string
 }
 
-const KIND_OPTIONS: { value: string; label: string }[] = [
-  // Паспорт / виза убраны (не подтверждают поступление).
-  { value: "diploma", label: "Диплом" },
-  { value: "enrollment_certificate", label: "Справка о зачислении" },
-  { value: "university_id", label: "Студенческий билет" },
-  { value: "other", label: "Другое" },
-]
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  pending: { label: "На проверке", className: "bg-yellow-50 text-yellow-700" },
-  approved: { label: "Одобрен", className: "bg-green-50 text-green-700" },
-  rejected: { label: "Отклонён", className: "bg-red-50 text-red-700" },
-}
-
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -43,8 +30,24 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function MentorDocumentsPage() {
+  const t = useTranslations("Mentors.Documents")
+  const tDoc = useTranslations("Onboarding.Mentor")
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const KIND_OPTIONS: { value: string; label: string }[] = [
+    // Паспорт / виза убраны (не подтверждают поступление).
+    { value: "diploma", label: tDoc("docDiploma") },
+    { value: "enrollment_certificate", label: tDoc("docEnrollment") },
+    { value: "university_id", label: tDoc("docUniversityId") },
+    { value: "other", label: tDoc("docOther") },
+  ]
+
+  const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+    pending: { label: t("statusPending"), className: "bg-yellow-50 text-yellow-700" },
+    approved: { label: t("statusApproved"), className: "bg-green-50 text-green-700" },
+    rejected: { label: t("statusRejected"), className: "bg-red-50 text-red-700" },
+  }
 
   const [documents, setDocuments] = useState<MentorDocument[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,6 +72,7 @@ export default function MentorDocumentsPage() {
     if (role === "student") { router.replace("/student/dashboard"); return }
     fetchMentorProfile().then(p => setIsBanned(p.is_banned ?? false)).catch(() => {})
     loadDocuments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   async function loadDocuments() {
@@ -76,11 +80,11 @@ export default function MentorDocumentsPage() {
     setError("")
     try {
       const res = await authFetch(`${BASE_URL}/mentors/documents/`)
-      if (!res.ok) throw new Error("Не удалось загрузить документы")
+      if (!res.ok) throw new Error(t("loadDocumentsError"))
       const data = await res.json()
       setDocuments(Array.isArray(data) ? data : data.results ?? [])
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка загрузки")
+      setError(e instanceof Error ? e.message : t("loadErrorGeneric"))
     } finally {
       setLoading(false)
     }
@@ -89,7 +93,7 @@ export default function MentorDocumentsPage() {
   async function handleUpload() {
     if (!file) return
     if (file.size > 15 * 1024 * 1024) {
-      setUploadError("Файл слишком большой. Максимум 15 MB.")
+      setUploadError(t("fileTooLarge"))
       return
     }
     setUploading(true)
@@ -105,31 +109,31 @@ export default function MentorDocumentsPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         const first = Object.values(err)[0]
-        throw new Error(Array.isArray(first) ? first[0] : err.detail || String(first || "Ошибка загрузки"))
+        throw new Error(Array.isArray(first) ? first[0] : err.detail || String(first || t("loadErrorGeneric")))
       }
       const doc: MentorDocument = await res.json()
       setDocuments((prev) => [doc, ...prev])
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ""
     } catch (e: unknown) {
-      setUploadError(e instanceof Error ? e.message : "Ошибка загрузки")
+      setUploadError(e instanceof Error ? e.message : t("loadErrorGeneric"))
     } finally {
       setUploading(false)
     }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Удалить документ?")) return
+    if (!confirm(t("confirmDelete"))) return
     setDeletingId(id)
     try {
       const res = await authFetch(`${BASE_URL}/mentors/documents/${id}/`, { method: "DELETE" })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || "Не удалось удалить")
+        throw new Error(err.detail || t("deleteError"))
       }
       setDocuments((prev) => prev.filter((d) => d.id !== id))
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Ошибка удаления")
+      alert(e instanceof Error ? e.message : t("deleteErrorGeneric"))
     } finally {
       setDeletingId(null)
     }
@@ -157,10 +161,10 @@ export default function MentorDocumentsPage() {
         <div className="mb-8">
           <BackButton fallbackHref="/mentor/dashboard" />
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-4">
-            Документы для верификации
+            {t("pageTitle")}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Загрузите документы для подтверждения вашего статуса ментора
+            {t("pageSubtitle")}
           </p>
         </div>
 
@@ -168,18 +172,18 @@ export default function MentorDocumentsPage() {
           <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
             <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
-              <p className="text-xs text-red-500 mt-1">Редактирование недоступно. Обратитесь в поддержку: {SUPPORT_EMAIL}</p>
+              <p className="font-semibold text-red-800 text-sm">{t("accountBannedTitle")}</p>
+              <p className="text-xs text-red-500 mt-1">{t("accountBannedBody", { email: SUPPORT_EMAIL })}</p>
             </div>
           </div>
         )}
 
         {/* Upload form */}
         {!isBanned && <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Загрузить документ</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("uploadTitle")}</h2>
 
           {/* Kind select */}
-          <label className="block text-sm font-medium text-gray-700 mb-1">Тип документа</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("documentTypeLabel")}</label>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
@@ -202,8 +206,8 @@ export default function MentorDocumentsPage() {
               <p className="text-sm text-gray-700 font-medium">{file.name} ({formatFileSize(file.size)})</p>
             ) : (
               <>
-                <p className="text-sm text-gray-500">Перетащите файл сюда или нажмите для выбора</p>
-                <p className="text-xs text-gray-400 mt-1">PDF, JPEG, PNG. Максимум 15 MB</p>
+                <p className="text-sm text-gray-500">{t("dropHint")}</p>
+                <p className="text-xs text-gray-400 mt-1">{t("fileFormats")}</p>
               </>
             )}
           </div>
@@ -224,7 +228,7 @@ export default function MentorDocumentsPage() {
             disabled={!file || uploading}
             className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {uploading ? "Загружаем..." : "Загрузить"}
+            {uploading ? t("uploading") : t("upload")}
           </button>
         </div>}
 
@@ -237,13 +241,13 @@ export default function MentorDocumentsPage() {
 
         {/* Documents list */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Мои документы</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("myDocumentsTitle")}</h2>
 
           {documents.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
               <Icon name="folder_open" size={48} className="text-gray-300 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Документов пока нет</h3>
-              <p className="text-sm text-gray-400">Загрузите документы для прохождения верификации</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{t("noDocumentsTitle")}</h3>
+              <p className="text-sm text-gray-400">{t("noDocumentsBody")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -284,7 +288,7 @@ export default function MentorDocumentsPage() {
                         {doc.status === "rejected" && doc.review_note && (
                           <div className="mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                             <p className="text-xs text-red-600">
-                              <span className="font-medium">Причина отклонения:</span> {doc.review_note}
+                              <span className="font-medium">{t("rejectionReason")}</span> {doc.review_note}
                             </p>
                           </div>
                         )}

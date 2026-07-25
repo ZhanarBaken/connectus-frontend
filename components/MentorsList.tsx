@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { Link, useRouter } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import { track } from "@/lib/analytics"
 import { countryFlag, countryLabel, countriesFlagsCompact } from "@/lib/countries"
@@ -10,13 +10,6 @@ import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
-
-const EXPERTISE_LABELS: Record<string, string> = {
-  admission: "Поступление",
-  scholarships: "Стипендии",
-  visa: "Виза",
-  documents: "Документы",
-}
 
 const LANGUAGE_LABELS: Record<string, string> = {
   ru: "Русский", kz: "Қазақша", en: "English", de: "Deutsch",
@@ -29,7 +22,11 @@ interface Props {
   mentors: MentorCard[]
 }
 
+const EXPERTISE_VALUES = ["admission", "scholarships", "visa", "documents"] as const
+
 export default function MentorsList({ mentors }: Props) {
+  const t = useTranslations("Mentors.Catalog")
+  const tExpertise = useTranslations("Landing.Expertise")
   const router = useRouter()
   const { isInTelegram } = useTelegramWebApp()
   const [authChecked, setAuthChecked] = useState(false)
@@ -95,9 +92,9 @@ export default function MentorsList({ mentors }: Props) {
       <div className="bg-[#fafafa] border-b border-gray-200 py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Найти ментора</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">{t("title")}</h1>
           <p className="text-gray-500 text-lg">
-            {mentors.length} менторов из топ университетов мира
+            {t("mentorsFromTop", { count: mentors.length })}
           </p>
         </div>
       </div>
@@ -114,7 +111,7 @@ export default function MentorsList({ mentors }: Props) {
             </div>
             <input
               type="text"
-              placeholder="Поиск по имени, университету..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 bg-white transition-all"
@@ -130,7 +127,7 @@ export default function MentorsList({ mentors }: Props) {
                 onChange={(e) => setCountry(e.target.value)}
                 className="appearance-none text-sm font-medium border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 bg-white text-gray-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
               >
-                <option value="">Все страны</option>
+                <option value="">{t("allCountries")}</option>
                 {countries.map((c) => (
                   <option key={c} value={c}>
                     {countryFlag(c)} {countryLabel(c)}
@@ -155,9 +152,9 @@ export default function MentorsList({ mentors }: Props) {
                 onChange={(e) => setExpertise(e.target.value)}
                 className="appearance-none text-sm font-medium border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 bg-white text-gray-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
               >
-                <option value="">Все услуги</option>
-                {Object.entries(EXPERTISE_LABELS).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
+                <option value="">{t("allServices")}</option>
+                {EXPERTISE_VALUES.map((val) => (
+                  <option key={val} value={val}>{tExpertise(val)}</option>
                 ))}
               </select>
               <svg
@@ -178,7 +175,7 @@ export default function MentorsList({ mentors }: Props) {
                 onChange={(e) => setLanguage(e.target.value)}
                 className="appearance-none text-sm font-medium border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 bg-white text-gray-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
               >
-                <option value="">Все языки</option>
+                <option value="">{t("allLanguages")}</option>
                 {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
                   <option key={code} value={code}>{label}</option>
                 ))}
@@ -215,7 +212,7 @@ export default function MentorsList({ mentors }: Props) {
                   }`}
                 />
               </span>
-              <span>Принимает записи</span>
+              <span>{t("acceptingBookings")}</span>
             </button>
 
             {/* Universal mentor toggle */}
@@ -242,7 +239,7 @@ export default function MentorsList({ mentors }: Props) {
                   }`}
                 />
               </span>
-              <span>Универсальный ментор</span>
+              <span>{t("universalMentor")}</span>
             </button>
 
             {/* Clear filters */}
@@ -251,12 +248,12 @@ export default function MentorsList({ mentors }: Props) {
                 onClick={() => { setSearch(""); setCountry(""); setExpertise(""); setLanguage(""); setOnlyAccepting(false); setOnlyUniversal(false) }}
                 className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2"
               >
-                Сбросить фильтры
+                {t("resetFilters")}
               </button>
             )}
 
             <span className="ml-auto text-sm text-gray-400 hidden sm:block">
-              {filtered.length} {filtered.length === 1 ? "ментор" : "менторов"}
+              {t("mentorsCount", { count: filtered.length })}
             </span>
           </div>
         </div>
@@ -267,13 +264,13 @@ export default function MentorsList({ mentors }: Props) {
             <div className="mb-4 flex justify-center">
               <Icon name="search_off" size={48} className="text-gray-300" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Менторов не найдено</h3>
-            <p className="text-gray-400 mb-6">Попробуй изменить фильтры или поисковый запрос</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">{t("notFoundTitle")}</h3>
+            <p className="text-gray-400 mb-6">{t("notFoundBody")}</p>
             <button
               onClick={() => { setSearch(""); setCountry(""); setExpertise(""); setOnlyAccepting(false) }}
               className="text-indigo-600 font-medium text-sm hover:underline"
             >
-              Сбросить все фильтры
+              {t("resetAllFilters")}
             </button>
           </div>
         ) : (
@@ -308,16 +305,16 @@ export default function MentorsList({ mentors }: Props) {
                       {/* Every visible mentor has been admin-approved
                           (documents + identity verified), so the badge
                           is shown unconditionally. */}
-                      <span title="Платформа подтвердила документы ментора">
+                      <span title={t("verifiedTitle")}>
                         <Icon name="verified" size={14} filled className="text-indigo-500 flex-shrink-0" />
                       </span>
                       {mentor.is_universal && (
                         <span
                           className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
-                          title="Ментор помогает сразу по нескольким направлениям"
+                          title={t("universalBadgeTitle")}
                         >
                           <Icon name="auto_awesome" size={11} filled />
-                          Универсальный
+                          {t("universalBadge")}
                         </span>
                       )}
                     </div>
@@ -327,7 +324,7 @@ export default function MentorsList({ mentors }: Props) {
                     </p>
                     {(mentor.countries ?? []).length > 0 && (
                       <p className="text-xs text-gray-400 mt-0.5" title={mentor.countries.map((c) => countryLabel(c.country)).join(", ")}>
-                        {countriesFlagsCompact(mentor.countries)} помогает поступить
+                        {countriesFlagsCompact(mentor.countries)} {t("helpsAdmission")}
                       </p>
                     )}
                     {/* Reviews */}
@@ -337,10 +334,10 @@ export default function MentorsList({ mentors }: Props) {
                           <span className="text-yellow-400">★</span>
                           <span className="font-semibold text-gray-700">{mentor.rating_avg?.toFixed(1)}</span>
                           <span>·</span>
-                          <span>{mentor.rating_count} {mentor.rating_count === 1 ? "отзыв" : mentor.rating_count < 5 ? "отзыва" : "отзывов"}</span>
+                          <span>{t("reviewCount", { count: mentor.rating_count ?? 0 })}</span>
                         </>
                       ) : (
-                        <span>Без отзывов</span>
+                        <span>{t("noReviews")}</span>
                       )}
                     </div>
                   </div>
@@ -358,7 +355,7 @@ export default function MentorsList({ mentors }: Props) {
                       key={area.area}
                       className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-medium"
                     >
-                      {EXPERTISE_LABELS[area.area] || area.area}
+                      {tExpertise.has(area.area) ? tExpertise(area.area) : area.area}
                     </span>
                   ))}
                 </div>
@@ -394,7 +391,7 @@ export default function MentorsList({ mentors }: Props) {
                         : "bg-gray-100 text-gray-400"
                     }`}
                   >
-                    {mentor.is_accepting_bookings ? "Принимает записи" : "Занят"}
+                    {mentor.is_accepting_bookings ? t("acceptingBookings") : t("busy")}
                   </span>
                 </div>
               </Link>
