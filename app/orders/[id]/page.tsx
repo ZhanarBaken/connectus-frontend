@@ -35,14 +35,14 @@ const STATUS_STYLE: Record<string, string> = {
 // A forced session-expiry redirect (lib/api.ts:refreshAccessToken) tears
 // down all React state before the mentor can submit this form — stash the
 // in-progress fields here so they survive the round trip through login.
-function invoiceDraftKey(orderId: string): string {
+export function invoiceDraftKey(orderId: string): string {
   return `invoice_draft_${orderId}`
 }
 
 // The backend's create_support_invoice raises plain English ValueErrors —
 // translate the ones a mentor can realistically hit; anything unrecognized
 // falls back to the raw message rather than showing nothing.
-function translateInvoiceErrorMessage(raw: string): string {
+export function translateInvoiceErrorMessage(raw: string): string {
   const lower = raw.toLowerCase()
   if (lower.includes("already a live engagement")) {
     return "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку."

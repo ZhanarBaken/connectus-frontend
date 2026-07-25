@@ -55,7 +55,11 @@ export default function CRMMentorDetailPage() {
   }
 
   if (!mentor) {
-    return <div className="text-gray-500 py-8">Ментор не найден</div>
+    // `error` is only set here by the initial fetch failing outright
+    // (network/500) — a genuinely missing id just leaves it empty, so
+    // this distinguishes "couldn't load" from "doesn't exist" instead
+    // of always claiming the mentor doesn't exist.
+    return <div className="text-gray-500 py-8">{error || "Ментор не найден"}</div>
   }
 
   return (

@@ -97,8 +97,17 @@ export const DAY_LABELS_FULL = [
   "Воскресенье",
 ]
 
+// Every caller builds `date` with the local-timezone constructor
+// (`new Date(year, month, day)`), meaning it represents local midnight.
+// Routing that through `toISOString()` first converts to UTC, which
+// rolls the calendar date back by one for any timezone ahead of UTC —
+// including Kazakhstan (UTC+5/+6), this platform's target market.
+// Read the local Y/M/D components directly instead.
 export function formatDateISO(date: Date): string {
-  return date.toISOString().split("T")[0]
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 export function getNextDays(count: number, startFrom?: Date): Date[] {

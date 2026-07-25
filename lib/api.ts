@@ -24,7 +24,7 @@ export class CooldownError extends Error {
 // Render N seconds as a Russian-friendly duration:
 // 47    → "47 секунд"
 // 90    → "1 минуту 30 секунд"
-// 2574  → "43 минуты"
+// 2574  → "42 минуты"
 // 7200  → "2 часа"
 export function formatCooldown(totalSeconds: number): string {
   const s = Math.max(0, Math.round(totalSeconds))
