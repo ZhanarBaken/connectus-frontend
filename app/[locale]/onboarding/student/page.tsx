@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import {
   authFetch,
   clearAuth,
@@ -43,6 +44,7 @@ function dateYearsAgo(years: number): string {
 }
 
 export default function StudentOnboarding() {
+  const t = useTranslations("Onboarding.Student")
   const router = useRouter()
   const [emailStage, setEmailStage] = useState<EmailStage>("loading")
   const [saving, setSaving] = useState(false)
@@ -132,11 +134,11 @@ export default function StudentOnboarding() {
         method: "PATCH",
         body: formData,
       })
-      if (!res.ok) throw new Error("Не удалось загрузить фото")
+      if (!res.ok) throw new Error(t("photoUploadError"))
       const data = await res.json()
       setProfilePhoto(data.profile_photo ?? null)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
+      setError(e instanceof Error ? e.message : t("photoUploadErrorGeneric"))
     } finally {
       setUploadingPhoto(false)
     }
@@ -157,7 +159,7 @@ export default function StudentOnboarding() {
       } else if (e instanceof CooldownError) {
         setError(e.message)
       } else {
-        setError(e instanceof Error ? e.message : "Не удалось отправить письмо")
+        setError(e instanceof Error ? e.message : t("emailSendError"))
       }
     } finally {
       setSaving(false)
@@ -172,10 +174,10 @@ export default function StudentOnboarding() {
       if (me.email_verified) {
         setEmailStage("form")
       } else {
-        setError("Email пока не подтверждён. Проверь почту, в том числе папку «Спам».")
+        setError(t("emailNotVerifiedYet"))
       }
     } catch {
-      setError("Не удалось проверить статус. Попробуй ещё раз.")
+      setError(t("verifyStatusCheckError"))
     } finally {
       setVerifyChecking(false)
     }
@@ -199,7 +201,7 @@ export default function StudentOnboarding() {
       })
       router.push("/student/dashboard")
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка при сохранении")
+      setError(e instanceof Error ? e.message : t("saveErrorGeneric"))
       setSaving(false)
     }
   }
@@ -226,7 +228,7 @@ export default function StudentOnboarding() {
             <Logo size={28} className="text-gray-900" />
             <span className="text-lg font-bold text-gray-900">Connectus</span>
           </div>
-          <p className="text-gray-400 text-xs">Расскажи о себе — это займёт минуту</p>
+          <p className="text-gray-400 text-xs">{t("headerTagline")}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -234,30 +236,30 @@ export default function StudentOnboarding() {
           {/* ── EMAIL ── */}
           {emailStage === "email" && (
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Добавь email</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">{t("emailStageTitle")}</h1>
               <p className="text-gray-400 text-sm mb-6">
-                Нужен для подтверждения заказов и важных уведомлений. Без email нельзя оформить заказ.
+                {t("emailStageBody")}
               </p>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("emailLabel")}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => { setEmailValue(e.target.value); setEmailTaken(false) }}
-                placeholder="you@example.com"
+                placeholder={t("emailPlaceholder")}
                 className={inputClass}
               />
               {emailTaken && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800 leading-relaxed mt-3">
-                  Эта почта уже зарегистрирована.{" "}
+                  {t("emailTakenNotice")}{" "}
                   <a
                     href="/auth/login"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-semibold underline underline-offset-2"
                   >
-                    Войди через сайт
+                    {t("loginViaSite")}
                   </a>
-                  {" "}и привяжи Telegram в Настройках.
+                  {" "}{t("andLinkTelegramInSettings")}
                 </div>
               )}
               {error && (
@@ -268,7 +270,7 @@ export default function StudentOnboarding() {
                 disabled={saving || !email.trim()}
                 className="w-full mt-6 bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
               >
-                {saving ? "Отправляем..." : "Отправить письмо для подтверждения"}
+                {saving ? t("sending") : t("sendVerificationEmail")}
               </button>
             </div>
           )}
@@ -276,10 +278,12 @@ export default function StudentOnboarding() {
           {/* ── VERIFY ── */}
           {emailStage === "verify" && (
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Проверь почту</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">{t("verifyStageTitle")}</h1>
               <p className="text-gray-400 text-sm mb-6">
-                Мы отправили ссылку на <span className="text-gray-700 font-medium">{verifyEmail}</span>.
-                Кликни на неё, и ты автоматически вернёшься сюда.
+                {t.rich("verifyStageBody", {
+                  email: verifyEmail,
+                  em: (chunks) => <span className="text-gray-700 font-medium">{chunks}</span>,
+                })}
               </p>
               {error && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-700 mb-4">{error}</div>
@@ -289,13 +293,13 @@ export default function StudentOnboarding() {
                 disabled={verifyChecking}
                 className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 text-sm"
               >
-                {verifyChecking ? "Проверяем..." : "Я подтвердил email"}
+                {verifyChecking ? t("verifying") : t("iConfirmedEmail")}
               </button>
               <button
                 onClick={() => { setEmailStage("email"); setError("") }}
                 className="w-full mt-3 text-gray-500 hover:text-gray-700 text-sm"
               >
-                Указать другой email
+                {t("specifyAnotherEmail")}
               </button>
             </div>
           )}
@@ -303,11 +307,11 @@ export default function StudentOnboarding() {
           {/* ── FORM (single scroll) ── */}
           {emailStage === "form" && (
             <div className="space-y-5">
-              <h1 className="text-xl font-bold text-gray-900">О себе</h1>
+              <h1 className="text-xl font-bold text-gray-900">{t("aboutMeHeading")}</h1>
 
               {/* Photo */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Фото профиля</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t("photoLabel")}</label>
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -317,7 +321,7 @@ export default function StudentOnboarding() {
                     const file = e.target.files?.[0]
                     if (file) {
                       if (file.size > 5 * 1024 * 1024) {
-                        setError("Фото не должно превышать 5 МБ")
+                        setError(t("photoTooLarge"))
                       } else {
                         setError("")
                         setPickedFile(file)
@@ -335,7 +339,7 @@ export default function StudentOnboarding() {
                   >
                     {profilePhoto ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                      <img src={profilePhoto} alt={t("photoAlt")} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
                         <Icon name="photo_camera" size={28} className="text-white" />
@@ -353,26 +357,26 @@ export default function StudentOnboarding() {
                     )}
                   </button>
                   <p className="text-xs text-gray-400">
-                    {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                    {profilePhoto ? t("changePhoto") : t("photoFormats")}
                   </p>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Полное имя <span className="text-red-500">*</span>
+                  {t("fullNameLabel")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Айгерим Бекова"
+                  placeholder={t("fullNamePlaceholder")}
                   className={inputClass}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Дата рождения <span className="text-red-500">*</span>
+                  {t("dateOfBirthLabel")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -387,34 +391,34 @@ export default function StudentOnboarding() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Сейчас ты <span className="text-red-500">*</span>
+                    {t("currentStatusLabel")} <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={schoolGrade}
                     onChange={(e) => setSchoolGrade(e.target.value)}
                     className={selectClass}
                   >
-                    <option value="">Выбери...</option>
-                    <optgroup label="В школе">
-                      <option value="11 класс">11 класс</option>
-                      <option value="12 класс">12 класс</option>
-                      <option value="10 класс">10 класс</option>
-                      <option value="9 класс">9 класс</option>
-                      <option value="8 класс">8 класс</option>
-                      <option value="7 класс">7 класс</option>
-                      <option value="6 класс">6 класс</option>
-                      <option value="5 класс">5 класс</option>
+                    <option value="">{t("choosePlaceholder")}</option>
+                    <optgroup label={t("groupSchool")}>
+                      <option value="11 класс">{t("grade11")}</option>
+                      <option value="12 класс">{t("grade12")}</option>
+                      <option value="10 класс">{t("grade10")}</option>
+                      <option value="9 класс">{t("grade9")}</option>
+                      <option value="8 класс">{t("grade8")}</option>
+                      <option value="7 класс">{t("grade7")}</option>
+                      <option value="6 класс">{t("grade6")}</option>
+                      <option value="5 класс">{t("grade5")}</option>
                     </optgroup>
-                    <optgroup label="Другое">
-                      <option value="Уже окончил(а) школу">Уже окончил(а) школу</option>
-                      <option value="Студент вуза">Студент вуза</option>
-                      <option value="Колледж / училище">Колледж / училище</option>
+                    <optgroup label={t("groupOther")}>
+                      <option value="Уже окончил(а) школу">{t("alreadyGraduated")}</option>
+                      <option value="Студент вуза">{t("universityStudent")}</option>
+                      <option value="Колледж / училище">{t("college")}</option>
                     </optgroup>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Год окончания <span className="text-red-500">*</span>
+                    {t("graduationYearLabel")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -430,70 +434,70 @@ export default function StudentOnboarding() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Город <span className="text-red-500">*</span>
+                  {t("cityLabel")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Алматы"
+                  placeholder={t("cityPlaceholder")}
                   className={inputClass}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Учебное заведение</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("institutionLabel")}</label>
                 <input
                   value={school}
                   onChange={(e) => setSchool(e.target.value)}
-                  placeholder="НИШ Алматы, школа №1..."
+                  placeholder={t("institutionPlaceholder")}
                   className={inputClass}
                 />
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">По желанию</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">{t("optionalSectionTitle")}</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Советуем заполнить — это облегчит работу ментора и поможет ему понять твой запрос ещё до консультации.
+                  {t("optionalSectionBody")}
                 </p>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемая специальность</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("desiredMajorLabel")}</label>
                     <input
                       type="text"
                       value={desiredMajor}
                       onChange={(e) => setDesiredMajor(e.target.value)}
-                      placeholder="Computer Science, Business, Medicine..."
+                      placeholder={t("desiredMajorPlaceholder")}
                       className={inputClass}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Желаемые страны поступления</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("desiredCountriesLabel")}</label>
                     <input
                       type="text"
                       value={desiredCountries}
                       onChange={(e) => setDesiredCountries(e.target.value)}
-                      placeholder="США, Канада, Германия..."
+                      placeholder={t("desiredCountriesPlaceholder")}
                       className={inputClass}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Результаты экзаменов</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("examResultsLabel")}</label>
                     <input
                       type="text"
                       value={examResults}
                       onChange={(e) => setExamResults(e.target.value)}
-                      placeholder="SAT 1450, IELTS 7.5, IB 38, ЕНТ 130, AP..."
+                      placeholder={t("examResultsPlaceholder")}
                       className={inputClass}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Средний GPA</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("gpaLabel")}</label>
                     <input
                       type="text"
                       value={gpa}
                       onChange={(e) => setGpa(e.target.value)}
-                      placeholder="4.5 / 5.0  или  3.8 / 4.0"
+                      placeholder={t("gpaPlaceholder")}
                       maxLength={50}
                       className={inputClass}
                     />
@@ -525,17 +529,17 @@ export default function StudentOnboarding() {
                 allDone ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 cursor-not-allowed"
               }`}
             >
-              {saving ? "Сохраняем..." : "Готово →"}
+              {saving ? t("saving") : t("done")}
             </button>
             {earlySubmitHint && (
               <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <p className="text-xs font-semibold text-amber-700 mb-1">Ещё не всё заполнено:</p>
+                <p className="text-xs font-semibold text-amber-700 mb-1">{t("earlySubmitTitle")}</p>
                 <ul className="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
-                  {!fullName.trim() && <li>Укажи полное имя</li>}
-                  {!dateOfBirth && <li>Укажи дату рождения</li>}
-                  {!schoolGrade && <li>Выбери статус учёбы</li>}
-                  {!city.trim() && <li>Укажи город</li>}
-                  {!graduationYear && <li>Укажи год окончания школы</li>}
+                  {!fullName.trim() && <li>{t("missingFullName")}</li>}
+                  {!dateOfBirth && <li>{t("missingDateOfBirth")}</li>}
+                  {!schoolGrade && <li>{t("missingSchoolGrade")}</li>}
+                  {!city.trim() && <li>{t("missingCity")}</li>}
+                  {!graduationYear && <li>{t("missingGraduationYear")}</li>}
                 </ul>
               </div>
             )}
@@ -543,7 +547,7 @@ export default function StudentOnboarding() {
         )}
 
         <p className="text-center text-xs text-gray-300 mt-4">
-          Можно изменить позже в профиле
+          {t("footerNote")}
         </p>
       </div>
 

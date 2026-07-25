@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import * as api from "@/lib/api"
 import { MentorProfile, User } from "@/types"
 import MentorOnboarding from "./page"

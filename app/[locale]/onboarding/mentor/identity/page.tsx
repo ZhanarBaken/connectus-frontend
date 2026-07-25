@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import {
   changeEmail as changeEmailApi,
   clearAuth,
@@ -26,6 +27,7 @@ import Logo from "@/components/Logo"
 // filling in profile fields only to be told "we also need X".
 
 export default function MentorIdentityPage() {
+  const t = useTranslations("Onboarding.MentorIdentity")
   const router = useRouter()
   // Google SDK is blocked inside Telegram WebView, so the button just
   // dead-ends. Hide it there and keep only the manual-email path.
@@ -85,10 +87,13 @@ export default function MentorIdentityPage() {
           try {
             await telegramLinkFinalize(tgToken)
           } catch (e) {
-            setTelegramError(e instanceof Error ? e.message : "Не удалось привязать Telegram")
+            setTelegramError(e instanceof Error ? e.message : t("telegramLinkErrorDefault"))
           }
           // Strip the token from the URL so a refresh doesn't re-fire.
-          window.history.replaceState({}, "", "/onboarding/mentor/identity")
+          // Uses the current pathname (not a hardcoded literal) so the
+          // locale prefix — /en/onboarding/mentor/identity, /kk/... — is
+          // preserved instead of silently dropped back to the RU path.
+          window.history.replaceState({}, "", window.location.pathname)
         }
       }
 
@@ -127,7 +132,7 @@ export default function MentorIdentityPage() {
         setEmailTaken(true)
         setEmailError("")
       } else {
-        setEmailError(e instanceof Error ? e.message : "Не удалось сохранить email")
+        setEmailError(e instanceof Error ? e.message : t("emailSaveError"))
       }
     } finally {
       setSavingEmail(false)
@@ -144,7 +149,7 @@ export default function MentorIdentityPage() {
       setEmailJustSent(true)
       await reload()
     } catch (e) {
-      setEmailError(e instanceof Error ? e.message : "Не удалось изменить email")
+      setEmailError(e instanceof Error ? e.message : t("emailChangeError"))
     } finally {
       setSavingEmail(false)
     }
@@ -158,7 +163,7 @@ export default function MentorIdentityPage() {
       await resendVerification(me.email)
       setEmailJustSent(true)
     } catch (e) {
-      setEmailError(e instanceof Error ? e.message : "Не удалось отправить письмо")
+      setEmailError(e instanceof Error ? e.message : t("resendError"))
     } finally {
       setResending(false)
     }
@@ -167,7 +172,7 @@ export default function MentorIdentityPage() {
   const handleLinkGoogle = async () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) {
-      setGoogleError("Google не настроен")
+      setGoogleError(t("googleNotConfigured"))
       return
     }
     setLinkingGoogle(true)
@@ -180,7 +185,7 @@ export default function MentorIdentityPage() {
       // email). reload() pulls the fresh state.
       await reload()
     } catch (e) {
-      setGoogleError(e instanceof Error ? e.message : "Не удалось привязать Google")
+      setGoogleError(e instanceof Error ? e.message : t("googleLinkError"))
     } finally {
       setLinkingGoogle(false)
     }
@@ -195,7 +200,7 @@ export default function MentorIdentityPage() {
       localStorage.setItem("tg_link_return", "/onboarding/mentor/identity")
       window.location.href = data.bot_url
     } catch (e) {
-      setTelegramError(e instanceof Error ? e.message : "Не удалось начать привязку Telegram")
+      setTelegramError(e instanceof Error ? e.message : t("telegramStartError"))
       setLinkingTelegram(false)
     }
   }
@@ -221,10 +226,10 @@ export default function MentorIdentityPage() {
             <span className="text-xl font-bold text-gray-900">Connectus</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 mt-4 mb-1">
-            Подтверди свои контакты
+            {t("pageTitle")}
           </h1>
           <p className="text-gray-500 text-sm">
-            Менторам нужны email и Telegram — это требование платформы для связи с абитуриентами.
+            {t("pageSubtitle")}
           </p>
         </div>
 
@@ -238,18 +243,18 @@ export default function MentorIdentityPage() {
               className={emailReady ? "text-emerald-600" : "text-gray-400"}
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">Email</p>
+              <p className="text-sm font-semibold text-gray-900">{t("emailCardTitle")}</p>
               {emailReady ? (
                 <p className="text-xs text-emerald-700 mt-0.5 break-all">
-                  Подтверждён: {me.email}
+                  {t("emailConfirmed", { email: me.email })}
                 </p>
               ) : me.email ? (
                 <p className="text-xs text-gray-500 mt-0.5 break-all">
-                  Письмо отправлено на {me.email}. Перейди по ссылке из письма, потом обнови эту страницу.
+                  {t("emailSentTo", { email: me.email })}
                 </p>
               ) : (
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Ещё не задан. Введи email — мы отправим письмо для подтверждения.
+                  {t("emailNotSet")}
                 </p>
               )}
             </div>
@@ -260,7 +265,7 @@ export default function MentorIdentityPage() {
             <form onSubmit={handleChangeEmail} className="flex flex-col gap-3 mt-4">
               <input
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("emailPlaceholder")}
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 required
@@ -274,14 +279,14 @@ export default function MentorIdentityPage() {
                 disabled={savingEmail || !emailInput.trim()}
                 className="bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm"
               >
-                {savingEmail ? "Сохраняем..." : "Сохранить и отправить письмо"}
+                {savingEmail ? t("savingEmail") : t("saveAndSendEmail")}
               </button>
               <button
                 type="button"
                 onClick={() => { setChangingEmail(false); setEmailError("") }}
                 className="text-gray-500 hover:text-gray-700 text-sm"
               >
-                Отмена
+                {t("cancel")}
               </button>
             </form>
           )}
@@ -306,7 +311,7 @@ export default function MentorIdentityPage() {
                       <path d="M3.97 10.71A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.71V4.96H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.04l3.01-2.33z" fill="#FBBC05"/>
                       <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.96l3.01 2.34C4.68 5.18 6.66 3.58 9 3.58z" fill="#EA4335"/>
                     </svg>
-                    {linkingGoogle ? "Открываем Google..." : "Войти через Google"}
+                    {linkingGoogle ? t("googleOpening") : t("signInWithGoogle")}
                   </button>
                   {googleError && (
                     <p className="text-xs text-red-500">{googleError}</p>
@@ -314,7 +319,7 @@ export default function MentorIdentityPage() {
 
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span className="flex-1 h-px bg-gray-100" />
-                    <span>или email вручную</span>
+                    <span>{t("orManualEmail")}</span>
                     <span className="flex-1 h-px bg-gray-100" />
                   </div>
                 </>
@@ -323,7 +328,7 @@ export default function MentorIdentityPage() {
               <form onSubmit={handleSaveEmail} className="flex flex-col gap-3">
                 <input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t("emailPlaceholder")}
                   value={emailInput}
                   onChange={(e) => { setEmailInput(e.target.value); setEmailTaken(false) }}
                   required
@@ -334,16 +339,16 @@ export default function MentorIdentityPage() {
                 )}
                 {emailTaken && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800 leading-relaxed">
-                    Эта почта уже зарегистрирована.{" "}
+                    {t("emailTakenNotice")}{" "}
                     <a
                       href="/auth/login"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-semibold underline underline-offset-2"
                     >
-                      Войди через сайт
+                      {t("loginViaSite")}
                     </a>
-                    {" "}и привяжи Telegram в Настройках.
+                    {" "}{t("andLinkTelegramInSettings")}
                   </div>
                 )}
                 <button
@@ -351,7 +356,7 @@ export default function MentorIdentityPage() {
                   disabled={savingEmail || !emailInput.trim()}
                   className="bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm"
                 >
-                  {savingEmail ? "Сохраняем..." : "Сохранить и отправить письмо"}
+                  {savingEmail ? t("savingEmail") : t("saveAndSendEmail")}
                 </button>
               </form>
             </div>
@@ -361,7 +366,7 @@ export default function MentorIdentityPage() {
           {me.email && !me.email_verified && !changingEmail && (
             <div className="flex flex-col gap-2 mt-4">
               {emailJustSent && (
-                <p className="text-xs text-emerald-600">Письмо отправлено повторно ✓</p>
+                <p className="text-xs text-emerald-600">{t("resentConfirmed")}</p>
               )}
               {emailError && (
                 <p className="text-xs text-red-500">{emailError}</p>
@@ -371,14 +376,14 @@ export default function MentorIdentityPage() {
                   onClick={() => reload()}
                   className="flex-1 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
                 >
-                  Я подтвердил, обновить
+                  {t("iConfirmedRefresh")}
                 </button>
                 <button
                   onClick={handleResend}
                   disabled={resending}
                   className="flex-1 text-indigo-600 hover:text-indigo-700 disabled:opacity-50 text-sm font-medium transition-colors"
                 >
-                  {resending ? "Отправляем..." : "Отправить ещё раз"}
+                  {resending ? t("resending") : t("sendAgain")}
                 </button>
               </div>
               {/* Google fast-track: if their Google email matches the one
@@ -398,8 +403,8 @@ export default function MentorIdentityPage() {
                     <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 00.96 4.96l3.01 2.34C4.68 5.18 6.66 3.58 9 3.58z" fill="#EA4335"/>
                   </svg>
                   {linkingGoogle
-                    ? "Открываем Google..."
-                    : "Или подтвердить через Google"}
+                    ? t("googleOpening")
+                    : t("orConfirmViaGoogle")}
                 </button>
               )}
               {googleError && (
@@ -410,7 +415,7 @@ export default function MentorIdentityPage() {
                 onClick={() => { setChangingEmail(true); setEmailInput(""); setEmailError("") }}
                 className="text-gray-500 hover:text-gray-700 text-sm mt-1"
               >
-                Указать другой email
+                {t("specifyAnotherEmail")}
               </button>
             </div>
           )}
@@ -426,14 +431,16 @@ export default function MentorIdentityPage() {
               className={telegramReady ? "text-emerald-600" : "text-gray-400"}
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">Telegram</p>
+              <p className="text-sm font-semibold text-gray-900">{t("telegramCardTitle")}</p>
               {telegramReady ? (
                 <p className="text-xs text-emerald-700 mt-0.5">
-                  Привязан{me.telegram_username ? `: @${me.telegram_username}` : ""}
+                  {me.telegram_username
+                    ? t("telegramLinkedWithUsername", { username: me.telegram_username })
+                    : t("telegramLinkedNoUsername")}
                 </p>
               ) : (
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Не привязан. Откроется бот — подтверди в нём, потом вернёшься сюда.
+                  {t("telegramNotLinked")}
                 </p>
               )}
             </div>
@@ -449,7 +456,7 @@ export default function MentorIdentityPage() {
                 disabled={linkingTelegram}
                 className="bg-[#2AABEE] hover:bg-[#229ED9] text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 text-sm"
               >
-                {linkingTelegram ? "Открываем бот..." : "Привязать Telegram"}
+                {linkingTelegram ? t("openingBot") : t("linkTelegram")}
               </button>
             </div>
           )}
@@ -461,7 +468,7 @@ export default function MentorIdentityPage() {
           disabled={!bothReady}
           className="w-full bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
         >
-          {bothReady ? "Продолжить →" : "Сначала привяжи и email, и Telegram"}
+          {bothReady ? t("continueCta") : t("continueDisabledCta")}
         </button>
       </div>
     </div>

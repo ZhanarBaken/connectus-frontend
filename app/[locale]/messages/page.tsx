@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { useRouter, Link } from "@/i18n/navigation"
 import { fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
@@ -10,16 +10,16 @@ import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Запрос",
-  pending_payment: "Ожидает оплаты",
-  paid: "Оплачен",
-  in_progress: "В работе",
-  completed: "Завершён",
-  disputed: "Спор",
-  payout_pending: "Ожидает выплаты",
-  paid_out: "Выплачен",
-  cancelled: "Отменён",
+const STATUS_KEY: Record<string, string> = {
+  draft: "draft",
+  pending_payment: "pendingPayment",
+  paid: "paid",
+  in_progress: "inProgress",
+  completed: "completed",
+  disputed: "disputed",
+  payout_pending: "payoutPending",
+  paid_out: "paidOut",
+  cancelled: "cancelled",
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -35,6 +35,8 @@ const STATUS_STYLE: Record<string, string> = {
 }
 
 export default function MessagesPage() {
+  const t = useTranslations("Messages")
+  const tStatus = useTranslations("OrderStatus")
   const router = useRouter()
   const { isInTelegram, webApp } = useTelegramWebApp()
   useEffect(() => {
@@ -110,11 +112,11 @@ export default function MessagesPage() {
           <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         )}
         <div className={isInTelegram ? "mb-4" : "mb-8"}>
-          <h1 className={`font-bold text-gray-900 ${isInTelegram ? "text-xl" : "text-2xl"}`}>Сообщения</h1>
+          <h1 className={`font-bold text-gray-900 ${isInTelegram ? "text-xl" : "text-2xl"}`}>{t("title")}</h1>
           <p className="text-sm text-gray-400 mt-1">
             {role === "mentor"
-              ? "Чаты с абитуриентами по принятым консультациям"
-              : "Чаты с менторами по твоим заказам"}
+              ? t("subtitleMentor")
+              : t("subtitleStudent")}
           </p>
         </div>
 
@@ -123,18 +125,18 @@ export default function MessagesPage() {
             <div className="mb-4 flex justify-center">
               <Icon name="chat" size={48} className="text-gray-300" />
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Пока нет чатов</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">{t("emptyTitle")}</h3>
             <p className="text-sm text-gray-400 mb-6">
               {role === "mentor"
-                ? "Чат с абитуриентом откроется после оплаты консультации"
-                : "Закажи консультацию у ментора — после оплаты откроется чат"}
+                ? t("emptyBodyMentor")
+                : t("emptyBodyStudent")}
             </p>
             {role !== "mentor" && (
               <Link
                 href="/mentors"
                 className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
-                Найти ментора
+                {t("findMentor")}
               </Link>
             )}
           </div>
@@ -142,8 +144,8 @@ export default function MessagesPage() {
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             {conversations.map((order, i) => {
               const counterpartName = role === "mentor"
-                ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент")
-                : (mentorNames[order.mentor] || "Ментор")
+                ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || t("applicantDefault"))
+                : (mentorNames[order.mentor] || t("mentorDefault"))
               const counterpartPhoto = role === "mentor"
                 ? (order.student_info?.profile_photo ?? null)
                 : (mentorPhotos[order.mentor] ?? null)
@@ -152,7 +154,7 @@ export default function MessagesPage() {
                 month: "short",
               })
 
-              const statusLabel = STATUS_LABEL[order.order_status] || order.order_status
+              const statusLabel = STATUS_KEY[order.order_status] ? tStatus(STATUS_KEY[order.order_status]) : order.order_status
               const statusStyle = STATUS_STYLE[order.order_status] || "bg-gray-100 text-gray-500"
 
               return (
@@ -184,7 +186,7 @@ export default function MessagesPage() {
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${statusStyle}`}>
                         {statusLabel}
                       </span>
-                      <span className="text-xs text-gray-400 truncate">Открыть чат →</span>
+                      <span className="text-xs text-gray-400 truncate">{t("openChat")}</span>
                     </div>
                   </div>
                 </Link>

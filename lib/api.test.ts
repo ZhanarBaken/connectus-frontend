@@ -5,6 +5,7 @@ import {
   createSupportInvoice,
   fetchMentor,
   fetchOrder,
+  fetchPublicSettings,
   formatCooldown,
   formatCooldownShort,
   getFreshAccessToken,
@@ -407,5 +408,26 @@ describe("fetchMentor", () => {
   it("throws a generic error when the request fails", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 404 }))
     await expect(fetchMentor(1)).rejects.toThrow("Failed to fetch mentor")
+  })
+})
+
+describe("fetchPublicSettings", () => {
+  it("hits /settings/public/ with no query string when no locale is given", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ terms_text: "..." }))
+    await fetchPublicSettings()
+    const [url] = vi.mocked(fetch).mock.calls[0]
+    expect(url).toMatch(/\/settings\/public\/$/)
+  })
+
+  it("appends ?locale=<locale> when a locale is given", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ terms_text: "..." }))
+    await fetchPublicSettings("kk")
+    const [url] = vi.mocked(fetch).mock.calls[0]
+    expect(url).toMatch(/\/settings\/public\/\?locale=kk$/)
+  })
+
+  it("throws a generic error when the request fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 500 }))
+    await expect(fetchPublicSettings("en")).rejects.toThrow("Failed to fetch public settings")
   })
 })

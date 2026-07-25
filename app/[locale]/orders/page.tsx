@@ -1,24 +1,13 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { fetchOrders, fetchMentors } from "@/lib/api"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
-
-const STATUS_LABEL: Record<Order["order_status"], string> = {
-  draft: "Черновик",
-  pending_payment: "Ожидает оплаты",
-  paid: "Оплачен",
-  in_progress: "В работе",
-  completed: "Завершён",
-  disputed: "Спор",
-  payout_pending: "Ожидает выплаты",
-  paid_out: "Выплачен",
-  cancelled: "Отменён",
-}
 
 const STATUS_STYLE: Record<Order["order_status"], string> = {
   draft: "bg-gray-50 text-gray-500",
@@ -32,20 +21,16 @@ const STATUS_STYLE: Record<Order["order_status"], string> = {
   cancelled: "bg-gray-100 text-gray-400",
 }
 
-// Small extra tag alongside the status pill for a support installment
-// that's overdue or paused — null when neither applies.
-function dunningTag(order: Order): { text: string; className: string } | null {
-  // engagement_status is shared by every order tied to that engagement
-  // (paid installments, free sessions, even cancelled ones) — only the
-  // one still-payable order should actually show the paused/overdue tag.
-  if (order.order_status !== "pending_payment") return null
-  if (order.engagement_status === "paused") {
-    return { text: "Приостановлено", className: "bg-red-50 text-red-700" }
-  }
-  if (order.due_at && new Date(order.due_at) < new Date()) {
-    return { text: "Просрочено", className: "bg-red-50 text-red-700" }
-  }
-  return null
+const STATUS_KEY: Record<Order["order_status"], string> = {
+  draft: "draft",
+  pending_payment: "pendingPayment",
+  paid: "paid",
+  in_progress: "inProgress",
+  completed: "completed",
+  disputed: "disputed",
+  payout_pending: "payoutPending",
+  paid_out: "paidOut",
+  cancelled: "cancelled",
 }
 
 interface ClientGroup {
@@ -57,11 +42,29 @@ interface ClientGroup {
 }
 
 export default function OrdersPage() {
+  const t = useTranslations("Orders.List")
+  const tStatus = useTranslations("OrderStatus")
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
   const [expandedClient, setExpandedClient] = useState<number | null>(null)
+
+  // Small extra tag alongside the status pill for a support installment
+  // that's overdue or paused — null when neither applies.
+  const dunningTag = (order: Order): { text: string; className: string } | null => {
+    // engagement_status is shared by every order tied to that engagement
+    // (paid installments, free sessions, even cancelled ones) — only the
+    // one still-payable order should actually show the paused/overdue tag.
+    if (order.order_status !== "pending_payment") return null
+    if (order.engagement_status === "paused") {
+      return { text: t("paused"), className: "bg-red-50 text-red-700" }
+    }
+    if (order.due_at && new Date(order.due_at) < new Date()) {
+      return { text: t("overdue"), className: "bg-red-50 text-red-700" }
+    }
+    return null
+  }
 
   useEffect(() => {
     const r = localStorage.getItem("role")
@@ -92,7 +95,7 @@ export default function OrdersPage() {
       if (!map.has(sid)) {
         map.set(sid, {
           studentId: sid,
-          studentName: order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент",
+          studentName: order.student_info?.full_name?.trim().split(/\s+/)[0] || t("applicantDefault"),
           studentPhoto: order.student_info?.profile_photo ?? null,
           orders: [],
           activeCount: 0,
@@ -106,7 +109,7 @@ export default function OrdersPage() {
     }
     // Sort: clients with active orders first
     return Array.from(map.values()).sort((a, b) => b.activeCount - a.activeCount)
-  }, [orders, role])
+  }, [orders, role, t])
 
   if (loading) {
     return (
@@ -123,7 +126,7 @@ export default function OrdersPage() {
       <div className="max-w-3xl mx-auto px-4 py-10">
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         <h1 className="text-2xl font-bold text-gray-900 mb-8">
-          {isMentor ? "Клиенты" : "Мои заказы"}
+          {isMentor ? t("titleMentor") : t("titleStudent")}
         </h1>
 
         {orders.length === 0 ? (
@@ -132,14 +135,14 @@ export default function OrdersPage() {
               <Icon name={isMentor ? "people" : "description"} size={48} className="text-gray-300" />
             </div>
             <h3 className="font-semibold text-gray-900 mb-2">
-              {isMentor ? "Клиентов пока нет" : "Заказов пока нет"}
+              {isMentor ? t("noClientsTitle") : t("noOrdersTitle")}
             </h3>
             <p className="text-sm text-gray-400 mb-6">
-              {isMentor ? "Клиенты появятся когда абитуриенты запишутся к тебе" : "Найди ментора и запишись на консультацию"}
+              {isMentor ? t("noClientsBody") : t("noOrdersBody")}
             </p>
             {!isMentor && (
               <Link href="/mentors" className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
-                Найти ментора
+                {t("findMentor")}
               </Link>
             )}
           </div>
@@ -175,7 +178,7 @@ export default function OrdersPage() {
                           )}
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {client.orders.length} {client.orders.length === 1 ? "заказ" : client.orders.length < 5 ? "заказа" : "заказов"}
+                          {t("ordersCount", { count: client.orders.length })}
                         </p>
                       </div>
                       <Icon
@@ -190,7 +193,7 @@ export default function OrdersPage() {
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors flex-shrink-0"
                       >
                         <Icon name="chat" size={16} />
-                        Чат
+                        {t("chat")}
                       </Link>
                     )}
                   </div>
@@ -217,7 +220,7 @@ export default function OrdersPage() {
                               </span>
                             )}
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[order.order_status]}`}>
-                              {STATUS_LABEL[order.order_status]}
+                              {tStatus(STATUS_KEY[order.order_status])}
                             </span>
                             {order.total_price !== "0.00" && (
                               <span className="text-sm font-bold text-gray-900">
@@ -248,7 +251,7 @@ export default function OrdersPage() {
                     {order.service_title}
                   </h3>
                   <p className="text-sm text-gray-500 mt-0.5 truncate">
-                    {mentorNames[order.mentor] || "Ментор"}
+                    {mentorNames[order.mentor] || t("mentorDefault")}
                   </p>
                   <p className="text-xs text-gray-300 mt-1">
                     {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
@@ -261,7 +264,7 @@ export default function OrdersPage() {
                     </span>
                   )}
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[order.order_status]}`}>
-                    {STATUS_LABEL[order.order_status]}
+                    {tStatus(STATUS_KEY[order.order_status])}
                   </span>
                   <span className="text-lg font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                 </div>

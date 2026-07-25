@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import MessagesPage from "./page"
 import { fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
 import type { Order, MentorCard } from "@/types"

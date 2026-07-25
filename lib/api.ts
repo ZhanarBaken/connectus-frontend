@@ -115,8 +115,11 @@ export interface PublicSettings {
   support_intro_call_duration_minutes: number
 }
 
-export async function fetchPublicSettings(): Promise<PublicSettings> {
-  const res = await fetch(`${BASE_URL}/settings/public/`)
+export async function fetchPublicSettings(locale?: string): Promise<PublicSettings> {
+  const url = locale
+    ? `${BASE_URL}/settings/public/?locale=${locale}`
+    : `${BASE_URL}/settings/public/`
+  const res = await fetch(url)
   if (!res.ok) throw new Error("Failed to fetch public settings")
   return res.json()
 }

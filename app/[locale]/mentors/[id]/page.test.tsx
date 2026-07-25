@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { act, render, screen, waitFor, fireEvent } from "@testing-library/react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import MentorPage from "./page"
 import {
   fetchMentor,

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import {
   fetchMentorProfile, updateMentorProfile,
   fetchStudentProfile, updateStudentProfile,
@@ -58,6 +59,7 @@ function Toggle({ label, description, icon, checked, onChange, disabled }: Toggl
 }
 
 export default function SettingsPage() {
+  const t = useTranslations("Settings")
   const router = useRouter()
   // Inside Telegram WebView Google's SDK is blocked, so the "Привязать"
   // path is dead. Existing links (set up in a regular browser) still
@@ -144,19 +146,19 @@ export default function SettingsPage() {
           setIsAcceptingBookings(p.is_accepting_bookings)
           setIsBanned(p.is_banned ?? false)
         })
-        .catch(() => setError("Не удалось загрузить настройки"))
+        .catch(() => setError(t("loadSettingsError")))
         .finally(() => setLoading(false))
     } else if (r === "student") {
       fetchStudentProfile()
         .then((p) => {
           setStudentIsPublic(p.is_public ?? true)
         })
-        .catch(() => setError("Не удалось загрузить настройки"))
+        .catch(() => setError(t("loadSettingsError")))
         .finally(() => setLoading(false))
     } else {
       setLoading(false)
     }
-  }, [router])
+  }, [router, t])
 
   // Check for Telegram link callback
   useEffect(() => {
@@ -167,20 +169,24 @@ export default function SettingsPage() {
       setMergeConflict(false)
       telegramLinkFinalize(tgToken)
         .then(() => {
-          setSuccess("Telegram привязан!")
+          setSuccess(t("telegramLinkedSuccess"))
           loadMe()
-          window.history.replaceState({}, "", "/settings")
+          // Uses the current pathname (not a hardcoded literal) so the
+          // locale prefix — /en/settings, /kk/settings — is preserved
+          // instead of silently dropped back to the RU path.
+          window.history.replaceState({}, "", window.location.pathname)
         })
         .catch((e) => {
-          window.history.replaceState({}, "", "/settings")
+          window.history.replaceState({}, "", window.location.pathname)
           if (e instanceof MergeRequiresSupportError) {
             setMergeConflict(true)
           } else {
-            setError(e instanceof Error ? e.message : "Не удалось привязать Telegram")
+            setError(e instanceof Error ? e.message : t("telegramLinkErrorDefault"))
           }
         })
         .finally(() => setLinkingAction(""))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSaveMentor = async (field: string, value: boolean) => {
@@ -194,7 +200,7 @@ export default function SettingsPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось сохранить")
+      setError(e instanceof Error ? e.message : t("saveErrorGeneric"))
       if (field === "is_public") setIsPublic(!value)
       if (field === "is_accepting_bookings") setIsAcceptingBookings(!value)
     } finally {
@@ -212,7 +218,7 @@ export default function SettingsPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось сохранить")
+      setError(e instanceof Error ? e.message : t("saveErrorGeneric"))
       setStudentIsPublic(!value)
     } finally {
       setSaving(false)
@@ -228,7 +234,7 @@ export default function SettingsPage() {
       localStorage.setItem("tg_link_return", "/settings")
       window.location.href = data.bot_url
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось начать привязку")
+      setError(e instanceof Error ? e.message : t("telegramStartErrorDefault"))
       setLinkingAction("")
     }
   }
@@ -243,11 +249,11 @@ export default function SettingsPage() {
     setError("")
     try {
       await telegramUnlink()
-      setSuccess("Telegram отвязан")
+      setSuccess(t("telegramUnlinkedSuccess"))
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось отвязать")
+      setError(e instanceof Error ? e.message : t("unlinkErrorDefault"))
     } finally {
       setLinkingAction("")
     }
@@ -255,17 +261,17 @@ export default function SettingsPage() {
 
   const handleGoogleLink = async () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-    if (!clientId) { setError("Google не настроен"); return }
+    if (!clientId) { setError(t("googleNotConfigured")); return }
     setLinkingAction("google")
     setError("")
     try {
       const credential = await promptGoogleCredential(clientId)
       await googleLink(credential)
-      setSuccess("Google привязан!")
+      setSuccess(t("googleLinkedSuccess"))
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось привязать Google")
+      setError(e instanceof Error ? e.message : t("googleLinkErrorDefault"))
     } finally {
       setLinkingAction("")
     }
@@ -281,11 +287,11 @@ export default function SettingsPage() {
     setError("")
     try {
       await googleUnlink()
-      setSuccess("Google отвязан")
+      setSuccess(t("googleUnlinkedSuccess"))
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось отвязать")
+      setError(e instanceof Error ? e.message : t("unlinkErrorDefault"))
     } finally {
       setLinkingAction("")
     }
@@ -298,10 +304,10 @@ export default function SettingsPage() {
     try {
       if (me?.email) {
         await changeEmail(emailInput.trim())
-        setSuccess("Ссылка для подтверждения отправлена на новый email")
+        setSuccess(t("emailChangeSuccess"))
       } else {
         await setEmail(emailInput.trim())
-        setSuccess("Ссылка для подтверждения отправлена")
+        setSuccess(t("emailSetSuccess"))
       }
       await loadMe()
       setShowEmailForm(false)
@@ -313,7 +319,7 @@ export default function SettingsPage() {
         setEmailCooldown(e.retryAfter)
         setError(e.message)
       } else {
-        setError(e instanceof Error ? e.message : "Не удалось установить email")
+        setError(e instanceof Error ? e.message : t("emailSetErrorDefault"))
       }
     } finally {
       setLinkingAction("")
@@ -322,7 +328,7 @@ export default function SettingsPage() {
 
   const handlePasswordSet = async () => {
     if (!passwordInput || passwordInput.length < 12) {
-      setError("Пароль должен быть не менее 12 символов")
+      setError(t("passwordTooShort"))
       return
     }
     const wasSet = me?.has_password === true
@@ -330,7 +336,7 @@ export default function SettingsPage() {
     setError("")
     try {
       await setPassword(passwordInput)
-      setSuccess(wasSet ? "Пароль изменён" : "Пароль установлен")
+      setSuccess(wasSet ? t("passwordChangedSuccess") : t("passwordSetSuccess"))
       setShowPasswordForm(false)
       setPasswordInput("")
       // Refresh /me/ so has_password flips to true on the first set
@@ -338,7 +344,7 @@ export default function SettingsPage() {
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Не удалось установить пароль")
+      setError(e instanceof Error ? e.message : t("passwordSetErrorDefault"))
     } finally {
       setLinkingAction("")
     }
@@ -358,18 +364,17 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-[#fafafa]">
       <div className="max-w-2xl mx-auto px-4 py-10">
         <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-4 transition-colors group [-webkit-tap-highlight-color:transparent]" />
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">Настройки</h1>
-        <p className="text-sm text-gray-500 mb-8">Управляй аккаунтом и видимостью</p>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">{t("pageTitle")}</h1>
+        <p className="text-sm text-gray-500 mb-8">{t("pageSubtitle")}</p>
 
         {mergeConflict && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
             <div className="flex items-start gap-3">
               <Icon name="warning" size={20} className="text-amber-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-amber-900">Telegram уже привязан к другому аккаунту</p>
+                <p className="text-sm font-semibold text-amber-900">{t("mergeConflictTitle")}</p>
                 <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                  У этого Telegram есть другой аккаунт с активностью — чатами или заказами.
-                  Автоматически объединить нельзя. Напишите нам — разберёмся вручную.
+                  {t("mergeConflictBody")}
                 </p>
                 <div className="flex gap-2 mt-3">
                   <a
@@ -379,13 +384,13 @@ export default function SettingsPage() {
                     className="inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
                   >
                     <Icon name="send" size={14} />
-                    Написать в поддержку
+                    {t("contactSupport")}
                   </a>
                   <button
                     onClick={() => setMergeConflict(false)}
                     className="text-xs text-amber-600 hover:text-amber-800 px-3 py-2"
                   >
-                    Закрыть
+                    {t("close")}
                   </button>
                 </div>
               </div>
@@ -404,14 +409,14 @@ export default function SettingsPage() {
         {(saved || success) && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-sm text-emerald-700 mb-6 flex items-center gap-2">
             <Icon name="check_circle" size={16} className="text-emerald-600" filled />
-            {success || "Сохранено"}
+            {success || t("savedDefault")}
           </div>
         )}
 
         {/* ── Connected accounts ──────────────────────────── */}
         {me && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-5">Привязанные аккаунты</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-5">{t("connectedAccountsTitle")}</h2>
 
             <div className="space-y-4">
               {/* Telegram */}
@@ -422,13 +427,13 @@ export default function SettingsPage() {
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">Telegram</p>
+                  <p className="text-sm font-medium text-gray-900">{t("telegramLabel")}</p>
                   <p className="text-xs text-gray-400">
                     {me.has_telegram
-                      ? me.telegram_username ? `@${me.telegram_username}` : "Привязан"
-                      : "Не привязан"}
+                      ? me.telegram_username ? `@${me.telegram_username}` : t("linked")
+                      : t("notLinked")}
                     {isMentor && !me.has_telegram && (
-                      <span className="text-red-500 ml-1">· Обязательно для менторов</span>
+                      <span className="text-red-500 ml-1">{t("requiredForMentors")}</span>
                     )}
                   </p>
                 </div>
@@ -442,7 +447,7 @@ export default function SettingsPage() {
                         : "text-gray-400 hover:text-red-500"
                     }`}
                   >
-                    {pendingUnlink === "telegram" ? "Точно отвязать?" : "Отвязать"}
+                    {pendingUnlink === "telegram" ? t("confirmUnlink") : t("unlink")}
                   </button>
                 ) : (
                   <button
@@ -450,7 +455,7 @@ export default function SettingsPage() {
                     disabled={linkingAction === "telegram"}
                     className="text-xs text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
                   >
-                    {linkingAction === "telegram" ? "..." : "Привязать"}
+                    {linkingAction === "telegram" ? "..." : t("link")}
                   </button>
                 )}
               </div>
@@ -466,11 +471,11 @@ export default function SettingsPage() {
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">Google</p>
+                  <p className="text-sm font-medium text-gray-900">{t("googleLabel")}</p>
                   <p className="text-xs text-gray-400">
                     {me.has_google
-                      ? me.google_email_at_signup || "Привязан"
-                      : "Не привязан"}
+                      ? me.google_email_at_signup || t("linked")
+                      : t("notLinked")}
                   </p>
                 </div>
                 {me.has_google ? (
@@ -483,11 +488,11 @@ export default function SettingsPage() {
                         : "text-gray-400 hover:text-red-500"
                     }`}
                   >
-                    {pendingUnlink === "google" ? "Точно отвязать?" : "Отвязать"}
+                    {pendingUnlink === "google" ? t("confirmUnlink") : t("unlink")}
                   </button>
                 ) : isInTelegram ? (
                   <span className="text-xs text-gray-400 text-right max-w-[140px] leading-tight">
-                    Откройте сайт в браузере, чтобы привязать
+                    {t("openInBrowserToLink")}
                   </span>
                 ) : (
                   <button
@@ -495,7 +500,7 @@ export default function SettingsPage() {
                     disabled={linkingAction === "google"}
                     className="text-xs text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
                   >
-                    {linkingAction === "google" ? "..." : "Привязать"}
+                    {linkingAction === "google" ? "..." : t("link")}
                   </button>
                 )}
               </div>
@@ -510,21 +515,21 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">Email</p>
+                  <p className="text-sm font-medium text-gray-900">{t("emailLabel")}</p>
                   <p className="text-xs text-gray-400">
                     {me.email ? (
                       <>
                         {me.email}
                         {me.email_verified ? (
-                          <span className="text-emerald-600 ml-1">· Подтверждён</span>
+                          <span className="text-emerald-600 ml-1">{t("verified")}</span>
                         ) : (
-                          <span className="text-amber-600 ml-1">· Ожидает подтверждения</span>
+                          <span className="text-amber-600 ml-1">{t("pendingVerification")}</span>
                         )}
                       </>
                     ) : (
                       <>
-                        Не установлен
-                        {isMentor && <span className="text-red-500 ml-1">· Обязательно для менторов</span>}
+                        {t("notSet")}
+                        {isMentor && <span className="text-red-500 ml-1">{t("requiredForMentors")}</span>}
                       </>
                     )}
                   </p>
@@ -537,7 +542,7 @@ export default function SettingsPage() {
                     onClick={() => { setShowEmailForm(!showEmailForm); setEmailInput("") }}
                     className="text-xs text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors"
                   >
-                    {me.email ? "Изменить" : "Добавить"}
+                    {me.email ? t("change") : t("add")}
                   </button>
                 </div>
               </div>
@@ -549,7 +554,7 @@ export default function SettingsPage() {
                     type="email"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder={me.email || "email@example.com"}
+                    placeholder={me.email || t("emailPlaceholderDefault")}
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                   <button
@@ -560,8 +565,8 @@ export default function SettingsPage() {
                     {linkingAction === "email"
                       ? "..."
                       : emailCooldown > 0
-                        ? `Подождите ${formatCooldownShort(emailCooldown)}`
-                        : "Сохранить"}
+                        ? t("waitSeconds", { seconds: formatCooldownShort(emailCooldown) })
+                        : t("save")}
                   </button>
                 </div>
               )}
@@ -572,13 +577,13 @@ export default function SettingsPage() {
                   <Icon name="lock" size={20} className="text-gray-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">Пароль</p>
+                  <p className="text-sm font-medium text-gray-900">{t("passwordLabel")}</p>
                   <p className="text-xs text-gray-400">
                     {!me.email
-                      ? "Сначала добавьте email"
+                      ? t("addEmailFirst")
                       : me.has_password
-                        ? "Пароль установлен — можно изменить"
-                        : "Установите пароль для входа по email"}
+                        ? t("passwordSetCanChange")
+                        : t("setPasswordForEmailLogin")}
                   </p>
                 </div>
                 {me.email && (
@@ -586,7 +591,7 @@ export default function SettingsPage() {
                     onClick={() => setShowPasswordForm(!showPasswordForm)}
                     className="text-xs text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition-colors"
                   >
-                    {me.has_password ? "Изменить" : "Установить"}
+                    {me.has_password ? t("change") : t("setPassword")}
                   </button>
                 )}
               </div>
@@ -597,7 +602,7 @@ export default function SettingsPage() {
                     type="password"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder={me.has_password ? "Новый пароль (минимум 12)" : "Минимум 12 символов"}
+                    placeholder={me.has_password ? t("newPasswordPlaceholder") : t("minPasswordPlaceholder")}
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                   <button
@@ -605,7 +610,7 @@ export default function SettingsPage() {
                     disabled={linkingAction === "password"}
                     className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
                   >
-                    {linkingAction === "password" ? "..." : "Сохранить"}
+                    {linkingAction === "password" ? "..." : t("save")}
                   </button>
                 </div>
               )}
@@ -620,15 +625,15 @@ export default function SettingsPage() {
               <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
                 <Icon name="block" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-red-800 text-sm">Аккаунт заблокирован</p>
-                  <p className="text-xs text-red-500 mt-1">Настройки недоступны. Обратитесь в поддержку: {SUPPORT_EMAIL}</p>
+                  <p className="font-semibold text-red-800 text-sm">{t("accountBannedTitle")}</p>
+                  <p className="text-xs text-red-500 mt-1">{t("accountBannedBody", { email: SUPPORT_EMAIL })}</p>
                 </div>
               </div>
             )}
             <div className="bg-white rounded-2xl border border-gray-200 p-6 divide-y divide-gray-50">
               <Toggle
-                label="Видимость профиля"
-                description="Когда включено, абитуриенты видят тебя в каталоге менторов и могут зайти на твою страницу."
+                label={t("visibilityLabel")}
+                description={t("mentorVisibilityDesc")}
                 icon="visibility"
                 checked={isPublic}
                 onChange={(val) => {
@@ -638,8 +643,8 @@ export default function SettingsPage() {
                 disabled={saving || isBanned}
               />
               <Toggle
-                label="Приём заявок"
-                description="Когда включено, абитуриенты могут отправлять запросы на консультацию и заказывать услуги."
+                label={t("acceptingBookingsLabel")}
+                description={t("acceptingBookingsDesc")}
                 icon="event_available"
                 checked={isAcceptingBookings}
                 onChange={(val) => {
@@ -655,8 +660,8 @@ export default function SettingsPage() {
         {role === "student" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <Toggle
-              label="Видимость профиля"
-              description="Только менторы, с которыми ты переписываешься или оформил заказ, видят твоё имя и учебное заведение. Если выключить — они увидят только «Абитуриент»."
+              label={t("visibilityLabel")}
+              description={t("studentVisibilityDesc")}
               icon="visibility"
               checked={studentIsPublic}
               onChange={(val) => {

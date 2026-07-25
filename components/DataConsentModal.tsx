@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useLocale } from "next-intl"
 import { fetchPublicSettings } from "@/lib/api"
 import Icon from "./Icon"
 import MarkdownText from "./MarkdownText"
@@ -21,6 +22,7 @@ interface Props {
 export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
   const [status, setStatus] = useState<Status>("loading")
   const [text, setText] = useState("")
+  const locale = useLocale()
 
   // Reset to "loading" on close so re-opening after a network error
    // gives the fetch another chance instead of being stuck on "error".
@@ -30,13 +32,13 @@ export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
 
   useEffect(() => {
     if (!open || status !== "loading") return
-    fetchPublicSettings()
+    fetchPublicSettings(locale)
       .then((s) => {
         setText(s.data_consent_text)
         setStatus("ready")
       })
       .catch(() => setStatus("error"))
-  }, [open, status])
+  }, [open, status, locale])
 
   const handleRetry = () => setStatus("loading")
 

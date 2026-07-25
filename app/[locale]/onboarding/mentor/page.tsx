@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import {
   authFetch,
   clearAuth,
@@ -21,17 +22,13 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v
 
 type Tab = "about" | "education" | "expertise"
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "about",     label: "О себе"     },
-  { id: "education", label: "Образование"},
-  { id: "expertise", label: "Экспертиза" },
-]
+const TAB_IDS: Tab[] = ["about", "education", "expertise"]
 
 const EXPERTISE_OPTIONS = [
-  { value: "admission",    label: "Поступление", icon: "flag"            },
-  { value: "scholarships", label: "Стипендии",   icon: "military_tech"   },
-  { value: "documents",    label: "Документы",   icon: "article"         },
-  { value: "visa",         label: "Виза",        icon: "flight_takeoff"  },
+  { value: "admission",    icon: "flag"            },
+  { value: "scholarships", icon: "military_tech"   },
+  { value: "documents",    icon: "article"         },
+  { value: "visa",         icon: "flight_takeoff"  },
 ]
 
 const LANGUAGE_OPTIONS = [
@@ -52,13 +49,6 @@ const LANGUAGE_OPTIONS = [
   { value: "uk", label: "Українська"},
 ]
 
-const DOCUMENT_KIND_OPTIONS = [
-  { value: "diploma",               label: "Диплом"                  },
-  { value: "enrollment_certificate",label: "Справка о зачислении"    },
-  { value: "university_id",         label: "Студенческий билет"      },
-  { value: "other",                 label: "Другое"                  },
-]
-
 interface OnboardingDocument {
   id: number
   kind: string
@@ -77,6 +67,8 @@ const inputClass =
   "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
 export default function MentorOnboarding() {
+  const t = useTranslations("Onboarding.Mentor")
+  const tExpertise = useTranslations("Landing.Expertise")
   const router = useRouter()
   const [ready, setReady]     = useState(false)
   const [tab, setTab]         = useState<Tab>("about")
@@ -86,6 +78,19 @@ export default function MentorOnboarding() {
   const [submitError, setSubmitError] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
   const [earlySubmitHint, setEarlySubmitHint] = useState(false)
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "about", label: t("tabAbout") },
+    { id: "education", label: t("tabEducation") },
+    { id: "expertise", label: t("tabExpertise") },
+  ]
+
+  const DOCUMENT_KIND_OPTIONS = [
+    { value: "diploma", label: t("docDiploma") },
+    { value: "enrollment_certificate", label: t("docEnrollment") },
+    { value: "university_id", label: t("docUniversityId") },
+    { value: "other", label: t("docOther") },
+  ]
 
   // Photo
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
@@ -192,9 +197,9 @@ export default function MentorOnboarding() {
       })
       flashSaved()
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
+      setSaveError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     }
-  }, [fullName, bio, phone, isUniversal, languages, flashSaved])
+  }, [fullName, bio, phone, isUniversal, languages, flashSaved, t])
 
   const saveEducation = useCallback(async () => {
     try {
@@ -208,9 +213,9 @@ export default function MentorOnboarding() {
       })
       flashSaved()
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
+      setSaveError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     }
-  }, [countries, school, major, grant, gpa, examResults, flashSaved])
+  }, [countries, school, major, grant, gpa, examResults, flashSaved, t])
 
   const saveExpertise = useCallback(async (areas: string[]) => {
     try {
@@ -219,18 +224,18 @@ export default function MentorOnboarding() {
       })
       flashSaved()
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
+      setSaveError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     }
-  }, [flashSaved])
+  }, [flashSaved, t])
 
   const saveCountries = useCallback(async (next: string[]) => {
     try {
       await updateMentorProfile({ countries: next.map((c) => ({ country: c })) })
       flashSaved()
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Не удалось сохранить")
+      setSaveError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     }
-  }, [flashSaved])
+  }, [flashSaved, t])
 
   // ─── Photo upload ──────────────────────────────────────────────
   const uploadCroppedPhoto = async (blob: Blob) => {
@@ -243,14 +248,14 @@ export default function MentorOnboarding() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(
-          err.profile_photo?.[0] || err.profile_photo || err.detail || "Не удалось загрузить фото"
+          err.profile_photo?.[0] || err.profile_photo || err.detail || t("saveErrorGeneric")
         )
       }
       const data = await res.json()
       setProfilePhoto(data.profile_photo ?? null)
       flashSaved()
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Ошибка при загрузке фото")
+      setSaveError(e instanceof Error ? e.message : t("photoUploadErrorGeneric"))
     } finally {
       setUploadingPhoto(false)
     }
@@ -259,7 +264,7 @@ export default function MentorOnboarding() {
   // ─── Document upload / delete ──────────────────────────────────
   const handleUploadDocument = async () => {
     if (!docFile) return
-    if (docFile.size > 15 * 1024 * 1024) { setDocError("Максимум 15 МБ"); return }
+    if (docFile.size > 15 * 1024 * 1024) { setDocError(t("docTooLarge")); return }
     setUploadingDoc(true)
     setDocError("")
     try {
@@ -270,14 +275,14 @@ export default function MentorOnboarding() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         const first = Object.values(err)[0]
-        throw new Error(Array.isArray(first) ? first[0] : err.detail || String(first || "Ошибка"))
+        throw new Error(Array.isArray(first) ? first[0] : err.detail || String(first || t("docUploadErrorGeneric")))
       }
       const doc: OnboardingDocument = await res.json()
       setDocuments((prev) => [doc, ...prev])
       setDocFile(null)
       if (docInputRef.current) docInputRef.current.value = ""
     } catch (e) {
-      setDocError(e instanceof Error ? e.message : "Ошибка загрузки")
+      setDocError(e instanceof Error ? e.message : t("docUploadErrorGeneric"))
     } finally {
       setUploadingDoc(false)
     }
@@ -289,10 +294,10 @@ export default function MentorOnboarding() {
       if (res.ok) {
         setDocuments((prev) => prev.filter((d) => d.id !== id))
       } else {
-        setDocError("Не удалось удалить документ. Попробуй ещё раз.")
+        setDocError(t("docDeleteError"))
       }
     } catch {
-      setDocError("Не удалось удалить документ. Попробуй ещё раз.")
+      setDocError(t("docDeleteError"))
     }
   }
 
@@ -334,7 +339,7 @@ export default function MentorOnboarding() {
           setSubmitError({ detail: e.message })
         }
       } else {
-        setSubmitError({ detail: "Неизвестная ошибка при отправке" })
+        setSubmitError({ detail: t("unknownSubmitError") })
       }
     } finally {
       setSubmitting(false)
@@ -374,15 +379,15 @@ export default function MentorOnboarding() {
           <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
             <Icon name="check_circle" size={36} className="text-emerald-600" filled />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Профиль отправлен на проверку</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{t("successTitle")}</h1>
           <p className="text-gray-500 text-sm mb-6">
-            Мы проверим его в течение 48 часов и опубликуем на платформе. Следи за статусом в личном кабинете.
+            {t("successBody")}
           </p>
           <button
             onClick={() => router.push("/mentor/dashboard")}
             className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors text-sm"
           >
-            Перейти в кабинет →
+            {t("goToDashboard")}
           </button>
         </div>
       </div>
@@ -399,7 +404,7 @@ export default function MentorOnboarding() {
             <Logo size={28} className="text-gray-900" />
             <span className="text-lg font-bold text-gray-900">Connectus</span>
           </div>
-          <p className="text-gray-400 text-xs">Заполни профиль — абитуриенты увидят тебя после проверки</p>
+          <p className="text-gray-400 text-xs">{t("headerTagline")}</p>
         </div>
 
         {/* Tabs */}
@@ -425,12 +430,12 @@ export default function MentorOnboarding() {
         {/* Progress bar */}
         {(() => {
           const doneCount = Object.values(tabDone).filter(Boolean).length
-          const total = TABS.length
+          const total = TAB_IDS.length
           return (
             <div className="mb-4">
               <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                <span>Прогресс заполнения</span>
-                <span>{doneCount} из {total}</span>
+                <span>{t("progress")}</span>
+                <span>{t("progressCount", { done: doneCount, total })}</span>
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
@@ -444,7 +449,7 @@ export default function MentorOnboarding() {
 
         {/* Save status */}
         <div className="h-5 mb-2 text-center">
-          {saved && <p className="text-xs text-emerald-600">Сохранено ✓</p>}
+          {saved && <p className="text-xs text-emerald-600">{t("saved")}</p>}
           {saveError && <p className="text-xs text-red-500">{saveError}</p>}
         </div>
 
@@ -454,14 +459,14 @@ export default function MentorOnboarding() {
           {/* ── О СЕБЕ ── */}
           {tab === "about" && (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">О себе</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">{t("aboutHeading")}</h2>
 
               {/* Фото профиля */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Фото профиля <span className="text-red-400">*</span>
+                  {t("photoLabel")} <span className="text-red-400">*</span>
                 </label>
-                <p className="text-xs text-gray-400 mb-3">Абитуриенты охотнее доверяют менторам с реальной фотографией.</p>
+                <p className="text-xs text-gray-400 mb-3">{t("photoHint")}</p>
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -471,7 +476,7 @@ export default function MentorOnboarding() {
                     const file = e.target.files?.[0]
                     if (file) {
                       if (file.size > 5 * 1024 * 1024) {
-                        setSaveError("Фото не должно превышать 5 МБ")
+                        setSaveError(t("photoTooLarge"))
                       } else {
                         setSaveError("")
                         setPickedFile(file)
@@ -489,7 +494,7 @@ export default function MentorOnboarding() {
                   >
                     {profilePhoto ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={profilePhoto} alt="Фото профиля" className="w-full h-full object-cover" />
+                      <img src={profilePhoto} alt={t("photoAlt")} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
                         <Icon name="photo_camera" size={28} className="text-white" />
@@ -507,53 +512,53 @@ export default function MentorOnboarding() {
                     )}
                   </button>
                   <p className="text-xs text-gray-400">
-                    {profilePhoto ? "Нажми чтобы изменить" : "JPG, PNG или WEBP до 5 МБ"}
+                    {profilePhoto ? t("changePhoto") : t("photoFormats")}
                   </p>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Полное имя <span className="text-red-400">*</span>
+                  {t("fullNameLabel")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   onBlur={saveAbout}
-                  placeholder="Назгуль Ахметова"
+                  placeholder={t("fullNamePlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  О себе <span className="text-red-400">*</span>
+                  {t("bioLabel")} <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   onBlur={saveAbout}
                   rows={4}
-                  placeholder="Я поступила в MIT из Алматы через стипендию Болашак. Помогаю абитуриентам составить план поступления, написать эссе и подать заявки в топ университеты..."
+                  placeholder={t("bioPlaceholder")}
                   className={`${inputClass} resize-none`}
                 />
-                <p className="text-xs text-gray-400 mt-1">Минимум 2–3 предложения — это влияет на доверие</p>
+                <p className="text-xs text-gray-400 mt-1">{t("bioHint")}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Телефон <span className="text-red-400">*</span>
+                  {t("phoneLabel")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   onBlur={saveAbout}
                   type="tel"
-                  placeholder="+7 777 123 45 67"
+                  placeholder={t("phonePlaceholder")}
                   className={inputClass}
                 />
-                <p className="text-xs text-gray-400 mt-1">Резервный канал для команды Connectus. Абитуриенты не видят.</p>
+                <p className="text-xs text-gray-400 mt-1">{t("phoneHint")}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Языки общения <span className="text-red-400">*</span>
+                  {t("languagesLabel")} <span className="text-red-400">*</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {LANGUAGE_OPTIONS.map(({ value, label }) => {
@@ -592,8 +597,8 @@ export default function MentorOnboarding() {
                   className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-violet-600 flex-shrink-0"
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-800 group-hover:text-violet-700">Универсальный ментор</span>
-                  <p className="text-xs text-gray-400 mt-0.5">Помогаю сразу по нескольким направлениям — поступление, стипендии, виза, документы</p>
+                  <span className="text-sm font-medium text-gray-800 group-hover:text-violet-700">{t("universalLabel")}</span>
+                  <p className="text-xs text-gray-400 mt-0.5">{t("universalHint")}</p>
                 </div>
               </label>
             </div>
@@ -602,11 +607,11 @@ export default function MentorOnboarding() {
           {/* ── ОБРАЗОВАНИЕ ── */}
           {tab === "education" && (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">Образование</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">{t("educationHeading")}</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Страны <span className="text-red-400">*</span>{" "}
-                  <span className="text-gray-400 font-normal">(можно несколько)</span>
+                  {t("countriesLabel")} <span className="text-red-400">*</span>{" "}
+                  <span className="text-gray-400 font-normal">{t("countriesMulti")}</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {POPULAR_COUNTRY_CODES.map((c) => (
@@ -635,7 +640,7 @@ export default function MentorOnboarding() {
                     onClick={() => setPickerOpen(true)}
                     className="col-span-3 px-2 py-2 rounded-xl text-xs border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 font-medium transition-all"
                   >
-                    + Другая страна
+                    {t("otherCountry")}
                   </button>
                 </div>
                 {countries.filter((c) => !POPULAR_COUNTRY_CODES.includes(c as never)).length > 0 && (
@@ -655,7 +660,7 @@ export default function MentorOnboarding() {
                               setCountries(next)
                               void saveCountries(next)
                             }}
-                            aria-label={`Убрать ${countryLabel(c)}`}
+                            aria-label={t("removeCountry", { country: countryLabel(c) })}
                             className="ml-0.5 text-gray-400 hover:text-red-500"
                           >✕</button>
                         </span>
@@ -678,63 +683,63 @@ export default function MentorOnboarding() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Университет <span className="text-red-400">*</span>
+                  {t("universityLabel")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   value={school}
                   onChange={(e) => setSchool(e.target.value)}
                   onBlur={saveEducation}
-                  placeholder="MIT, UCL, TU Munich..."
+                  placeholder={t("universityPlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Специальность <span className="text-red-400">*</span>
+                  {t("majorLabel")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   value={major}
                   onChange={(e) => setMajor(e.target.value)}
                   onBlur={saveEducation}
-                  placeholder="Computer Science, Economics..."
+                  placeholder={t("majorPlaceholder")}
                   className={inputClass}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Грант / стипендия <span className="text-red-400">*</span>
+                    {t("grantLabel")} <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={grant}
                     onChange={(e) => setGrant(e.target.value)}
                     onBlur={saveEducation}
-                    placeholder="Болашак, Chevening..."
+                    placeholder={t("grantPlaceholder")}
                     className={inputClass}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    GPA <span className="text-red-400">*</span>
+                    {t("gpaLabel")} <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={gpa}
                     onChange={(e) => setGpa(e.target.value)}
                     onBlur={saveEducation}
-                    placeholder="3.8 / 4.0"
+                    placeholder={t("gpaPlaceholder")}
                     className={inputClass}
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Результаты экзаменов <span className="text-red-400">*</span>
+                  {t("examResultsLabel")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   value={examResults}
                   onChange={(e) => setExamResults(e.target.value)}
                   onBlur={saveEducation}
-                  placeholder="IELTS 7.5, SAT 1480..."
+                  placeholder={t("examResultsPlaceholder")}
                   className={inputClass}
                 />
               </div>
@@ -744,9 +749,9 @@ export default function MentorOnboarding() {
           {/* ── ЭКСПЕРТИЗА ── */}
           {tab === "expertise" && (
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-1">Экспертиза</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">{t("expertiseHeading")}</h2>
               <p className="text-gray-400 text-sm mb-4">
-                Выбери чем ты помогаешь <span className="text-red-400">*</span>
+                {t("expertiseSubtitle")} <span className="text-red-400">*</span>
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {EXPERTISE_OPTIONS.map((opt) => {
@@ -773,7 +778,7 @@ export default function MentorOnboarding() {
                         className={active ? "text-gray-900" : "text-gray-400"}
                       />
                       <span className={`text-sm font-medium ${active ? "text-gray-900" : "text-gray-700"}`}>
-                        {opt.label}
+                        {tExpertise.has(opt.value) ? tExpertise(opt.value) : opt.value}
                       </span>
                     </button>
                   )
@@ -783,15 +788,15 @@ export default function MentorOnboarding() {
               {/* ── ДОКУМЕНТЫ ── */}
               <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="text-base font-bold text-gray-900">Документы для проверки</h3>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">можно несколько</span>
+                <h3 className="text-base font-bold text-gray-900">{t("documentsTitle")}</h3>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{t("documentsMulti")}</span>
               </div>
               <p className="text-gray-400 text-sm mb-4">
-                Диплом, справка о зачислении или студенческий билет. <span className="text-red-400">*</span>
+                {t("documentsSubtitle")} <span className="text-red-400">*</span>
               </p>
 
               <div className="border border-gray-200 rounded-2xl p-4 mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Тип документа</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("documentTypeLabel")}</label>
                 <select
                   value={docKind}
                   onChange={(e) => setDocKind(e.target.value)}
@@ -813,8 +818,8 @@ export default function MentorOnboarding() {
                     <p className="text-sm text-gray-700 font-medium">{docFile.name} ({formatDocSize(docFile.size)})</p>
                   ) : (
                     <>
-                      <p className="text-sm text-gray-500">Перетащи файл или нажми для выбора</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, JPEG, PNG до 15 МБ</p>
+                      <p className="text-sm text-gray-500">{t("dropHint")}</p>
+                      <p className="text-xs text-gray-400 mt-1">{t("fileFormats")}</p>
                     </>
                   )}
                 </div>
@@ -831,7 +836,7 @@ export default function MentorOnboarding() {
                   disabled={!docFile || uploadingDoc}
                   className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {uploadingDoc ? "Загружаем..." : documents.length > 0 ? "Загрузить ещё один" : "Загрузить документ"}
+                  {uploadingDoc ? t("uploading") : documents.length > 0 ? t("uploadAnother") : t("uploadDocument")}
                 </button>
               </div>
 
@@ -850,7 +855,7 @@ export default function MentorOnboarding() {
                           <button
                             onClick={() => handleDeleteDocument(doc.id)}
                             className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
-                            aria-label="Удалить"
+                            aria-label={t("deleteAria")}
                           >
                             <Icon name="delete" size={18} />
                           </button>
@@ -869,18 +874,18 @@ export default function MentorOnboarding() {
         <div className="flex gap-3 mt-4">
           {tab !== TABS[0].id && (
             <button
-              onClick={() => setTab(TABS[TABS.findIndex((t) => t.id === tab) - 1].id)}
+              onClick={() => setTab(TABS[TABS.findIndex((tb) => tb.id === tab) - 1].id)}
               className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl font-medium hover:border-gray-300 transition-colors text-sm"
             >
-              ← Назад
+              {t("back")}
             </button>
           )}
           {tab !== TABS[TABS.length - 1].id && (
             <button
-              onClick={() => setTab(TABS[TABS.findIndex((t) => t.id === tab) + 1].id)}
+              onClick={() => setTab(TABS[TABS.findIndex((tb) => tb.id === tab) + 1].id)}
               className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors text-sm"
             >
-              Вперёд →
+              {t("forward")}
             </button>
           )}
         </div>
@@ -888,7 +893,7 @@ export default function MentorOnboarding() {
         {/* Submit errors */}
         {Object.keys(submitError).length > 0 && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4">
-            <p className="text-sm font-semibold text-red-700 mb-1">Исправь ошибки перед отправкой:</p>
+            <p className="text-sm font-semibold text-red-700 mb-1">{t("fixErrorsTitle")}</p>
             <ul className="text-xs text-red-600 space-y-0.5 list-disc list-inside">
               {Object.entries(submitError).map(([k, v]) => (
                 <li key={k}>{v}</li>
@@ -914,22 +919,22 @@ export default function MentorOnboarding() {
               : "bg-gray-400 cursor-not-allowed"
           }`}
         >
-          {submitting ? "Отправляем..." : "Отправить профиль на проверку →"}
+          {submitting ? t("submitting") : t("submit")}
         </button>
         {earlySubmitHint && (
           <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-            <p className="text-xs font-semibold text-amber-700 mb-1">Ещё не всё заполнено:</p>
+            <p className="text-xs font-semibold text-amber-700 mb-1">{t("earlySubmitTitle")}</p>
             <ul className="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
-              {!tabDone.about && <li>О себе — фото, имя, описание, телефон, языки</li>}
-              {!tabDone.education && <li>Образование — страна, университет, специальность, грант, GPA, экзамены</li>}
-              {!tabDone.expertise && <li>Экспертиза — выбери направление и загрузи документ</li>}
+              {!tabDone.about && <li>{t("aboutMissing")}</li>}
+              {!tabDone.education && <li>{t("educationMissing")}</li>}
+              {!tabDone.expertise && <li>{t("expertiseMissing")}</li>}
             </ul>
           </div>
         )}
 
 
         <p className="text-center text-xs text-gray-300 mt-4">
-          Данные сохраняются автоматически · Можно вернуться позже
+          {t("footerNote")}
         </p>
       </div>
 

@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef, use } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { useRouter, Link } from "@/i18n/navigation"
 import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, fetchMentorServices, createSupportInvoice, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage, OrderDocument, MentorService } from "@/types"
@@ -13,14 +13,16 @@ import { Avatar } from "@/components/Avatar"
 import { Linkified } from "@/components/Linkified"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Ожидает подтверждения",
-  pending_payment: "Ожидает оплаты",
-  paid: "Оплачен",
-  in_progress: "В работе",
-  completed: "Завершён",
-  disputed: "Спор",
-  cancelled: "Отменён",
+const STATUS_KEY: Record<string, string> = {
+  draft: "draft",
+  pending_payment: "pendingPayment",
+  paid: "paid",
+  in_progress: "inProgress",
+  completed: "completed",
+  disputed: "disputed",
+  payout_pending: "payoutPending",
+  paid_out: "paidOut",
+  cancelled: "cancelled",
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -62,6 +64,8 @@ interface Props {
 
 export default function OrderPage({ params }: Props) {
   const { id } = use(params)
+  const t = useTranslations("Orders.Detail")
+  const tStatus = useTranslations("OrderStatus")
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
@@ -326,14 +330,14 @@ export default function OrderPage({ params }: Props) {
 
   const handleComplete = async () => {
     if (!order) return
-    if (!confirm("Отметить услугу выполненной? Абитуриент сможет оставить отзыв, а ты получишь выплату после окончания периода споров.")) return
+    if (!confirm(t("confirmComplete"))) return
     setCompleting(true)
     setCompleteError("")
     try {
       const updated = await completeOrder(order.id)
       setOrder(updated)
     } catch (e: unknown) {
-      setCompleteError(e instanceof Error ? e.message : "Не удалось завершить заказ")
+      setCompleteError(e instanceof Error ? e.message : t("errorComplete"))
     } finally {
       setCompleting(false)
     }
@@ -341,14 +345,14 @@ export default function OrderPage({ params }: Props) {
 
   const handleCancel = async () => {
     if (!order) return
-    if (!confirm("Отменить заказ? Вернуть его потом не получится — нужно будет оформить заново.")) return
+    if (!confirm(t("confirmCancel"))) return
     setCancelling(true)
     setCancelError("")
     try {
       const updated = await cancelOrder(order.id)
       setOrder(updated)
     } catch (e: unknown) {
-      setCancelError(e instanceof Error ? e.message : "Не удалось отменить заказ")
+      setCancelError(e instanceof Error ? e.message : t("errorCancel"))
     } finally {
       setCancelling(false)
     }
@@ -359,7 +363,7 @@ export default function OrderPage({ params }: Props) {
     if (!order) return
     const reason = disputeReason.trim()
     if (reason.length < 20) {
-      setDisputeError("Опиши проблему подробнее — минимум 20 символов.")
+      setDisputeError(t("errorDisputeTooShort"))
       return
     }
     setDisputing(true)
@@ -371,7 +375,7 @@ export default function OrderPage({ params }: Props) {
       setDisputeFormOpen(false)
       setDisputeReason("")
     } catch (err: unknown) {
-      setDisputeError(err instanceof Error ? err.message : "Не удалось открыть спор")
+      setDisputeError(err instanceof Error ? err.message : t("errorDispute"))
     } finally {
       setDisputing(false)
     }
@@ -424,16 +428,14 @@ export default function OrderPage({ params }: Props) {
 
   const handleCloseChat = async () => {
     if (!order?.conversation_id) return
-    if (!confirm(
-      "Закрыть чат с этим абитуриентом? Абитуриент больше не сможет писать или покупать у тебя услуги, пока чат не откроется снова. Чат переоткроется автоматически, если абитуриент попросит новую консультацию и ты её примешь."
-    )) return
+    if (!confirm(t("confirmCloseChat"))) return
     setClosingChat(true)
     setCloseError("")
     try {
       await closeConversation(order.conversation_id)
       setChatClosed(true)
     } catch (e: unknown) {
-      setCloseError(e instanceof Error ? e.message : "Не удалось закрыть чат")
+      setCloseError(e instanceof Error ? e.message : t("errorCloseChat"))
     } finally {
       setClosingChat(false)
     }
@@ -455,7 +457,7 @@ export default function OrderPage({ params }: Props) {
         fetchChatMessages(order.conversation_id).then(setMessages).catch(() => {})
       }
     } catch (e: unknown) {
-      setInvoiceError(e instanceof Error ? e.message : "Не удалось отправить заявку")
+      setInvoiceError(e instanceof Error ? e.message : t("errorInvoice"))
     } finally {
       setSendingInvoice(false)
     }
@@ -504,11 +506,13 @@ export default function OrderPage({ params }: Props) {
     if (hours >= 24) {
       const days = Math.floor(hours / 24)
       const leftHours = hours % 24
-      return leftHours > 0 ? `${days} дн. ${leftHours} ч.` : `${days} дн.`
+      return leftHours > 0
+        ? t("daysHoursShort", { days: String(days), hours: String(leftHours) })
+        : t("daysShort", { days: String(days) })
     }
-    if (hours > 0) return `${hours} ч.`
+    if (hours > 0) return t("hoursShort", { hours: String(hours) })
     const minutes = Math.max(1, Math.floor(ms / (1000 * 60)))
-    return `${minutes} мин.`
+    return t("minutesShort", { minutes: String(minutes) })
   }
 
   return (
@@ -527,11 +531,11 @@ export default function OrderPage({ params }: Props) {
           <div className={`space-y-4 ${isInTelegram ? "order-2 lg:order-1 lg:col-span-1" : "lg:col-span-1"}`}>
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h1 className="text-lg font-bold text-gray-900 mb-1">{order.service_title}</h1>
-              <p className="text-sm text-gray-400 mb-4">Заказ #{order.id}</p>
+              <p className="text-sm text-gray-400 mb-4">{t("orderNumber", { id: String(order.id) })}</p>
 
               <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border mb-4 ${STATUS_STYLE[order.order_status] || "bg-gray-50 text-gray-500 border-gray-200"}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                {STATUS_LABEL[order.order_status] || order.order_status}
+                {STATUS_KEY[order.order_status] ? tStatus(STATUS_KEY[order.order_status]) : order.order_status}
               </div>
 
               {/* engagement_status is shared by every order tied to that
@@ -543,8 +547,7 @@ export default function OrderPage({ params }: Props) {
                   <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
                     <Icon name="error" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
                     <span>
-                      Сопровождение приостановлено из-за неоплаты. Оплатите текущий счёт,
-                      чтобы возобновить — иначе оно будет архивировано.
+                      {t("pausedNotice")}
                     </span>
                   </div>
                 ) : (
@@ -552,7 +555,7 @@ export default function OrderPage({ params }: Props) {
                   new Date(order.due_at) < new Date() && (
                     <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
                       <Icon name="error" size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-                      <span>Оплата просрочена — пожалуйста, оплатите как можно скорее.</span>
+                      <span>{t("overdueNotice")}</span>
                     </div>
                   )
                 )
@@ -560,17 +563,17 @@ export default function OrderPage({ params }: Props) {
 
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Сумма</span>
+                  <span className="text-gray-400">{t("amount")}</span>
                   <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                 </div>
                 {role === "mentor" && !isFreeIntro && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Выплата ментору</span>
+                    <span className="text-gray-400">{t("mentorPayout")}</span>
                     <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Дата</span>
+                  <span className="text-gray-400">{t("date")}</span>
                   <span className="text-gray-600">{formatDate(order.created_at)}</span>
                 </div>
               </div>
@@ -582,7 +585,7 @@ export default function OrderPage({ params }: Props) {
                 href={`/mentors/${order.mentor}`}
                 className="block bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-sm transition-all group"
               >
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">Ментор</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t("mentor")}</h2>
                 <div className="flex items-center gap-3">
                   <Avatar
                     src={mentor.profile_photo}
@@ -592,10 +595,10 @@ export default function OrderPage({ params }: Props) {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-gray-900 text-sm truncate group-hover:text-indigo-600 transition-colors">
-                      {mentor.full_name || "Ментор"}
+                      {mentor.full_name || t("mentorDefault")}
                     </p>
                     <p className="text-xs text-gray-400 truncate">
-                      Нажми чтобы открыть профиль
+                      {t("openProfile")}
                     </p>
                   </div>
                   <Icon name="arrow_forward" size={16} className="text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
@@ -603,7 +606,7 @@ export default function OrderPage({ params }: Props) {
               </Link>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">Абитуриент</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t("applicant")}</h2>
                 <div className="flex items-center gap-3">
                   <Avatar
                     src={order.student_info?.profile_photo}
@@ -613,10 +616,10 @@ export default function OrderPage({ params }: Props) {
                   />
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900 text-sm truncate">
-                      {order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
+                      {order.student_info?.full_name?.trim().split(/\s+/)[0] || t("applicantDefault")}
                     </p>
                     <p className="text-xs text-gray-400 truncate">
-                      Общение только в чате
+                      {t("chatOnly")}
                     </p>
                   </div>
                 </div>
@@ -629,7 +632,7 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-white rounded-2xl border border-gray-200 p-5">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <Icon name="history" size={16} className="text-gray-500" />
-                  История с клиентом
+                  {t("historyTitle")}
                 </h3>
                 <div className="space-y-2">
                   {studentOrders.map((o) => (
@@ -644,7 +647,7 @@ export default function OrderPage({ params }: Props) {
                     >
                       <span className="truncate flex-1">{o.service_title}</span>
                       <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full ${STATUS_STYLE[o.order_status] || "bg-gray-100 text-gray-500"}`}>
-                        {STATUS_LABEL[o.order_status]}
+                        {STATUS_KEY[o.order_status] ? tStatus(STATUS_KEY[o.order_status]) : o.order_status}
                       </span>
                     </Link>
                   ))}
@@ -656,12 +659,12 @@ export default function OrderPage({ params }: Props) {
             {role === "mentor" && order.order_status === "in_progress" && (
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">
-                  {isAnyConsultation ? "Завершить консультацию" : "Завершить услугу"}
+                  {isAnyConsultation ? t("completeConsultationTitle") : t("completeServiceTitle")}
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
                   {isAnyConsultation
-                    ? "Когда вы обсудили всё что нужно, отметь консультацию завершённой."
-                    : "Когда работа выполнена, отметь услугу завершённой. Абитуриент сможет оставить отзыв, а выплата уйдёт после периода споров."}
+                    ? t("completeConsultationBody")
+                    : t("completeServiceBody")}
                 </p>
                 {completeError && (
                   <p className="text-xs text-red-600 mb-3">{completeError}</p>
@@ -672,10 +675,10 @@ export default function OrderPage({ params }: Props) {
                   className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   {completing
-                    ? "Завершаем..."
+                    ? t("completing")
                     : isAnyConsultation
-                      ? "✓ Консультация завершена"
-                      : "✓ Услуга выполнена"}
+                      ? t("completeConsultationCta")
+                      : t("completeServiceCta")}
                 </button>
               </div>
             )}
@@ -683,13 +686,13 @@ export default function OrderPage({ params }: Props) {
             {/* Mentor: send a support-engagement invoice inside this chat */}
             {role === "mentor" && canChat && !chatClosed && supportServices.length > 0 && (
               <div className="bg-white border border-gray-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">Заявка на сопровождение</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">{t("invoiceTitle")}</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Обсудили с абитуриентом цену и сроки — отправь заявку, она придёт как счёт в чат.
+                  {t("invoiceBody")}
                 </p>
                 {invoiceSent && !invoiceFormOpen && (
                   <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-3">
-                    Заявка отправлена — абитуриент увидит её в чате.
+                    {t("invoiceSent")}
                   </p>
                 )}
                 {!invoiceFormOpen ? (
@@ -697,7 +700,7 @@ export default function OrderPage({ params }: Props) {
                     onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false) }}
                     className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
                   >
-                    Отправить заявку
+                    {t("sendInvoiceCta")}
                   </button>
                 ) : (
                   <form onSubmit={handleSendInvoice} className="space-y-3">
@@ -707,7 +710,7 @@ export default function OrderPage({ params }: Props) {
                       required
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
                     >
-                      <option value="" disabled>Выбери программу сопровождения</option>
+                      <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
                       {supportServices.map((s) => (
                         <option key={s.id} value={s.id}>{s.title}</option>
                       ))}
@@ -720,7 +723,7 @@ export default function OrderPage({ params }: Props) {
                         type="number"
                         min="0"
                         step="1000"
-                        placeholder="Цена, ₸"
+                        placeholder={t("invoicePricePlaceholder")}
                         className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
                       />
                       <input
@@ -730,7 +733,7 @@ export default function OrderPage({ params }: Props) {
                         type="number"
                         min="1"
                         max="36"
-                        placeholder="Срок, мес"
+                        placeholder={t("invoiceMonthsPlaceholder")}
                         className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
                       />
                     </div>
@@ -743,14 +746,14 @@ export default function OrderPage({ params }: Props) {
                         disabled={sendingInvoice || invoiceServiceId === null}
                         className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                       >
-                        {sendingInvoice ? "Отправляем..." : "Отправить"}
+                        {sendingInvoice ? t("sending") : t("send")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setInvoiceFormOpen(false)}
                         className="border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
                       >
-                        Отмена
+                        {t("cancel")}
                       </button>
                     </div>
                   </form>
@@ -761,19 +764,19 @@ export default function OrderPage({ params }: Props) {
             {/* Mentor: close chat */}
             {role === "mentor" && canChat && !chatClosed && (
               <div className="bg-white border border-gray-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">Закрыть чат</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">{t("closeChatTitle")}</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Если ты больше не работаешь с этим абитуриентом, закрой чат. Абитуриент больше не сможет писать тебе или покупать услуги.
+                  {t("closeChatBody")}
                 </p>
                 {closeError && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
                     <p className="text-xs font-semibold text-amber-800 mb-1 flex items-center gap-1.5">
                       <Icon name="warning" size={14} className="text-amber-600" />
-                      Не удалось закрыть чат
+                      {t("closeChatErrorTitle")}
                     </p>
                     <p className="text-xs text-amber-700 leading-relaxed">
                       {closeError.toLowerCase().includes("active")
-                        ? "Сначала заверши все активные услуги с этим абитуриентом, потом чат можно будет закрыть."
+                        ? t("closeChatErrorActive")
                         : closeError}
                     </p>
                   </div>
@@ -783,7 +786,7 @@ export default function OrderPage({ params }: Props) {
                   disabled={closingChat}
                   className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-50"
                 >
-                  {closingChat ? "Закрываем..." : "Закрыть чат с абитуриентом"}
+                  {closingChat ? t("closingChat") : t("closeChatCta")}
                 </button>
               </div>
             )}
@@ -793,12 +796,12 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
                 <h3 className="font-semibold text-gray-700 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="lock" size={16} />
-                  Чат закрыт
+                  {t("chatClosedTitle")}
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   {role === "mentor"
-                    ? "Абитуриент не может писать сообщения и покупать услуги. Чат откроется снова, если ты примешь новый запрос на консультацию."
-                    : "Ментор закрыл чат. Чтобы продолжить общение и заказать услуги, закажи новую консультацию на странице ментора."}
+                    ? t("chatClosedBodyMentor")
+                    : t("chatClosedBodyStudent")}
                 </p>
               </div>
             )}
@@ -809,12 +812,12 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
                 <h3 className="font-semibold text-blue-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="hourglass_top" size={16} className="text-blue-600" />
-                  {isAnyConsultation ? "Консультация" : "В работе"}
+                  {isAnyConsultation ? t("inProgressTitleConsultation") : t("inProgressTitle")}
                 </h3>
                 <p className="text-xs text-blue-700 leading-relaxed">
                   {isAnyConsultation
-                    ? "Консультация активна. Общайтесь с ментором в чате — когда консультация закончится, ментор её завершит."
-                    : "Ментор работает над твоим заказом. Когда работа будет закончена, услуга станет завершённой и ты сможешь оставить отзыв."}
+                    ? t("inProgressBodyConsultation")
+                    : t("inProgressBody")}
                 </p>
               </div>
             )}
@@ -833,15 +836,15 @@ export default function OrderPage({ params }: Props) {
               const isLaterInstallment = order.installment_number !== null && order.installment_number > 1
 
               let deadlineMs = 0
-              let deadlineLabel = "Заказ автоотменится через"
+              let deadlineLabel = t("autoCancelLabel")
               if (isLaterInstallment && order.due_at) {
                 const dueAtMs = new Date(order.due_at).getTime()
                 if (order.engagement_status === "paused") {
                   deadlineMs = dueAtMs + SUPPORT_ARCHIVE_DAYS * 24 * 60 * 60 * 1000 - Date.now()
-                  deadlineLabel = "Сопровождение будет архивировано через"
+                  deadlineLabel = t("archiveLabel")
                 } else if (dueAtMs <= Date.now()) {
                   deadlineMs = dueAtMs + SUPPORT_GRACE_DAYS * 24 * 60 * 60 * 1000 - Date.now()
-                  deadlineLabel = "Сопровождение будет приостановлено через"
+                  deadlineLabel = t("pauseLabel")
                 }
                 // Not yet due: nothing auto-cancels before the due date —
                 // no countdown to show at all.
@@ -855,24 +858,24 @@ export default function OrderPage({ params }: Props) {
               return (
               <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
                 <div>
-                  <h3 className="font-semibold text-yellow-800 mb-1">Ожидает оплаты</h3>
+                  <h3 className="font-semibold text-yellow-800 mb-1">{t("pendingPaymentTitle")}</h3>
                   <p className="text-xs text-yellow-700 leading-relaxed">
-                    Переведи {Number(order.total_price).toLocaleString("ru-RU")} ₸ по реквизитам ниже. Чек админу можно отправить тремя способами: загрузить прямо здесь, написать в WhatsApp или отправить в Telegram-бот. После подтверждения заказ перейдёт в работу.
+                    {t("pendingPaymentBody", { amount: `${Number(order.total_price).toLocaleString("ru-RU")} ₸` })}
                   </p>
                 </div>
 
                 {Number(order.bonus_applied) > 0 && (
                   <div className="text-xs text-yellow-700 space-y-1 bg-white border border-yellow-200 rounded-xl p-3">
                     <div className="flex justify-between">
-                      <span>Стоимость услуги</span>
+                      <span>{t("serviceCost")}</span>
                       <span>{Number(order.subtotal).toLocaleString("ru-RU")} ₸</span>
                     </div>
                     <div className="flex justify-between text-emerald-700">
-                      <span>Промо-скидка −50%</span>
+                      <span>{t("promoDiscount")}</span>
                       <span>−{Number(order.bonus_applied).toLocaleString("ru-RU")} ₸</span>
                     </div>
                     <div className="flex justify-between font-bold text-yellow-900 pt-1 border-t border-yellow-200">
-                      <span>К оплате</span>
+                      <span>{t("toPay")}</span>
                       <span>{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                     </div>
                   </div>
@@ -880,19 +883,19 @@ export default function OrderPage({ params }: Props) {
 
                 {deadlineMs > 0 && (
                   <p className="text-[11px] text-yellow-700 bg-yellow-100/60 border border-yellow-200 rounded-lg px-3 py-2">
-                    {deadlineLabel} {formatRemaining(deadlineMs)}, если не будет оплачен.
+                    {t("deadlineSuffix", { deadline: `${deadlineLabel} ${formatRemaining(deadlineMs)}` })}
                   </p>
                 )}
 
                 {order.payment_instructions?.tg_sent_to_user && (
                   <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-[11px] text-blue-700 leading-relaxed">
-                    Реквизиты также отправлены в Telegram-бот. Самый быстрый способ — отправь чек прямо туда, бот пересылает админу автоматически.
+                    {t("tgSentNotice")}
                   </div>
                 )}
 
                 {order.payment_instructions?.account_details && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-yellow-700 font-semibold mb-1">Реквизиты</p>
+                    <p className="text-[10px] uppercase tracking-wide text-yellow-700 font-semibold mb-1">{t("accountDetails")}</p>
                     <pre className="text-xs text-yellow-900 bg-white border border-yellow-200 rounded-xl p-3 whitespace-pre-wrap break-words select-all">
 {order.payment_instructions.account_details}
                     </pre>
@@ -906,7 +909,7 @@ export default function OrderPage({ params }: Props) {
                     rel="noopener noreferrer"
                     className="block w-full bg-green-500 text-white text-center py-2.5 rounded-xl text-sm font-semibold hover:bg-green-600 transition-colors"
                   >
-                    Написать в WhatsApp
+                    {t("writeWhatsapp")}
                   </a>
                 )}
 
@@ -927,7 +930,7 @@ export default function OrderPage({ params }: Props) {
                       )
                       setOrderDocs((prev) => [doc, ...prev])
                     } catch (err) {
-                      setReceiptError(err instanceof Error ? err.message : "Не удалось загрузить чек")
+                      setReceiptError(err instanceof Error ? err.message : t("uploadFailed"))
                     } finally {
                       setUploadingReceipt(false)
                     }
@@ -939,7 +942,7 @@ export default function OrderPage({ params }: Props) {
                 {hasReceipt ? (
                   <div className="w-full text-center bg-white border border-green-200 text-green-700 py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-1.5">
                     <Icon name="check_circle" size={14} className="text-green-600" filled />
-                    Чек загружен — ждём подтверждения
+                    {t("receiptUploaded")}
                   </div>
                 ) : (
                   <button
@@ -948,7 +951,7 @@ export default function OrderPage({ params }: Props) {
                     className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                   >
                     <Icon name="upload_file" size={14} />
-                    {uploadingReceipt ? "Загрузка..." : "Загрузить чек оплаты"}
+                    {uploadingReceipt ? t("uploadingReceipt") : t("uploadReceipt")}
                   </button>
                 )}
 
@@ -960,7 +963,7 @@ export default function OrderPage({ params }: Props) {
                   disabled={cancelling}
                   className="w-full border border-yellow-300 text-yellow-900 py-2.5 rounded-xl text-sm font-medium hover:bg-yellow-100 transition-colors disabled:opacity-50"
                 >
-                  {cancelling ? "Отменяем..." : "Отменить заказ"}
+                  {cancelling ? t("cancelling") : t("cancelOrder")}
                 </button>
               </div>
               )
@@ -969,9 +972,9 @@ export default function OrderPage({ params }: Props) {
             {/* Disputed banner */}
             {order.order_status === "disputed" && (
               <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
-                <h3 className="font-semibold text-red-800 mb-1 text-sm">⚠ Спор открыт</h3>
+                <h3 className="font-semibold text-red-800 mb-1 text-sm">{t("disputeOpenTitle")}</h3>
                 <p className="text-xs text-red-700 leading-relaxed">
-                  Администратор рассмотрит спор и свяжется с обеими сторонами. До решения статус заказа останется «спор».
+                  {t("disputeOpenBody")}
                 </p>
               </div>
             )}
@@ -982,17 +985,17 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
                 <h3 className="font-semibold text-green-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="check_circle" size={16} className="text-green-600" filled />
-                  Завершено
+                  {t("completedTitle")}
                 </h3>
                 {disputeTimeRemainingMs !== null && disputeTimeRemainingMs > 0 ? (
                   <p className="text-xs text-green-700 leading-relaxed">
                     {role === "mentor"
-                      ? `Абитуриент может подать спор в течение ${formatRemaining(disputeTimeRemainingMs)}.`
-                      : `У тебя есть ${formatRemaining(disputeTimeRemainingMs)} чтобы подать спор, если что-то пошло не так.`}
+                      ? t("disputeRemainingMentor", { time: formatRemaining(disputeTimeRemainingMs) })
+                      : t("disputeRemainingStudent", { time: formatRemaining(disputeTimeRemainingMs) })}
                   </p>
                 ) : disputeTimeRemainingMs !== null ? (
                   <p className="text-xs text-green-700 leading-relaxed">
-                    Период подачи спора истёк.
+                    {t("disputeWindowExpired")}
                   </p>
                 ) : null}
               </div>
@@ -1004,31 +1007,31 @@ export default function OrderPage({ params }: Props) {
               <ReviewForm
                 orderId={order.id}
                 mentorId={order.mentor}
-                mentorName="Ментор"
-                authorName={order.student_info?.full_name?.trim().split(/\s+/)[0] || "Абитуриент"}
+                mentorName={t("mentorDefault")}
+                authorName={order.student_info?.full_name?.trim().split(/\s+/)[0] || t("applicantDefault")}
               />
             )}
 
             {/* Student: open dispute — only for paid deliverable orders */}
             {role !== "mentor" && order.order_status === "completed" && !isAnyConsultation && disputeWindowOpen && disputeTimeRemainingMs && (
               <div className="bg-white border border-red-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">Что-то пошло не так?</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">{t("somethingWrongTitle")}</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  Если услуга не была оказана или выполнена с нарушениями, открой спор. Осталось {formatRemaining(disputeTimeRemainingMs)}. Администратор разберётся и примет решение.
+                  {t("somethingWrongBody", { time: formatRemaining(disputeTimeRemainingMs) })}
                 </p>
                 {!disputeFormOpen ? (
                   <button
                     onClick={() => setDisputeFormOpen(true)}
                     className="w-full border border-red-200 text-red-600 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
                   >
-                    Открыть спор
+                    {t("openDispute")}
                   </button>
                 ) : (
                   <form onSubmit={handleSubmitDispute} className="space-y-3">
                     <textarea
                       value={disputeReason}
                       onChange={(e) => setDisputeReason(e.target.value)}
-                      placeholder="Опиши проблему подробно — минимум 20 символов"
+                      placeholder={t("disputeReasonPlaceholder")}
                       rows={4}
                       className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400"
                     />
@@ -1041,7 +1044,7 @@ export default function OrderPage({ params }: Props) {
                         disabled={disputing}
                         className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
                       >
-                        {disputing ? "Отправляем..." : "Подать спор"}
+                        {disputing ? t("sending") : t("submitDispute")}
                       </button>
                       <button
                         type="button"
@@ -1051,7 +1054,7 @@ export default function OrderPage({ params }: Props) {
                         }}
                         className="flex-1 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
                       >
-                        Отмена
+                        {t("cancel")}
                       </button>
                     </div>
                   </form>
@@ -1065,7 +1068,7 @@ export default function OrderPage({ params }: Props) {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                     <Icon name="folder" size={16} className="text-gray-400" />
-                    Файлы
+                    {t("filesTitle")}
                   </h3>
                   <span className="text-xs text-gray-400">{orderDocs.length} / 10</span>
                 </div>
@@ -1127,7 +1130,7 @@ export default function OrderPage({ params }: Props) {
                 {/* Upload with description */}
                 {orderDocs.length >= 10 ? (
                   <p className="text-xs text-gray-400 text-center py-2">
-                    Достигнут лимит — 10 файлов на заказ
+                    {t("filesLimit")}
                   </p>
                 ) : (
                   <>
@@ -1139,16 +1142,16 @@ export default function OrderPage({ params }: Props) {
                         const file = e.target.files?.[0]
                         if (!file) return
                         if (file.size > 20 * 1024 * 1024) {
-                          alert("Файл слишком большой. Максимум 20 MB.")
+                          alert(t("fileTooLarge"))
                           return
                         }
-                        const desc = prompt("Описание файла (необязательно):", "")
+                        const desc = prompt(t("filePrompt"), "")
                         setUploadingDoc(true)
                         try {
                           const doc = await uploadOrderDocument(order.id, file, desc || undefined)
                           setOrderDocs((prev) => [doc, ...prev])
                         } catch (err) {
-                          alert(err instanceof Error ? err.message : "Не удалось загрузить")
+                          alert(err instanceof Error ? err.message : t("uploadFailed"))
                         } finally {
                           setUploadingDoc(false)
                           if (docInputRef.current) docInputRef.current.value = ""
@@ -1166,7 +1169,7 @@ export default function OrderPage({ params }: Props) {
                       ) : (
                         <Icon name="upload_file" size={14} />
                       )}
-                      {uploadingDoc ? "Загрузка..." : "Загрузить файл"}
+                      {uploadingDoc ? t("uploadingFile") : t("uploadFile")}
                     </button>
                   </>
                 )}
@@ -1191,20 +1194,20 @@ export default function OrderPage({ params }: Props) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-900">Чат</p>
+                    <p className="text-sm font-semibold text-gray-900">{t("chatTitle")}</p>
                     {wsConnected && !chatClosed && (
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                     )}
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-0.5">
                     {(() => {
-                      if (!canChat) return "Откроется после подтверждения оплаты"
-                      if (chatClosed) return "Чат закрыт ментором"
-                      if (messages.length === 0) return "Начните переписку"
+                      if (!canChat) return t("chatPreviewLocked")
+                      if (chatClosed) return t("chatPreviewClosed")
+                      if (messages.length === 0) return t("chatPreviewStart")
                       const last = messages[messages.length - 1]
                       const text = last.text?.trim() ?? ""
                       if (text) return text
-                      if (last.attachments?.length) return "📎 Вложение"
+                      if (last.attachments?.length) return t("chatPreviewAttachment")
                       return "—"
                     })()}
                   </p>
@@ -1232,19 +1235,19 @@ export default function OrderPage({ params }: Props) {
                     type="button"
                     onClick={() => setChatExpanded(false)}
                     className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
-                    aria-label="Закрыть чат"
+                    aria-label={t("closeChatAria")}
                   >
                     <Icon name="arrow_back" size={22} />
                   </button>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h2 className="font-semibold text-gray-900">Сообщения</h2>
+                  <h2 className="font-semibold text-gray-900">{t("messagesTitle")}</h2>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {!canChat
-                      ? "Чат откроется после принятия консультации ментором"
+                      ? t("messagesSubtitleLocked")
                       : chatClosed
-                        ? "Чат закрыт ментором"
-                        : "Все переговоры ведутся только на платформе"}
+                        ? t("messagesSubtitleClosed")
+                        : t("messagesSubtitleOpen")}
                   </p>
                 </div>
                 {canChat && (
@@ -1258,7 +1261,7 @@ export default function OrderPage({ params }: Props) {
                     <span className={`w-1.5 h-1.5 rounded-full ${
                       chatClosed ? "bg-gray-400" : wsConnected ? "bg-green-500" : "bg-gray-400"
                     }`} />
-                    {chatClosed ? "Закрыт" : wsConnected ? "В сети" : "Подключение..."}
+                    {chatClosed ? t("statusClosed") : wsConnected ? t("statusOnline") : t("statusConnecting")}
                   </span>
                 )}
               </div>
@@ -1269,7 +1272,7 @@ export default function OrderPage({ params }: Props) {
                   <div ref={chatRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                     {messages.length === 0 && (
                       <div className="text-center py-8">
-                        <p className="text-gray-400 text-sm">Начните переписку</p>
+                        <p className="text-gray-400 text-sm">{t("startConversation")}</p>
                       </div>
                     )}
                     {messages.map((msg) => {
@@ -1378,12 +1381,12 @@ export default function OrderPage({ params }: Props) {
                     <div className="px-4 py-5 border-t border-gray-50 flex-shrink-0 bg-gray-50/60">
                       <p className="text-center text-sm text-gray-500 font-medium inline-flex items-center gap-1.5 justify-center w-full">
                         <Icon name="lock" size={16} />
-                        Чат закрыт
+                        {t("chatClosedTitle")}
                       </p>
                       <p className="text-center text-xs text-gray-400 mt-1 leading-relaxed">
                         {role === "mentor"
-                          ? "Чат снова откроется, если ты примешь новый запрос на консультацию от этого абитуриента."
-                          : "Закажи новую консультацию у этого ментора, чтобы возобновить общение."}
+                          ? t("chatClosedReopenMentor")
+                          : t("chatClosedReopenStudent")}
                       </p>
                     </div>
                   ) : (
@@ -1422,7 +1425,7 @@ export default function OrderPage({ params }: Props) {
                           onClick={() => fileInputRef.current?.click()}
                           disabled={!wsConnected || attachedFiles.length >= 3}
                           className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
-                          title="Прикрепить файл (PDF, JPEG, PNG)"
+                          title={t("attachTitle")}
                         >
                           <Icon name="attach_file" size={20} />
                         </button>
@@ -1430,7 +1433,7 @@ export default function OrderPage({ params }: Props) {
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Написать сообщение..."
+                          placeholder={t("messagePlaceholder")}
                           className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                           disabled={!wsConnected || sending}
                         />
@@ -1447,7 +1450,7 @@ export default function OrderPage({ params }: Props) {
                         </button>
                       </form>
                       <p className="text-xs text-gray-300 mt-2 text-center">
-                        Запрещено передавать личные контакты — нарушение правил платформы
+                        {t("noContactsWarning")}
                       </p>
                     </div>
                   )}
@@ -1458,9 +1461,9 @@ export default function OrderPage({ params }: Props) {
                     <div className="mb-4 flex justify-center">
                       <Icon name="lock" size={48} className="text-gray-300" />
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Чат заблокирован</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">{t("chatLockedTitle")}</h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                      Чат откроется после того, как админ подтвердит оплату консультации.
+                      {t("chatLockedBody")}
                     </p>
                   </div>
                 </div>

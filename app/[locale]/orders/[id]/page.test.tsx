@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { act, render, screen, waitFor, fireEvent } from "@testing-library/react"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import OrderPage, { invoiceDraftKey, translateInvoiceErrorMessage } from "./page"
 import {
   fetchOrder,
