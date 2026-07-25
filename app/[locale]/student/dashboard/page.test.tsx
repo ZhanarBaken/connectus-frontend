@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { useRouter } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import StudentDashboard from "./page"
 import type { MentorCard, Order, StudentProfile } from "@/types"
 
