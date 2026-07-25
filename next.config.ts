@@ -1,9 +1,12 @@
 import type { NextConfig } from "next"
 import { withSentryConfig } from "@sentry/nextjs"
+import createNextIntlPlugin from "next-intl/plugin"
 
-const nextConfig: NextConfig = {
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts")
+
+const nextConfig: NextConfig = withNextIntl({
   /* config options here */
-}
+})
 
 // `withSentryConfig` wraps the build pipeline with Sentry's source-map
 // upload step. Skip the wrap entirely when no DSN is configured so:

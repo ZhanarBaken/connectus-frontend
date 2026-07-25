@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { LocaleProvider } from "@/lib/i18n/LocaleProvider"
 import LandingHero from "./LandingHero"
 import type { MentorCard } from "@/types"
 
@@ -25,11 +24,7 @@ function makeMentor(overrides: Partial<MentorCard> = {}, id = 1): MentorCard {
 }
 
 function renderHero(mentors: MentorCard[]) {
-  return render(
-    <LocaleProvider>
-      <LandingHero mentors={mentors} />
-    </LocaleProvider>,
-  )
+  return render(<LandingHero mentors={mentors} />)
 }
 
 describe("LandingHero", () => {

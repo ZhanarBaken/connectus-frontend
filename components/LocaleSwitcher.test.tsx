@@ -1,47 +1,49 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { LocaleProvider } from "@/lib/i18n/LocaleProvider"
+import { useRouter, usePathname } from "@/i18n/navigation"
 import LocaleSwitcher from "@/components/LocaleSwitcher"
-
-function renderSwitcher(props?: { className?: string }) {
-  return render(
-    <LocaleProvider>
-      <LocaleSwitcher {...props} />
-    </LocaleProvider>,
-  )
-}
 
 describe("LocaleSwitcher", () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.mocked(usePathname).mockReturnValue("/mentors")
   })
 
   it("renders a button for every supported locale", () => {
-    renderSwitcher()
+    render(<LocaleSwitcher />)
     expect(screen.getByText("RU")).toBeInTheDocument()
+    expect(screen.getByText("EN")).toBeInTheDocument()
     expect(screen.getByText("KZ")).toBeInTheDocument()
   })
 
-  it("marks the default locale (ru) as active", () => {
-    renderSwitcher()
+  it("marks the current locale (ru, per the mocked useLocale) as active", () => {
+    render(<LocaleSwitcher />)
     expect(screen.getByText("RU")).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByText("EN")).toHaveAttribute("aria-pressed", "false")
     expect(screen.getByText("KZ")).toHaveAttribute("aria-pressed", "false")
   })
 
-  it("switches the active locale on click and persists it to localStorage", async () => {
+  it("switches locale via the locale-aware router, staying on the current page", async () => {
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(),
+      replace,
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+      prefetch: vi.fn(),
+    } as unknown as ReturnType<typeof useRouter>)
     const user = userEvent.setup()
-    renderSwitcher()
+    render(<LocaleSwitcher />)
 
     await user.click(screen.getByText("KZ"))
 
-    expect(screen.getByText("KZ")).toHaveAttribute("aria-pressed", "true")
-    expect(screen.getByText("RU")).toHaveAttribute("aria-pressed", "false")
-    expect(localStorage.getItem("locale")).toBe("kk")
+    expect(replace).toHaveBeenCalledWith("/mentors", { locale: "kk" })
   })
 
   it("applies a custom className to the wrapper", () => {
-    const { container } = renderSwitcher({ className: "custom-class" })
+    const { container } = render(<LocaleSwitcher className="custom-class" />)
     expect(container.firstElementChild).toHaveClass("custom-class")
   })
 })

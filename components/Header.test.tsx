@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { useRouter, usePathname } from "next/navigation"
-import { LocaleProvider } from "@/lib/i18n/LocaleProvider"
+import { useRouter, usePathname } from "@/i18n/navigation"
 import Header from "./Header"
 
 vi.mock("@/lib/api", () => ({
@@ -17,11 +16,7 @@ vi.mock("@/lib/api", () => ({
 }))
 
 function renderHeader() {
-  return render(
-    <LocaleProvider>
-      <Header />
-    </LocaleProvider>,
-  )
+  return render(<Header />)
 }
 
 describe("Header", () => {

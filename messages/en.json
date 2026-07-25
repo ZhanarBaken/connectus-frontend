@@ -1,0 +1,357 @@
+{
+  "NotFound": {
+    "title": "Page not found",
+    "subtitle": "This page doesn't exist or has been moved",
+    "home": "Go home"
+  },
+  "Header": {
+    "login": "Log in",
+    "signup": "Sign up",
+    "logout": "Log out"
+  },
+  "Nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "schedule": "Schedule",
+    "services": "Services",
+    "clients": "Clients",
+    "settings": "Settings",
+    "findMentor": "Find a mentor",
+    "messages": "Messages",
+    "mentors": "Mentors",
+    "howItWorks": "How it works",
+    "categories": "Countries",
+    "becomeMentor": "Become a mentor"
+  },
+  "Landing": {
+    "Hero": {
+      "title1": "Get into your dream university",
+      "title2": "with a mentor",
+      "ctaFind": "Find a mentor",
+      "ctaBecome": "I want to become a mentor →",
+      "helps": "helped get admitted"
+    },
+    "Expertise": {
+      "admission": "Admission",
+      "scholarships": "Scholarships",
+      "visa": "Visa",
+      "documents": "Documents",
+      "essay": "Essay"
+    },
+    "HowItWorks": {
+      "title1": "How it",
+      "title2": "works",
+      "subtitle": "Three steps from choosing a mentor to starting your prep",
+      "stepLabel": "Step",
+      "step1": { "title": "Find a mentor", "desc": "Browse profiles of graduates from top universities around the world" },
+      "step2": { "title": "Consultation", "desc": "Request an intro call — discuss your goals and build a plan together" },
+      "step3": { "title": "Start preparing", "desc": "Order the service you need and get a step-by-step admission plan" }
+    },
+    "Categories": {
+      "title1": "15+ countries.",
+      "title2": "One platform.",
+      "subtitle": "Mentors from leading universities help you get admitted to the country you choose — from paperwork to your visa.",
+      "cta": "See all mentors",
+      "genericDesc": "Platform mentors",
+      "countries": {
+        "kz": { "label": "Kazakhstan", "desc": "Nazarbayev University, KIMEP" },
+        "us": { "label": "USA", "desc": "Ivy League and top universities" },
+        "gb": { "label": "United Kingdom", "desc": "Oxbridge, Russell Group" },
+        "de": { "label": "Germany", "desc": "TU Munich, LMU, and more" },
+        "es": { "label": "Spain", "desc": "IE, ESADE, UAB" },
+        "it": { "label": "Italy", "desc": "Bocconi, Politecnico" },
+        "fr": { "label": "France", "desc": "Sciences Po, HEC Paris" },
+        "nl": { "label": "Netherlands", "desc": "TU Delft, Amsterdam" },
+        "ca": { "label": "Canada", "desc": "Toronto, McGill, UBC" },
+        "au": { "label": "Australia", "desc": "Melbourne, Sydney, ANU" },
+        "ch": { "label": "Switzerland", "desc": "ETH Zurich, EPFL" }
+      }
+    },
+    "Trust": {
+      "title1": "Why students",
+      "title2": "trust us",
+      "subtitle": "Safe for applicants and parents alike",
+      "verified": { "title": "Verified mentors", "desc": "Every mentor's documents and diplomas are checked", "statLabel": "verified" },
+      "consult": { "title": "Consultation", "desc": "Get to know your mentor and align on goals before work begins" },
+      "price": { "title": "Transparent pricing", "desc": "The full price is shown upfront. No hidden fees", "statLabel": "hidden fees" },
+      "real": { "title": "Real experience", "desc": "Mentors are applicants and graduates of the very same universities", "statLabel": "mentors" }
+    },
+    "Testimonials": {
+      "title1": "What",
+      "title2": "students say",
+      "subtitle": "Real reviews from people who've worked with our mentors"
+    },
+    "BecomeMentor": {
+      "title1": "Studying abroad?",
+      "title2": "Help others get there.",
+      "subtitle": "Become a Connectus mentor. Share your experience and help the next generation of applicants walk the same path.",
+      "feat1": "You set your own prices and schedule",
+      "feat2": "Sign up in 5 minutes",
+      "feat3": "Verified within 48 hours",
+      "feat4": "Secure payouts through the platform",
+      "cta": "Learn more",
+      "note": "Free · No subscriptions",
+      "card": {
+        "students": "Students",
+        "rating": "Rating",
+        "response": "Avg. response",
+        "responseValue": "< 2 hours",
+        "note": "Example of a mentor profile on the platform",
+        "subtitle": "MIT · Computer Science"
+      }
+    },
+    "Cta": {
+      "title1": "Ready to",
+      "title2": "get started?",
+      "subtitle": "Create a free account and find a mentor today",
+      "primary": "Start for free",
+      "secondary": "Browse mentors"
+    },
+    "Faq": {
+      "title1": "Frequently asked",
+      "title2": "questions",
+      "subtitle": "Everything you need to know before you start",
+      "q1": { "q": "Who are the mentors on Connectus?", "a": "Mentors are applicants and graduates of top universities worldwide who went through the admissions process themselves and now help others do the same. Many are Bolashak, Chevening, DAAD, and other scholarship recipients. Every mentor is vetted and authenticated — only carefully selected, competency-checked candidates work on the platform." },
+      "q2": { "q": "How much do services cost?", "a": "The first consultation is a get-to-know-you call where you discuss your goals and plan. Mentors set their own prices for services, and you see the full cost upfront. No hidden fees." },
+      "q3": { "q": "How does a consultation work?", "a": "The applicant sends the mentor a consultation request. The mentor can accept or decline — for example, if they already have a lot of active applicants. Once accepted, a chat opens right on the platform, and all communication stays inside Connectus.\n\nAn important note on safety: all discussions should stay on the platform. If you exchange personal contacts (phone, messengers, email) and work outside Connectus, we can't take responsibility for the quality of the work and won't be able to help if a dispute comes up." },
+      "q4": { "q": "What if the mentor isn't the right fit?", "a": "The first consultation is a get-to-know-you call. If you feel the mentor isn't the right fit, you're free to choose someone else." },
+      "q5": { "q": "Why is Connectus useful for parents?", "a": "Applying abroad involves hundreds of details: choosing a country and university, exams, essays, deadlines, grants, visas. Figuring it all out alone is nearly impossible, and a single mistake can cost a year — or your child's dream.\n\nConnectus gives you direct access to people who've already walked that path — graduates of MIT, Oxbridge, TU Munich, Bolashak and Chevening scholars. They'll tell you how it really works, help build a plan tailored to your child, and save you months of searching for information online." }
+    },
+    "Footer": {
+      "tagline": "A marketplace of mentors for studying abroad",
+      "students": "For applicants",
+      "mentors": "For mentors",
+      "support": "Support",
+      "mentorDashboard": "Dashboard",
+      "copy": "© 2026 Connectus. All rights reserved.",
+      "terms": "Terms",
+      "rules": "Rules",
+      "privacy": "Privacy policy"
+    }
+  },
+  "Auth": {
+    "Login": {
+      "welcome": "Welcome back",
+      "subtitle": "Log in to your account",
+      "sessionExpired": "Your session expired. Log in again — we'll take you back to where you were.",
+      "telegramButton": "Log in with Telegram",
+      "googleButton": "Log in with Google",
+      "orEmail": "or with email",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "forgotPassword": "Forgot password?",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "toRegister": "Go to sign up →",
+      "emailNotVerifiedTitle": "Email not verified",
+      "emailNotVerifiedBody": "Check your inbox — we sent you a verification link.",
+      "resent": "Email resent ✓",
+      "resending": "Sending...",
+      "resendLink": "Resend the link",
+      "submitting": "Logging in...",
+      "submit": "Log in",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Sign up",
+      "errorInvalidCredentials": "Incorrect email or password",
+      "errorGoogleNotAvailableInTelegram": "Google isn't available inside the Telegram app. Open the site in a browser or log in with Telegram instead.",
+      "errorGoogleNotConfigured": "Google sign-in isn't configured",
+      "errorGoogleGeneric": "Google login failed",
+      "errorTelegramGeneric": "Telegram login failed"
+    },
+    "Register": {
+      "roleStudentTitle": "I'm an applicant or a parent",
+      "roleStudentDesc": "Looking for a mentor to help with admission abroad",
+      "roleMentorTitle": "I'm a mentor",
+      "roleMentorDesc": "I want to help applicants with admission",
+      "checkEmailTitle": "Check your inbox",
+      "checkEmailSentTo": "We sent a verification link to",
+      "checkEmailBody": "Follow the link in the email to activate your account. After that you'll be able to log in and complete your profile.",
+      "emailCorrected": "Email updated, message sent ✓",
+      "resent": "Email resent ✓",
+      "resending": "Sending...",
+      "resendEmail": "Resend the email",
+      "typoInEmail": "Typo in your email? Fix it",
+      "correctEmailLabel": "Enter the correct email:",
+      "correctEmailPlaceholder": "correct@example.com",
+      "saving": "Saving...",
+      "save": "Save",
+      "cancel": "Cancel",
+      "checkSpam": "Email not arriving? Check your Spam folder.",
+      "whoAreYou": "Who are you?",
+      "chooseRoleSubtitle": "Choose a role so we can set up your account",
+      "continue": "Continue →",
+      "back": "← Back",
+      "createAccount": "Create your account",
+      "registeringAs": "Signing up as",
+      "asMentor": "a mentor",
+      "asStudent": "an applicant",
+      "telegramButton": "Continue with Telegram",
+      "googleButton": "Continue with Google",
+      "orEmail": "or with email",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 12 characters",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "agreeTo": "I accept the",
+      "termsLink": "terms of service",
+      "and": "and",
+      "rulesLink": "platform rules",
+      "submitting": "Creating account...",
+      "submit": "Create account with email",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Log in",
+      "errorGeneric": "Registration failed. Please check your details.",
+      "errorGoogleNotAvailableInTelegram": "Google isn't available inside the Telegram app. Open the site in a browser or sign up with Telegram instead.",
+      "errorGoogleNotConfigured": "Google sign-in isn't configured",
+      "errorGoogleGeneric": "Google sign-up failed",
+      "errorTelegramGeneric": "Telegram sign-up failed",
+      "errorResendGeneric": "Couldn't send the email",
+      "errorCorrectEmailGeneric": "Couldn't change the email"
+    },
+    "ForgotPassword": {
+      "checkEmailTitle": "Check your inbox",
+      "checkEmailBody": "If an account with this email exists and supports password login, we've sent a recovery link. Open it within an hour.",
+      "checkSpam": "Didn't get it? Check your Spam folder. If it's not there, sign up again or log in with Google / Telegram.",
+      "backToLogin": "Back to login",
+      "title": "Forgot your password?",
+      "subtitle": "Enter your email — we'll send you a recovery link.",
+      "emailLabel": "Email",
+      "submitting": "Sending...",
+      "submit": "Send the link",
+      "rememberedPassword": "Remembered your password?",
+      "loginLink": "Log in",
+      "errorTooManyAttempts": "Too many attempts. Please wait {seconds}.",
+      "errorGeneric": "Couldn't send the email"
+    },
+    "ResetPassword": {
+      "brokenLinkTitle": "Broken link",
+      "brokenLinkBody": "There's no recovery token in this address. Please request a new email.",
+      "requestNewLink": "Request a new link",
+      "doneTitle": "Password updated",
+      "doneBody": "Redirecting you to the login page...",
+      "title": "New password",
+      "subtitle": "At least 12 characters. All other sessions will be logged out automatically.",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 12 characters",
+      "submitting": "Saving...",
+      "submit": "Set password",
+      "errorNoToken": "No recovery token in this link. Please request a new email.",
+      "errorTooShort": "The password must be at least 12 characters",
+      "errorGeneric": "Couldn't update the password"
+    },
+    "VerifyEmail": {
+      "verifying": "Verifying your email...",
+      "successTitle": "Email verified",
+      "successBody": "You can now log in to your account.",
+      "loginButton": "Log in",
+      "errorTitle": "Verification failed",
+      "toLogin": "Go to login",
+      "errorNoToken": "No token found in the link",
+      "errorGeneric": "Couldn't verify the email"
+    },
+    "TgCallback": {
+      "connecting": "Connecting Telegram...",
+      "welcomeTitle": "Welcome!",
+      "whoAreYou": "Who are you?",
+      "creating": "Setting up...",
+      "roleStudent": "I'm an applicant or a parent",
+      "roleMentor": "I'm a mentor",
+      "successTitle": "Logged in!",
+      "redirecting": "Redirecting...",
+      "errorTitle": "Login failed",
+      "retry": "Try again",
+      "errorNoToken": "Token not found. Please try logging in again.",
+      "errorGeneric": "Couldn't connect Telegram",
+      "errorSessionExpired": "Your session expired. Please try logging in again.",
+      "errorRetry": "Something went wrong. Please try again."
+    },
+    "TgLogin": {
+      "loggingIn": "Logging in with Telegram...",
+      "successTitle": "Logged in!",
+      "redirecting": "Redirecting to your dashboard...",
+      "errorTitle": "Login failed",
+      "loginNormally": "Log in the usual way",
+      "notRegisteredHint": "Haven't signed up yet? Open the bot and tap /start.",
+      "errorNoToken": "Token not found. Please open the link from the bot again.",
+      "errorGeneric": "Couldn't log in"
+    }
+  },
+  "BecomeMentor": {
+    "benefits": {
+      "b1title": "Earn from your experience",
+      "b1desc": "Set your own prices. Mentors earn between $30 and $150 per consultation.",
+      "b2title": "Flexible schedule",
+      "b2desc": "Choose when and how much you work. Fit it around your studies with no restrictions.",
+      "b3title": "Applicants from everywhere",
+      "b3desc": "Help applicants from Kazakhstan, Uzbekistan, Kyrgyzstan, and other countries.",
+      "b4title": "Secure payouts",
+      "b4desc": "The platform guarantees payment once a service is completed."
+    },
+    "steps": {
+      "s1title": "Create your profile",
+      "s1desc": "Tell us about your university, major, scholarships, and experience",
+      "s2title": "Add services",
+      "s2desc": "Consultations, essay review, help with documents — choose what you offer",
+      "s3title": "Get verified",
+      "s3desc": "We verify your profile within 48 hours and publish it on the platform",
+      "s4title": "Accept requests",
+      "s4desc": "Applicants find you, pay for the service, and you get to work"
+    },
+    "services": {
+      "consultation": "Admissions consultation",
+      "essay": "Essay and motivation letter review",
+      "documents": "Help with documents",
+      "scholarships": "Scholarship matching",
+      "interview": "Interview preparation",
+      "university": "University and program selection",
+      "examPrep": "SAT / IELTS / TOEFL prep",
+      "visa": "Visa consultations"
+    },
+    "faq": {
+      "q1": { "q": "Who can become a mentor?", "a": "An applicant or graduate of any university abroad. What matters most is real admissions experience and a willingness to help others. Scholarship recipients are especially welcome." },
+      "q2": { "q": "How much time does mentoring take?", "a": "As much as you want. You can hold 1-2 consultations a week. You're fully in control of your own schedule." },
+      "q3": { "q": "How does payment work?", "a": "The applicant pays for the service through the platform. Once it's completed, we transfer the money to you, minus the platform fee." },
+      "q4": { "q": "What's the platform fee?", "a": "15% per transaction. You set your own price and see exactly how much you'll receive before publishing a service." },
+      "q5": { "q": "Do I need a degree or certificate?", "a": "No. Real experience of applying abroad is enough. We review your profile and confirm your university." }
+    },
+    "hero": {
+      "mentorsOnPlatform": "mentors already on the platform",
+      "title1": "Help applicants.",
+      "title2": "Earn from your experience.",
+      "subtitle": "Got into a university abroad? Your experience is worth something. Become a mentor and help applicants from Kazakhstan.",
+      "cta": "Become a mentor",
+      "learnMore": "Learn more",
+      "statVerification": "Verification",
+      "statCountries": "Countries",
+      "statRegistration": "Sign-up cost"
+    },
+    "benefitsSection": {
+      "title1": "Why mentors choose",
+      "subtitle": "Focus on helping applicants — the platform handles payment, verification, and finding clients."
+    },
+    "howItWorks": {
+      "title1": "How to become",
+      "title2": "a mentor",
+      "subtitle": "From sign-up to your first order"
+    },
+    "servicesSection": {
+      "title1": "What you can",
+      "title2": "offer",
+      "subtitle": "Pick what you're strongest at"
+    },
+    "faqSection": {
+      "title1": "Frequently asked",
+      "title2": "questions",
+      "subtitle": "Everything you need to know before signing up"
+    },
+    "finalCta": {
+      "title1": "Ready to",
+      "title2": "help?",
+      "subtitle": "Sign up in 2 minutes. Verified within 48 hours. Your first order is coming soon.",
+      "cta": "Become a mentor",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Log in"
+    }
+  }
+}

@@ -1,6 +1,15 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+// Deliberately using next/navigation's plain useRouter here, not
+// next-intl's locale-aware one from @/i18n/navigation. Telegram's
+// start_param deep link is constructed by the backend (separate repo)
+// with no knowledge of the user's locale preference — resolving it into
+// anything other than the default (ru) locale would require a backend
+// change. Keeping every push() in this component on the plain router
+// means it always lands in default-locale (unprefixed, under
+// localePrefix: "as-needed") space by construction, not by a rule
+// someone has to remember.
 import { useRouter } from "next/navigation"
 import { telegramMiniAppLogin, fetchMe } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"

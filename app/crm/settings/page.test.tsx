@@ -12,9 +12,17 @@ function makeSettings(overrides: Partial<SiteSettings> = {}): SiteSettings {
     id: 1,
     dispute_window_hours: 48,
     terms_text: "",
+    terms_text_en: "",
+    terms_text_kk: "",
     platform_rules_text: "",
+    platform_rules_text_en: "",
+    platform_rules_text_kk: "",
     data_consent_text: "",
+    data_consent_text_en: "",
+    data_consent_text_kk: "",
     privacy_policy_text: "",
+    privacy_policy_text_en: "",
+    privacy_policy_text_kk: "",
     support_url: "https://t.me/support",
     payment_account_details: "Kaspi Gold 1234",
     whatsapp_number: "77771234567",
@@ -143,5 +151,27 @@ describe("CRMSettingsPage", () => {
 
     expect(screen.getByText("Пользовательское соглашение (ToS)")).toBeInTheDocument()
     expect(screen.queryByText("Реквизиты для оплаты")).not.toBeInTheDocument()
+  })
+
+  it("edits the EN/KK legal text variants and includes them in the save payload", async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetchAdminSettings).mockResolvedValue(makeSettings({ terms_text: "Оригинал RU" }))
+    vi.mocked(updateAdminSettings).mockResolvedValue(makeSettings())
+
+    render(<CRMSettingsPage />)
+    await screen.findByDisplayValue("Kaspi Gold 1234")
+    await user.click(screen.getByRole("button", { name: "Юридика" }))
+
+    const enLabel = screen.getByText("Пользовательское соглашение — EN")
+    expect(screen.getByText("Пользовательское соглашение — KK")).toBeInTheDocument()
+
+    const enField = enLabel.parentElement!.querySelector("textarea")!
+    await user.type(enField, "English terms")
+    await user.click(screen.getByRole("button", { name: "Сохранить" }))
+
+    await waitFor(() => expect(updateAdminSettings).toHaveBeenCalled())
+    const sentPayload = vi.mocked(updateAdminSettings).mock.calls[0][0]
+    expect(sentPayload.terms_text_en).toBe("English terms")
+    expect(sentPayload.terms_text).toBe("Оригинал RU")
   })
 })

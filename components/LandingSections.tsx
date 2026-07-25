@@ -1,6 +1,7 @@
 "use client"
 
-import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import Icon from "./Icon"
 import Logo from "./Logo"
@@ -19,7 +20,6 @@ import {
   SUPPORT_WHATSAPP_DISPLAY,
   SUPPORT_WHATSAPP_URL,
 } from "@/lib/contacts"
-import { useT } from "@/lib/i18n/LocaleProvider"
 
 interface Category {
   label: string
@@ -33,32 +33,34 @@ interface Props {
 }
 
 export default function LandingSections({ categories, mentors }: Props) {
-  const t = useT()
+  // No namespace — this component crosses many top-level namespaces
+  // (Landing.*, Nav.*), simpler to reference full dotted paths than to
+  // juggle half a dozen separate useTranslations() calls.
+  const t = useTranslations()
 
   const steps = [
-    { number: "01", titleKey: "how.step1.title", descKey: "how.step1.desc", icon: "search" },
-    { number: "02", titleKey: "how.step2.title", descKey: "how.step2.desc", icon: "chat" },
-    { number: "03", titleKey: "how.step3.title", descKey: "how.step3.desc", icon: "rocket_launch" },
-  ]
+    { number: "01", titleKey: "Landing.HowItWorks.step1.title", descKey: "Landing.HowItWorks.step1.desc", icon: "search" },
+    { number: "02", titleKey: "Landing.HowItWorks.step2.title", descKey: "Landing.HowItWorks.step2.desc", icon: "chat" },
+    { number: "03", titleKey: "Landing.HowItWorks.step3.title", descKey: "Landing.HowItWorks.step3.desc", icon: "rocket_launch" },
+  ] as const
 
   const faqs = [
-    { q: t("faq.q1.q"), a: t("faq.q1.a") },
-    { q: t("faq.q2.q"), a: t("faq.q2.a") },
-    { q: t("faq.q3.q"), a: t("faq.q3.a") },
-    { q: t("faq.q4.q"), a: t("faq.q4.a") },
-    { q: t("faq.q5.q"), a: t("faq.q5.a") },
+    { q: t("Landing.Faq.q1.q"), a: t("Landing.Faq.q1.a") },
+    { q: t("Landing.Faq.q2.q"), a: t("Landing.Faq.q2.a") },
+    { q: t("Landing.Faq.q3.q"), a: t("Landing.Faq.q3.a") },
+    { q: t("Landing.Faq.q4.q"), a: t("Landing.Faq.q4.a") },
+    { q: t("Landing.Faq.q5.q"), a: t("Landing.Faq.q5.a") },
   ]
 
   const localizedCategory = (cat: Category) => {
     const code = cat.code.toLowerCase()
-    const labelKey = `cat.${code}.label`
-    const descKey = `cat.${code}.desc`
-    const label = t(labelKey)
-    const desc = t(descKey)
-    return {
-      label: label === labelKey ? cat.label : label,
-      desc: desc === descKey ? cat.desc : desc,
-    }
+    const labelKey = `Landing.Categories.countries.${code}.label`
+    const descKey = `Landing.Categories.countries.${code}.desc`
+    // Only the ~11 curated destinations have translated copy — anything
+    // else (a mentor's country that isn't one of them) falls back to
+    // the dynamically-built label/desc passed in from app/[locale]/page.tsx.
+    if (!t.has(labelKey)) return { label: cat.label, desc: cat.desc }
+    return { label: t(labelKey), desc: t(descKey) }
   }
 
   return (
@@ -76,13 +78,13 @@ export default function LandingSections({ categories, mentors }: Props) {
         <div className="relative max-w-5xl mx-auto">
           <ScrollReveal variant="fade-up">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
-              {t("how.title_1")}{" "}
-              <span className="font-[var(--font-display)] italic">{t("how.title_2")}</span>
+              {t("Landing.HowItWorks.title1")}{" "}
+              <span className="font-[var(--font-display)] italic">{t("Landing.HowItWorks.title2")}</span>
             </h2>
           </ScrollReveal>
           <ScrollReveal variant="blur-in" delay={200}>
             <p className="text-gray-500 text-lg max-w-xl mx-auto leading-relaxed text-center mb-20">
-              {t("how.subtitle")}
+              {t("Landing.HowItWorks.subtitle")}
             </p>
           </ScrollReveal>
 
@@ -104,7 +106,7 @@ export default function LandingSections({ categories, mentors }: Props) {
                       <Icon name={step.icon} size={24} />
                     </div>
                     <div className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-3">
-                      {t("how.step_label")} {i + 1}
+                      {t("Landing.HowItWorks.stepLabel")} {i + 1}
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
                       {t(step.titleKey)}
@@ -128,19 +130,19 @@ export default function LandingSections({ categories, mentors }: Props) {
             <div className="lg:sticky lg:top-32">
               <ScrollReveal variant="fade-right" duration={800}>
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
-                  {t("cat.title_1")}{" "}
+                  {t("Landing.Categories.title1")}{" "}
                   <span className="font-[var(--font-display)] italic text-gray-400">
-                    {t("cat.title_2")}
+                    {t("Landing.Categories.title2")}
                   </span>
                 </h2>
                 <p className="text-gray-500 leading-relaxed mb-6">
-                  {t("cat.subtitle")}
+                  {t("Landing.Categories.subtitle")}
                 </p>
                 <Link
                   href="/mentors"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-indigo-600 transition-colors"
                 >
-                  {t("cat.cta")}
+                  {t("Landing.Categories.cta")}
                   <Icon name="arrow_forward" size={16} />
                 </Link>
               </ScrollReveal>
@@ -205,15 +207,15 @@ export default function LandingSections({ categories, mentors }: Props) {
         <div className="relative max-w-5xl mx-auto">
           <ScrollReveal variant="fade-up">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight text-center">
-              {t("trust.title_1")}{" "}
+              {t("Landing.Trust.title1")}{" "}
               <span className="font-[var(--font-display)] italic text-gray-400">
-                {t("trust.title_2")}
+                {t("Landing.Trust.title2")}
               </span>
             </h2>
           </ScrollReveal>
           <ScrollReveal variant="blur-in" delay={200}>
             <p className="text-gray-400 text-lg text-center mb-16 max-w-xl mx-auto">
-              {t("trust.subtitle")}
+              {t("Landing.Trust.subtitle")}
             </p>
           </ScrollReveal>
 
@@ -221,35 +223,35 @@ export default function LandingSections({ categories, mentors }: Props) {
             {[
               {
                 icon: "verified",
-                title: t("trust.verified.title"),
-                desc: t("trust.verified.desc"),
+                title: t("Landing.Trust.verified.title"),
+                desc: t("Landing.Trust.verified.desc"),
                 stat: 100,
                 statSuffix: "%",
-                statLabel: t("trust.verified.stat_label"),
+                statLabel: t("Landing.Trust.verified.statLabel"),
               },
               {
                 icon: "forum",
-                title: t("trust.consult.title"),
-                desc: t("trust.consult.desc"),
+                title: t("Landing.Trust.consult.title"),
+                desc: t("Landing.Trust.consult.desc"),
                 stat: 0,
                 statSuffix: "",
                 statLabel: "",
               },
               {
                 icon: "credit_card",
-                title: t("trust.price.title"),
-                desc: t("trust.price.desc"),
+                title: t("Landing.Trust.price.title"),
+                desc: t("Landing.Trust.price.desc"),
                 stat: 0,
                 statSuffix: "",
-                statLabel: t("trust.price.stat_label"),
+                statLabel: t("Landing.Trust.price.statLabel"),
               },
               {
                 icon: "school",
-                title: t("trust.real.title"),
-                desc: t("trust.real.desc"),
+                title: t("Landing.Trust.real.title"),
+                desc: t("Landing.Trust.real.desc"),
                 stat: 50,
                 statSuffix: "+",
-                statLabel: t("trust.real.stat_label"),
+                statLabel: t("Landing.Trust.real.statLabel"),
               },
             ].map((item, i) => (
               <ScrollReveal
@@ -293,22 +295,22 @@ export default function LandingSections({ categories, mentors }: Props) {
             <div>
               <ScrollReveal variant="fade-right" duration={800}>
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
-                  {t("bm.title_1")}{" "}
+                  {t("Landing.BecomeMentor.title1")}{" "}
                   <span className="font-[var(--font-display)] italic text-gray-400">
-                    {t("bm.title_2")}
+                    {t("Landing.BecomeMentor.title2")}
                   </span>
                 </h2>
                 <p className="text-gray-500 text-lg leading-relaxed mb-10 max-w-lg">
-                  {t("bm.subtitle")}
+                  {t("Landing.BecomeMentor.subtitle")}
                 </p>
               </ScrollReveal>
 
               <div className="space-y-4 mb-10">
                 {[
-                  { icon: "payments", text: t("bm.feat1") },
-                  { icon: "edit_note", text: t("bm.feat2") },
-                  { icon: "verified", text: t("bm.feat3") },
-                  { icon: "shield", text: t("bm.feat4") },
+                  { icon: "payments", text: t("Landing.BecomeMentor.feat1") },
+                  { icon: "edit_note", text: t("Landing.BecomeMentor.feat2") },
+                  { icon: "verified", text: t("Landing.BecomeMentor.feat3") },
+                  { icon: "shield", text: t("Landing.BecomeMentor.feat4") },
                 ].map((item, i) => (
                   <ScrollReveal key={item.text} variant="fade-right" delay={i * 100}>
                     <div className="flex items-center gap-4">
@@ -330,12 +332,12 @@ export default function LandingSections({ categories, mentors }: Props) {
                       href="/become-mentor"
                       className="bg-gray-900 text-white px-7 py-3.5 rounded-xl text-[15px] font-semibold hover:bg-gray-800 transition-colors inline-flex items-center gap-2"
                     >
-                      {t("bm.cta")}
+                      {t("Landing.BecomeMentor.cta")}
                       <Icon name="arrow_forward" size={18} />
                     </Link>
                   </MagneticButton>
                   <p className="text-sm text-gray-400 self-center">
-                    {t("bm.note")}
+                    {t("Landing.BecomeMentor.note")}
                   </p>
                 </div>
               </ScrollReveal>
@@ -355,34 +357,34 @@ export default function LandingSections({ categories, mentors }: Props) {
                       />
                       <div>
                         <div className="font-semibold text-gray-900">Назгуль А.</div>
-                        <div className="text-sm text-gray-400">{t("bm.card.subtitle")}</div>
+                        <div className="text-sm text-gray-400">{t("Landing.BecomeMentor.card.subtitle")}</div>
                       </div>
                       <Icon name="verified" size={18} filled className="text-indigo-500 ml-auto" />
                     </div>
 
                     <div className="space-y-4 mb-6">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">{t("bm.card.students")}</span>
+                        <span className="text-gray-500">{t("Landing.BecomeMentor.card.students")}</span>
                         <span className="font-semibold text-gray-900">
                           <AnimatedCounter value={12} duration={1200} />
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">{t("bm.card.rating")}</span>
+                        <span className="text-gray-500">{t("Landing.BecomeMentor.card.rating")}</span>
                         <span className="font-semibold text-gray-900 inline-flex items-center gap-1">
                           <span className="text-yellow-400">★</span>
                           4.9 / 5.0
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">{t("bm.card.response")}</span>
-                        <span className="font-semibold text-gray-900">{t("bm.card.response_value")}</span>
+                        <span className="text-gray-500">{t("Landing.BecomeMentor.card.response")}</span>
+                        <span className="font-semibold text-gray-900">{t("Landing.BecomeMentor.card.responseValue")}</span>
                       </div>
                     </div>
 
                     {/* Mini expertise tags */}
                     <div className="flex flex-wrap gap-1.5 mb-6">
-                      {[t("expertise.admission"), t("expertise.scholarships"), t("expertise.essay")].map((tag) => (
+                      {[t("Landing.Expertise.admission"), t("Landing.Expertise.scholarships"), t("Landing.Expertise.essay")].map((tag) => (
                         <span key={tag} className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-md font-medium">
                           {tag}
                         </span>
@@ -391,7 +393,7 @@ export default function LandingSections({ categories, mentors }: Props) {
 
                     <div className="h-px bg-gray-100 mb-4" />
                     <p className="text-xs text-gray-400 text-center">
-                      {t("bm.card.note")}
+                      {t("Landing.BecomeMentor.card.note")}
                     </p>
                   </div>
                 </TiltCard>
@@ -406,13 +408,13 @@ export default function LandingSections({ categories, mentors }: Props) {
         <div className="max-w-3xl mx-auto text-center">
           <ScrollReveal variant="zoom-in" duration={900}>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
-              {t("cta.title_1")}{" "}
-              <span className="font-[var(--font-display)] italic">{t("cta.title_2")}</span>
+              {t("Landing.Cta.title1")}{" "}
+              <span className="font-[var(--font-display)] italic">{t("Landing.Cta.title2")}</span>
             </h2>
           </ScrollReveal>
           <ScrollReveal variant="blur-in" delay={150}>
             <p className="text-gray-500 text-lg mb-10 leading-relaxed">
-              {t("cta.subtitle")}
+              {t("Landing.Cta.subtitle")}
             </p>
           </ScrollReveal>
           <ScrollReveal variant="fade-up" delay={300}>
@@ -422,14 +424,14 @@ export default function LandingSections({ categories, mentors }: Props) {
                   href="/auth/register"
                   className="bg-gray-900 text-white px-8 py-4 rounded-xl text-[15px] font-semibold hover:bg-gray-800 transition-colors inline-block"
                 >
-                  {t("cta.primary")}
+                  {t("Landing.Cta.primary")}
                 </Link>
               </MagneticButton>
               <Link
                 href="/mentors"
                 className="border border-gray-200 text-gray-600 px-8 py-4 rounded-xl text-[15px] font-semibold hover:border-gray-300 hover:text-gray-900 transition-colors"
               >
-                {t("cta.secondary")}
+                {t("Landing.Cta.secondary")}
               </Link>
             </div>
           </ScrollReveal>
@@ -441,13 +443,13 @@ export default function LandingSections({ categories, mentors }: Props) {
         <div className="max-w-3xl mx-auto">
           <ScrollReveal variant="fade-up">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 tracking-tight text-center">
-              {t("faq.title_1")}{" "}
-              <span className="font-[var(--font-display)] italic">{t("faq.title_2")}</span>
+              {t("Landing.Faq.title1")}{" "}
+              <span className="font-[var(--font-display)] italic">{t("Landing.Faq.title2")}</span>
             </h2>
           </ScrollReveal>
           <ScrollReveal variant="blur-in" delay={200}>
             <p className="text-gray-500 text-lg text-center mb-12">
-              {t("faq.subtitle")}
+              {t("Landing.Faq.subtitle")}
             </p>
           </ScrollReveal>
           <ScrollReveal variant="fade-up" delay={300}>
@@ -466,26 +468,26 @@ export default function LandingSections({ categories, mentors }: Props) {
                 <span className="text-white font-bold text-lg">Connectus</span>
               </div>
               <p className="text-sm leading-relaxed">
-                {t("footer.tagline")}
+                {t("Landing.Footer.tagline")}
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4 text-sm">{t("footer.students")}</h4>
+              <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.students")}</h4>
               <ul className="space-y-3 text-sm">
-                <li><Link href="/mentors" className="hover:text-white transition-colors">{t("nav.find_mentor")}</Link></li>
-                <li><Link href="/#how-it-works" className="hover:text-white transition-colors">{t("nav.how_it_works")}</Link></li>
-                <li><Link href="/#categories" className="hover:text-white transition-colors">{t("nav.categories")}</Link></li>
+                <li><Link href="/mentors" className="hover:text-white transition-colors">{t("Nav.findMentor")}</Link></li>
+                <li><Link href="/#how-it-works" className="hover:text-white transition-colors">{t("Nav.howItWorks")}</Link></li>
+                <li><Link href="/#categories" className="hover:text-white transition-colors">{t("Nav.categories")}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4 text-sm">{t("footer.mentors")}</h4>
+              <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.mentors")}</h4>
               <ul className="space-y-3 text-sm">
-                <li><Link href="/become-mentor" className="hover:text-white transition-colors">{t("nav.become_mentor")}</Link></li>
-                <li><Link href="/mentor/dashboard" className="hover:text-white transition-colors">{t("footer.mentor_dashboard")}</Link></li>
+                <li><Link href="/become-mentor" className="hover:text-white transition-colors">{t("Nav.becomeMentor")}</Link></li>
+                <li><Link href="/mentor/dashboard" className="hover:text-white transition-colors">{t("Landing.Footer.mentorDashboard")}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4 text-sm">{t("footer.support")}</h4>
+              <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.support")}</h4>
               <ul className="space-y-3 text-sm">
                 <li>
                   <a
@@ -522,11 +524,11 @@ export default function LandingSections({ categories, mentors }: Props) {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-sm">{t("footer.copy")}</p>
+            <p className="text-sm">{t("Landing.Footer.copy")}</p>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-              <Link href="/terms" className="hover:text-white transition-colors">{t("footer.terms")}</Link>
-              <Link href="/platform-rules" className="hover:text-white transition-colors">{t("footer.rules")}</Link>
-              <Link href="/privacy" className="hover:text-white transition-colors">{t("footer.privacy")}</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">{t("Landing.Footer.terms")}</Link>
+              <Link href="/platform-rules" className="hover:text-white transition-colors">{t("Landing.Footer.rules")}</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">{t("Landing.Footer.privacy")}</Link>
             </div>
           </div>
         </div>

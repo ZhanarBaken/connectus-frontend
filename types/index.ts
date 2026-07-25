@@ -302,9 +302,17 @@ export interface SiteSettings {
   id: number
   dispute_window_hours: number
   terms_text: string
+  terms_text_en: string
+  terms_text_kk: string
   platform_rules_text: string
+  platform_rules_text_en: string
+  platform_rules_text_kk: string
   data_consent_text: string
+  data_consent_text_en: string
+  data_consent_text_kk: string
   privacy_policy_text: string
+  privacy_policy_text_en: string
+  privacy_policy_text_kk: string
   support_url: string
   payment_account_details: string
   whatsapp_number: string

@@ -3,6 +3,7 @@
 
 import { MOCK_MENTORS, getMockMentor, getMockServices, MOCK_ORDERS, MOCK_STUDENT_PROFILE } from "./mocks"
 import { AdminConversation, AdminDispute, AdminMentorProfile, Dispute, Mentor, MentorCard, MentorProfile, Order, SiteSettings, StudentProfile } from "@/types"
+import { localeFromPathname, withLocalePrefix } from "./i18n/pathname"
 
 const USE_MOCKS = false
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -620,7 +621,13 @@ async function refreshAccessToken(): Promise<string> {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
         const next = encodeURIComponent(window.location.pathname + window.location.search)
-        window.location.href = `/auth/login?session_expired=1&next=${next}`
+        // The captured `next` path already carries whatever locale
+        // prefix (or none) the user was on, so it round-trips correctly
+        // post-login on its own — only the /auth/login target itself
+        // needs the prefix computed explicitly.
+        const locale = localeFromPathname(window.location.pathname)
+        const loginPath = withLocalePrefix(locale, "/auth/login")
+        window.location.href = `${loginPath}?session_expired=1&next=${next}`
       }
       throw new Error("Refresh failed")
     }

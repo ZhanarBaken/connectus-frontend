@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
+import { useEffect, useState, useCallback, type ComponentProps } from "react"
+import { useTranslations } from "next-intl"
+import NextLink from "next/link"
+import { Link as LocaleLink, useRouter, usePathname } from "@/i18n/navigation"
 import { fetchChatUnread } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { TG_AUTH_EVENT } from "./TelegramAutoLogin"
@@ -10,12 +11,22 @@ import Icon from "./Icon"
 import Logo from "./Logo"
 import NotificationBell from "./NotificationBell"
 import LocaleSwitcher from "./LocaleSwitcher"
-import { useT } from "@/lib/i18n/LocaleProvider"
+
+// /crm sits entirely outside the locale-routing tree (see i18n/routing.ts)
+// — using next-intl's Link there would prepend the current locale
+// (/en/crm, /kk/crm) and 404, since no such route exists. Every other
+// href in this component is a real locale-aware route. Declared at
+// module scope (not inside Header) so its identity is stable across
+// renders — a component defined inside another component's body gets
+// recreated every render, which resets any state / breaks reconciliation.
+function SmartLink(props: ComponentProps<typeof LocaleLink>) {
+  return props.href === "/crm" ? <NextLink {...props} /> : <LocaleLink {...props} />
+}
 
 export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
-  const t = useT()
+  const t = useTranslations()
   const [role, setRole] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [chatUnread, setChatUnread] = useState(0)
@@ -73,27 +84,27 @@ export default function Header() {
   }
 
   const mentorNav: NavLink[] = [
-    { href: "/mentor/dashboard", label: t("nav.dashboard"), icon: "dashboard" },
-    { href: "/mentors/profile", label: t("nav.profile"), icon: "person" },
-    { href: "/mentors/schedule", label: t("nav.schedule"), icon: "calendar_month" },
-    { href: "/mentors/services", label: t("nav.services"), icon: "description" },
-    { href: "/orders", label: t("nav.clients"), icon: "people", matchPrefixes: ["/orders"], badge: chatUnread || undefined },
-    { href: "/settings", label: t("nav.settings"), icon: "settings" },
+    { href: "/mentor/dashboard", label: t("Nav.dashboard"), icon: "dashboard" },
+    { href: "/mentors/profile", label: t("Nav.profile"), icon: "person" },
+    { href: "/mentors/schedule", label: t("Nav.schedule"), icon: "calendar_month" },
+    { href: "/mentors/services", label: t("Nav.services"), icon: "description" },
+    { href: "/orders", label: t("Nav.clients"), icon: "people", matchPrefixes: ["/orders"], badge: chatUnread || undefined },
+    { href: "/settings", label: t("Nav.settings"), icon: "settings" },
   ]
 
   const studentNav: NavLink[] = [
-    { href: "/student/dashboard", label: t("nav.dashboard"), icon: "dashboard" },
-    { href: "/mentors", label: t("nav.find_mentor"), icon: "search" },
-    { href: "/messages", label: t("nav.messages"), icon: "chat", badge: chatUnread || undefined },
-    { href: "/students/profile", label: t("nav.profile"), icon: "person" },
-    { href: "/settings", label: t("nav.settings"), icon: "settings" },
+    { href: "/student/dashboard", label: t("Nav.dashboard"), icon: "dashboard" },
+    { href: "/mentors", label: t("Nav.findMentor"), icon: "search" },
+    { href: "/messages", label: t("Nav.messages"), icon: "chat", badge: chatUnread || undefined },
+    { href: "/students/profile", label: t("Nav.profile"), icon: "person" },
+    { href: "/settings", label: t("Nav.settings"), icon: "settings" },
   ]
 
   const guestNav: NavLink[] = [
-    { href: "/mentors", label: t("nav.mentors") },
-    { href: "/#how-it-works", label: t("nav.how_it_works") },
-    { href: "/#categories", label: t("nav.categories") },
-    { href: "/become-mentor", label: t("nav.become_mentor") },
+    { href: "/mentors", label: t("Nav.mentors") },
+    { href: "/#how-it-works", label: t("Nav.howItWorks") },
+    { href: "/#categories", label: t("Nav.categories") },
+    { href: "/become-mentor", label: t("Nav.becomeMentor") },
   ]
 
   const adminNav: NavLink[] = [
@@ -112,10 +123,10 @@ export default function Header() {
     <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
         {/* Logo */}
-        <Link href={homeHref} className="flex items-center gap-2">
+        <SmartLink href={homeHref} className="flex items-center gap-2">
           <Logo size={32} className="text-gray-900" />
           <span className="text-xl font-bold text-gray-900">Connectus</span>
-        </Link>
+        </SmartLink>
 
         {/* Nav links */}
         {isAuthed ? (
@@ -123,7 +134,7 @@ export default function Header() {
             {navLinks.map((link) => {
               const active = isActive(link)
               return (
-                <Link
+                <SmartLink
                   key={link.href}
                   href={link.href}
                   className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transform-gpu transition-[background-color,color,box-shadow] duration-200 ease-out [-webkit-tap-highlight-color:transparent] ${
@@ -146,20 +157,20 @@ export default function Header() {
                       {link.badge > 99 ? "99+" : link.badge}
                     </span>
                   )}
-                </Link>
+                </SmartLink>
               )
             })}
           </nav>
         ) : (
           <nav className="hidden md:flex items-center gap-8 text-sm text-gray-600">
             {navLinks.map((link) => (
-              <Link
+              <SmartLink
                 key={link.href}
                 href={link.href}
                 className="hover:text-indigo-600 transition-colors font-medium"
               >
                 {link.label}
-              </Link>
+              </SmartLink>
             ))}
           </nav>
         )}
@@ -175,7 +186,7 @@ export default function Header() {
                   onClick={handleLogout}
                   className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors px-2 py-2"
                 >
-                  {t("header.logout")}
+                  {t("Header.logout")}
                 </button>
               )}
             </>
@@ -190,22 +201,22 @@ export default function Header() {
               onClick={triggerTgAuth}
               className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
             >
-              {t("header.signup")}
+              {t("Header.signup")}
             </button>
           ) : (
             <>
-              <Link
+              <SmartLink
                 href="/auth/login"
                 className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors px-3 py-2"
               >
-                {t("header.login")}
-              </Link>
-              <Link
+                {t("Header.login")}
+              </SmartLink>
+              <SmartLink
                 href="/auth/register"
                 className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium"
               >
-                {t("header.signup")}
-              </Link>
+                {t("Header.signup")}
+              </SmartLink>
             </>
           )}
         </div>
@@ -227,7 +238,7 @@ export default function Header() {
           {navLinks.map((link) => {
             const active = isAuthed && isActive(link)
             return (
-              <Link
+              <SmartLink
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
@@ -244,29 +255,29 @@ export default function Header() {
                     {link.badge > 99 ? "99+" : link.badge}
                   </span>
                 )}
-              </Link>
+              </SmartLink>
             )
           })}
           {role ? (
             !isInTelegram && (
               <button onClick={handleLogout} className="text-sm text-gray-500 text-left py-1">
-                {t("header.logout")}
+                {t("Header.logout")}
               </button>
             )
           ) : isInTelegram ? (
             <div className="flex gap-3 pt-2">
               <button onClick={triggerTgAuth} className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
-                {t("header.signup")}
+                {t("Header.signup")}
               </button>
             </div>
           ) : (
             <div className="flex gap-3 pt-2">
-              <Link href="/auth/login" className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">
-                {t("header.login")}
-              </Link>
-              <Link href="/auth/register" className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
-                {t("header.signup")}
-              </Link>
+              <SmartLink href="/auth/login" className="text-sm text-gray-600 font-medium px-4 py-2 border border-gray-200 rounded-xl">
+                {t("Header.login")}
+              </SmartLink>
+              <SmartLink href="/auth/register" className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl font-medium">
+                {t("Header.signup")}
+              </SmartLink>
             </div>
           )}
           <div className="pt-3">

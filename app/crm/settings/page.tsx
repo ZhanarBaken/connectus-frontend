@@ -145,17 +145,44 @@ export default function CRMSettingsPage() {
 
           {activeSection === "legal" && (
             <Section title="Юридические тексты">
-              <Field label="Пользовательское соглашение (ToS)" hint="Страница /terms и чекбокс при регистрации">
+              <Field label="Пользовательское соглашение (ToS)" hint="Страница /terms и чекбокс при регистрации. Пустой EN/KK = показывается русский текст.">
                 <Textarea rows={10} value={val("terms_text")} onChange={(v) => set("terms_text", v)} />
               </Field>
-              <Field label="Правила платформы" hint="Страница /platform-rules">
+              <Field label="Пользовательское соглашение — EN" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("terms_text_en")} onChange={(v) => set("terms_text_en", v)} />
+              </Field>
+              <Field label="Пользовательское соглашение — KK" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("terms_text_kk")} onChange={(v) => set("terms_text_kk", v)} />
+              </Field>
+
+              <Field label="Правила платформы" hint="Страница /platform-rules. Пустой EN/KK = показывается русский текст.">
                 <Textarea rows={10} value={val("platform_rules_text")} onChange={(v) => set("platform_rules_text", v)} />
               </Field>
-              <Field label="Согласие на обработку данных" hint="Модал при регистрации (требование Закона РК №94-V)">
+              <Field label="Правила платформы — EN" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("platform_rules_text_en")} onChange={(v) => set("platform_rules_text_en", v)} />
+              </Field>
+              <Field label="Правила платформы — KK" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("platform_rules_text_kk")} onChange={(v) => set("platform_rules_text_kk", v)} />
+              </Field>
+
+              <Field label="Согласие на обработку данных" hint="Модал при регистрации (требование Закона РК №94-V). Пустой EN/KK = показывается русский текст.">
                 <Textarea rows={10} value={val("data_consent_text")} onChange={(v) => set("data_consent_text", v)} />
               </Field>
-              <Field label="Политика конфиденциальности" hint="Страница /privacy">
+              <Field label="Согласие на обработку данных — EN" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("data_consent_text_en")} onChange={(v) => set("data_consent_text_en", v)} />
+              </Field>
+              <Field label="Согласие на обработку данных — KK" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("data_consent_text_kk")} onChange={(v) => set("data_consent_text_kk", v)} />
+              </Field>
+
+              <Field label="Политика конфиденциальности" hint="Страница /privacy. Пустой EN/KK = показывается русский текст.">
                 <Textarea rows={10} value={val("privacy_policy_text")} onChange={(v) => set("privacy_policy_text", v)} />
+              </Field>
+              <Field label="Политика конфиденциальности — EN" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("privacy_policy_text_en")} onChange={(v) => set("privacy_policy_text_en", v)} />
+              </Field>
+              <Field label="Политика конфиденциальности — KK" hint="Пусто = fallback на русский текст выше">
+                <Textarea rows={10} value={val("privacy_policy_text_kk")} onChange={(v) => set("privacy_policy_text_kk", v)} />
               </Field>
             </Section>
           )}
