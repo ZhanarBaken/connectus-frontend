@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { useSearchParams } from "next/navigation"
 import { useRouter } from "@/i18n/navigation"
@@ -12,7 +11,6 @@ vi.mock("@/lib/api", async (importOriginal) => {
     ...actual,
     telegramFinalize: vi.fn(),
     fetchMe: vi.fn(),
-    setUserRole: vi.fn(),
   }
 })
 
@@ -24,7 +22,6 @@ describe("TgCallbackPage", () => {
     push.mockClear()
     vi.mocked(api.telegramFinalize).mockReset()
     vi.mocked(api.fetchMe).mockReset()
-    vi.mocked(api.setUserRole).mockReset()
     vi.mocked(useRouter).mockReturnValue({
       push,
       replace: vi.fn(),
@@ -49,18 +46,44 @@ describe("TgCallbackPage", () => {
     expect(api.telegramFinalize).toHaveBeenCalledWith("stashed")
   })
 
-  it("shows the role picker for a brand-new account", async () => {
+  it("routes a brand-new student straight to onboarding without asking again", async () => {
     vi.mocked(useSearchParams).mockReturnValue(
       new URLSearchParams("token=abc") as ReturnType<typeof useSearchParams>,
     )
     vi.mocked(api.telegramFinalize).mockResolvedValue({
       user_id: 1, created: true, access: "acc", refresh: "ref",
     })
+    vi.mocked(api.fetchMe).mockResolvedValue({ role: "student" } as never)
 
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     render(<TgCallbackPage />)
 
-    expect(await screen.findByText("Кто вы?")).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByText("Вход выполнен!")).toBeInTheDocument())
     expect(localStorage.getItem("role")).toBe("student")
+
+    vi.advanceTimersByTime(1500)
+    expect(push).toHaveBeenCalledWith("/onboarding/student")
+    vi.useRealTimers()
+  })
+
+  it("routes a brand-new mentor straight to identity onboarding", async () => {
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams("token=abc") as ReturnType<typeof useSearchParams>,
+    )
+    vi.mocked(api.telegramFinalize).mockResolvedValue({
+      user_id: 1, created: true, access: "acc", refresh: "ref",
+    })
+    vi.mocked(api.fetchMe).mockResolvedValue({ role: "mentor" } as never)
+
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    render(<TgCallbackPage />)
+
+    await vi.waitFor(() => expect(screen.getByText("Вход выполнен!")).toBeInTheDocument())
+    expect(localStorage.getItem("role")).toBe("mentor")
+
+    vi.advanceTimersByTime(1500)
+    expect(push).toHaveBeenCalledWith("/onboarding/mentor/identity")
+    vi.useRealTimers()
   })
 
   it("logs an existing account straight in and redirects by role", async () => {
@@ -72,31 +95,15 @@ describe("TgCallbackPage", () => {
     })
     vi.mocked(api.fetchMe).mockResolvedValue({ role: "mentor" } as never)
 
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     render(<TgCallbackPage />)
 
-    expect(await screen.findByText("Вход выполнен!")).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByText("Вход выполнен!")).toBeInTheDocument())
     expect(localStorage.getItem("role")).toBe("mentor")
-  })
 
-  it("confirms the picked role against the backend before routing to onboarding", async () => {
-    vi.mocked(useSearchParams).mockReturnValue(
-      new URLSearchParams("token=abc") as ReturnType<typeof useSearchParams>,
-    )
-    vi.mocked(api.telegramFinalize).mockResolvedValue({
-      user_id: 1, created: true, access: "acc", refresh: "ref",
-    })
-    vi.mocked(api.setUserRole).mockResolvedValue(undefined)
-    vi.mocked(api.fetchMe).mockResolvedValue({ role: "mentor" } as never)
-
-    const user = userEvent.setup()
-    render(<TgCallbackPage />)
-
-    await screen.findByText("Кто вы?")
-    await user.click(screen.getByRole("button", { name: "Я ментор" }))
-
-    expect(api.setUserRole).toHaveBeenCalledWith("mentor")
-    expect(await screen.findByText("Вход выполнен!")).toBeInTheDocument()
-    expect(localStorage.getItem("role")).toBe("mentor")
+    vi.advanceTimersByTime(1500)
+    expect(push).toHaveBeenCalledWith("/mentor/dashboard")
+    vi.useRealTimers()
   })
 
   it("shows an error when the finalize call fails", async () => {
