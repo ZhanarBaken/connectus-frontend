@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useTranslations } from "next-intl"
 import { fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/api"
 import {
-  DAY_LABELS,
   formatDateISO,
   getMonthGrid,
 } from "@/lib/schedule"
@@ -21,6 +21,11 @@ interface Props {
 const MAX_MONTH_OFFSET = 2
 
 export default function BookingCalendar({ mentorId, durationMinutes, onSelect, onCancel }: Props) {
+  const t = useTranslations("BookingCalendar")
+  const DAY_LABELS = [
+    t("monShort"), t("tueShort"), t("wedShort"), t("thuShort"),
+    t("friShort"), t("satShort"), t("sunShort"),
+  ]
   const [monthOffset, setMonthOffset] = useState(0)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -88,7 +93,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
       .catch((err) => {
         if (cancelled) return
         setSlots([])
-        setSlotsError(err instanceof Error ? err.message : "Не удалось загрузить слоты")
+        setSlotsError(err instanceof Error ? err.message : t("loadSlotsError"))
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false)
@@ -96,6 +101,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mentorId, selectedDate, durationMinutes])
 
   const handleConfirm = () => {
@@ -116,13 +122,13 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-semibold text-gray-900 text-sm">Выберите дату и время</h3>
+          <h3 className="font-semibold text-gray-900 text-sm">{t("selectDateTime")}</h3>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors">
             <Icon name="close" size={20} />
           </button>
         </div>
         <p className="text-xs text-gray-400">
-          {durationMinutes} мин{timezone ? ` · ${timezone}` : ""}
+          {t("durationLabel", { minutes: durationMinutes })}{timezone ? ` · ${timezone}` : ""}
         </p>
       </div>
 
@@ -132,7 +138,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
           onClick={() => setMonthOffset(Math.max(0, monthOffset - 1))}
           disabled={monthOffset === 0}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30"
-          aria-label="Предыдущий месяц"
+          aria-label={t("prevMonth")}
         >
           <Icon name="chevron_left" size={20} className="text-gray-600" />
         </button>
@@ -141,7 +147,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
           onClick={() => setMonthOffset(Math.min(MAX_MONTH_OFFSET, monthOffset + 1))}
           disabled={monthOffset >= MAX_MONTH_OFFSET}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30"
-          aria-label="Следующий месяц"
+          aria-label={t("nextMonth")}
         >
           <Icon name="chevron_right" size={20} className="text-gray-600" />
         </button>
@@ -204,7 +210,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
                     className={`block w-1.5 h-1.5 rounded-full ${
                       isSelected ? "bg-white/80" : "bg-emerald-500"
                     }`}
-                    aria-label="Есть свободные слоты"
+                    aria-label={t("hasFreeSlotsAriaLabel")}
                   />
                 )}
               </span>
@@ -232,7 +238,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
             <p className="text-sm text-red-500 text-center py-6">{slotsError}</p>
           ) : slots.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">
-              Нет доступных слотов на эту дату
+              {t("noSlotsForDate")}
             </p>
           ) : (
             <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
@@ -261,7 +267,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
             onClick={handleConfirm}
             className="flex-1 bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
           >
-            Записаться на {selectedTime}
+            {t("bookAt", { time: selectedTime })}
           </button>
         </div>
       )}

@@ -849,6 +849,8 @@
       "noDocumentsTitle": "No documents yet",
       "noDocumentsBody": "Upload documents to complete verification",
       "rejectionReason": "Rejection reason:",
+      "downloadAriaLabel": "Download",
+      "deleteAriaLabel": "Delete",
       "statusPending": "Under review",
       "statusApproved": "Approved",
       "statusRejected": "Rejected",
@@ -999,6 +1001,23 @@
       "deleteAria": "Delete",
       "negotiablePrice": "Negotiable"
     }
+  },
+  "BookingCalendar": {
+    "selectDateTime": "Select a date and time",
+    "durationLabel": "{minutes} min",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "hasFreeSlotsAriaLabel": "Has free slots",
+    "noSlotsForDate": "No available slots for this date",
+    "bookAt": "Book at {time}",
+    "loadSlotsError": "Failed to load slots",
+    "monShort": "Mo",
+    "tueShort": "Tu",
+    "wedShort": "We",
+    "thuShort": "Th",
+    "friShort": "Fr",
+    "satShort": "Sa",
+    "sunShort": "Su"
   },
   "Onboarding": {
     "Mentor": {

@@ -849,6 +849,8 @@
       "noDocumentsTitle": "Документов пока нет",
       "noDocumentsBody": "Загрузите документы для прохождения верификации",
       "rejectionReason": "Причина отклонения:",
+      "downloadAriaLabel": "Скачать",
+      "deleteAriaLabel": "Удалить",
       "statusPending": "На проверке",
       "statusApproved": "Одобрен",
       "statusRejected": "Отклонён",
@@ -999,6 +1001,23 @@
       "deleteAria": "Удалить",
       "negotiablePrice": "Договорная"
     }
+  },
+  "BookingCalendar": {
+    "selectDateTime": "Выберите дату и время",
+    "durationLabel": "{minutes} мин",
+    "prevMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц",
+    "hasFreeSlotsAriaLabel": "Есть свободные слоты",
+    "noSlotsForDate": "Нет доступных слотов на эту дату",
+    "bookAt": "Записаться на {time}",
+    "loadSlotsError": "Не удалось загрузить слоты",
+    "monShort": "Пн",
+    "tueShort": "Вт",
+    "wedShort": "Ср",
+    "thuShort": "Чт",
+    "friShort": "Пт",
+    "satShort": "Сб",
+    "sunShort": "Вс"
   },
   "Onboarding": {
     "Mentor": {

@@ -849,6 +849,8 @@
       "noDocumentsTitle": "Әзірге құжаттар жоқ",
       "noDocumentsBody": "Растаудан өту үшін құжаттарды жүкте",
       "rejectionReason": "Қабылданбау себебі:",
+      "downloadAriaLabel": "Жүктеп алу",
+      "deleteAriaLabel": "Жою",
       "statusPending": "Тексерілуде",
       "statusApproved": "Мақұлданды",
       "statusRejected": "Қабылданбады",
@@ -999,6 +1001,23 @@
       "deleteAria": "Жою",
       "negotiablePrice": "Келісім бойынша"
     }
+  },
+  "BookingCalendar": {
+    "selectDateTime": "Күн мен уақытты таңда",
+    "durationLabel": "{minutes} мин",
+    "prevMonth": "Алдыңғы ай",
+    "nextMonth": "Келесі ай",
+    "hasFreeSlotsAriaLabel": "Бос уақыттар бар",
+    "noSlotsForDate": "Бұл күнге бос уақыт жоқ",
+    "bookAt": "{time} уақытына жазылу",
+    "loadSlotsError": "Уақыттарды жүктеу мүмкін болмады",
+    "monShort": "Дс",
+    "tueShort": "Сс",
+    "wedShort": "Ср",
+    "thuShort": "Бс",
+    "friShort": "Жм",
+    "satShort": "Сб",
+    "sunShort": "Жс"
   },
   "Onboarding": {
     "Mentor": {
