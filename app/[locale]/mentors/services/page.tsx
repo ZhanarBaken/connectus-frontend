@@ -19,7 +19,7 @@ const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm f
 
 // "consultation" (the retired free-intro category) never appears here —
 // the backend blocks creating/editing into it and no longer surfaces it.
-type FormCategory = "primary_consultation" | "support" | "other"
+type FormCategory = "paid_consultation" | "support" | "other"
 
 interface FormState {
   title: string
@@ -52,7 +52,7 @@ const EMPTY_FORM: FormState = {
 }
 
 function formCategoryOf(service: MentorService): FormCategory {
-  if (service.payout_category === "primary_consultation") return "primary_consultation"
+  if (service.payout_category === "paid_consultation") return "paid_consultation"
   if (service.payout_category === "support") return "support"
   return "other"
 }
@@ -68,8 +68,11 @@ export default function MentorServicesPage() {
   }
 
   const CATEGORY_LABELS: Record<string, string> = {
-    primary_consultation: t("categoryConsultation"),
+    paid_consultation: t("categoryConsultation"),
     support: t("categorySupport"),
+    // Retired categories — a mentor may still have old rows in these while
+    // they're being migrated/reviewed; shown under the generic "legacy" label.
+    primary_consultation: t("categoryService"),
     delivery: t("categoryService"),
     milestone: t("categoryService"),
   }
@@ -147,7 +150,7 @@ export default function MentorServicesPage() {
     setSubmitting(true)
     setFormError("")
     try {
-      const isConsultation = activeCategory === "primary_consultation"
+      const isConsultation = activeCategory === "paid_consultation"
       const isSupport = activeCategory === "support"
 
       const payload: Record<string, unknown> = {
@@ -159,7 +162,7 @@ export default function MentorServicesPage() {
       }
 
       if (isConsultation) {
-        payload.payout_category = "primary_consultation"
+        payload.payout_category = "paid_consultation"
         payload.price = form.price
         payload.duration_minutes = Number(form.duration)
       } else if (isSupport) {
@@ -213,10 +216,10 @@ export default function MentorServicesPage() {
   const isFormOpen = editingId !== null
   const isPickingCategory = editingId === "new" && newCategory === null
 
-  const consultations = services.filter((s) => s.payout_category === "primary_consultation")
+  const consultations = services.filter((s) => s.payout_category === "paid_consultation")
   const supports = services.filter((s) => s.payout_category === "support")
   const other = services.filter(
-    (s) => s.payout_category !== "primary_consultation" && s.payout_category !== "support" && s.payout_category !== "consultation"
+    (s) => s.payout_category !== "paid_consultation" && s.payout_category !== "support" && s.payout_category !== "consultation"
   )
 
   return (
@@ -265,7 +268,7 @@ export default function MentorServicesPage() {
             <h2 className="text-base font-semibold text-gray-900 mb-4">{t("pickTypeTitle")}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
-                onClick={() => startCreate("primary_consultation")}
+                onClick={() => startCreate("paid_consultation")}
                 className="text-left border border-gray-200 rounded-xl p-4 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -316,7 +319,7 @@ export default function MentorServicesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  {t("descriptionLabel")} {activeCategory === "primary_consultation" && (
+                  {t("descriptionLabel")} {activeCategory === "paid_consultation" && (
                     <span className="text-gray-400 font-normal">{t("descriptionMinChars")}</span>
                   )}
                 </label>
@@ -333,7 +336,7 @@ export default function MentorServicesPage() {
                 />
               </div>
 
-              {activeCategory === "primary_consultation" && (
+              {activeCategory === "paid_consultation" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("priceLabel")}</label>
@@ -503,7 +506,7 @@ export default function MentorServicesPage() {
                 </>
               )}
 
-              {(activeCategory === "primary_consultation" || activeCategory === "support") && (
+              {(activeCategory === "paid_consultation" || activeCategory === "support") && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("gradeMinLabel")}</label>
@@ -570,7 +573,7 @@ export default function MentorServicesPage() {
                 hint={t("noConsultationsHint")}
                 addLabel={t("addButton")}
                 isBanned={isBanned}
-                onAdd={() => startCreate("primary_consultation")}
+                onAdd={() => startCreate("paid_consultation")}
               />
             ) : (
               <div className="space-y-3">

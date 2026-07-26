@@ -2,7 +2,7 @@ export type Role = "mentor" | "student"
 
 export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 
-export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone" | "support"
+export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone" | "support" | "paid_consultation"
 
 export type OrderStatus =
   | "draft"

@@ -490,7 +490,8 @@ export default function OrderPage({ params }: Props) {
   const isFreeIntro = order.payout_category === "consultation"
   const isAnyConsultation =
     order.payout_category === "consultation" ||
-    order.payout_category === "primary_consultation"
+    order.payout_category === "primary_consultation" ||
+    order.payout_category === "paid_consultation"
 
   // Student can open a dispute only during the window after completion.
   // disputeWindowMs is loaded from /api/v1/settings/public/ — null means still loading.

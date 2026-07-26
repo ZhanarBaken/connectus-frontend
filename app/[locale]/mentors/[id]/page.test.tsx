@@ -319,7 +319,7 @@ describe("MentorPage — consultation ordering", () => {
     const consultation = makeService({
       id: 30,
       title: "Первичная консультация",
-      payout_category: "primary_consultation",
+      payout_category: "paid_consultation",
       price: "5000",
     })
     vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [consultation] }))

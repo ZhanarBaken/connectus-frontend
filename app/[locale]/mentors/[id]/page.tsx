@@ -100,13 +100,17 @@ export default function MentorPage({ params }: Props) {
   // (no more singleton) — the legacy free intro is kept on backend as an
   // inactive artifact and is not in the public services list. "support"
   // (long-running mentorship) is sold through chat, not this one-click flow.
+  // primary_consultation/delivery/milestone are retired (replaced by
+  // paid_consultation) — excluded defensively in case an unmigrated row
+  // is ever still active and visible here.
   const consultationServices = mentor.services.filter(
-    (s) => s.payout_category === "primary_consultation"
+    (s) => s.payout_category === "paid_consultation"
   )
   const paidServices = mentor.services.filter(
     (s) =>
       s.payout_category !== "consultation" &&
       s.payout_category !== "primary_consultation" &&
+      s.payout_category !== "paid_consultation" &&
       s.payout_category !== "support"
   )
   const supportServices = mentor.services.filter((s) => s.payout_category === "support")
