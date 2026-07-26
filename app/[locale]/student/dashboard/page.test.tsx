@@ -57,6 +57,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     order_status: "paid",
     payment_instructions: null,
     conversation_id: null,
+    support_engagement: null,
     installment_number: null,
     engagement_duration_months: null,
     engagement_status: null,

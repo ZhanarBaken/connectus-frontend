@@ -59,6 +59,7 @@ function makeDispute(overrides: Partial<AdminDispute> = {}): AdminDispute {
     resolved_by_email: null,
     resolved_at: null,
     refund_amount: null,
+    support_engagement: null,
     ...overrides,
   }
 }

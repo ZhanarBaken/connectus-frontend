@@ -198,6 +198,9 @@ export interface Order {
   order_status: OrderStatus
   payment_instructions: PaymentInstructions | null
   conversation_id: number | null
+  // The parent SupportEngagement's id — null unless this order belongs to
+  // one. Needed to call the end/pause/resume engagement actions.
+  support_engagement: number | null
   // Set only for a support-engagement monthly installment — null for a
   // free intro-call, a free session booked under an active engagement,
   // and every non-support order.
@@ -264,6 +267,22 @@ export interface AdminMentorProfile extends MentorProfile {
   telegram_id: string
 }
 
+export interface SupportEngagement {
+  id: number
+  mentor: number
+  mentor_name: string
+  student: number
+  student_name: string
+  mentor_service: number
+  service_title: string
+  total_price: string
+  duration_months: number
+  status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled"
+  next_installment_due_at: string | null
+  paused_at: string | null
+  created_at: string
+}
+
 export interface AdminDispute {
   id: number
   order: number
@@ -276,6 +295,8 @@ export interface AdminDispute {
   resolved_by_email: string | null
   resolved_at: string | null
   refund_amount: string | null
+  // Only set when the disputed order is a support-engagement installment.
+  support_engagement: SupportEngagement | null
 }
 
 export interface AdminConversation {

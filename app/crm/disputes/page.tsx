@@ -1,8 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { fetchAdminDisputes, resolveDispute } from "@/lib/api"
-import { AdminDispute } from "@/types"
+import {
+  fetchAdminDisputes,
+  resolveDispute,
+  adminCancelSupportEngagement,
+  adminPauseSupportEngagement,
+  adminResumeSupportEngagement,
+} from "@/lib/api"
+import { AdminDispute, SupportEngagement } from "@/types"
 
 export default function CRMDisputesPage() {
   const [disputes, setDisputes] = useState<AdminDispute[]>([])
@@ -23,6 +29,49 @@ export default function CRMDisputesPage() {
     try {
       const updated = await resolveDispute(id, resolution)
       setDisputes((prev) => prev.map((d) => (d.id === id ? updated : d)))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const updateEngagement = (disputeId: number, engagement: SupportEngagement) => {
+    setDisputes((prev) => prev.map((d) => (d.id === disputeId ? { ...d, support_engagement: engagement } : d)))
+  }
+
+  const handleEngagementCancel = async (disputeId: number, engagementId: number, reason: string) => {
+    setActionLoading(disputeId)
+    setError("")
+    try {
+      const updated = await adminCancelSupportEngagement(engagementId, reason)
+      updateEngagement(disputeId, updated)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleEngagementPause = async (disputeId: number, engagementId: number, reason: string) => {
+    setActionLoading(disputeId)
+    setError("")
+    try {
+      const updated = await adminPauseSupportEngagement(engagementId, reason)
+      updateEngagement(disputeId, updated)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleEngagementResume = async (disputeId: number, engagementId: number) => {
+    setActionLoading(disputeId)
+    setError("")
+    try {
+      const updated = await adminResumeSupportEngagement(engagementId)
+      updateEngagement(disputeId, updated)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка")
     } finally {
@@ -65,6 +114,9 @@ export default function CRMDisputesPage() {
                   dispute={d}
                   loading={actionLoading === d.id}
                   onResolve={handleResolve}
+                  onEngagementCancel={handleEngagementCancel}
+                  onEngagementPause={handleEngagementPause}
+                  onEngagementResume={handleEngagementResume}
                 />
               ))}
             </div>
@@ -74,7 +126,15 @@ export default function CRMDisputesPage() {
             <div className="space-y-3">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Разрешённые</h2>
               {resolved.map((d) => (
-                <DisputeCard key={d.id} dispute={d} loading={false} onResolve={() => {}} />
+                <DisputeCard
+                  key={d.id}
+                  dispute={d}
+                  loading={actionLoading === d.id}
+                  onResolve={() => {}}
+                  onEngagementCancel={handleEngagementCancel}
+                  onEngagementPause={handleEngagementPause}
+                  onEngagementResume={handleEngagementResume}
+                />
               ))}
             </div>
           )}
@@ -91,16 +151,31 @@ export default function CRMDisputesPage() {
   )
 }
 
+const ENGAGEMENT_STATUS_LABEL: Record<string, string> = {
+  awaiting_payment: "ожидает оплаты",
+  active: "активно",
+  paused: "на паузе",
+  completed: "завершено",
+  cancelled: "отменено",
+}
+
 function DisputeCard({
   dispute,
   loading,
   onResolve,
+  onEngagementCancel,
+  onEngagementPause,
+  onEngagementResume,
 }: {
   dispute: AdminDispute
   loading: boolean
   onResolve: (id: number, resolution: "full_refund" | "payout_mentor") => void
+  onEngagementCancel: (disputeId: number, engagementId: number, reason: string) => void
+  onEngagementPause: (disputeId: number, engagementId: number, reason: string) => void
+  onEngagementResume: (disputeId: number, engagementId: number) => void
 }) {
   const resolved = !!dispute.resolution
+  const engagement = dispute.support_engagement
 
   return (
     <div className={`bg-white border rounded-2xl p-5 ${resolved ? "border-gray-100" : "border-gray-200"}`}>
@@ -146,6 +221,111 @@ function DisputeCard({
           </div>
         )}
       </div>
+
+      {engagement && (
+        <EngagementPanel
+          disputeId={dispute.id}
+          engagement={engagement}
+          loading={loading}
+          onCancel={onEngagementCancel}
+          onPause={onEngagementPause}
+          onResume={onEngagementResume}
+        />
+      )}
+    </div>
+  )
+}
+
+function EngagementPanel({
+  disputeId,
+  engagement,
+  loading,
+  onCancel,
+  onPause,
+  onResume,
+}: {
+  disputeId: number
+  engagement: SupportEngagement
+  loading: boolean
+  onCancel: (disputeId: number, engagementId: number, reason: string) => void
+  onPause: (disputeId: number, engagementId: number, reason: string) => void
+  onResume: (disputeId: number, engagementId: number) => void
+}) {
+  const [pendingAction, setPendingAction] = useState<"cancel" | "pause" | null>(null)
+  const [reason, setReason] = useState("")
+
+  const submit = () => {
+    const trimmed = reason.trim()
+    if (!trimmed) return
+    if (pendingAction === "cancel") onCancel(disputeId, engagement.id, trimmed)
+    else if (pendingAction === "pause") onPause(disputeId, engagement.id, trimmed)
+    setPendingAction(null)
+    setReason("")
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-gray-500">
+          Сопровождение «{engagement.service_title}»: {engagement.mentor_name} → {engagement.student_name} ·{" "}
+          <span className="font-medium text-gray-700">
+            {ENGAGEMENT_STATUS_LABEL[engagement.status] ?? engagement.status}
+          </span>
+        </p>
+        {(engagement.status === "active" || engagement.status === "paused") && !pendingAction && (
+          <div className="flex gap-2 shrink-0">
+            {engagement.status === "active" && (
+              <button
+                onClick={() => setPendingAction("pause")}
+                disabled={loading}
+                className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg text-xs font-medium hover:bg-amber-100 disabled:opacity-50 transition-colors"
+              >
+                Приостановить
+              </button>
+            )}
+            {engagement.status === "paused" && (
+              <button
+                onClick={() => onResume(disputeId, engagement.id)}
+                disabled={loading}
+                className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg text-xs font-medium hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+              >
+                Возобновить
+              </button>
+            )}
+            <button
+              onClick={() => setPendingAction("cancel")}
+              disabled={loading}
+              className="px-3 py-1 bg-red-50 text-red-700 border border-red-100 rounded-lg text-xs font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+            >
+              Прекратить
+            </button>
+          </div>
+        )}
+      </div>
+
+      {pendingAction && (
+        <div className="mt-2 flex gap-2">
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Причина — студент её увидит"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-200"
+          />
+          <button
+            onClick={submit}
+            disabled={loading || !reason.trim()}
+            className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            Подтвердить
+          </button>
+          <button
+            onClick={() => { setPendingAction(null); setReason("") }}
+            className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-xs font-medium hover:border-gray-300 transition-colors"
+          >
+            Отмена
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
   fetchOrderDocuments,
   fetchMentorServices,
   createSupportInvoice,
+  endSupportEngagement,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation } from "@/lib/chat"
@@ -47,6 +48,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     order_status: "pending_payment",
     payment_instructions: null,
     conversation_id: null,
+    support_engagement: null,
     installment_number: null,
     engagement_duration_months: null,
     engagement_status: null,
@@ -336,6 +338,7 @@ describe("OrderPage — invoice draft survives a forced session-expiry redirect"
     const order = makeOrder({
       order_status: "in_progress",
       conversation_id: 55,
+      support_engagement: null,
       payout_category: "delivery",
     })
     vi.mocked(fetchOrder).mockResolvedValue(order)
@@ -526,5 +529,81 @@ describe("OrderPage — mentor: close chat", () => {
     await waitFor(() => expect(closeConversation).toHaveBeenCalledWith(88))
     expect((await screen.findAllByText("Чат закрыт")).length).toBeGreaterThan(0)
     confirmSpy.mockRestore()
+  })
+})
+
+describe("OrderPage — mentor: end a support engagement", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  it("shows the end-engagement button for an active engagement order", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({
+        order_status: "in_progress", payout_category: "support",
+        support_engagement: 5, engagement_status: "active",
+      }),
+    )
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByRole("button", { name: "Завершить сопровождение" })).toBeInTheDocument()
+  })
+
+  it("does not show the button when there's no engagement", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ order_status: "in_progress", payout_category: "delivery" }),
+    )
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Завершить сопровождение" })).not.toBeInTheDocument()
+  })
+
+  it("requires a reason before submitting", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({
+        order_status: "in_progress", payout_category: "support",
+        support_engagement: 5, engagement_status: "active",
+      }),
+    )
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByRole("button", { name: "Завершить сопровождение" }))
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }))
+
+    expect(await screen.findByText("Укажи причину — она будет отправлена студенту.")).toBeInTheDocument()
+    expect(endSupportEngagement).not.toHaveBeenCalled()
+  })
+
+  it("calls endSupportEngagement with the engagement id and reason, then refetches the order", async () => {
+    const order = makeOrder({
+      order_status: "in_progress", payout_category: "support",
+      support_engagement: 5, engagement_status: "active",
+    })
+    vi.mocked(fetchOrder)
+      .mockResolvedValueOnce(order)
+      .mockResolvedValueOnce({ ...order, engagement_status: "cancelled" })
+    vi.mocked(endSupportEngagement).mockResolvedValue({
+      id: 5, mentor: 3, mentor_name: "Данияр Сериков", student: 7, student_name: "Аружан Есенова",
+      mentor_service: 10, service_title: "Сопровождение", total_price: "500000.00", duration_months: 6,
+      status: "cancelled", next_installment_due_at: null, paused_at: null, created_at: "2026-07-01T10:00:00Z",
+    })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByRole("button", { name: "Завершить сопровождение" }))
+    fireEvent.change(screen.getByPlaceholderText("Причина — студент её увидит"), {
+      target: { value: "Закончили раньше срока." },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }))
+
+    await waitFor(() => expect(endSupportEngagement).toHaveBeenCalledWith(5, "Закончили раньше срока."))
+    await waitFor(() => expect(fetchOrder).toHaveBeenCalledTimes(2))
   })
 })

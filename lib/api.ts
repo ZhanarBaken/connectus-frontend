@@ -338,6 +338,25 @@ export async function createSupportInvoice(
   return res.json()
 }
 
+// Mentor ends their OWN engagement with one specific student — every
+// other student's engagement under the same service is untouched
+// (unlike deactivating the whole service).
+export async function endSupportEngagement(
+  engagementId: number,
+  reason: string,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/end/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.reason || err.detail || "Не удалось завершить сопровождение")
+  }
+  return res.json()
+}
+
 export async function fetchOrder(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch order")
@@ -1208,6 +1227,54 @@ export async function resolveDispute(id: number, resolution: "full_refund" | "pa
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || "Не удалось разрешить спор")
+  }
+  return res.json()
+}
+
+// Admin-only support-engagement controls — e.g. while resolving a
+// dispute on a support installment. `reason` is required for cancel/
+// pause (shown to the student); resume needs none.
+export async function adminCancelSupportEngagement(
+  engagementId: number,
+  reason: string,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/admin-cancel/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.reason || err.detail || "Не удалось прекратить сопровождение")
+  }
+  return res.json()
+}
+
+export async function adminPauseSupportEngagement(
+  engagementId: number,
+  reason: string,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/admin-pause/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.reason || err.detail || "Не удалось приостановить сопровождение")
+  }
+  return res.json()
+}
+
+export async function adminResumeSupportEngagement(
+  engagementId: number,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/admin-resume/`, {
+    method: "POST",
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось возобновить сопровождение")
   }
   return res.json()
 }

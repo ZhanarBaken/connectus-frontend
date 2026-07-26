@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, fetchMentorServices, createSupportInvoice, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, fetchMentorServices, createSupportInvoice, endSupportEngagement, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage, OrderDocument, MentorService } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -84,6 +84,10 @@ export default function OrderPage({ params }: Props) {
   const [completeError, setCompleteError] = useState("")
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState("")
+  const [endEngagementFormOpen, setEndEngagementFormOpen] = useState(false)
+  const [endEngagementReason, setEndEngagementReason] = useState("")
+  const [endingEngagement, setEndingEngagement] = useState(false)
+  const [endEngagementError, setEndEngagementError] = useState("")
   const [disputeFormOpen, setDisputeFormOpen] = useState(false)
   const [disputeReason, setDisputeReason] = useState("")
   const [disputing, setDisputing] = useState(false)
@@ -355,6 +359,29 @@ export default function OrderPage({ params }: Props) {
       setCancelError(e instanceof Error ? e.message : t("errorCancel"))
     } finally {
       setCancelling(false)
+    }
+  }
+
+  const handleEndEngagement = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!order?.support_engagement) return
+    const reason = endEngagementReason.trim()
+    if (!reason) {
+      setEndEngagementError(t("errorEndEngagementReasonRequired"))
+      return
+    }
+    setEndingEngagement(true)
+    setEndEngagementError("")
+    try {
+      await endSupportEngagement(order.support_engagement, reason)
+      const refreshed = await fetchOrder(order.id)
+      setOrder(refreshed)
+      setEndEngagementFormOpen(false)
+      setEndEngagementReason("")
+    } catch (err: unknown) {
+      setEndEngagementError(err instanceof Error ? err.message : t("errorEndEngagement"))
+    } finally {
+      setEndingEngagement(false)
     }
   }
 
@@ -681,6 +708,55 @@ export default function OrderPage({ params }: Props) {
                       ? t("completeConsultationCta")
                       : t("completeServiceCta")}
                 </button>
+              </div>
+            )}
+
+            {/* Mentor: end this one engagement with this one student — the
+                service itself, and every other student's engagement under
+                it, stays untouched. Only offered while there's actually
+                something to end. */}
+            {role === "mentor" && order.support_engagement !== null
+              && (order.engagement_status === "active" || order.engagement_status === "paused") && (
+              <div className="bg-white border border-red-100 rounded-2xl p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">{t("endEngagementTitle")}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">{t("endEngagementBody")}</p>
+                {!endEngagementFormOpen ? (
+                  <button
+                    onClick={() => setEndEngagementFormOpen(true)}
+                    className="w-full border border-red-200 text-red-700 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+                  >
+                    {t("endEngagementCta")}
+                  </button>
+                ) : (
+                  <form onSubmit={handleEndEngagement} className="space-y-3">
+                    <textarea
+                      value={endEngagementReason}
+                      onChange={(e) => setEndEngagementReason(e.target.value)}
+                      placeholder={t("endEngagementReasonPlaceholder")}
+                      rows={3}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 transition-all resize-none"
+                    />
+                    {endEngagementError && (
+                      <p className="text-xs text-red-600">{endEngagementError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={endingEngagement}
+                        className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {endingEngagement ? t("endingEngagement") : t("endEngagementConfirm")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEndEngagementFormOpen(false); setEndEngagementError(""); setEndEngagementReason("") }}
+                        className="border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                      >
+                        {t("cancel")}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             )}
 
