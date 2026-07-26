@@ -6,13 +6,12 @@ import {
   fetchMentor,
   createOrder,
   fetchOrders,
-  fetchStudentProfile,
   fetchPublicSettings,
   fetchMentorAvailability,
   fetchMentorAvailabilityOverview,
 } from "@/lib/api"
 import { fetchMentorReviews } from "@/lib/reviews"
-import type { Mentor, MentorService, Order, StudentProfile } from "@/types"
+import type { Mentor, MentorService, Order } from "@/types"
 import type { PublicSettings } from "@/lib/api"
 
 vi.mock("@/lib/api")
@@ -75,7 +74,6 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     service_title: "Сопровождение",
     payout_category: "support",
     subtotal: "0.00",
-    bonus_applied: "0.00",
     total_price: "0.00",
     platform_fee: "0.00",
     mentor_payout_amount: "0.00",
@@ -128,7 +126,6 @@ beforeEach(() => {
   localStorage.clear()
   localStorage.setItem("access_token", "fake-token")
   vi.mocked(fetchMentorReviews).mockResolvedValue([])
-  vi.mocked(fetchStudentProfile).mockRejectedValue(new Error("403"))
   vi.mocked(fetchPublicSettings).mockResolvedValue(makePublicSettings())
   vi.mocked(fetchMentorAvailabilityOverview).mockResolvedValue({
     timezone: "Asia/Almaty", duration_minutes: 60, dates: {},
@@ -357,67 +354,6 @@ describe("MentorPage — consultation ordering", () => {
 
     await waitFor(() => expect(createOrder).toHaveBeenCalledWith(30, expect.stringContaining("T11:00:00+05:00")))
     await waitFor(() => expect(push).toHaveBeenCalledWith("/orders/99"))
-  })
-})
-
-describe("MentorPage — welcome bonus discount", () => {
-  function makeStudentProfile(overrides: Partial<StudentProfile> = {}): StudentProfile {
-    return {
-      id: 7,
-      full_name: "Аружан",
-      date_of_birth: null,
-      age: null,
-      current_school_or_university: "",
-      contacts: "",
-      school_grade: "",
-      city: "",
-      school_graduation_year: null,
-      desired_major: "",
-      desired_countries: "",
-      exam_results: "",
-      gpa: "",
-      profile_photo: null,
-      is_public: true,
-      welcome_bonus_available: true,
-      welcome_bonus_expires_at: "2026-08-15T00:00:00Z",
-      created_at: "2026-07-01T00:00:00Z",
-      updated_at: "2026-07-01T00:00:00Z",
-      ...overrides,
-    }
-  }
-
-  it("shows the halved price when the student has an active welcome bonus", async () => {
-    const consultation = makeService({
-      id: 30,
-      title: "Первичная консультация",
-      payout_category: "primary_consultation",
-      price: "5000",
-    })
-    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [consultation] }))
-    vi.mocked(fetchOrders).mockResolvedValue([])
-    vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
-
-    await renderMentorPage("3")
-
-    // toLocaleString("ru-RU") separates thousands with a non-breaking
-    // space (U+00A0) — match it with \s rather than a literal space.
-    expect(await screen.findByRole("button", { name: /Заказать за 2\s500\s₸/ })).toBeInTheDocument()
-  })
-
-  it("shows the full price when there is no welcome bonus (e.g. mentor viewing)", async () => {
-    const consultation = makeService({
-      id: 30,
-      title: "Первичная консультация",
-      payout_category: "primary_consultation",
-      price: "5000",
-    })
-    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [consultation] }))
-    vi.mocked(fetchOrders).mockResolvedValue([])
-    // fetchStudentProfile rejects (403) by default beforeEach setup.
-
-    await renderMentorPage("3")
-
-    expect(await screen.findByRole("button", { name: /Заказать консультацию за 5\s000\s₸/ })).toBeInTheDocument()
   })
 })
 

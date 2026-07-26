@@ -17,7 +17,6 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     service_title: "Проверка эссе",
     payout_category: "primary_consultation",
     subtotal: "15000",
-    bonus_applied: "0",
     total_price: "15000",
     platform_fee: "1500",
     mentor_payout_amount: "13500",

@@ -162,11 +162,6 @@ export interface StudentProfile {
   gpa: string
   profile_photo: string | null
   is_public: boolean
-  // Welcome promo: 50% off every primary_consultation order created in
-  // the first 30 days after signup. Mentor still receives their full
-  // 50% share — platform absorbs the discount from its own commission.
-  welcome_bonus_available: boolean
-  welcome_bonus_expires_at: string | null
   created_at: string
   updated_at: string
 }
@@ -194,10 +189,8 @@ export interface Order {
   mentor_service: number
   service_title: string
   payout_category: PayoutCategory
-  // Full price of the service at order time. Equals total_price when no
-  // bonus was applied; otherwise total_price = subtotal - bonus_applied.
+  // Full price of the service at order time. Always equals total_price.
   subtotal: string
-  bonus_applied: string
   total_price: string
   platform_fee: string
   mentor_payout_amount: string

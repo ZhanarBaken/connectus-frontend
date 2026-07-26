@@ -51,8 +51,6 @@ function makeProfile(overrides: Partial<StudentProfile> = {}): StudentProfile {
     gpa: "",
     profile_photo: null,
     is_public: false,
-    welcome_bonus_available: false,
-    welcome_bonus_expires_at: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,

@@ -3,11 +3,11 @@
 import { useState, useEffect, use } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchMentor, createOrder, fetchOrders, fetchStudentProfile, fetchPublicSettings } from "@/lib/api"
+import { fetchMentor, createOrder, fetchOrders, fetchPublicSettings } from "@/lib/api"
 import { track } from "@/lib/analytics"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
-import { Mentor, MentorService, Order, StudentProfile } from "@/types"
+import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
 import Icon from "@/components/Icon"
@@ -37,7 +37,6 @@ export default function MentorPage({ params }: Props) {
   const router = useRouter()
   const [mentor, setMentor] = useState<Mentor | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
-  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [orderingServiceId, setOrderingServiceId] = useState<number | null>(null)
   const [orderError, setOrderError] = useState("")
@@ -66,9 +65,6 @@ export default function MentorPage({ params }: Props) {
         // semantic. Don't gate this with a useRef.
         track("mentor_profile_viewed", { mentor_profile_id: m.id })
         fetchMentorReviews(m.id).then(setReviews)
-        // Best-effort: only logged-in students will succeed; mentors get
-        // a 403 and the bonus banner just won't render.
-        fetchStudentProfile().then(setStudentProfile).catch(() => {})
       })
       .catch(() => router.replace("/mentors"))
       .finally(() => {
@@ -287,29 +283,11 @@ export default function MentorPage({ params }: Props) {
               </div>
             )}
 
-            {/* Consultations — hero blocks. 50% off (welcome promo) shows
-                when the student is in their 30-day signup window. Mentors
-                can list more than one — each gets its own card, but only
-                one active order across ALL of them is allowed at a time. */}
+            {/* Consultations — hero blocks. Mentors can list more than one —
+                each gets its own card, but only one active order across
+                ALL of them is allowed at a time. */}
             {consultationServices.map((consultationService) => {
               const fullPrice = Number(consultationService.price ?? 0)
-              // Скидка имеет смысл только если есть с чего скидывать.
-              // Ментор имеет право поставить 0 ₸ — тогда показывать
-              // зачёркнутые "0 ₸" и "−50%" нелепо.
-              const bonusActive = (studentProfile?.welcome_bonus_available ?? false) && fullPrice > 0
-              const discountedPrice = bonusActive
-                ? Math.round(fullPrice * 0.5)
-                : fullPrice
-              const promoExpiresAt = studentProfile?.welcome_bonus_expires_at
-              const daysLeft = promoExpiresAt
-                ? Math.max(
-                    0,
-                    Math.ceil(
-                      (new Date(promoExpiresAt).getTime() - Date.now()) /
-                        (1000 * 60 * 60 * 24),
-                    ),
-                  )
-                : null
               // Does the mentor-wide active order belong to THIS card, or
               // to a different consultation service of the same mentor?
               const isThisOrder = consultationOrder?.mentor_service === consultationService.id
@@ -322,11 +300,6 @@ export default function MentorPage({ params }: Props) {
                     <Icon name="forum" size={14} className="text-white" />
                     {fullPrice === 0 ? (
                       <span>{t("free")}</span>
-                    ) : bonusActive ? (
-                      <>
-                        <span className="line-through opacity-60">{fullPrice.toLocaleString("ru-RU")} ₸</span>
-                        <span>{t("priceWithBonus", { price: discountedPrice.toLocaleString("ru-RU") })}</span>
-                      </>
                     ) : (
                       <span>{fullPrice.toLocaleString("ru-RU")} ₸</span>
                     )}
@@ -404,28 +377,11 @@ export default function MentorPage({ params }: Props) {
                         ? t("ordering")
                         : fullPrice === 0
                         ? t("orderFree")
-                        : bonusActive
-                        ? (
-                          <span className="inline-flex items-baseline gap-2">
-                            <span>{t("orderForPriceWithBonus", { price: discountedPrice.toLocaleString("ru-RU") })}</span>
-                            <span className="text-xs font-semibold opacity-60 line-through">
-                              {fullPrice.toLocaleString("ru-RU")} ₸
-                            </span>
-                          </span>
-                        )
                         : t("orderConsultationFor", { price: fullPrice.toLocaleString("ru-RU") })}
                     </button>
                   )}
                   {!mentor.is_accepting_bookings && consultationStatus === "none" && (
                     <p className="text-xs text-indigo-200 mt-2">{t("notAcceptingRequests")}</p>
-                  )}
-                  {bonusActive && consultationStatus === "none" && (
-                    <p className="text-xs text-indigo-200 mt-2">
-                      {t("welcomeBonusBadge", { full: fullPrice.toLocaleString("ru-RU"), discounted: discountedPrice.toLocaleString("ru-RU") })}
-                      {daysLeft !== null && daysLeft > 0 && (
-                        <span className="opacity-80">{t("expiresIn", { days: daysLeft })}</span>
-                      )}
-                    </p>
                   )}
                 </div>
               </div>

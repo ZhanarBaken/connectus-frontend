@@ -34,8 +34,6 @@ function makeStudentProfile(overrides: Partial<StudentProfile> = {}): StudentPro
     gpa: "",
     profile_photo: null,
     is_public: true,
-    welcome_bonus_available: false,
-    welcome_bonus_expires_at: null,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
@@ -52,7 +50,6 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     service_title: "Проверка эссе",
     payout_category: "delivery",
     subtotal: "20000",
-    bonus_applied: "0",
     total_price: "20000",
     platform_fee: "5000",
     mentor_payout_amount: "15000",
@@ -210,35 +207,6 @@ describe("StudentDashboard", () => {
       const stats = screen.getAllByText(/^[0-9]+$/)
       const values = stats.map((el) => el.textContent)
       expect(values).toEqual(["2", "1", "2"])
-    })
-
-    it("shows the welcome bonus banner when available", async () => {
-      vi.mocked(fetchStudentProfile).mockResolvedValue(
-        makeStudentProfile({
-          welcome_bonus_available: true,
-          welcome_bonus_expires_at: "2026-08-20T00:00:00Z",
-        }),
-      )
-      vi.mocked(fetchOrders).mockResolvedValue([])
-      vi.mocked(fetchMentors).mockResolvedValue([])
-
-      render(<StudentDashboard />)
-
-      expect(await screen.findByText(/−50% на первичные консультации/)).toBeInTheDocument()
-      expect(screen.getByText(/Сгорает 20 августа/)).toBeInTheDocument()
-    })
-
-    it("does not show the welcome bonus banner when unavailable", async () => {
-      vi.mocked(fetchStudentProfile).mockResolvedValue(
-        makeStudentProfile({ welcome_bonus_available: false }),
-      )
-      vi.mocked(fetchOrders).mockResolvedValue([])
-      vi.mocked(fetchMentors).mockResolvedValue([])
-
-      render(<StudentDashboard />)
-
-      await screen.findByText("Пока нет заказов")
-      expect(screen.queryByText(/−50% на первичные консультации/)).not.toBeInTheDocument()
     })
   })
 })
