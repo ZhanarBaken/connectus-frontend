@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { register, resendVerification, updateUnverifiedEmail, googleAuth, telegramStart, fetchMe } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
@@ -20,6 +20,7 @@ type Role = "student" | "mentor"
 
 export default function RegisterPage() {
   const t = useTranslations("Auth.Register")
+  const locale = useLocale()
   const router = useRouter()
   const ROLES = [
     {
@@ -179,7 +180,7 @@ export default function RegisterPage() {
     setLoading(true)
     setError("")
     try {
-      const data = await telegramStart(role)
+      const data = await telegramStart(role, locale)
       localStorage.setItem("tg_signup_token", data.token)
       window.location.href = data.bot_url
     } catch (e: unknown) {

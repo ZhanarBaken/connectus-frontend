@@ -3,6 +3,7 @@
 import { useLocale } from "next-intl"
 import { usePathname, useRouter } from "@/i18n/navigation"
 import { routing } from "@/i18n/routing"
+import { updateUserLocale } from "@/lib/api"
 
 const LOCALE_LABELS: Record<(typeof routing.locales)[number], string> = {
   ru: "RU",
@@ -23,7 +24,21 @@ export default function LocaleSwitcher({ className = "" }: { className?: string 
           <button
             key={code}
             type="button"
-            onClick={() => router.replace(pathname, { locale: code })}
+            onClick={() => {
+              router.replace(pathname, { locale: code })
+              // Best-effort — keeps Telegram-generated links in the
+              // right language later. Not blocking the route switch.
+              // Failure here isn't always harmless: updateUserLocale
+              // goes through authFetch, and an expired session's
+              // refresh failure forces a full-page redirect to
+              // /auth/login (same as any other authFetch call) rather
+              // than just leaving the backend record stale — same
+              // trade-off every other best-effort authFetch call in
+              // the app already accepts.
+              if (typeof window !== "undefined" && localStorage.getItem("access_token")) {
+                void updateUserLocale(code).catch(() => {})
+              }
+            }}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
               active
                 ? "bg-white text-indigo-600 shadow-sm"

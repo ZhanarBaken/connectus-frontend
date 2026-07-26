@@ -732,11 +732,11 @@ export async function getFreshAccessToken(): Promise<string | null> {
  */
 // ─── Telegram auth ──────────────────────────────────────────────────────────
 
-export async function telegramStart(role: string): Promise<{ token: string; bot_url: string }> {
+export async function telegramStart(role: string, locale: string): Promise<{ token: string; bot_url: string }> {
   const res = await fetch(`${BASE_URL}/auth/telegram/start/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role }),
+    body: JSON.stringify({ role, locale }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -754,6 +754,22 @@ export async function setUserRole(role: "student" | "mentor"): Promise<void> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || "Не удалось установить роль")
+  }
+}
+
+// Keeps the backend's record of the user's site language in sync so
+// Telegram-generated links (bot deep links, Mini App notification
+// links) can be built in the right language instead of defaulting to
+// Russian. Best-effort — callers should not block navigation on it.
+export async function updateUserLocale(locale: "ru" | "en" | "kk"): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/me/locale/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locale }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось сохранить язык")
   }
 }
 

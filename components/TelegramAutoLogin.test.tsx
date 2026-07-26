@@ -95,6 +95,21 @@ describe("TelegramAutoLogin", () => {
     window.Telegram = undefined
   })
 
+  describe("malformed start_param is rejected, not partially matched", () => {
+    it("does not treat an unrecognised locale tag as a valid deep link", () => {
+      // "xx" isn't ru/en/kk — must not fall through to a best-effort match.
+      setDeepLink("order_42_xx")
+      const { container } = render(<TelegramAutoLogin />)
+      expect(container).toBeEmptyDOMElement()
+    })
+
+    it("does not treat trailing garbage after a valid locale tag as a valid deep link", () => {
+      setDeepLink("order_42_en_extra")
+      const { container } = render(<TelegramAutoLogin />)
+      expect(container).toBeEmptyDOMElement()
+    })
+  })
+
   describe("outside Telegram (no-op path)", () => {
     it("renders nothing when there is no Mini App hash and not in Telegram", () => {
       const { container } = render(<TelegramAutoLogin />)
@@ -153,6 +168,52 @@ describe("TelegramAutoLogin", () => {
         expect(localStorage.getItem("refresh_token")).toBe("RT")
         expect(localStorage.getItem("role")).toBe("student")
       })
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith("/orders/42?chat=open")
+      })
+    })
+
+    it("routes to a locale-prefixed order path when the deep link is tagged with a non-default locale", async () => {
+      setDeepLink("order_42_en")
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "student" }))
+
+      render(<TelegramAutoLogin />)
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith("/en/orders/42?chat=open")
+      })
+    })
+
+    it("stays unprefixed when the deep link is explicitly tagged with the default (ru) locale", async () => {
+      setDeepLink("order_42_ru")
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "student" }))
+
+      render(<TelegramAutoLogin />)
+
       await waitFor(() => {
         expect(push).toHaveBeenCalledWith("/orders/42?chat=open")
       })

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { login, fetchMe, resendVerification, googleAuth, telegramStart, AccountNotFoundError } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
@@ -13,6 +13,7 @@ import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
 
 function LoginForm() {
   const t = useTranslations("Auth.Login")
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
@@ -130,7 +131,7 @@ function LoginForm() {
     setLoading(true)
     setError("")
     try {
-      const data = await telegramStart("student")
+      const data = await telegramStart("student", locale)
       localStorage.setItem("tg_signup_token", data.token)
       window.location.href = data.bot_url
     } catch (e: unknown) {

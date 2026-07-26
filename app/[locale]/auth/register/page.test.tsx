@@ -187,6 +187,20 @@ describe("RegisterPage", () => {
     expect(api.resendVerification).toHaveBeenCalledWith("student@example.com")
   })
 
+  it("passes the current locale to telegramStart when registering via Telegram", async () => {
+    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=signup_tok123" })
+    const user = userEvent.setup()
+    render(<RegisterPage />)
+
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.click(screen.getByRole("button", { name: "Продолжить через Telegram" }))
+    await giveConsent(user)
+
+    await vi.waitFor(() => {
+      expect(api.telegramStart).toHaveBeenCalledWith("student", "ru")
+    })
+  })
+
   it("lets the user correct a mistyped email after registering", async () => {
     vi.mocked(api.register).mockResolvedValue({ id: 1, email: "typo@example.com", role: "student" })
     vi.mocked(api.updateUnverifiedEmail).mockResolvedValue(undefined)

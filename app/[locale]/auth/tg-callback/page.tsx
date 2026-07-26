@@ -36,8 +36,8 @@ function TgCallbackContent() {
         localStorage.setItem("refresh_token", data.refresh)
 
         // The role was already chosen on the website before this deep
-        // link was issued (telegramStart(role)) and the bot only relays
-        // it — there is nothing left to ask, so route straight through.
+        // link was issued (telegramStart(role, locale)) and the bot only
+        // relays it — there is nothing left to ask, so route straight through.
         const me = await fetchMe(data.access)
         localStorage.setItem("role", me.role)
         setStatus("success")

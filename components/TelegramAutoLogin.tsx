@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from "react"
 // Deliberately using next/navigation's plain useRouter here, not
 // next-intl's locale-aware one from @/i18n/navigation. Telegram's
-// start_param deep link is constructed by the backend (separate repo)
-// with no knowledge of the user's locale preference — resolving it into
-// anything other than the default (ru) locale would require a backend
-// change. Keeping every push() in this component on the plain router
-// means it always lands in default-locale (unprefixed, under
-// localePrefix: "as-needed") space by construction, not by a rule
-// someone has to remember.
+// start_param deep link is constructed by the backend (separate repo),
+// which now tags it with the recipient's known site language (e.g.
+// `order_42_en`) — resolveStartParamTarget below reads that tag and
+// builds the locale-prefixed path by hand (`/en/orders/42`), so a
+// plain, non-locale-aware push() still lands in the right place.
+// Untagged / `ru` params fall through to the unprefixed path, matching
+// localePrefix: "as-needed".
 import { useRouter } from "next/navigation"
 import { telegramMiniAppLogin, fetchMe } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
@@ -25,11 +25,15 @@ import type { Role } from "@/types"
 // from accidentally redirecting to an attacker-shaped path.
 function resolveStartParamTarget(raw: string | null | undefined): string | null {
   if (!raw) return null
-  const orderMatch = /^order_(\d+)$/.exec(raw)
+  const orderMatch = /^order_(\d+)(?:_(ru|en|kk))?$/.exec(raw)
   if (orderMatch) {
+    const [, orderId, taggedLocale] = orderMatch
+    // "ru" is the default (unprefixed) locale — only en/kk get a
+    // path prefix, matching i18n/routing.ts's localePrefix: "as-needed".
+    const prefix = taggedLocale && taggedLocale !== "ru" ? `/${taggedLocale}` : ""
     // ?chat=open tells the order page to open the chat overlay
     // straight away on mount (the param is read inside that page).
-    return `/orders/${orderMatch[1]}?chat=open`
+    return `${prefix}/orders/${orderId}?chat=open`
   }
   return null
 }

@@ -12,7 +12,9 @@ import {
   register,
   resendVerification,
   SESSION_EXPIRED_EVENT,
+  telegramStart,
   updateStudentProfile,
+  updateUserLocale,
 } from "./api"
 
 describe("formatCooldown", () => {
@@ -349,6 +351,45 @@ describe("updateStudentProfile", () => {
   it("returns the parsed profile on success", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ id: 1, gpa: "3.8/4.0" }))
     await expect(call()).resolves.toEqual({ id: 1, gpa: "3.8/4.0" })
+  })
+})
+
+// ─── updateUserLocale ────────────────────────────────────────────────────────
+
+describe("updateUserLocale", () => {
+  it("PATCHes the locale to /auth/me/locale/", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ locale: "en" }))
+    await updateUserLocale("en")
+    const [url, init] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toContain("/auth/me/locale/")
+    expect(init?.method).toBe("PATCH")
+    expect(init?.body).toBe(JSON.stringify({ locale: "en" }))
+  })
+
+  it("throws the backend's error detail on failure", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ detail: "Invalid locale." }, { status: 400 }),
+    )
+    await expect(updateUserLocale("en")).rejects.toThrow("Invalid locale.")
+  })
+
+  it("falls back to a generic message when the error body isn't JSON", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("<html>502</html>", { status: 502 }))
+    await expect(updateUserLocale("en")).rejects.toThrow("Не удалось сохранить язык")
+  })
+})
+
+// ─── telegramStart ──────────────────────────────────────────────────────────
+
+describe("telegramStart", () => {
+  it("sends role and locale in the request body", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ token: "tok", bot_url: "https://t.me/bot?start=signup_tok" }),
+    )
+    await telegramStart("mentor", "kk")
+    const [url, init] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toContain("/auth/telegram/start/")
+    expect(init?.body).toBe(JSON.stringify({ role: "mentor", locale: "kk" }))
   })
 })
 
