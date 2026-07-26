@@ -183,7 +183,9 @@ describe("MentorServicesPage — edit a service", () => {
 })
 
 describe("MentorServicesPage — delete a service", () => {
-  it("marks a service inactive after confirming deletion", async () => {
+  it("removes the service from the list after confirming deletion", async () => {
+    // The backend either hard-deletes (never ordered) or archives (ordered
+    // before) — either way the mentor's catalog no longer shows it.
     const service = makeService()
     vi.mocked(fetchMentorServices).mockResolvedValue([service])
     vi.mocked(deleteMentorService).mockResolvedValue(undefined)
@@ -191,10 +193,11 @@ describe("MentorServicesPage — delete a service", () => {
 
     render(<MentorServicesPage />)
 
-    fireEvent.click(await screen.findByLabelText("Удалить"))
+    await screen.findByText(service.title)
+    fireEvent.click(screen.getByLabelText("Удалить"))
 
     await waitFor(() => expect(deleteMentorService).toHaveBeenCalledWith(service.id))
-    expect(await screen.findByText("Неактивна")).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText(service.title)).not.toBeInTheDocument())
     confirmSpy.mockRestore()
   })
 

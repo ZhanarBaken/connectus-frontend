@@ -199,7 +199,11 @@ export default function MentorServicesPage() {
     setDeleteError("")
     try {
       await deleteMentorService(id)
-      setServices((prev) => prev.map((s) => (s.id === id ? { ...s, is_active: false } : s)))
+      // The backend either hard-deletes (never ordered) or archives
+      // (ordered before) — either way it's gone from the mentor's active
+      // catalog, so just drop it from view rather than guessing which one
+      // happened.
+      setServices((prev) => prev.filter((s) => s.id !== id))
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : t("deleteErrorGeneric"))
     }
