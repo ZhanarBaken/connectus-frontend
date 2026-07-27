@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { useRouter } from "@/i18n/navigation"
 import MentorDashboard from "./page"
-import type { MentorProfile, MentorService, Order, User } from "@/types"
+import type { MentorProfile, MentorService, Order, SupportRequest, User } from "@/types"
 import type { Review } from "@/lib/reviews"
 
 vi.mock("@/lib/api", async () => {
@@ -16,6 +16,9 @@ vi.mock("@/lib/api", async () => {
     submitMentorProfile: vi.fn(),
     fetchMe: vi.fn(),
     clearAuth: vi.fn(),
+    fetchPendingSupportRequests: vi.fn(),
+    acceptSupportRequest: vi.fn(),
+    declineSupportRequest: vi.fn(),
   }
 })
 
@@ -34,6 +37,9 @@ import {
   submitMentorProfile,
   fetchMe,
   clearAuth,
+  fetchPendingSupportRequests,
+  acceptSupportRequest,
+  declineSupportRequest,
 } from "@/lib/api"
 import { fetchMentorReviews } from "@/lib/reviews"
 
@@ -105,6 +111,20 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     completed_at: null,
     created_at: "2026-07-01T00:00:00Z",
     updated_at: "2026-07-01T00:00:00Z",
+    ...overrides,
+  }
+}
+
+function makeSupportRequest(overrides: Partial<SupportRequest> = {}): SupportRequest {
+  return {
+    id: 1,
+    student: 10,
+    student_name: "Данияр Сериков",
+    mentor_service: 1,
+    service_title: "Полное сопровождение",
+    status: "pending",
+    created_at: "2026-07-01T00:00:00Z",
+    responded_at: null,
     ...overrides,
   }
 }
@@ -182,6 +202,7 @@ describe("MentorDashboard", () => {
     vi.clearAllMocks()
     vi.mocked(fetchMe).mockResolvedValue(makeUser())
     vi.mocked(fetchMentorReviews).mockResolvedValue([])
+    vi.mocked(fetchPendingSupportRequests).mockResolvedValue([])
   })
 
   it("redirects to /auth/login when there is no access token", async () => {
@@ -228,6 +249,67 @@ describe("MentorDashboard", () => {
 
       expect(await screen.findByText("Айгерим Ержанова")).toBeInTheDocument()
       expect(screen.getByText("Верифицирован")).toBeInTheDocument()
+    })
+
+    it("does not render the support-requests card when there are none pending", async () => {
+      vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      vi.mocked(fetchPendingSupportRequests).mockResolvedValue([])
+
+      render(<MentorDashboard />)
+
+      await screen.findByText("Пока нет заказов")
+      expect(screen.queryByText("Новые запросы")).not.toBeInTheDocument()
+    })
+
+    it("renders pending support requests with accept/decline actions", async () => {
+      vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      vi.mocked(fetchPendingSupportRequests).mockResolvedValue([makeSupportRequest()])
+
+      render(<MentorDashboard />)
+
+      expect(await screen.findByText("Новые запросы")).toBeInTheDocument()
+      expect(screen.getByText("Полное сопровождение")).toBeInTheDocument()
+      expect(screen.getByText("Данияр Сериков")).toBeInTheDocument()
+    })
+
+    it("accepting a request calls the API and removes it from the list", async () => {
+      const user = userEvent.setup()
+      vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      const request = makeSupportRequest()
+      vi.mocked(fetchPendingSupportRequests).mockResolvedValue([request])
+      vi.mocked(acceptSupportRequest).mockResolvedValue({ ...request, status: "accepted" })
+
+      render(<MentorDashboard />)
+
+      await screen.findByText("Новые запросы")
+      await user.click(screen.getByText("Принять"))
+
+      await waitFor(() => expect(acceptSupportRequest).toHaveBeenCalledWith(1))
+      await waitFor(() => expect(screen.queryByText("Новые запросы")).not.toBeInTheDocument())
+    })
+
+    it("declining a request calls the API and removes it from the list", async () => {
+      const user = userEvent.setup()
+      vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      const request = makeSupportRequest()
+      vi.mocked(fetchPendingSupportRequests).mockResolvedValue([request])
+      vi.mocked(declineSupportRequest).mockResolvedValue({ ...request, status: "declined" })
+
+      render(<MentorDashboard />)
+
+      await screen.findByText("Новые запросы")
+      await user.click(screen.getByText("Отклонить"))
+
+      await waitFor(() => expect(declineSupportRequest).toHaveBeenCalledWith(1))
+      await waitFor(() => expect(screen.queryByText("Новые запросы")).not.toBeInTheDocument())
     })
 
     it("shows the empty orders state when there are no orders", async () => {

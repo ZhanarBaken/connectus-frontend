@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService, SupportTask } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -83,6 +83,8 @@ export default function OrderPage({ params }: Props) {
   const [wsConnected, setWsConnected] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState("")
+  const [respondingToIntroCall, setRespondingToIntroCall] = useState(false)
+  const [introCallError, setIntroCallError] = useState("")
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState("")
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false)
@@ -363,6 +365,34 @@ export default function OrderPage({ params }: Props) {
       setCompleteError(e instanceof Error ? e.message : t("errorComplete"))
     } finally {
       setCompleting(false)
+    }
+  }
+
+  const handleConfirmIntroCall = async () => {
+    if (!order) return
+    setRespondingToIntroCall(true)
+    setIntroCallError("")
+    try {
+      const updated = await confirmIntroCall(order.id)
+      setOrder(updated)
+    } catch (e: unknown) {
+      setIntroCallError(e instanceof Error ? e.message : t("introCallConfirmError"))
+    } finally {
+      setRespondingToIntroCall(false)
+    }
+  }
+
+  const handleDeclineIntroCall = async () => {
+    if (!order) return
+    setRespondingToIntroCall(true)
+    setIntroCallError("")
+    try {
+      const updated = await declineIntroCall(order.id)
+      setOrder(updated)
+    } catch (e: unknown) {
+      setIntroCallError(e instanceof Error ? e.message : t("introCallDeclineError"))
+    } finally {
+      setRespondingToIntroCall(false)
     }
   }
 
@@ -787,6 +817,35 @@ export default function OrderPage({ params }: Props) {
                       </span>
                     </Link>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Mentor: confirm/decline a student-booked intro-call slot —
+                the booking is provisional until answered here. */}
+            {role === "mentor" && order.order_status === "draft"
+              && order.payout_category === "support" && order.support_engagement === null && (
+              <div className="bg-white border border-indigo-100 rounded-2xl p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">{t("introCallRequestTitle")}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">{t("introCallRequestBody")}</p>
+                {introCallError && (
+                  <p className="text-xs text-red-600 mb-3">{introCallError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleConfirmIntroCall}
+                    disabled={respondingToIntroCall}
+                    className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  >
+                    {t("introCallConfirmCta")}
+                  </button>
+                  <button
+                    onClick={handleDeclineIntroCall}
+                    disabled={respondingToIntroCall}
+                    className="flex-1 border border-red-200 text-red-700 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    {t("introCallDeclineCta")}
+                  </button>
                 </div>
               </div>
             )}

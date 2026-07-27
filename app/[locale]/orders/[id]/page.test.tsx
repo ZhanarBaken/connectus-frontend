@@ -25,6 +25,8 @@ import {
   createSupportTask,
   updateSupportTask,
   deleteSupportTask,
+  confirmIntroCall,
+  declineIntroCall,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation } from "@/lib/chat"
@@ -455,6 +457,94 @@ describe("OrderPage — mentor: complete order", () => {
     await waitFor(() => expect(confirmSpy).toHaveBeenCalled())
     expect(completeOrder).not.toHaveBeenCalled()
     confirmSpy.mockRestore()
+  })
+})
+
+describe("OrderPage — mentor: intro-call confirmation", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  it("shows the confirm/decline panel for a pending intro-call request", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Заявка на интро-звонок")).toBeInTheDocument()
+  })
+
+  it("does not show the panel for a regular draft order", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "primary_consultation", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByText("Заявка на интро-звонок")).not.toBeInTheDocument()
+  })
+
+  it("does not show the panel once support_engagement is set (a real engagement session, not an intro call)", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: 5,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    expect(screen.queryByText("Заявка на интро-звонок")).not.toBeInTheDocument()
+  })
+
+  it("confirms the intro call", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(confirmIntroCall).mockResolvedValue({ ...order, order_status: "in_progress" })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Подтвердить"))
+
+    await waitFor(() => expect(confirmIntroCall).toHaveBeenCalledWith(42))
+    expect(await screen.findByText("В работе")).toBeInTheDocument()
+  })
+
+  it("declines the intro call", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(declineIntroCall).mockResolvedValue({ ...order, order_status: "cancelled" })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Отклонить"))
+
+    await waitFor(() => expect(declineIntroCall).toHaveBeenCalledWith(42))
+    expect(await screen.findByText("Отменён")).toBeInTheDocument()
+  })
+
+  it("shows an error message when confirming fails", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(confirmIntroCall).mockRejectedValue(new Error("Не удалось подтвердить интро-звонок"))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Подтвердить"))
+
+    expect(await screen.findByText("Не удалось подтвердить интро-звонок")).toBeInTheDocument()
   })
 })
 

@@ -309,6 +309,17 @@ export interface SupportTask {
   updated_at: string
 }
 
+export interface SupportRequest {
+  id: number
+  student: number
+  student_name: string
+  mentor_service: number
+  service_title: string
+  status: "pending" | "accepted" | "declined"
+  created_at: string
+  responded_at: string | null
+}
+
 export interface AdminDispute {
   id: number
   order: number

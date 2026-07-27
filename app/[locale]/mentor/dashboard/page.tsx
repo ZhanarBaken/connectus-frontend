@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, fetchMe, clearAuth } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, fetchMe, clearAuth, fetchPendingSupportRequests, acceptSupportRequest, declineSupportRequest } from "@/lib/api"
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/contacts"
 import { User } from "@/types"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countriesLabelInline } from "@/lib/countries"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
-import { MentorProfile, MentorService, Order } from "@/types"
+import { MentorProfile, MentorService, Order, SupportRequest } from "@/types"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
 
@@ -21,6 +21,8 @@ export default function MentorDashboard() {
   const [profile, setProfile] = useState<MentorProfile | null>(null)
   const [services, setServices] = useState<MentorService[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([])
+  const [respondingRequestId, setRespondingRequestId] = useState<number | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
   const [me, setMe] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,6 +65,7 @@ export default function MentorDashboard() {
         setServices(s)
         setOrders(o)
         fetchMentorReviews(p.id).then(setReviews)
+        fetchPendingSupportRequests().then(setSupportRequests).catch(() => {})
         const token = localStorage.getItem("access_token")
         if (token) fetchMe(token).then(setMe).catch(() => {})
       })
@@ -79,6 +82,30 @@ export default function MentorDashboard() {
   }, [router])
 
   const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({})
+
+  const handleAcceptRequest = async (request: SupportRequest) => {
+    setRespondingRequestId(request.id)
+    try {
+      await acceptSupportRequest(request.id)
+      setSupportRequests((prev) => prev.filter((r) => r.id !== request.id))
+    } catch {
+      // ignore — the request just stays in the list, mentor can retry
+    } finally {
+      setRespondingRequestId(null)
+    }
+  }
+
+  const handleDeclineRequest = async (request: SupportRequest) => {
+    setRespondingRequestId(request.id)
+    try {
+      await declineSupportRequest(request.id)
+      setSupportRequests((prev) => prev.filter((r) => r.id !== request.id))
+    } catch {
+      // ignore
+    } finally {
+      setRespondingRequestId(null)
+    }
+  }
 
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -399,6 +426,49 @@ export default function MentorDashboard() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Orders */}
           <div className="lg:col-span-2 space-y-8">
+
+            {/* Pending support requests (no-intro-call "Запросить" pings) */}
+            {supportRequests.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-gray-900">{t("supportRequestsTitle")}</h2>
+                  <span className="text-sm text-gray-400">{supportRequests.length}</span>
+                </div>
+                <div className="space-y-3">
+                  {supportRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="bg-white rounded-2xl border border-gray-200 p-5"
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate">{request.service_title}</h3>
+                          <p className="text-sm text-gray-400 mt-0.5">
+                            {request.student_name || t("applicant")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAcceptRequest(request)}
+                          disabled={respondingRequestId === request.id}
+                          className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                        >
+                          {t("supportRequestAccept")}
+                        </button>
+                        <button
+                          onClick={() => handleDeclineRequest(request)}
+                          disabled={respondingRequestId === request.id}
+                          className="flex-1 border border-red-200 text-red-700 py-2 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          {t("supportRequestDecline")}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Orders */}
             <div>

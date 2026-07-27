@@ -472,6 +472,50 @@ export async function confirmConsultation(id: number): Promise<Order> {
   return res.json()
 }
 
+export async function confirmIntroCall(id: number): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/confirm_intro_call/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось подтвердить интро-звонок")
+  }
+  return res.json()
+}
+
+export async function declineIntroCall(id: number): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/decline_intro_call/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить интро-звонок")
+  }
+  return res.json()
+}
+
+// ─── Support requests (no-intro-call flow) ─────────────────────────────────
+
+export async function fetchPendingSupportRequests(): Promise<import("@/types").SupportRequest[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/support-requests/`)
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function acceptSupportRequest(id: number): Promise<import("@/types").SupportRequest> {
+  const res = await authFetch(`${BASE_URL}/mentors/support-requests/${id}/accept/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось принять запрос")
+  }
+  return res.json()
+}
+
+export async function declineSupportRequest(id: number): Promise<import("@/types").SupportRequest> {
+  const res = await authFetch(`${BASE_URL}/mentors/support-requests/${id}/decline/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить запрос")
+  }
+  return res.json()
+}
+
 export async function completeOrder(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/complete/`, { method: "POST" })
   if (!res.ok) {
