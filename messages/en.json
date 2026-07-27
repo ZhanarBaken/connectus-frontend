@@ -922,7 +922,6 @@
       "filledLabel": "complete",
       "bannedTitle": "Account suspended",
       "bannedBody": "Editing the profile is unavailable.",
-      "saveInChunksNotice": "<strong>You can save in pieces.</strong> Fields marked <badge>required</badge> are only needed once you tap <strong>\"Submit for review\"</strong> in your dashboard.",
       "photoAlt": "Profile photo",
       "changePhoto": "Tap to change the photo",
       "uploadPhoto": "Upload a profile photo",
@@ -1353,7 +1352,7 @@
     "back": "Back"
   },
   "MentorStatusBanner": {
-    "underReviewBody": "<strong>Profile under review.</strong> We usually approve within 48 hours — we'll message you on Telegram as soon as it's ready.",
+    "underReviewBody": "<strong>Profile under review.</strong> We usually approve within 24 hours — we'll message you on Telegram as soon as it's ready.",
     "notSubmittedBody": "<strong>Profile not submitted for review.</strong> Applicants can't see you yet — fill in the required fields and tap \"Submit for review\".",
     "goToSubmit": "Go submit it"
   },

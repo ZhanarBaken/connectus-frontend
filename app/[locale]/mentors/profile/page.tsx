@@ -52,13 +52,6 @@ function Field({
 
 const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
-const richTags = {
-  strong: (chunks: React.ReactNode) => <strong>{chunks}</strong>,
-  badge: (chunks: React.ReactNode) => (
-    <span className="text-xs text-gray-500 font-normal bg-white border border-gray-200 rounded px-1.5 py-0.5">{chunks}</span>
-  ),
-}
-
 export default function MentorProfilePage() {
   const t = useTranslations("Mentors.Profile")
   const tExpertise = useTranslations("Landing.Expertise")
@@ -287,14 +280,6 @@ export default function MentorProfilePage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <fieldset disabled={isBanned} className="space-y-6">
-          {/* Soft hint about what "обязательно" means here. Profile saves
-              partial state on PATCH; the dashboard submit-button is what
-              actually checks completeness. */}
-          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-900">
-            <p>
-              {t.rich("saveInChunksNotice", richTags)}
-            </p>
-          </div>
           {/* Avatar upload */}
           <div className="flex flex-col items-center">
             <input
