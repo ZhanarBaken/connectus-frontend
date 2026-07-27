@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMentorProfile, updateMentorProfile, authFetch } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
+import { LANGUAGE_LABELS } from "@/lib/languages"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
 import { MentorProfile, ExpertiseArea } from "@/types"
 import BackButton from "@/components/BackButton"
@@ -93,6 +94,7 @@ export default function MentorProfilePage() {
   const [phone, setPhone] = useState("")
   const [linkedin, setLinkedin] = useState("")
   const [expertiseAreas, setExpertiseAreas] = useState<string[]>([])
+  const [languages, setLanguages] = useState<string[]>([])
   const [payoutDetails, setPayoutDetails] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -115,6 +117,7 @@ export default function MentorProfilePage() {
         setPhone(p.phone ?? "")
         setLinkedin(p.linkedin_url ?? "")
         setExpertiseAreas(p.expertise_areas.map((e) => e.area))
+        setLanguages(p.languages.map((l) => l.language))
         setPayoutDetails(p.payout_details ?? "")
         setProfilePhoto(p.profile_photo ?? null)
         setIsBanned(p.is_banned ?? false)
@@ -128,6 +131,12 @@ export default function MentorProfilePage() {
   const toggleExpertise = (area: string) => {
     setExpertiseAreas((prev) =>
       prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]
+    )
+  }
+
+  const toggleLanguage = (language: string) => {
+    setLanguages((prev) =>
+      prev.includes(language) ? prev.filter((l) => l !== language) : [...prev, language]
     )
   }
 
@@ -189,6 +198,7 @@ export default function MentorProfilePage() {
         phone,
         linkedin_url: linkedin,
         expertise_areas: expertiseAreas.map((area) => ({ area: area as ExpertiseArea })),
+        languages: languages.map((language) => ({ language })),
         payout_details: payoutDetails,
       })
       setSaved(true)
@@ -541,6 +551,35 @@ export default function MentorProfilePage() {
             </div>
             {fieldErrors.expertise_areas && (
               <p className="text-xs text-red-600 mt-2">{fieldErrors.expertise_areas}</p>
+            )}
+          </div>
+
+          {/* Languages */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="languages">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">
+              {t("languagesTitle")}
+              <span className="ml-1.5 text-xs font-normal text-gray-400">{t("requiredLabel")}</span>
+            </h2>
+            <p className="text-sm text-gray-400 mb-5">{t("languagesSubtitle")}</p>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => toggleLanguage(code)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
+                    languages.includes(code)
+                      ? "border-gray-900 bg-gray-50 text-gray-900"
+                      : "border-gray-100 text-gray-600 hover:border-gray-200"
+                  }`}
+                >
+                  {languages.includes(code) && <span className="mr-1.5">✓</span>}
+                  {label}
+                </button>
+              ))}
+            </div>
+            {fieldErrors.languages && (
+              <p className="text-xs text-red-600 mt-2">{fieldErrors.languages}</p>
             )}
           </div>
 

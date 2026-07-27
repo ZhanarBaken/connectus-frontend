@@ -444,5 +444,31 @@ describe("MentorDashboard", () => {
       expect(within(checklist).getByText(/Телефон:/)).toBeInTheDocument()
       expect(within(checklist).getByText(/Это поле обязательно\./)).toBeInTheDocument()
     })
+
+    it("shows a translated label and a working fix-link for a missing-languages error", async () => {
+      // Regression: `languages` used to be entirely absent from
+      // FIELD_LABELS/FIELD_LINKS, so this error rendered as the raw
+      // backend key with no link — and there was nowhere on
+      // /mentors/profile to actually add a language either.
+      const user = userEvent.setup()
+      const draftProfile = makeMentorProfile({ is_submitted: false, is_approved: false })
+      vi.mocked(fetchMentorProfile).mockResolvedValue(draftProfile)
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      vi.mocked(submitMentorProfile).mockRejectedValue(
+        new Error(JSON.stringify({ languages: ["At least one language is required."] })),
+      )
+
+      render(<MentorDashboard />)
+
+      const submitButton = await screen.findByRole("button", { name: "Отправить на проверку" })
+      await user.click(submitButton)
+
+      const checklist = await screen.findByText("Что нужно исправить:")
+      const checklistContainer = checklist.closest("div") as HTMLElement
+      expect(within(checklistContainer).getByText(/Языки:/)).toBeInTheDocument()
+      const fixLink = within(checklistContainer).getByRole("link", { name: "Выбрать →" })
+      expect(fixLink).toHaveAttribute("href", "/mentors/profile")
+    })
   })
 })

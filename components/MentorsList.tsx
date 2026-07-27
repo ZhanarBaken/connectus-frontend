@@ -6,17 +6,11 @@ import { Link, useRouter } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import { track } from "@/lib/analytics"
 import { countryFlag, countryLabel, countriesFlagsCompact } from "@/lib/countries"
+import { LANGUAGE_LABELS } from "@/lib/languages"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  ru: "Русский", kz: "Қазақша", en: "English", de: "Deutsch",
-  fr: "Français", tr: "Türkçe", zh: "中文", ar: "العربية",
-  es: "Español", it: "Italiano", ja: "日本語", ko: "한국어",
-  pl: "Polski", pt: "Português", uk: "Українська",
-}
 
 interface Props {
   mentors: MentorCard[]

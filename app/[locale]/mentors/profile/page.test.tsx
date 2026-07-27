@@ -95,6 +95,39 @@ describe("MentorProfilePage — editing", () => {
     expect(usChip.textContent).not.toContain("✓")
   })
 
+  it("prefills selected languages and lets the mentor toggle more", async () => {
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      makeMentorProfile({ languages: [{ language: "ru" }] }),
+    )
+    render(<MentorProfilePage />)
+
+    const ruChip = await screen.findByRole("button", { name: /Русский/ })
+    expect(ruChip.textContent).toContain("✓")
+
+    const enChip = screen.getByRole("button", { name: /English/ })
+    expect(enChip.textContent).not.toContain("✓")
+    fireEvent.click(enChip)
+    expect(enChip.textContent).toContain("✓")
+  })
+
+  it("includes selected languages in the save payload", async () => {
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      makeMentorProfile({ languages: [{ language: "ru" }] }),
+    )
+    vi.mocked(updateMentorProfile).mockResolvedValue(makeMentorProfile())
+    render(<MentorProfilePage />)
+
+    const enChip = await screen.findByRole("button", { name: /English/ })
+    fireEvent.click(enChip)
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить профиль" }))
+
+    await waitFor(() => expect(updateMentorProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        languages: expect.arrayContaining([{ language: "ru" }, { language: "en" }]),
+      }),
+    ))
+  })
+
   it("saves successfully and shows the confirmation banner", async () => {
     vi.mocked(updateMentorProfile).mockResolvedValue(makeMentorProfile())
 

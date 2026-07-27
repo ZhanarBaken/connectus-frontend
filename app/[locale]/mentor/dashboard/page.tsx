@@ -170,6 +170,7 @@ export default function MentorDashboard() {
     phone: t("fields.phone"),
     expertise_areas: t("fields.expertiseAreas"),
     countries: t("fields.countries"),
+    languages: t("fields.languages"),
     profile_photo: t("fields.profilePhoto"),
     documents: t("fields.documents"),
     email: t("fields.email"),
@@ -187,6 +188,7 @@ export default function MentorDashboard() {
     phone: { href: "/mentors/profile", label: t("fillIn") },
     expertise_areas: { href: "/mentors/profile", label: t("choose") },
     countries: { href: "/mentors/profile", label: t("choose") },
+    languages: { href: "/mentors/profile", label: t("choose") },
     documents: { href: "/mentors/documents", label: t("upload") },
   }
 

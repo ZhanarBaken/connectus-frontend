@@ -7,6 +7,7 @@ import { fetchMentor, createOrder, requestSupport, fetchOrders, fetchPublicSetti
 import { track } from "@/lib/analytics"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
+import { LANGUAGE_LABELS } from "@/lib/languages"
 import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
@@ -16,13 +17,6 @@ import Icon from "@/components/Icon"
 // the fetched value below so this page never hardcodes what's actually
 // apps.services.models.SUPPORT_INTRO_CALL_DURATION_MINUTES on the backend.
 const DEFAULT_INTRO_CALL_DURATION_MINUTES = 15
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  ru: "Русский", kz: "Қазақша", en: "English", de: "Deutsch",
-  fr: "Français", tr: "Türkçe", zh: "中文", ar: "العربية",
-  es: "Español", it: "Italiano", ja: "日本語", ko: "한국어",
-  pl: "Polski", pt: "Português", uk: "Українська",
-}
 
 interface Props {
   params: Promise<{ id: string }>
