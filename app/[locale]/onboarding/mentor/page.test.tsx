@@ -14,6 +14,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
     clearAuth: vi.fn(),
     fetchMe: vi.fn(),
     fetchMentorProfile: vi.fn(),
+    fetchMentorServices: vi.fn(),
+    createMentorService: vi.fn(),
     updateMentorProfile: vi.fn(),
     submitMentorProfile: vi.fn(),
   }
@@ -92,6 +94,9 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.clearAuth).mockReset()
     vi.mocked(api.fetchMe).mockReset()
     vi.mocked(api.fetchMentorProfile).mockReset()
+    vi.mocked(api.fetchMentorServices).mockReset()
+    vi.mocked(api.fetchMentorServices).mockResolvedValue([])
+    vi.mocked(api.createMentorService).mockReset()
     vi.mocked(api.updateMentorProfile).mockReset()
     vi.mocked(api.updateMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.submitMentorProfile).mockReset()
@@ -235,6 +240,88 @@ describe("MentorOnboarding", () => {
     expect(await screen.findByText("diploma.pdf")).toBeInTheDocument()
   })
 
+  it("creates a quick service and lists it on the Services tab", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.createMentorService).mockResolvedValue({
+      id: 20, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+      duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
+      meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
+      is_price_negotiable: false, intro_call_enabled: false, is_active: true,
+    })
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    const longDescription = "Разбираем твою ситуацию и составляем подробный план поступления в выбранный университет вместе."
+    await user.type(screen.getByPlaceholderText("Первичная консультация"), "Первичная консультация")
+    await user.type(screen.getByPlaceholderText(/Разбираем твою ситуацию/), longDescription)
+    await user.type(screen.getByPlaceholderText("10000"), "5000")
+    await user.click(screen.getByRole("button", { name: "+ Добавить услугу" }))
+
+    expect(await screen.findByText("Первичная консультация")).toBeInTheDocument()
+    expect(api.createMentorService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payout_category: "paid_consultation", title: "Первичная консультация",
+        description: longDescription, price: "5000",
+      }),
+    )
+  })
+
+  it("keeps the add-service button disabled until the description reaches the minimum length", async () => {
+    // Regression: paid_consultation requires a real description (backend
+    // CONSULTATION_DESCRIPTION_MIN_LENGTH=80), not just non-blank — a
+    // mentor could previously never satisfy this since the quick-add form
+    // had no description field at all.
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    await user.type(screen.getByPlaceholderText("Первичная консультация"), "Первичная консультация")
+    await user.type(screen.getByPlaceholderText(/Разбираем твою ситуацию/), "Слишком коротко")
+    await user.type(screen.getByPlaceholderText("10000"), "5000")
+
+    expect(screen.getByRole("button", { name: "+ Добавить услугу" })).toBeDisabled()
+    expect(api.createMentorService).not.toHaveBeenCalled()
+  })
+
+  it("shows an inline error and keeps the form filled when creating a service fails", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.createMentorService).mockRejectedValue(new Error("Цена должна быть положительной."))
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    const longDescription = "Разбираем твою ситуацию и составляем подробный план поступления в выбранный университет вместе."
+    await user.type(screen.getByPlaceholderText("Первичная консультация"), "Первичная консультация")
+    await user.type(screen.getByPlaceholderText(/Разбираем твою ситуацию/), longDescription)
+    await user.type(screen.getByPlaceholderText("10000"), "5000")
+    await user.click(screen.getByRole("button", { name: "+ Добавить услугу" }))
+
+    expect(await screen.findByText("Цена должна быть положительной.")).toBeInTheDocument()
+    // The form isn't cleared on failure — the mentor shouldn't have to
+    // retype everything just to fix one field.
+    expect(screen.getByDisplayValue("Первичная консультация")).toBeInTheDocument()
+  })
+
   it("shows the early-submit hint listing missing sections when incomplete", async () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
@@ -272,6 +359,9 @@ describe("MentorOnboarding", () => {
         { id: 2, kind: "enrollment_certificate", original_filename: "enroll.pdf", size_bytes: 2048, status: "pending" },
       ]),
     )
+    vi.mocked(api.fetchMentorServices).mockResolvedValue([
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+    ])
     vi.mocked(api.submitMentorProfile).mockResolvedValue(undefined)
     const user = userEvent.setup()
     render(<MentorOnboarding />)
@@ -307,6 +397,9 @@ describe("MentorOnboarding", () => {
         { id: 2, kind: "enrollment_certificate", original_filename: "enroll.pdf", size_bytes: 2048, status: "pending" },
       ]),
     )
+    vi.mocked(api.fetchMentorServices).mockResolvedValue([
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+    ])
     vi.mocked(api.submitMentorProfile).mockRejectedValue(
       new Error(JSON.stringify({ grant_or_scholarship: "Обязательное поле" })),
     )
@@ -322,5 +415,47 @@ describe("MentorOnboarding", () => {
     // from the default "about" tab to "education".
     expect(screen.getByRole("heading", { name: "Образование" })).toBeInTheDocument()
     expect(screen.getByPlaceholderText("MIT, UCL, TU Munich...")).toBeInTheDocument()
+  })
+
+  it("jumps to the Services tab when the backend rejects with a missing-active-service error", async () => {
+    // Regression: a `services` submission error used to have nowhere to
+    // route to at all — there was no Services tab in this wizard.
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(
+      makeProfile({
+        profile_photo: "https://cdn.example.com/avatar.jpg",
+        full_name: "Aigerim Bekova",
+        detailed_bio: "Опытный ментор с 3 годами практики.",
+        phone: "+7 777 000 00 00",
+        languages: [{ language: "ru" }],
+        countries: [{ country: "US" }],
+        school_or_university: "MIT",
+        major: "Computer Science",
+        grant_or_scholarship: "Болашак",
+        gpa: "3.8",
+        exam_results: "IELTS 7.5",
+        expertise_areas: [{ area: "admission" }],
+      }),
+    )
+    vi.mocked(api.authFetch).mockResolvedValue(
+      jsonResponse([
+        { id: 1, kind: "diploma", original_filename: "diploma.pdf", size_bytes: 1024, status: "pending" },
+        { id: 2, kind: "enrollment_certificate", original_filename: "enroll.pdf", size_bytes: 2048, status: "pending" },
+      ]),
+    )
+    vi.mocked(api.fetchMentorServices).mockResolvedValue([
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+    ])
+    vi.mocked(api.submitMentorProfile).mockRejectedValue(
+      new Error(JSON.stringify({ services: "At least one active service is required." })),
+    )
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Отправить профиль на проверку →" }))
+
+    expect(await screen.findByText("Исправь ошибки перед отправкой:")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Услуги" })).toBeInTheDocument()
   })
 })

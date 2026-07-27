@@ -6,13 +6,16 @@ import { useRouter } from "@/i18n/navigation"
 import {
   authFetch,
   clearAuth,
+  createMentorService,
   fetchMe,
   fetchMentorProfile,
+  fetchMentorServices,
   updateMentorProfile,
   submitMentorProfile,
 } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
-import { ExpertiseArea } from "@/types"
+import { LANGUAGE_CODES, languageLabel } from "@/lib/languages"
+import { ExpertiseArea, MentorService } from "@/types"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
@@ -20,33 +23,15 @@ import Logo from "@/components/Logo"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-type Tab = "about" | "education" | "expertise"
+type Tab = "about" | "education" | "expertise" | "services"
 
-const TAB_IDS: Tab[] = ["about", "education", "expertise"]
+const TAB_IDS: Tab[] = ["about", "education", "expertise", "services"]
 
 const EXPERTISE_OPTIONS = [
   { value: "admission",    icon: "flag"            },
   { value: "scholarships", icon: "military_tech"   },
   { value: "documents",    icon: "article"         },
   { value: "visa",         icon: "flight_takeoff"  },
-]
-
-const LANGUAGE_OPTIONS = [
-  { value: "ru", label: "Русский"   },
-  { value: "kz", label: "Қазақша"  },
-  { value: "en", label: "English"  },
-  { value: "de", label: "Deutsch"  },
-  { value: "fr", label: "Français" },
-  { value: "tr", label: "Türkçe"   },
-  { value: "zh", label: "中文"      },
-  { value: "ar", label: "العربية"  },
-  { value: "es", label: "Español"  },
-  { value: "it", label: "Italiano" },
-  { value: "ja", label: "日本語"    },
-  { value: "ko", label: "한국어"    },
-  { value: "pl", label: "Polski"   },
-  { value: "pt", label: "Português"},
-  { value: "uk", label: "Українська"},
 ]
 
 interface OnboardingDocument {
@@ -66,6 +51,13 @@ function formatDocSize(bytes: number): string {
 const inputClass =
   "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
+// Matches apps.services.models.CONSULTATION_DESCRIPTION_MIN_LENGTH —
+// the paid_consultation category's description has a real minimum
+// length on the backend, not just "non-blank".
+const SERVICE_DESCRIPTION_MIN_LENGTH = 80
+// Matches apps.services.models.CONSULTATION_DURATION_MIN_MINUTES.
+const SERVICE_DURATION_MIN_MINUTES = 5
+
 export default function MentorOnboarding() {
   const t = useTranslations("Onboarding.Mentor")
   const tExpertise = useTranslations("Landing.Expertise")
@@ -83,6 +75,7 @@ export default function MentorOnboarding() {
     { id: "about", label: t("tabAbout") },
     { id: "education", label: t("tabEducation") },
     { id: "expertise", label: t("tabExpertise") },
+    { id: "services", label: t("tabServices") },
   ]
 
   const DOCUMENT_KIND_OPTIONS = [
@@ -125,6 +118,19 @@ export default function MentorOnboarding() {
   const [docError, setDocError]     = useState("")
   const docInputRef = useRef<HTMLInputElement>(null)
 
+  // Services — a mentor needs at least one active service to submit
+  // (apps.mentors.models.MentorProfile.submission_errors). This is
+  // deliberately a minimal quick-add for a single Primary Consultation
+  // (paid_consultation) service, not the full editor with all
+  // categories/fields — that lives at /mentors/services for later.
+  const [services, setServices] = useState<MentorService[]>([])
+  const [serviceTitle, setServiceTitle] = useState("")
+  const [serviceDescription, setServiceDescription] = useState("")
+  const [servicePrice, setServicePrice] = useState("")
+  const [serviceDuration, setServiceDuration] = useState("60")
+  const [creatingService, setCreatingService] = useState(false)
+  const [serviceError, setServiceError] = useState("")
+
   // ─── Load profile on mount ─────────────────────────────────────
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : ""
@@ -166,6 +172,9 @@ export default function MentorOnboarding() {
             const d = await res.json()
             setDocuments(Array.isArray(d) ? d : d.results ?? [])
           }
+        } catch { /* non-fatal */ }
+        try {
+          setServices(await fetchMentorServices())
         } catch { /* non-fatal */ }
         setReady(true)
       })
@@ -301,6 +310,33 @@ export default function MentorOnboarding() {
     }
   }
 
+  // ─── Quick service create ───────────────────────────────────────
+  const handleCreateService = async () => {
+    setCreatingService(true)
+    setServiceError("")
+    try {
+      const created = await createMentorService({
+        title: serviceTitle,
+        description: serviceDescription,
+        currency: "KZT",
+        grade_min: null,
+        grade_max: null,
+        payout_category: "paid_consultation",
+        price: servicePrice,
+        duration_minutes: Number(serviceDuration),
+      })
+      setServices((prev) => [created, ...prev])
+      setServiceTitle("")
+      setServiceDescription("")
+      setServicePrice("")
+      setServiceDuration("60")
+    } catch (e) {
+      setServiceError(e instanceof Error ? e.message : t("saveErrorGeneric"))
+    } finally {
+      setCreatingService(false)
+    }
+  }
+
   // ─── Submit ────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -359,6 +395,7 @@ export default function MentorOnboarding() {
     expertise: expertise.length > 0 &&
       documents.some((d) => d.kind === "diploma") &&
       documents.some((d) => d.kind === "enrollment_certificate"),
+    services: services.some((s) => s.is_active),
   }
   const allDone = Object.values(tabDone).every(Boolean)
 
@@ -561,7 +598,8 @@ export default function MentorOnboarding() {
                   {t("languagesLabel")} <span className="text-red-400">*</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {LANGUAGE_OPTIONS.map(({ value, label }) => {
+                  {LANGUAGE_CODES.map((value) => {
+                    const label = languageLabel(value)
                     const active = languages.includes(value)
                     return (
                       <button
@@ -868,6 +906,109 @@ export default function MentorOnboarding() {
               </div>
             </div>
           )}
+
+          {/* ── УСЛУГИ ── */}
+          {tab === "services" && (
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">{t("servicesHeading")}</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                {t("servicesSubtitle")} <span className="text-red-400">*</span>
+              </p>
+
+              <div className="border border-gray-200 rounded-2xl p-4 mb-4 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {t("serviceTitleLabel")}
+                  </label>
+                  <input
+                    value={serviceTitle}
+                    onChange={(e) => setServiceTitle(e.target.value)}
+                    placeholder={t("serviceTitlePlaceholder")}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {t("serviceDescriptionLabel")}{" "}
+                    <span className="text-gray-400 font-normal">
+                      {t("serviceDescriptionMinChars", { min: SERVICE_DESCRIPTION_MIN_LENGTH })}
+                    </span>
+                  </label>
+                  <textarea
+                    value={serviceDescription}
+                    onChange={(e) => setServiceDescription(e.target.value)}
+                    rows={3}
+                    placeholder={t("serviceDescriptionPlaceholder")}
+                    className={`${inputClass} resize-none`}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {serviceDescription.trim().length}/{SERVICE_DESCRIPTION_MIN_LENGTH}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      {t("servicePriceLabel")}
+                    </label>
+                    <input
+                      value={servicePrice}
+                      onChange={(e) => setServicePrice(e.target.value)}
+                      type="number"
+                      min="0"
+                      placeholder={t("servicePricePlaceholder")}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      {t("serviceDurationLabel")}
+                    </label>
+                    <input
+                      value={serviceDuration}
+                      onChange={(e) => setServiceDuration(e.target.value)}
+                      type="number"
+                      min="5"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+                {serviceError && <p className="text-xs text-red-500">{serviceError}</p>}
+                <button
+                  onClick={handleCreateService}
+                  disabled={
+                    !serviceTitle.trim() ||
+                    serviceDescription.trim().length < SERVICE_DESCRIPTION_MIN_LENGTH ||
+                    !servicePrice ||
+                    Number(serviceDuration) < SERVICE_DURATION_MIN_MINUTES ||
+                    creatingService
+                  }
+                  className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                  {creatingService ? t("creatingService") : t("addService")}
+                </button>
+              </div>
+
+              {services.length > 0 && (
+                <div className="space-y-2">
+                  {services.map((s) => (
+                    <div key={s.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                      <Icon name="description" size={20} className="text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
+                        <p className="text-xs text-gray-400">
+                          {s.price} ₸ · {s.duration_minutes} {t("minutes")}
+                        </p>
+                      </div>
+                      {!s.is_active && (
+                        <span className="text-xs text-gray-400 flex-shrink-0">{t("serviceInactive")}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-3">{t("servicesMoreHint")}</p>
+            </div>
+          )}
         </div>
 
         {/* Tab navigation */}
@@ -928,6 +1069,7 @@ export default function MentorOnboarding() {
               {!tabDone.about && <li>{t("aboutMissing")}</li>}
               {!tabDone.education && <li>{t("educationMissing")}</li>}
               {!tabDone.expertise && <li>{t("expertiseMissing")}</li>}
+              {!tabDone.services && <li>{t("servicesMissing")}</li>}
             </ul>
           </div>
         )}
@@ -958,5 +1100,6 @@ function tabForError(errors: Record<string, string>): Tab | null {
     || errors.grant_or_scholarship || errors.gpa || errors.exam_results
   ) return "education"
   if (errors.expertise_areas || errors.diploma_document || errors.enrollment_document) return "expertise"
+  if (errors.services) return "services"
   return null
 }
