@@ -8,6 +8,9 @@ import {
   fetchOrders,
   completeOrder,
   cancelOrder,
+  rescheduleOrder,
+  fetchMentorAvailability,
+  fetchMentorAvailabilityOverview,
   createDispute,
   authFetch,
   markChatRead,
@@ -15,6 +18,7 @@ import {
   fetchMentorServices,
   createSupportInvoice,
   endSupportEngagement,
+  setEngagementDeadline,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation } from "@/lib/chat"
@@ -52,6 +56,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     installment_number: null,
     engagement_duration_months: null,
     engagement_status: null,
+    engagement_application_deadline: null,
+    scheduled_at: null,
     due_at: null,
     completed_at: null,
     created_at: "2026-07-01T10:00:00Z",
@@ -226,6 +232,16 @@ describe("OrderPage — student view", () => {
   beforeEach(() => {
     localStorage.setItem("access_token", "fake-token")
     localStorage.setItem("role", "student")
+    // BookingCalendar (rendered inside the reschedule modal) always
+    // calls these on mount/date-select — give every test a safe
+    // default so an unrelated test opening the modal doesn't crash on
+    // `undefined.then(...)` from the auto-mocked module.
+    vi.mocked(fetchMentorAvailabilityOverview).mockResolvedValue({
+      timezone: "Asia/Almaty", duration_minutes: 60, dates: {},
+    })
+    vi.mocked(fetchMentorAvailability).mockResolvedValue({
+      date: "2026-08-15", timezone: "Asia/Almaty", duration_minutes: 60, slots: [],
+    })
   })
 
   it("renders order status, price and mentor info", async () => {
@@ -255,6 +271,113 @@ describe("OrderPage — student view", () => {
     await waitFor(() => expect(cancelOrder).toHaveBeenCalledWith(42))
     expect(await screen.findByText("Отменён")).toBeInTheDocument()
     confirmSpy.mockRestore()
+  })
+
+  it("shows a reschedule button for a pending order with a scheduled time", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ scheduled_at: "2026-08-15T10:00:00+05:00" }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByRole("button", { name: "Перенести" })).toBeInTheDocument()
+  })
+
+  it("hides the reschedule button when the order has no scheduled time", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({ scheduled_at: null }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Перенести" })).not.toBeInTheDocument()
+  })
+
+  it("hides the reschedule button once the order is completed", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({
+        order_status: "completed", payout_category: "delivery",
+        scheduled_at: "2026-08-15T10:00:00+05:00", completed_at: "2026-08-15T11:00:00+05:00",
+      }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Перенести" })).not.toBeInTheDocument()
+  })
+
+  it("opens the reschedule modal on click", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ scheduled_at: "2026-08-15T10:00:00+05:00" }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    const button = await screen.findByRole("button", { name: "Перенести" })
+    fireEvent.click(button)
+
+    expect(await screen.findByText("Выбери новое время")).toBeInTheDocument()
+  })
+
+  describe("completing a reschedule via the calendar", () => {
+    const TODAY = new Date("2026-08-10T12:00:00")
+
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      vi.setSystemTime(TODAY)
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("calls rescheduleOrder and closes the modal on success", async () => {
+      // Drives the real BookingCalendar UI the same way
+      // BookingCalendar.test.tsx does — this test's job is to verify
+      // OrderPage wires it up correctly (mentorId, the ISO string it
+      // builds, the order-state update), not to re-prove the
+      // calendar's own date/slot-picking logic.
+      const order = makeOrder({ scheduled_at: "2026-08-15T10:00:00+05:00" })
+      vi.mocked(fetchOrder).mockResolvedValue(order)
+      vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+      vi.mocked(rescheduleOrder).mockResolvedValue({
+        ...order, scheduled_at: "2026-08-16T11:00:00+05:00",
+      })
+      vi.mocked(fetchMentorAvailability).mockResolvedValue({
+        date: "2026-08-16", timezone: "Asia/Almaty", duration_minutes: 60, slots: ["11:00"],
+      })
+
+      await renderOrderPage("42")
+
+      fireEvent.click(await screen.findByRole("button", { name: "Перенести" }))
+      await screen.findByText("Выбери новое время")
+
+      const dayButton = screen
+        .getAllByText("16")
+        .map((el) => el.closest("button"))
+        .find((btn): btn is HTMLButtonElement => btn !== null && !btn.hasAttribute("disabled"))
+      if (!dayButton) throw new Error("No enabled day-16 button found")
+      fireEvent.click(dayButton)
+
+      const slotButton = await screen.findByText("11:00")
+      fireEvent.click(slotButton)
+
+      const confirmText = await screen.findByText("Записаться на 11:00")
+      const confirmButton = confirmText.closest("button")
+      if (!confirmButton) throw new Error("Confirm button not found")
+      fireEvent.click(confirmButton)
+
+      await waitFor(() =>
+        expect(rescheduleOrder).toHaveBeenCalledWith(42, expect.stringContaining("11:00:00+05:00")),
+      )
+      await waitFor(() =>
+        expect(screen.queryByText("Выбери новое время")).not.toBeInTheDocument(),
+      )
+    })
   })
 
   it("opens a dispute on a completed non-consultation order", async () => {
@@ -326,6 +449,105 @@ describe("OrderPage — mentor: complete order", () => {
     await waitFor(() => expect(confirmSpy).toHaveBeenCalled())
     expect(completeOrder).not.toHaveBeenCalled()
     confirmSpy.mockRestore()
+  })
+})
+
+describe("OrderPage — mentor: application deadline", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    vi.mocked(setEngagementDeadline).mockReset()
+  })
+
+  it("shows the deadline panel for a live engagement", async () => {
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Дедлайн подачи")).toBeInTheDocument()
+  })
+
+  it("does not show the deadline panel without a support engagement", async () => {
+    const order = makeOrder({ support_engagement: null, payout_category: "delivery" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByText("Дедлайн подачи")).not.toBeInTheDocument()
+  })
+
+  it.each(["awaiting_payment", "active", "paused"] as const)(
+    "shows the deadline panel for a live engagement status: %s",
+    async (engagementStatus) => {
+      const order = makeOrder({
+        support_engagement: 5, engagement_status: engagementStatus, payout_category: "support",
+      })
+      vi.mocked(fetchOrder).mockResolvedValue(order)
+
+      await renderOrderPage("42")
+
+      expect(await screen.findByText("Дедлайн подачи")).toBeInTheDocument()
+    },
+  )
+
+  it.each(["completed", "cancelled"] as const)(
+    "hides the deadline panel once the engagement is no longer live: %s",
+    async (engagementStatus) => {
+      const order = makeOrder({
+        support_engagement: 5, engagement_status: engagementStatus, payout_category: "support",
+      })
+      vi.mocked(fetchOrder).mockResolvedValue(order)
+
+      await renderOrderPage("42")
+
+      await screen.findByText("Первичная консультация")
+      expect(screen.queryByText("Дедлайн подачи")).not.toBeInTheDocument()
+    },
+  )
+
+  it("pre-fills the existing deadline and saves an updated one", async () => {
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      engagement_application_deadline: "2026-08-01",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(setEngagementDeadline).mockResolvedValue({
+      id: 5, mentor: 3, mentor_name: "М", student: 7, student_name: "С",
+      mentor_service: 10, service_title: "Сопровождение", total_price: "0",
+      duration_months: 6, status: "active", next_installment_due_at: null,
+      paused_at: null, application_deadline: "2026-09-01", created_at: "2026-01-01T00:00:00Z",
+    })
+
+    await renderOrderPage("42")
+
+    const input = await screen.findByDisplayValue("2026-08-01")
+    fireEvent.change(input, { target: { value: "2026-09-01" } })
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }))
+
+    await waitFor(() => expect(setEngagementDeadline).toHaveBeenCalledWith(5, "2026-09-01"))
+    expect(await screen.findByText("Дедлайн сохранён")).toBeInTheDocument()
+  })
+
+  it("shows an error message when saving fails", async () => {
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(setEngagementDeadline).mockRejectedValue(new Error("Не удалось сохранить дедлайн"))
+
+    await renderOrderPage("42")
+
+    const input = await screen.findByLabelText("Дедлайн подачи")
+    fireEvent.change(input, { target: { value: "2026-09-01" } })
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }))
+
+    expect(await screen.findByText("Не удалось сохранить дедлайн")).toBeInTheDocument()
   })
 })
 
@@ -592,7 +814,8 @@ describe("OrderPage — mentor: end a support engagement", () => {
     vi.mocked(endSupportEngagement).mockResolvedValue({
       id: 5, mentor: 3, mentor_name: "Данияр Сериков", student: 7, student_name: "Аружан Есенова",
       mentor_service: 10, service_title: "Сопровождение", total_price: "500000.00", duration_months: 6,
-      status: "cancelled", next_installment_due_at: null, paused_at: null, created_at: "2026-07-01T10:00:00Z",
+      status: "cancelled", next_installment_due_at: null, paused_at: null,
+      application_deadline: null, created_at: "2026-07-01T10:00:00Z",
     })
 
     await renderOrderPage("42")

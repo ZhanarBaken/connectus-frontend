@@ -386,6 +386,54 @@ export default function CRMSettingsPage() {
                 val={val}
                 set={set}
               />
+              <EmailGroup
+                label="Профиль ментора одобрен"
+                hint="без плейсхолдеров"
+                fields={[
+                  { key: "mentor_profile_approved_email_subject", label: "Тема" },
+                  { key: "mentor_profile_approved_email_heading", label: "Заголовок" },
+                ]}
+                bodyKey="mentor_profile_approved_email_body"
+                bodyLabel="Тело письма"
+                val={val}
+                set={set}
+              />
+              <EmailGroup
+                label="Профиль ментора отклонён"
+                hint="без плейсхолдеров"
+                fields={[
+                  { key: "mentor_profile_rejected_email_subject", label: "Тема" },
+                  { key: "mentor_profile_rejected_email_heading", label: "Заголовок" },
+                ]}
+                bodyKey="mentor_profile_rejected_email_body"
+                bodyLabel="Тело письма"
+                val={val}
+                set={set}
+              />
+              <EmailGroup
+                label="Консультация перенесена — студенту"
+                hint="{mentor_name}, {scheduled_at}"
+                fields={[
+                  { key: "consultation_rescheduled_student_email_subject", label: "Тема" },
+                  { key: "consultation_rescheduled_student_email_heading", label: "Заголовок" },
+                ]}
+                bodyKey="consultation_rescheduled_student_email_body"
+                bodyLabel="Тело письма"
+                val={val}
+                set={set}
+              />
+              <EmailGroup
+                label="Консультация перенесена — ментору"
+                hint="{student_name}, {scheduled_at}"
+                fields={[
+                  { key: "consultation_rescheduled_mentor_email_subject", label: "Тема" },
+                  { key: "consultation_rescheduled_mentor_email_heading", label: "Заголовок" },
+                ]}
+                bodyKey="consultation_rescheduled_mentor_email_body"
+                bodyLabel="Тело письма"
+                val={val}
+                set={set}
+              />
             </Section>
           )}
 

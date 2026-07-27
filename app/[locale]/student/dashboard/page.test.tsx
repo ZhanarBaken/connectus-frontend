@@ -61,6 +61,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     installment_number: null,
     engagement_duration_months: null,
     engagement_status: null,
+    engagement_application_deadline: null,
+    scheduled_at: null,
     due_at: null,
     completed_at: null,
     created_at: "2026-07-01T00:00:00Z",

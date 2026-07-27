@@ -210,6 +210,13 @@ export interface Order {
   // belongs to one. "paused" means an installment went unpaid past its
   // grace period; a replacement invoice is due immediately.
   engagement_status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled" | null
+  // Application-submission deadline the mentor set on the parent
+  // SupportEngagement (e.g. a university application deadline) — null
+  // unless one was set, and null for every non-support order.
+  engagement_application_deadline: string | null
+  // Booked session time, if any — null for a legacy chat-coordinated
+  // consultation or a free intro consultation with no time slot.
+  scheduled_at: string | null
   // Real due date for an auto-generated installment (month 2+), sent
   // SUPPORT_REMINDER_LEAD_DAYS before it's due — null for month 1 and
   // every non-support order, where due = creation.
@@ -280,6 +287,7 @@ export interface SupportEngagement {
   status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled"
   next_installment_due_at: string | null
   paused_at: string | null
+  application_deadline: string | null
   created_at: string
 }
 
@@ -379,6 +387,18 @@ export interface SiteSettings {
   payment_expired_mentor_email_subject: string
   payment_expired_mentor_email_heading: string
   payment_expired_mentor_email_body: string
+  mentor_profile_approved_email_subject: string
+  mentor_profile_approved_email_heading: string
+  mentor_profile_approved_email_body: string
+  mentor_profile_rejected_email_subject: string
+  mentor_profile_rejected_email_heading: string
+  mentor_profile_rejected_email_body: string
+  consultation_rescheduled_student_email_subject: string
+  consultation_rescheduled_student_email_heading: string
+  consultation_rescheduled_student_email_body: string
+  consultation_rescheduled_mentor_email_subject: string
+  consultation_rescheduled_mentor_email_heading: string
+  consultation_rescheduled_mentor_email_body: string
   // Telegram bot messages
   bot_payment_requisites_message: string
   bot_payment_received_student: string

@@ -5,6 +5,7 @@ import MentorPage from "./page"
 import {
   fetchMentor,
   createOrder,
+  requestSupport,
   fetchOrders,
   fetchPublicSettings,
   fetchMentorAvailability,
@@ -85,6 +86,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     installment_number: null,
     engagement_duration_months: null,
     engagement_status: null,
+    engagement_application_deadline: null,
+    scheduled_at: null,
     due_at: null,
     completed_at: null,
     created_at: "2026-07-01T10:00:00Z",
@@ -237,6 +240,57 @@ describe("MentorPage — intro-call badge vs. support-engagement session order",
     await renderMentorPage("3")
 
     expect(await screen.findByRole("button", { name: "Забронировать intro-call" })).toBeInTheDocument()
+  })
+})
+
+// ─── Request-support button (Intro Call disabled) ──────────────────────────
+
+describe("MentorPage — request support when Intro Call is disabled", () => {
+  beforeEach(() => {
+    vi.mocked(requestSupport).mockReset()
+  })
+
+  it("shows the request-support button instead of intro-call booking", async () => {
+    const service = makeService({ intro_call_enabled: false })
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
+    vi.mocked(fetchOrders).mockResolvedValue([])
+
+    await renderMentorPage("3")
+
+    expect(await screen.findByRole("button", { name: "Запросить сопровождение" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Забронировать intro-call" })).not.toBeInTheDocument()
+  })
+
+  it("sends the request and shows a confirmation on success", async () => {
+    const service = makeService({ intro_call_enabled: false })
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(requestSupport).mockResolvedValue(undefined)
+
+    await renderMentorPage("3")
+
+    const button = await screen.findByRole("button", { name: "Запросить сопровождение" })
+    fireEvent.click(button)
+
+    expect(await screen.findByText("Запрос отправлен")).toBeInTheDocument()
+    expect(requestSupport).toHaveBeenCalledWith(service.id)
+    expect(screen.queryByRole("button", { name: "Запросить сопровождение" })).not.toBeInTheDocument()
+  })
+
+  it("shows an error message when the request fails", async () => {
+    const service = makeService({ intro_call_enabled: false })
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(requestSupport).mockRejectedValue(new Error("Ты уже отправлял(а) запрос недавно"))
+
+    await renderMentorPage("3")
+
+    const button = await screen.findByRole("button", { name: "Запросить сопровождение" })
+    fireEvent.click(button)
+
+    expect(await screen.findByText("Ты уже отправлял(а) запрос недавно")).toBeInTheDocument()
+    // Button stays actionable — a failed request must not look "sent".
+    expect(screen.getByRole("button", { name: "Запросить сопровождение" })).toBeInTheDocument()
   })
 })
 

@@ -308,6 +308,21 @@ export async function createOrder(
   return res.json()
 }
 
+// Student pings a mentor about a SUPPORT service that has Intro Call
+// disabled — there's no calendar slot to book, so this just opens/
+// reopens the chat and notifies the mentor. No Order is created here;
+// the mentor follows up with an invoice (createSupportInvoice) once
+// they're ready.
+export async function requestSupport(mentorServiceId: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/services/${mentorServiceId}/request-support/`, {
+    method: "POST",
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Failed to send request")
+  }
+}
+
 // Mentor sends a "заявка" for a support engagement inside an existing
 // chat — price/duration are negotiated per student, not the catalog
 // listing. Backend creates the SupportEngagement + month-1 Order and
@@ -357,6 +372,22 @@ export async function endSupportEngagement(
   return res.json()
 }
 
+export async function setEngagementDeadline(
+  engagementId: number,
+  applicationDeadline: string | null,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/deadline/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ application_deadline: applicationDeadline }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось сохранить дедлайн")
+  }
+  return res.json()
+}
+
 export async function fetchOrder(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch order")
@@ -368,6 +399,19 @@ export async function cancelOrder(id: number): Promise<Order> {
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to cancel order")
+  }
+  return res.json()
+}
+
+export async function rescheduleOrder(id: number, scheduledAt: string): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/reschedule/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scheduled_at: scheduledAt }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Failed to reschedule order")
   }
   return res.json()
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchMentor, createOrder, fetchOrders, fetchPublicSettings } from "@/lib/api"
+import { fetchMentor, createOrder, requestSupport, fetchOrders, fetchPublicSettings } from "@/lib/api"
 import { track } from "@/lib/analytics"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
@@ -44,6 +44,9 @@ export default function MentorPage({ params }: Props) {
   const [bookingService, setBookingService] = useState<MentorService | null>(null)
   const [bookingIsIntroCall, setBookingIsIntroCall] = useState(false)
   const [introCallDurationMinutes, setIntroCallDurationMinutes] = useState(DEFAULT_INTRO_CALL_DURATION_MINUTES)
+  const [requestingSupportId, setRequestingSupportId] = useState<number | null>(null)
+  const [supportRequestSentIds, setSupportRequestSentIds] = useState<Set<number>>(new Set())
+  const [requestSupportError, setRequestSupportError] = useState<{ serviceId: number; message: string } | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -82,6 +85,22 @@ export default function MentorPage({ params }: Props) {
     } catch (err: unknown) {
       setOrderError(err instanceof Error ? err.message : t("orderError"))
       setOrderingServiceId(null)
+    }
+  }
+
+  const handleRequestSupport = async (serviceId: number) => {
+    setRequestingSupportId(serviceId)
+    setRequestSupportError(null)
+    try {
+      await requestSupport(serviceId)
+      setSupportRequestSentIds((prev) => new Set(prev).add(serviceId))
+    } catch (err: unknown) {
+      setRequestSupportError({
+        serviceId,
+        message: err instanceof Error ? err.message : t("requestSupportError"),
+      })
+    } finally {
+      setRequestingSupportId(null)
     }
   }
 
@@ -482,7 +501,7 @@ export default function MentorPage({ params }: Props) {
                           >
                             {t("bookSession")}
                           </button>
-                        ) : service.intro_call_enabled && (
+                        ) : service.intro_call_enabled ? (
                           introCallOrder ? (
                             <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-1">
                               <Icon name="event_available" size={14} />
@@ -499,8 +518,24 @@ export default function MentorPage({ params }: Props) {
                               {t("bookIntroCall")}
                             </button>
                           )
+                        ) : supportRequestSentIds.has(service.id) ? (
+                          <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-1">
+                            <Icon name="check_circle" size={14} />
+                            {t("requestSupportSent")}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleRequestSupport(service.id)}
+                            disabled={requestingSupportId === service.id}
+                            className="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+                          >
+                            {requestingSupportId === service.id ? t("requesting") : t("requestSupport")}
+                          </button>
                         )}
                       </div>
+                      {requestSupportError?.serviceId === service.id && (
+                        <p className="text-xs text-red-500 mt-2">{requestSupportError.message}</p>
+                      )}
                     </div>
                     )
                   })}
