@@ -530,6 +530,7 @@
       "quickActions": "Quick actions",
       "guide": "Mentor guide",
       "finances": "Finances",
+      "clients": "Clients",
       "setUpSchedule": "Set up your schedule",
       "manageServices": "Manage services",
       "verificationDocuments": "Verification documents",
@@ -558,6 +559,18 @@
       "methodOther": "Other",
       "errorLoading": "Loading error",
       "errorGeneric": "Couldn't load the data"
+    },
+    "MentorClients": {
+      "title": "Clients",
+      "subtitle": "Every applicant who has ever placed an order or support engagement with you.",
+      "activeTab": "Active",
+      "inactiveTab": "Inactive",
+      "noActiveTitle": "No active clients",
+      "noActiveBody": "Applicants with a current order or engagement will show up here.",
+      "noInactiveTitle": "No inactive clients",
+      "noInactiveBody": "Applicants whose orders are all completed or cancelled will show up here.",
+      "errorLoading": "Loading error",
+      "errorGeneric": "Couldn't load the client list"
     },
     "MentorGuide": {
       "title": "Mentor guide",

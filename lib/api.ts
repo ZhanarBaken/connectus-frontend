@@ -278,6 +278,25 @@ export async function fetchMentorEarnings(): Promise<MentorEarnings> {
   return res.json()
 }
 
+export interface MentorClient {
+  id: number
+  full_name: string
+  current_school_or_university: string
+  city: string
+  profile_photo: string | null
+}
+
+export interface MentorClients {
+  active: MentorClient[]
+  inactive: MentorClient[]
+}
+
+export async function fetchMentorClients(): Promise<MentorClients> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/`)
+  if (!res.ok) throw new Error("Не удалось загрузить список клиентов")
+  return res.json()
+}
+
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export async function fetchOrders(): Promise<Order[]> {

@@ -618,6 +618,7 @@ export default function MentorDashboard() {
                 {[
                   { href: "/mentor/guide", icon: "menu_book", label: t("guide") },
                   { href: "/mentor/earnings", icon: "account_balance_wallet", label: t("finances") },
+                  { href: "/mentor/clients", icon: "group", label: t("clients") },
                   { href: "/mentors/profile", icon: "person", label: t("editProfile") },
                   { href: "/mentors/schedule", icon: "calendar_month", label: t("setUpSchedule") },
                   { href: "/mentors/services", icon: "description", label: t("manageServices") },
