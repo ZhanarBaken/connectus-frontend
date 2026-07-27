@@ -470,5 +470,30 @@ describe("MentorDashboard", () => {
       const fixLink = within(checklistContainer).getByRole("link", { name: "Выбрать →" })
       expect(fixLink).toHaveAttribute("href", "/mentors/profile")
     })
+
+    it("shows a translated label and a working fix-link for a missing-active-service error", async () => {
+      // Same gap as languages above — `services` was also absent from
+      // FIELD_LABELS/FIELD_LINKS, so this rendered as the raw English
+      // backend message with no link to where a mentor actually adds one.
+      const user = userEvent.setup()
+      const draftProfile = makeMentorProfile({ is_submitted: false, is_approved: false })
+      vi.mocked(fetchMentorProfile).mockResolvedValue(draftProfile)
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      vi.mocked(submitMentorProfile).mockRejectedValue(
+        new Error(JSON.stringify({ services: ["At least one active service is required."] })),
+      )
+
+      render(<MentorDashboard />)
+
+      const submitButton = await screen.findByRole("button", { name: "Отправить на проверку" })
+      await user.click(submitButton)
+
+      const checklist = await screen.findByText("Что нужно исправить:")
+      const checklistContainer = checklist.closest("div") as HTMLElement
+      expect(within(checklistContainer).getByText(/Активная услуга:/)).toBeInTheDocument()
+      const fixLink = within(checklistContainer).getByRole("link", { name: "Управлять" })
+      expect(fixLink).toHaveAttribute("href", "/mentors/services")
+    })
   })
 })

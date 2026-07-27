@@ -173,6 +173,7 @@ export default function MentorDashboard() {
     languages: t("fields.languages"),
     profile_photo: t("fields.profilePhoto"),
     documents: t("fields.documents"),
+    services: t("fields.services"),
     email: t("fields.email"),
     telegram: t("fields.telegramField"),
   }
@@ -190,6 +191,7 @@ export default function MentorDashboard() {
     countries: { href: "/mentors/profile", label: t("choose") },
     languages: { href: "/mentors/profile", label: t("choose") },
     documents: { href: "/mentors/documents", label: t("upload") },
+    services: { href: "/mentors/services", label: t("manage") },
   }
 
   return (
