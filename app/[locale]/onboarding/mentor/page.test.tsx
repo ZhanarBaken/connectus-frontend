@@ -273,6 +273,121 @@ describe("MentorOnboarding", () => {
     )
   })
 
+  it("creates a support-category service after switching the type toggle", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.createMentorService).mockResolvedValue({
+      id: 21, title: "Поступление в 3 вуза", description: "", price: "500000.00", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: false, intro_call_enabled: true, is_active: true,
+    })
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    await user.click(screen.getByRole("button", { name: "Сопровождение" }))
+    await user.type(screen.getByPlaceholderText("Поступление в 3 вуза"), "Поступление в 3 вуза")
+    await user.type(screen.getByPlaceholderText("4"), "4")
+    await user.type(screen.getByPlaceholderText("8"), "8")
+    await user.type(screen.getByPlaceholderText("6"), "6")
+    await user.type(screen.getByPlaceholderText("12"), "12")
+    await user.type(screen.getByPlaceholderText("10000"), "500000")
+    await user.click(screen.getByRole("button", { name: "+ Добавить услугу" }))
+
+    expect(await screen.findByText("Поступление в 3 вуза")).toBeInTheDocument()
+    expect(api.createMentorService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payout_category: "support",
+        meetings_min: 4, meetings_max: 8,
+        duration_months_min: 6, duration_months_max: 12,
+        is_price_negotiable: false, price: "500000",
+        intro_call_enabled: true,
+      }),
+    )
+  })
+
+  it("does not require price when the support service is marked price-negotiable", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.createMentorService).mockResolvedValue({
+      id: 22, title: "Поступление в 3 вуза", description: "", price: "0.00", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: true, intro_call_enabled: true, is_active: true,
+    })
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    await user.click(screen.getByRole("button", { name: "Сопровождение" }))
+    await user.type(screen.getByPlaceholderText("Поступление в 3 вуза"), "Поступление в 3 вуза")
+    await user.type(screen.getByPlaceholderText("4"), "4")
+    await user.type(screen.getByPlaceholderText("8"), "8")
+    await user.type(screen.getByPlaceholderText("6"), "6")
+    await user.type(screen.getByPlaceholderText("12"), "12")
+    await user.click(screen.getByText("Цена договорная (обсуждается с каждым студентом отдельно)"))
+
+    expect(screen.getByRole("button", { name: "+ Добавить услугу" })).not.toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "+ Добавить услугу" }))
+
+    expect(api.createMentorService).toHaveBeenCalledWith(
+      expect.objectContaining({ is_price_negotiable: true, price: "0.00" }),
+    )
+  })
+
+  it("does not leak support-only fields into a consultation submit after switching category back", async () => {
+    // Fills the support fields, switches back to Consultation without
+    // submitting, then fills+submits a consultation service — the
+    // payload must contain none of the support-only keys.
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.createMentorService).mockResolvedValue({
+      id: 23, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+      duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
+      meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
+      is_price_negotiable: false, intro_call_enabled: false, is_active: true,
+    })
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    // Partially fill the Support tab first.
+    await user.click(screen.getByRole("button", { name: "Сопровождение" }))
+    await user.type(screen.getByPlaceholderText("4"), "4")
+    await user.type(screen.getByPlaceholderText("8"), "8")
+
+    // Switch back to Consultation without submitting, and fill+submit that instead.
+    await user.click(screen.getByRole("button", { name: "Консультация" }))
+    const longDescription = "Разбираем твою ситуацию и составляем подробный план поступления в выбранный университет вместе."
+    await user.type(screen.getByPlaceholderText("Первичная консультация"), "Первичная консультация")
+    await user.type(screen.getByPlaceholderText(/Разбираем твою ситуацию/), longDescription)
+    await user.type(screen.getByPlaceholderText("10000"), "5000")
+    await user.click(screen.getByRole("button", { name: "+ Добавить услугу" }))
+
+    await screen.findByText("Первичная консультация")
+    const [payload] = vi.mocked(api.createMentorService).mock.calls[0]
+    expect(payload).toMatchObject({ payout_category: "paid_consultation" })
+    expect(payload).not.toHaveProperty("meetings_min")
+    expect(payload).not.toHaveProperty("meetings_max")
+    expect(payload).not.toHaveProperty("is_price_negotiable")
+  })
+
   it("keeps the add-service button disabled until the description reaches the minimum length", async () => {
     // Regression: paid_consultation requires a real description (backend
     // CONSULTATION_DESCRIPTION_MIN_LENGTH=80), not just non-blank — a

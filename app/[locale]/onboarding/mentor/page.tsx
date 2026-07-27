@@ -61,6 +61,10 @@ const SERVICE_DURATION_MIN_MINUTES = 5
 export default function MentorOnboarding() {
   const t = useTranslations("Onboarding.Mentor")
   const tExpertise = useTranslations("Landing.Expertise")
+  // Reuses the /mentors/services page's copy for the category picker and
+  // the support-category fields — same concepts, single source of truth
+  // for that copy, instead of a second parallel translation set.
+  const tServices = useTranslations("Mentors.Services")
   const router = useRouter()
   const [ready, setReady]     = useState(false)
   const [tab, setTab]         = useState<Tab>("about")
@@ -124,10 +128,17 @@ export default function MentorOnboarding() {
   // (paid_consultation) service, not the full editor with all
   // categories/fields — that lives at /mentors/services for later.
   const [services, setServices] = useState<MentorService[]>([])
+  const [serviceCategory, setServiceCategory] = useState<"paid_consultation" | "support">("paid_consultation")
   const [serviceTitle, setServiceTitle] = useState("")
   const [serviceDescription, setServiceDescription] = useState("")
   const [servicePrice, setServicePrice] = useState("")
   const [serviceDuration, setServiceDuration] = useState("60")
+  const [serviceMeetingsMin, setServiceMeetingsMin] = useState("")
+  const [serviceMeetingsMax, setServiceMeetingsMax] = useState("")
+  const [serviceDurationMonthsMin, setServiceDurationMonthsMin] = useState("")
+  const [serviceDurationMonthsMax, setServiceDurationMonthsMax] = useState("")
+  const [serviceIsPriceNegotiable, setServiceIsPriceNegotiable] = useState(false)
+  const [serviceIntroCallEnabled, setServiceIntroCallEnabled] = useState(true)
   const [creatingService, setCreatingService] = useState(false)
   const [serviceError, setServiceError] = useState("")
 
@@ -315,21 +326,38 @@ export default function MentorOnboarding() {
     setCreatingService(true)
     setServiceError("")
     try {
-      const created = await createMentorService({
+      const payload: Record<string, unknown> = {
         title: serviceTitle,
         description: serviceDescription,
         currency: "KZT",
         grade_min: null,
         grade_max: null,
-        payout_category: "paid_consultation",
-        price: servicePrice,
-        duration_minutes: Number(serviceDuration),
-      })
+        payout_category: serviceCategory,
+      }
+      if (serviceCategory === "paid_consultation") {
+        payload.price = servicePrice
+        payload.duration_minutes = Number(serviceDuration)
+      } else {
+        payload.meetings_min = Number(serviceMeetingsMin)
+        payload.meetings_max = Number(serviceMeetingsMax)
+        payload.duration_months_min = Number(serviceDurationMonthsMin)
+        payload.duration_months_max = Number(serviceDurationMonthsMax)
+        payload.is_price_negotiable = serviceIsPriceNegotiable
+        payload.price = serviceIsPriceNegotiable ? "0.00" : servicePrice
+        payload.intro_call_enabled = serviceIntroCallEnabled
+      }
+      const created = await createMentorService(payload)
       setServices((prev) => [created, ...prev])
       setServiceTitle("")
       setServiceDescription("")
       setServicePrice("")
       setServiceDuration("60")
+      setServiceMeetingsMin("")
+      setServiceMeetingsMax("")
+      setServiceDurationMonthsMin("")
+      setServiceDurationMonthsMax("")
+      setServiceIsPriceNegotiable(false)
+      setServiceIntroCallEnabled(true)
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     } finally {
@@ -916,6 +944,37 @@ export default function MentorOnboarding() {
               </p>
 
               <div className="border border-gray-200 rounded-2xl p-4 mb-4 space-y-3">
+                {/* Category toggle — a mentor can add either (or both,
+                    one at a time: the form resets and stays open after
+                    each successful add, so switching type and adding
+                    again just works). */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setServiceCategory("paid_consultation")}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
+                      serviceCategory === "paid_consultation"
+                        ? "border-gray-900 bg-gray-50 text-gray-900"
+                        : "border-gray-100 text-gray-500 hover:border-gray-200"
+                    }`}
+                  >
+                    <Icon name="forum" size={16} />
+                    {tServices("consultationOptionTitle")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setServiceCategory("support")}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
+                      serviceCategory === "support"
+                        ? "border-gray-900 bg-gray-50 text-gray-900"
+                        : "border-gray-100 text-gray-500 hover:border-gray-200"
+                    }`}
+                  >
+                    <Icon name="groups" size={16} />
+                    {tServices("supportOptionTitle")}
+                  </button>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     {t("serviceTitleLabel")}
@@ -923,64 +982,178 @@ export default function MentorOnboarding() {
                   <input
                     value={serviceTitle}
                     onChange={(e) => setServiceTitle(e.target.value)}
-                    placeholder={t("serviceTitlePlaceholder")}
+                    placeholder={
+                      serviceCategory === "support"
+                        ? tServices("namePlaceholderSupport")
+                        : t("serviceTitlePlaceholder")
+                    }
                     className={inputClass}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     {t("serviceDescriptionLabel")}{" "}
-                    <span className="text-gray-400 font-normal">
-                      {t("serviceDescriptionMinChars", { min: SERVICE_DESCRIPTION_MIN_LENGTH })}
-                    </span>
+                    {serviceCategory === "paid_consultation" && (
+                      <span className="text-gray-400 font-normal">
+                        {t("serviceDescriptionMinChars", { min: SERVICE_DESCRIPTION_MIN_LENGTH })}
+                      </span>
+                    )}
                   </label>
                   <textarea
                     value={serviceDescription}
                     onChange={(e) => setServiceDescription(e.target.value)}
                     rows={3}
-                    placeholder={t("serviceDescriptionPlaceholder")}
+                    placeholder={
+                      serviceCategory === "support"
+                        ? tServices("descriptionPlaceholderSupport")
+                        : t("serviceDescriptionPlaceholder")
+                    }
                     className={`${inputClass} resize-none`}
                   />
-                  <p className="text-xs text-gray-400 mt-1">
-                    {serviceDescription.trim().length}/{SERVICE_DESCRIPTION_MIN_LENGTH}
-                  </p>
+                  {serviceCategory === "paid_consultation" && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {serviceDescription.trim().length}/{SERVICE_DESCRIPTION_MIN_LENGTH}
+                    </p>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      {t("servicePriceLabel")}
-                    </label>
-                    <input
-                      value={servicePrice}
-                      onChange={(e) => setServicePrice(e.target.value)}
-                      type="number"
-                      min="0"
-                      placeholder={t("servicePricePlaceholder")}
-                      className={inputClass}
-                    />
+
+                {serviceCategory === "paid_consultation" ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        {t("servicePriceLabel")}
+                      </label>
+                      <input
+                        value={servicePrice}
+                        onChange={(e) => setServicePrice(e.target.value)}
+                        type="number"
+                        min="0"
+                        placeholder={t("servicePricePlaceholder")}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        {t("serviceDurationLabel")}
+                      </label>
+                      <input
+                        value={serviceDuration}
+                        onChange={(e) => setServiceDuration(e.target.value)}
+                        type="number"
+                        min="5"
+                        className={inputClass}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      {t("serviceDurationLabel")}
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          {tServices("meetingsMinLabel")}
+                        </label>
+                        <input
+                          value={serviceMeetingsMin}
+                          onChange={(e) => setServiceMeetingsMin(e.target.value)}
+                          type="number"
+                          min={1}
+                          placeholder="4"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          {tServices("meetingsMaxLabel")}
+                        </label>
+                        <input
+                          value={serviceMeetingsMax}
+                          onChange={(e) => setServiceMeetingsMax(e.target.value)}
+                          type="number"
+                          min={1}
+                          placeholder="8"
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          {tServices("durationMonthsMinLabel")}
+                        </label>
+                        <input
+                          value={serviceDurationMonthsMin}
+                          onChange={(e) => setServiceDurationMonthsMin(e.target.value)}
+                          type="number"
+                          min={1}
+                          placeholder="6"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          {tServices("durationMonthsMaxLabel")}
+                        </label>
+                        <input
+                          value={serviceDurationMonthsMax}
+                          onChange={(e) => setServiceDurationMonthsMax(e.target.value)}
+                          type="number"
+                          min={1}
+                          placeholder="12"
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={serviceIsPriceNegotiable}
+                        onChange={(e) => setServiceIsPriceNegotiable(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      {tServices("priceNegotiableLabel")}
                     </label>
-                    <input
-                      value={serviceDuration}
-                      onChange={(e) => setServiceDuration(e.target.value)}
-                      type="number"
-                      min="5"
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
+                    {!serviceIsPriceNegotiable && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          {t("servicePriceLabel")}
+                        </label>
+                        <input
+                          value={servicePrice}
+                          onChange={(e) => setServicePrice(e.target.value)}
+                          type="number"
+                          min="0"
+                          placeholder={t("servicePricePlaceholder")}
+                          className={inputClass}
+                        />
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={serviceIntroCallEnabled}
+                        onChange={(e) => setServiceIntroCallEnabled(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      {tServices("introCallLabel")}
+                    </label>
+                  </>
+                )}
+
                 {serviceError && <p className="text-xs text-red-500">{serviceError}</p>}
                 <button
                   onClick={handleCreateService}
                   disabled={
                     !serviceTitle.trim() ||
-                    serviceDescription.trim().length < SERVICE_DESCRIPTION_MIN_LENGTH ||
-                    !servicePrice ||
-                    Number(serviceDuration) < SERVICE_DURATION_MIN_MINUTES ||
-                    creatingService
+                    creatingService ||
+                    (serviceCategory === "paid_consultation"
+                      ? serviceDescription.trim().length < SERVICE_DESCRIPTION_MIN_LENGTH ||
+                        !servicePrice ||
+                        Number(serviceDuration) < SERVICE_DURATION_MIN_MINUTES
+                      : !serviceMeetingsMin ||
+                        !serviceMeetingsMax ||
+                        !serviceDurationMonthsMin ||
+                        !serviceDurationMonthsMax ||
+                        (!serviceIsPriceNegotiable && !servicePrice))
                   }
                   className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
@@ -990,20 +1163,34 @@ export default function MentorOnboarding() {
 
               {services.length > 0 && (
                 <div className="space-y-2">
-                  {services.map((s) => (
-                    <div key={s.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                      <Icon name="description" size={20} className="text-gray-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
-                        <p className="text-xs text-gray-400">
-                          {s.price} ₸ · {s.duration_minutes} {t("minutes")}
-                        </p>
+                  {services.map((s) => {
+                    const isSupport = s.payout_category === "support"
+                    const parts: string[] = []
+                    if (isSupport) {
+                      if (s.meetings_min !== null && s.meetings_max !== null) {
+                        parts.push(tServices("meetingsRange", { min: s.meetings_min, max: s.meetings_max }))
+                      }
+                      if (s.duration_months_min !== null && s.duration_months_max !== null) {
+                        parts.push(tServices("monthsRange", { min: s.duration_months_min, max: s.duration_months_max }))
+                      }
+                    } else {
+                      parts.push(s.is_price_negotiable ? tServices("negotiablePrice") : `${s.price} ₸`)
+                      parts.push(`${s.duration_minutes} ${t("minutes")}`)
+                    }
+                    const summary = parts.join(" · ")
+                    return (
+                      <div key={s.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                        <Icon name={isSupport ? "groups" : "description"} size={20} className="text-gray-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
+                          <p className="text-xs text-gray-400">{summary}</p>
+                        </div>
+                        {!s.is_active && (
+                          <span className="text-xs text-gray-400 flex-shrink-0">{t("serviceInactive")}</span>
+                        )}
                       </div>
-                      {!s.is_active && (
-                        <span className="text-xs text-gray-400 flex-shrink-0">{t("serviceInactive")}</span>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
               <p className="text-xs text-gray-400 mt-3">{t("servicesMoreHint")}</p>
