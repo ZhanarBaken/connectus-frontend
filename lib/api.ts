@@ -372,6 +372,60 @@ export async function endSupportEngagement(
   return res.json()
 }
 
+// ─── Support-engagement tasks ──────────────────────────────────────────────
+
+export async function fetchSupportTasks(
+  engagementId: number,
+): Promise<import("@/types").SupportTask[]> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function createSupportTask(
+  engagementId: number,
+  data: { title: string; description?: string; deadline?: string | null },
+): Promise<import("@/types").SupportTask> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.title?.[0] || err.deadline?.[0] || err.detail || "Не удалось создать задачу")
+  }
+  return res.json()
+}
+
+export async function updateSupportTask(
+  engagementId: number,
+  taskId: number,
+  data: Partial<{ title: string; description: string; deadline: string | null; is_done: boolean }>,
+): Promise<import("@/types").SupportTask> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/${taskId}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.title?.[0] || err.deadline?.[0] || err.detail || "Не удалось обновить задачу")
+  }
+  return res.json()
+}
+
+export async function deleteSupportTask(engagementId: number, taskId: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/${taskId}/`, {
+    method: "DELETE",
+  })
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось удалить задачу")
+  }
+}
+
 export async function fetchOrder(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch order")

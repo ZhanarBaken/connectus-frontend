@@ -21,6 +21,10 @@ import {
   fetchMentorServices,
   createSupportInvoice,
   endSupportEngagement,
+  fetchSupportTasks,
+  createSupportTask,
+  updateSupportTask,
+  deleteSupportTask,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation } from "@/lib/chat"
@@ -139,6 +143,7 @@ async function renderOrderPage(id: string) {
 function setupCommonMocks() {
   vi.mocked(authFetch).mockResolvedValue(okJson({ id: 1, email: "mentor@test.com" }))
   vi.mocked(fetchOrderDocuments).mockResolvedValue([])
+  vi.mocked(fetchSupportTasks).mockResolvedValue([])
   vi.mocked(markChatRead).mockResolvedValue(undefined)
   vi.mocked(fetchChatMessages).mockResolvedValue([])
   vi.mocked(fetchConversation).mockResolvedValue({
@@ -540,6 +545,129 @@ describe("OrderPage — document review", () => {
 
     await waitFor(() => expect(postDocumentComment).toHaveBeenCalledWith(42, 1, "Всё хорошо"))
     expect(await screen.findByText("Всё хорошо")).toBeInTheDocument()
+  })
+})
+
+describe("OrderPage — support tasks", () => {
+  function makeTask(overrides: Partial<import("@/types").SupportTask> = {}): import("@/types").SupportTask {
+    return {
+      id: 1,
+      engagement: 5,
+      title: "Загрузи эссе на проверку",
+      description: "",
+      deadline: null,
+      is_done: false,
+      completed_at: null,
+      created_at: "2026-07-01T10:00:00Z",
+      updated_at: "2026-07-01T10:00:00Z",
+      ...overrides,
+    }
+  }
+
+  it("is absent without a support engagement", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ support_engagement: null, payout_category: "delivery" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByText("Задачи")).not.toBeInTheDocument()
+  })
+
+  it("shows an empty state and the add-task form for the mentor", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Задачи")).toBeInTheDocument()
+    expect(screen.getByText("Пока нет задач")).toBeInTheDocument()
+    expect(screen.getByPlaceholderText("Новая задача")).toBeInTheDocument()
+  })
+
+  it("lets the mentor add a task", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([])
+    vi.mocked(createSupportTask).mockResolvedValue(makeTask())
+
+    await renderOrderPage("42")
+
+    fireEvent.change(await screen.findByPlaceholderText("Новая задача"), {
+      target: { value: "Загрузи эссе на проверку" },
+    })
+    fireEvent.click(screen.getByText("Добавить"))
+
+    await waitFor(() =>
+      expect(createSupportTask).toHaveBeenCalledWith(5, { title: "Загрузи эссе на проверку", deadline: null }),
+    )
+    expect(await screen.findByText("Загрузи эссе на проверку")).toBeInTheDocument()
+  })
+
+  it("lets the mentor mark a task done", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(updateSupportTask).mockResolvedValue(makeTask({ is_done: true, completed_at: "2026-07-02T00:00:00Z" }))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByLabelText("Загрузи эссе на проверку"))
+
+    await waitFor(() => expect(updateSupportTask).toHaveBeenCalledWith(5, 1, { is_done: true }))
+  })
+
+  it("lets the mentor delete a task", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(deleteSupportTask).mockResolvedValue(undefined)
+
+    await renderOrderPage("42")
+
+    const taskRow = (await screen.findByText("Загрузи эссе на проверку")).closest(".group") as HTMLElement
+    const deleteButton = taskRow.querySelector("button:last-child") as HTMLElement
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => expect(deleteSupportTask).toHaveBeenCalledWith(5, 1))
+    await waitFor(() => expect(screen.queryByText("Загрузи эссе на проверку")).not.toBeInTheDocument())
+  })
+
+  it("shows the student a read-only list with no add form", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Загрузи эссе на проверку")).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText("Новая задача")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText("Загрузи эссе на проверку"))
+    expect(updateSupportTask).not.toHaveBeenCalled()
   })
 })
 

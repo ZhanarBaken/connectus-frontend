@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
-import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService } from "@/types"
+import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService, SupportTask } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
@@ -117,6 +117,12 @@ export default function OrderPage({ params }: Props) {
   const [loadingCommentsDocId, setLoadingCommentsDocId] = useState<number | null>(null)
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [postingCommentDocId, setPostingCommentDocId] = useState<number | null>(null)
+  const [tasks, setTasks] = useState<SupportTask[]>([])
+  const [newTaskTitle, setNewTaskTitle] = useState("")
+  const [newTaskDeadline, setNewTaskDeadline] = useState("")
+  const [creatingTask, setCreatingTask] = useState(false)
+  const [taskError, setTaskError] = useState("")
+  const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [receiptError, setReceiptError] = useState("")
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -246,6 +252,9 @@ export default function OrderPage({ params }: Props) {
         }
         // Load order documents
         fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => {})
+        if (found.support_engagement !== null) {
+          fetchSupportTasks(found.support_engagement).then(setTasks).catch(() => {})
+        }
       })
       .catch(() => router.replace("/orders"))
       .finally(() => setLoading(false))
@@ -410,6 +419,54 @@ export default function OrderPage({ params }: Props) {
       setEndEngagementError(err instanceof Error ? err.message : t("errorEndEngagement"))
     } finally {
       setEndingEngagement(false)
+    }
+  }
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!order?.support_engagement) return
+    const title = newTaskTitle.trim()
+    if (!title) return
+    setCreatingTask(true)
+    setTaskError("")
+    try {
+      const task = await createSupportTask(order.support_engagement, {
+        title,
+        deadline: newTaskDeadline || null,
+      })
+      setTasks((prev) => [...prev, task])
+      setNewTaskTitle("")
+      setNewTaskDeadline("")
+    } catch (err: unknown) {
+      setTaskError(err instanceof Error ? err.message : t("taskCreateError"))
+    } finally {
+      setCreatingTask(false)
+    }
+  }
+
+  const handleToggleTaskDone = async (task: SupportTask) => {
+    if (!order?.support_engagement) return
+    setUpdatingTaskId(task.id)
+    try {
+      const updated = await updateSupportTask(order.support_engagement, task.id, { is_done: !task.is_done })
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
+    } catch {
+      // ignore — the checkbox simply stays in its previous state
+    } finally {
+      setUpdatingTaskId(null)
+    }
+  }
+
+  const handleDeleteTask = async (task: SupportTask) => {
+    if (!order?.support_engagement) return
+    setUpdatingTaskId(task.id)
+    try {
+      await deleteSupportTask(order.support_engagement, task.id)
+      setTasks((prev) => prev.filter((t) => t.id !== task.id))
+    } catch {
+      // ignore
+    } finally {
+      setUpdatingTaskId(null)
     }
   }
 
@@ -1168,6 +1225,92 @@ export default function OrderPage({ params }: Props) {
                         {t("cancel")}
                       </button>
                     </div>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {/* Support-engagement tasks — mentor sets them for the
+                student, only the mentor can edit/delete/mark done. */}
+            {order.support_engagement !== null && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 mb-3">
+                  <Icon name="checklist" size={16} className="text-gray-400" />
+                  {t("tasksTitle")}
+                </h3>
+
+                {tasks.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {tasks.map((task) => (
+                      <div key={task.id} className="flex items-start gap-2 group">
+                        <button
+                          onClick={() => role === "mentor" && handleToggleTaskDone(task)}
+                          disabled={role !== "mentor" || updatingTaskId === task.id}
+                          aria-label={task.title}
+                          className={
+                            "mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors "
+                            + (task.is_done
+                              ? "bg-emerald-500 border-emerald-500"
+                              : "border-gray-300 " + (role === "mentor" ? "hover:border-gray-400" : ""))
+                          }
+                        >
+                          {task.is_done && <Icon name="check" size={12} className="text-white" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={"text-sm " + (task.is_done ? "text-gray-400 line-through" : "text-gray-700")}>
+                            {task.title}
+                          </p>
+                          {task.deadline && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              {t("taskDeadlineLabel", { date: task.deadline })}
+                            </p>
+                          )}
+                        </div>
+                        {role === "mentor" && (
+                          <button
+                            onClick={() => handleDeleteTask(task)}
+                            disabled={updatingTaskId === task.id}
+                            className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all flex-shrink-0 disabled:opacity-50"
+                          >
+                            <Icon name="close" size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {tasks.length === 0 && (
+                  <p className="text-xs text-gray-400 mb-3">{t("tasksEmpty")}</p>
+                )}
+
+                {role === "mentor" && (
+                  <form onSubmit={handleCreateTask} className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder={t("taskTitlePlaceholder")}
+                        maxLength={200}
+                        className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                      />
+                      <input
+                        type="date"
+                        aria-label={t("taskDeadlinePlaceholder")}
+                        value={newTaskDeadline}
+                        onChange={(e) => setNewTaskDeadline(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={creatingTask || !newTaskTitle.trim()}
+                      className="self-start bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      {creatingTask ? t("taskCreating") : t("taskAdd")}
+                    </button>
+                    {taskError && <p className="text-xs text-red-600">{taskError}</p>}
                   </form>
                 )}
               </div>

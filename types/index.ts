@@ -297,6 +297,18 @@ export interface SupportEngagement {
   created_at: string
 }
 
+export interface SupportTask {
+  id: number
+  engagement: number
+  title: string
+  description: string
+  deadline: string | null
+  is_done: boolean
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface AdminDispute {
   id: number
   order: number
