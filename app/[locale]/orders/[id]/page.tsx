@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, fetchMentorServices, createSupportInvoice, endSupportEngagement, setEngagementDeadline, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, setEngagementDeadline, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
-import { Order, Mentor, ChatMessage, OrderDocument, MentorService } from "@/types"
+import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
@@ -115,6 +115,12 @@ export default function OrderPage({ params }: Props) {
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const docInputRef = useRef<HTMLInputElement>(null)
+  const [updatingDocStatusId, setUpdatingDocStatusId] = useState<number | null>(null)
+  const [openCommentsDocId, setOpenCommentsDocId] = useState<number | null>(null)
+  const [docComments, setDocComments] = useState<Record<number, OrderDocumentComment[]>>({})
+  const [loadingCommentsDocId, setLoadingCommentsDocId] = useState<number | null>(null)
+  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
+  const [postingCommentDocId, setPostingCommentDocId] = useState<number | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [receiptError, setReceiptError] = useState("")
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -1243,7 +1249,16 @@ export default function OrderPage({ params }: Props) {
 
                 {orderDocs.length > 0 && (
                   <div className="space-y-2 mb-3">
-                    {orderDocs.map((doc) => (
+                    {orderDocs.map((doc) => {
+                      const isUploader = currentUserId !== null && currentUserId === doc.uploaded_by
+                      // Payment receipts go through a separate admin-only
+                      // verification pipeline — reviewing them here would
+                      // show a "verified" badge finance never confirmed.
+                      const isReviewable = doc.kind === "general"
+                      const commentsOpen = openCommentsDocId === doc.id
+                      const commentsLoaded = docComments[doc.id] !== undefined
+                      const comments = docComments[doc.id] ?? []
+                      return (
                       <div key={doc.id} className="group">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -1290,8 +1305,133 @@ export default function OrderPage({ params }: Props) {
                         {doc.description && (
                           <p className="text-[10px] text-gray-400 mt-0.5 ml-9 truncate">{doc.description}</p>
                         )}
+
+                        <div className="flex items-center gap-1.5 mt-1 ml-9 flex-wrap">
+                          {isReviewable && (
+                            <span
+                              className={
+                                "text-[10px] px-1.5 py-0.5 rounded-full font-medium " +
+                                (doc.status === "verified"
+                                  ? "bg-green-50 text-green-600"
+                                  : doc.status === "needs_revision"
+                                  ? "bg-amber-50 text-amber-600"
+                                  : "bg-gray-100 text-gray-400")
+                              }
+                            >
+                              {t(
+                                doc.status === "verified"
+                                  ? "docStatusVerified"
+                                  : doc.status === "needs_revision"
+                                  ? "docStatusNeedsRevision"
+                                  : "docStatusPending"
+                              )}
+                            </span>
+                          )}
+
+                          {isReviewable && !isUploader && (
+                            <>
+                              <button
+                                disabled={updatingDocStatusId === doc.id}
+                                onClick={() => {
+                                  setUpdatingDocStatusId(doc.id)
+                                  setDocumentStatus(order.id, doc.id, "verified")
+                                    .then((updated) =>
+                                      setOrderDocs((prev) => prev.map((d) => (d.id === doc.id ? updated : d)))
+                                    )
+                                    .catch(() => {})
+                                    .finally(() => setUpdatingDocStatusId(null))
+                                }}
+                                className="text-[10px] text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
+                              >
+                                {t("docVerifyButton")}
+                              </button>
+                              <button
+                                disabled={updatingDocStatusId === doc.id}
+                                onClick={() => {
+                                  setUpdatingDocStatusId(doc.id)
+                                  setDocumentStatus(order.id, doc.id, "needs_revision")
+                                    .then((updated) =>
+                                      setOrderDocs((prev) => prev.map((d) => (d.id === doc.id ? updated : d)))
+                                    )
+                                    .catch(() => {})
+                                    .finally(() => setUpdatingDocStatusId(null))
+                                }}
+                                className="text-[10px] text-amber-600 hover:text-amber-700 font-medium disabled:opacity-50"
+                              >
+                                {t("docNeedsRevisionButton")}
+                              </button>
+                            </>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              const next = commentsOpen ? null : doc.id
+                              setOpenCommentsDocId(next)
+                              if (next !== null && docComments[doc.id] === undefined) {
+                                setLoadingCommentsDocId(doc.id)
+                                fetchDocumentComments(order.id, doc.id)
+                                  .then((list) => setDocComments((prev) => ({ ...prev, [doc.id]: list })))
+                                  .finally(() => setLoadingCommentsDocId(null))
+                              }
+                            }}
+                            className="text-[10px] text-gray-400 hover:text-gray-600 font-medium ml-auto"
+                          >
+                            {commentsLoaded ? t("docCommentsToggle", { count: comments.length }) : t("docCommentsToggleUnloaded")}
+                          </button>
+                        </div>
+
+                        {commentsOpen && (
+                          <div className="ml-9 mt-1.5 space-y-1.5">
+                            {loadingCommentsDocId === doc.id && comments.length === 0 && (
+                              <p className="text-[10px] text-gray-300">{t("docCommentsLoading")}</p>
+                            )}
+                            {comments.map((c) => (
+                              <div key={c.id} className="text-[10px] bg-gray-50 rounded-lg px-2 py-1.5">
+                                <span className="font-medium text-gray-600">{c.author_email}</span>
+                                <p className="text-gray-500 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
+                              </div>
+                            ))}
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault()
+                                const text = (commentDrafts[doc.id] ?? "").trim()
+                                if (!text) return
+                                setPostingCommentDocId(doc.id)
+                                postDocumentComment(order.id, doc.id, text)
+                                  .then((created) => {
+                                    setDocComments((prev) => ({
+                                      ...prev,
+                                      [doc.id]: [...(prev[doc.id] ?? []), created],
+                                    }))
+                                    setCommentDrafts((prev) => ({ ...prev, [doc.id]: "" }))
+                                  })
+                                  .catch(() => {})
+                                  .finally(() => setPostingCommentDocId(null))
+                              }}
+                              className="flex items-center gap-1.5"
+                            >
+                              <input
+                                type="text"
+                                value={commentDrafts[doc.id] ?? ""}
+                                onChange={(e) =>
+                                  setCommentDrafts((prev) => ({ ...prev, [doc.id]: e.target.value }))
+                                }
+                                placeholder={t("docCommentPlaceholder")}
+                                className="flex-1 min-w-0 text-[10px] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-300"
+                              />
+                              <button
+                                type="submit"
+                                disabled={postingCommentDocId === doc.id || !(commentDrafts[doc.id] ?? "").trim()}
+                                className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-40 flex-shrink-0"
+                              >
+                                {t("docCommentSend")}
+                              </button>
+                            </form>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
 

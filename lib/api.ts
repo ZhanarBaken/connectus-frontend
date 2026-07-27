@@ -485,6 +485,50 @@ export async function deleteOrderDocument(orderId: number, docId: number): Promi
   }
 }
 
+export async function setDocumentStatus(
+  orderId: number,
+  docId: number,
+  status: "verified" | "needs_revision",
+): Promise<import("@/types").OrderDocument> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/${docId}/status/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось обновить статус документа")
+  }
+  return res.json()
+}
+
+export async function fetchDocumentComments(
+  orderId: number,
+  docId: number,
+): Promise<import("@/types").OrderDocumentComment[]> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/${docId}/comments/`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function postDocumentComment(
+  orderId: number,
+  docId: number,
+  text: string,
+): Promise<import("@/types").OrderDocumentComment> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/${docId}/comments/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отправить комментарий")
+  }
+  return res.json()
+}
+
 // ─── Disputes ───────────────────────────────────────────────────────────────
 
 export async function createDispute(orderId: number, reason: string): Promise<Dispute> {

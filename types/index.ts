@@ -239,13 +239,24 @@ export interface OrderDocument {
   // 'general' for any working file; 'payment_receipt' for student-
   // submitted proof of payment on a PENDING_PAYMENT order.
   kind: "general" | "payment_receipt"
+  status: "pending" | "verified" | "needs_revision"
   original_filename: string
   content_type: string
   size_bytes: number
   description: string
   download_url: string
+  uploaded_by: number
   uploaded_by_email: string
   uploaded_at: string
+}
+
+export interface OrderDocumentComment {
+  id: number
+  document: number
+  author: number
+  author_email: string
+  text: string
+  created_at: string
 }
 
 export interface ChatAttachment {

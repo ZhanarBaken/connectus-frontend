@@ -15,6 +15,9 @@ import {
   authFetch,
   markChatRead,
   fetchOrderDocuments,
+  setDocumentStatus,
+  fetchDocumentComments,
+  postDocumentComment,
   fetchMentorServices,
   createSupportInvoice,
   endSupportEngagement,
@@ -548,6 +551,96 @@ describe("OrderPage — mentor: application deadline", () => {
     fireEvent.click(screen.getByRole("button", { name: "Сохранить" }))
 
     expect(await screen.findByText("Не удалось сохранить дедлайн")).toBeInTheDocument()
+  })
+})
+
+describe("OrderPage — document review", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  function makeDoc(overrides: Partial<import("@/types").OrderDocument> = {}): import("@/types").OrderDocument {
+    return {
+      id: 1,
+      kind: "general",
+      status: "pending",
+      original_filename: "diploma.pdf",
+      content_type: "application/pdf",
+      size_bytes: 2048,
+      description: "",
+      download_url: "https://example.com/diploma.pdf",
+      uploaded_by: 7,
+      uploaded_by_email: "student@test.com",
+      uploaded_at: "2026-07-01T10:00:00Z",
+      ...overrides,
+    }
+  }
+
+  it("shows the status badge and lets the non-uploader verify a document", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc()])
+    vi.mocked(setDocumentStatus).mockResolvedValue(makeDoc({ status: "verified" }))
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("На проверке")).toBeInTheDocument()
+    fireEvent.click(screen.getByText("Подтвердить"))
+
+    await waitFor(() => expect(setDocumentStatus).toHaveBeenCalledWith(42, 1, "verified"))
+    expect(await screen.findByText("Проверен")).toBeInTheDocument()
+  })
+
+  it("does not show review buttons to the document's own uploader", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    // authFetch (setupCommonMocks) resolves currentUserId=1 — mark that user as the uploader.
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc({ uploaded_by: 1, uploaded_by_email: "mentor@test.com" })])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("diploma.pdf")).toBeInTheDocument()
+    expect(screen.queryByText("Подтвердить")).not.toBeInTheDocument()
+  })
+
+  it("hides the status badge and review buttons for a payment receipt", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([
+      makeDoc({ kind: "payment_receipt", original_filename: "receipt.pdf" }),
+    ])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("receipt.pdf")).toBeInTheDocument()
+    expect(screen.queryByText("На проверке")).not.toBeInTheDocument()
+    expect(screen.queryByText("Подтвердить")).not.toBeInTheDocument()
+  })
+
+  it("loads and posts comments on a document", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc()])
+    vi.mocked(fetchDocumentComments).mockResolvedValue([
+      { id: 1, document: 1, author: 7, author_email: "student@test.com", text: "Проверьте, пожалуйста", created_at: "2026-07-01T10:00:00Z" },
+    ])
+    vi.mocked(postDocumentComment).mockResolvedValue({
+      id: 2, document: 1, author: 1, author_email: "mentor@test.com", text: "Всё хорошо", created_at: "2026-07-01T11:00:00Z",
+    })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Комментарии"))
+    expect(await screen.findByText("Проверьте, пожалуйста")).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText("Написать комментарий..."), { target: { value: "Всё хорошо" } })
+    fireEvent.click(screen.getByText("Отправить"))
+
+    await waitFor(() => expect(postDocumentComment).toHaveBeenCalledWith(42, 1, "Всё хорошо"))
+    expect(await screen.findByText("Всё хорошо")).toBeInTheDocument()
   })
 })
 
