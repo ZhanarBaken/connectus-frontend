@@ -372,22 +372,6 @@ export async function endSupportEngagement(
   return res.json()
 }
 
-export async function setEngagementDeadline(
-  engagementId: number,
-  applicationDeadline: string | null,
-): Promise<import("@/types").SupportEngagement> {
-  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/deadline/`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ application_deadline: applicationDeadline }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось сохранить дедлайн")
-  }
-  return res.json()
-}
-
 export async function fetchOrder(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch order")

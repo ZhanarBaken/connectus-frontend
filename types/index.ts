@@ -210,10 +210,6 @@ export interface Order {
   // belongs to one. "paused" means an installment went unpaid past its
   // grace period; a replacement invoice is due immediately.
   engagement_status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled" | null
-  // Application-submission deadline the mentor set on the parent
-  // SupportEngagement (e.g. a university application deadline) — null
-  // unless one was set, and null for every non-support order.
-  engagement_application_deadline: string | null
   // Booked session time, if any — null for a legacy chat-coordinated
   // consultation or a free intro consultation with no time slot.
   scheduled_at: string | null
@@ -298,7 +294,6 @@ export interface SupportEngagement {
   status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled"
   next_installment_due_at: string | null
   paused_at: string | null
-  application_deadline: string | null
   created_at: string
 }
 

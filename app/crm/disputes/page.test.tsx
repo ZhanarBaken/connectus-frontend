@@ -45,7 +45,6 @@ function makeEngagement(overrides: Partial<SupportEngagement> = {}): SupportEnga
     status: "active",
     next_installment_due_at: null,
     paused_at: null,
-    application_deadline: null,
     created_at: "2026-01-01T00:00:00Z",
     ...overrides,
   }

@@ -21,7 +21,6 @@ import {
   fetchMentorServices,
   createSupportInvoice,
   endSupportEngagement,
-  setEngagementDeadline,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation } from "@/lib/chat"
@@ -59,7 +58,6 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     installment_number: null,
     engagement_duration_months: null,
     engagement_status: null,
-    engagement_application_deadline: null,
     scheduled_at: null,
     due_at: null,
     completed_at: null,
@@ -455,105 +453,6 @@ describe("OrderPage — mentor: complete order", () => {
   })
 })
 
-describe("OrderPage — mentor: application deadline", () => {
-  beforeEach(() => {
-    localStorage.setItem("access_token", "fake-token")
-    localStorage.setItem("role", "mentor")
-    vi.mocked(fetchOrders).mockResolvedValue([])
-    vi.mocked(fetchMentorServices).mockResolvedValue([])
-    vi.mocked(setEngagementDeadline).mockReset()
-  })
-
-  it("shows the deadline panel for a live engagement", async () => {
-    const order = makeOrder({
-      support_engagement: 5, engagement_status: "active", payout_category: "support",
-    })
-    vi.mocked(fetchOrder).mockResolvedValue(order)
-
-    await renderOrderPage("42")
-
-    expect(await screen.findByText("Дедлайн подачи")).toBeInTheDocument()
-  })
-
-  it("does not show the deadline panel without a support engagement", async () => {
-    const order = makeOrder({ support_engagement: null, payout_category: "delivery" })
-    vi.mocked(fetchOrder).mockResolvedValue(order)
-
-    await renderOrderPage("42")
-
-    await screen.findByText("Первичная консультация")
-    expect(screen.queryByText("Дедлайн подачи")).not.toBeInTheDocument()
-  })
-
-  it.each(["awaiting_payment", "active", "paused"] as const)(
-    "shows the deadline panel for a live engagement status: %s",
-    async (engagementStatus) => {
-      const order = makeOrder({
-        support_engagement: 5, engagement_status: engagementStatus, payout_category: "support",
-      })
-      vi.mocked(fetchOrder).mockResolvedValue(order)
-
-      await renderOrderPage("42")
-
-      expect(await screen.findByText("Дедлайн подачи")).toBeInTheDocument()
-    },
-  )
-
-  it.each(["completed", "cancelled"] as const)(
-    "hides the deadline panel once the engagement is no longer live: %s",
-    async (engagementStatus) => {
-      const order = makeOrder({
-        support_engagement: 5, engagement_status: engagementStatus, payout_category: "support",
-      })
-      vi.mocked(fetchOrder).mockResolvedValue(order)
-
-      await renderOrderPage("42")
-
-      await screen.findByText("Первичная консультация")
-      expect(screen.queryByText("Дедлайн подачи")).not.toBeInTheDocument()
-    },
-  )
-
-  it("pre-fills the existing deadline and saves an updated one", async () => {
-    const order = makeOrder({
-      support_engagement: 5, engagement_status: "active", payout_category: "support",
-      engagement_application_deadline: "2026-08-01",
-    })
-    vi.mocked(fetchOrder).mockResolvedValue(order)
-    vi.mocked(setEngagementDeadline).mockResolvedValue({
-      id: 5, mentor: 3, mentor_name: "М", student: 7, student_name: "С",
-      mentor_service: 10, service_title: "Сопровождение", total_price: "0",
-      duration_months: 6, status: "active", next_installment_due_at: null,
-      paused_at: null, application_deadline: "2026-09-01", created_at: "2026-01-01T00:00:00Z",
-    })
-
-    await renderOrderPage("42")
-
-    const input = await screen.findByDisplayValue("2026-08-01")
-    fireEvent.change(input, { target: { value: "2026-09-01" } })
-    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }))
-
-    await waitFor(() => expect(setEngagementDeadline).toHaveBeenCalledWith(5, "2026-09-01"))
-    expect(await screen.findByText("Дедлайн сохранён")).toBeInTheDocument()
-  })
-
-  it("shows an error message when saving fails", async () => {
-    const order = makeOrder({
-      support_engagement: 5, engagement_status: "active", payout_category: "support",
-    })
-    vi.mocked(fetchOrder).mockResolvedValue(order)
-    vi.mocked(setEngagementDeadline).mockRejectedValue(new Error("Не удалось сохранить дедлайн"))
-
-    await renderOrderPage("42")
-
-    const input = await screen.findByLabelText("Дедлайн подачи")
-    fireEvent.change(input, { target: { value: "2026-09-01" } })
-    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }))
-
-    expect(await screen.findByText("Не удалось сохранить дедлайн")).toBeInTheDocument()
-  })
-})
-
 describe("OrderPage — document review", () => {
   beforeEach(() => {
     localStorage.setItem("access_token", "fake-token")
@@ -908,7 +807,7 @@ describe("OrderPage — mentor: end a support engagement", () => {
       id: 5, mentor: 3, mentor_name: "Данияр Сериков", student: 7, student_name: "Аружан Есенова",
       mentor_service: 10, service_title: "Сопровождение", total_price: "500000.00", duration_months: 6,
       status: "cancelled", next_installment_due_at: null, paused_at: null,
-      application_deadline: null, created_at: "2026-07-01T10:00:00Z",
+      created_at: "2026-07-01T10:00:00Z",
     })
 
     await renderOrderPage("42")

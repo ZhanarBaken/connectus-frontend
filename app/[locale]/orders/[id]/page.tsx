@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, setEngagementDeadline, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
 import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
@@ -88,10 +88,6 @@ export default function OrderPage({ params }: Props) {
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false)
   const [rescheduling, setRescheduling] = useState(false)
   const [rescheduleError, setRescheduleError] = useState("")
-  const [deadlineDraft, setDeadlineDraft] = useState("")
-  const [savingDeadline, setSavingDeadline] = useState(false)
-  const [deadlineError, setDeadlineError] = useState("")
-  const [deadlineSaved, setDeadlineSaved] = useState(false)
   const [endEngagementFormOpen, setEndEngagementFormOpen] = useState(false)
   const [endEngagementReason, setEndEngagementReason] = useState("")
   const [endingEngagement, setEndingEngagement] = useState(false)
@@ -158,13 +154,6 @@ export default function OrderPage({ params }: Props) {
       try { webApp.expand() } catch { /* older clients */ }
     }
   }, [webApp])
-
-  // Keep the deadline input in sync whenever the order (re)loads —
-  // covers the initial fetch and every setOrder() refresh after an
-  // action (complete/cancel/reschedule/etc.), not just the save itself.
-  useEffect(() => {
-    setDeadlineDraft(order?.engagement_application_deadline ?? "")
-  }, [order?.engagement_application_deadline])
 
   // Fetch dispute window from public settings (no auth needed)
   useEffect(() => {
@@ -398,23 +387,6 @@ export default function OrderPage({ params }: Props) {
       setRescheduleError(e instanceof Error ? e.message : t("rescheduleError"))
     } finally {
       setRescheduling(false)
-    }
-  }
-
-  const handleSaveDeadline = async () => {
-    if (!order?.support_engagement) return
-    setSavingDeadline(true)
-    setDeadlineError("")
-    setDeadlineSaved(false)
-    try {
-      await setEngagementDeadline(order.support_engagement, deadlineDraft || null)
-      const updated = await fetchOrder(order.id)
-      setOrder(updated)
-      setDeadlineSaved(true)
-    } catch (e: unknown) {
-      setDeadlineError(e instanceof Error ? e.message : t("deadlineError"))
-    } finally {
-      setSavingDeadline(false)
     }
   }
 
@@ -835,41 +807,6 @@ export default function OrderPage({ params }: Props) {
                       </button>
                     </div>
                   </form>
-                )}
-              </div>
-            )}
-
-            {/* Mentor: application-submission deadline for this engagement
-                (e.g. a university deadline) — drives the 7-day/1-day
-                reminder sweeps to both sides. Optional, only shown while
-                there's a live engagement to attach it to. */}
-            {role === "mentor" && order.support_engagement !== null
-              && (order.engagement_status === "active" || order.engagement_status === "paused"
-                || order.engagement_status === "awaiting_payment") && (
-              <div className="bg-white border border-gray-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">{t("deadlineTitle")}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-4">{t("deadlineBody")}</p>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    aria-label={t("deadlineTitle")}
-                    value={deadlineDraft}
-                    onChange={(e) => { setDeadlineDraft(e.target.value); setDeadlineSaved(false) }}
-                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                  />
-                  <button
-                    onClick={handleSaveDeadline}
-                    disabled={savingDeadline}
-                    className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                  >
-                    {savingDeadline ? t("deadlineSaving") : t("deadlineSave")}
-                  </button>
-                </div>
-                {deadlineError && (
-                  <p className="text-xs text-red-600 mt-2">{deadlineError}</p>
-                )}
-                {deadlineSaved && !deadlineError && (
-                  <p className="text-xs text-emerald-600 mt-2">{t("deadlineSaved")}</p>
                 )}
               </div>
             )}
