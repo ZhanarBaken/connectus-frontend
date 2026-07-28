@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMyMentorSchedule, saveMyMentorSchedule } from "@/lib/api"
+import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import {
   emptyWeekSchedule,
   flatToWeekSchedule,
@@ -29,6 +30,7 @@ for (let h = 0; h < 24; h++) {
 export default function MentorSchedulePage() {
   const t = useTranslations("Mentors.Schedule")
   const router = useRouter()
+  useMentorOnboardingGate()
   const DAY_LABELS_FULL = [
     t("monday"), t("tuesday"), t("wednesday"), t("thursday"),
     t("friday"), t("saturday"), t("sunday"),

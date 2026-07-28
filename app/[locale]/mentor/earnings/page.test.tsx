@@ -177,5 +177,17 @@ describe("MentorEarningsPage", () => {
 
       expect(await screen.findByText("crypto")).toBeInTheDocument()
     })
+
+    it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
+      const { replace } = mockRouter()
+      vi.mocked(fetchMentorProfile).mockResolvedValue(
+        makeMentorProfile({ is_submitted: false, is_approved: false }),
+      )
+      vi.mocked(fetchMentorEarnings).mockResolvedValue(makeEarnings())
+
+      render(<MentorEarningsPage />)
+
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/mentor"))
+    })
   })
 })

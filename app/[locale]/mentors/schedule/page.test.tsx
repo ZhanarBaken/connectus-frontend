@@ -4,6 +4,7 @@ import { useRouter } from "@/i18n/navigation"
 import MentorSchedulePage from "./page"
 import { fetchMyMentorSchedule, saveMyMentorSchedule, fetchMentorProfile } from "@/lib/api"
 import type { MentorSchedule } from "@/lib/schedule"
+import type { MentorProfile } from "@/types"
 
 vi.mock("@/lib/api")
 
@@ -45,6 +46,23 @@ describe("MentorSchedulePage — auth gate", () => {
     render(<MentorSchedulePage />)
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/mentor/dashboard"))
+  })
+
+  it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(), replace, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+    })
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      { is_submitted: false, is_approved: false } as MentorProfile,
+    )
+    vi.mocked(fetchMyMentorSchedule).mockResolvedValue(makeSchedule())
+
+    render(<MentorSchedulePage />)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/mentor"))
   })
 })
 

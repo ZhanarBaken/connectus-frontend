@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMentorClients, type MentorClient, type MentorClients } from "@/lib/api"
+import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { Avatar } from "@/components/Avatar"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -33,6 +34,7 @@ function ClientRow({ client }: { client: MentorClient }) {
 export default function MentorClientsPage() {
   const t = useTranslations("Dashboard.MentorClients")
   const router = useRouter()
+  useMentorOnboardingGate()
   const [data, setData] = useState<MentorClients | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")

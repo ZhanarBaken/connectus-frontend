@@ -11,6 +11,7 @@ import {
 } from "@/lib/api"
 import { MentorService } from "@/types"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
+import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
@@ -59,6 +60,7 @@ function formCategoryOf(service: MentorService): FormCategory {
 
 export default function MentorServicesPage() {
   const t = useTranslations("Mentors.Services")
+  useMentorOnboardingGate()
 
   const formatPrice = (service: MentorService) => {
     if (service.is_price_negotiable || service.price === null) return t("negotiablePrice")

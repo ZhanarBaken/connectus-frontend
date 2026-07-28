@@ -13,24 +13,14 @@ describe("MentorStatusBanner", () => {
 
   describe("with explicit props (no fetch)", () => {
     it("renders nothing when approved", () => {
-      const { container } = render(<MentorStatusBanner isSubmitted isApproved />)
+      const { container } = render(<MentorStatusBanner isApproved />)
       expect(container).toBeEmptyDOMElement()
       expect(fetchMentorProfile).not.toHaveBeenCalled()
     })
 
-    it("renders the amber 'under review' banner when submitted but not approved", () => {
-      render(<MentorStatusBanner isSubmitted isApproved={false} />)
+    it("renders the indigo 'under review' banner when not approved", () => {
+      render(<MentorStatusBanner isApproved={false} />)
       expect(screen.getByText(/Профиль на проверке/)).toBeInTheDocument()
-      expect(fetchMentorProfile).not.toHaveBeenCalled()
-    })
-
-    it("renders the red 'not submitted' banner with a CTA when not submitted", () => {
-      render(<MentorStatusBanner isSubmitted={false} isApproved={false} />)
-      expect(screen.getByText(/Профиль на проверку не отправлен/)).toBeInTheDocument()
-      expect(screen.getByRole("link", { name: /Перейти к подаче/ })).toHaveAttribute(
-        "href",
-        "/mentor/dashboard",
-      )
       expect(fetchMentorProfile).not.toHaveBeenCalled()
     })
   })
@@ -45,7 +35,6 @@ describe("MentorStatusBanner", () => {
     it("renders nothing while the fetch is in flight, then shows the banner once resolved", async () => {
       localStorage.setItem("access_token", "tok")
       vi.mocked(fetchMentorProfile).mockResolvedValue({
-        is_submitted: true,
         is_approved: false,
       } as Awaited<ReturnType<typeof fetchMentorProfile>>)
 
@@ -71,7 +60,6 @@ describe("MentorStatusBanner", () => {
     it("renders nothing once the fetch resolves approved", async () => {
       localStorage.setItem("access_token", "tok")
       vi.mocked(fetchMentorProfile).mockResolvedValue({
-        is_submitted: true,
         is_approved: true,
       } as Awaited<ReturnType<typeof fetchMentorProfile>>)
 

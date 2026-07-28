@@ -152,5 +152,17 @@ describe("MentorClientsPage", () => {
       expect(await screen.findByText(/Активные · 2/)).toBeInTheDocument()
       expect(screen.getByText(/Неактивные · 1/)).toBeInTheDocument()
     })
+
+    it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
+      const { replace } = mockRouter()
+      vi.mocked(fetchMentorProfile).mockResolvedValue(
+        makeMentorProfile({ is_submitted: false, is_approved: false }),
+      )
+      vi.mocked(fetchMentorClients).mockResolvedValue(makeClients())
+
+      render(<MentorClientsPage />)
+
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/mentor"))
+    })
   })
 })

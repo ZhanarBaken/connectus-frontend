@@ -1,10 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { useRouter } from "@/i18n/navigation"
 import MentorProfilePage from "./page"
 import { fetchMentorProfile, fetchMentorServices, fetchMe, authFetch } from "@/lib/api"
 import type { MentorProfile } from "@/types"
 
 vi.mock("@/lib/api")
+
+function mockRouter() {
+  const replace = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({
+    push: vi.fn(),
+    replace,
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  } as unknown as ReturnType<typeof useRouter>)
+  return { replace }
+}
 
 // jsdom doesn't implement Element.scrollIntoView — the field-error path
 // calls it to bring the first invalid field into view after a failed
@@ -54,6 +68,7 @@ function jsonResponse(data: unknown, ok = true): Response {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   // MentorDocumentsUploader (embedded in this page) issues its own GET
   // on mount via authFetch — default to an empty document list so it
   // doesn't error out before each test configures anything specific.
@@ -86,6 +101,19 @@ describe("MentorProfilePage — loading and prefill", () => {
     render(<MentorProfilePage />)
 
     expect(await screen.findByText("Не удалось загрузить профиль")).toBeInTheDocument()
+  })
+
+  it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    const { replace } = mockRouter()
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      makeMentorProfile({ is_submitted: false, is_approved: false }),
+    )
+
+    render(<MentorProfilePage />)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/mentor"))
   })
 
   it("does not show 100% just because every text field is filled — services/email/telegram/documents/languages still count", async () => {

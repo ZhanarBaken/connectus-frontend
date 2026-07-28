@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
-import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, fetchMe, clearAuth, fetchPendingSupportRequests, acceptSupportRequest, declineSupportRequest } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchOrders, fetchMe, clearAuth, fetchPendingSupportRequests, acceptSupportRequest, declineSupportRequest } from "@/lib/api"
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/contacts"
 import { User } from "@/types"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countriesLabelInline } from "@/lib/countries"
-import { calcProfileCompletion } from "@/lib/profileCompletion"
+import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { MentorProfile, MentorService, Order, SupportRequest } from "@/types"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
@@ -19,6 +19,7 @@ export default function MentorDashboard() {
   const tExpertise = useTranslations("Landing.Expertise")
   const locale = useLocale()
   const router = useRouter()
+  useMentorOnboardingGate()
   const [profile, setProfile] = useState<MentorProfile | null>(null)
   const [services, setServices] = useState<MentorService[]>([])
   const [orders, setOrders] = useState<Order[]>([])
@@ -27,8 +28,6 @@ export default function MentorDashboard() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [me, setMe] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState("")
 
   const ORDER_STATUS_STYLES: Record<string, string> = {
     draft: "bg-gray-100 text-gray-500",
@@ -82,8 +81,6 @@ export default function MentorDashboard() {
       .finally(() => setLoading(false))
   }, [router])
 
-  const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({})
-
   const handleAcceptRequest = async (request: SupportRequest) => {
     setRespondingRequestId(request.id)
     try {
@@ -108,40 +105,6 @@ export default function MentorDashboard() {
     }
   }
 
-  const handleSubmit = async () => {
-    setSubmitting(true)
-    setSubmitError("")
-    setSubmitErrors({})
-    try {
-      await submitMentorProfile()
-      const updated = await fetchMentorProfile()
-      setProfile(updated)
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        // Try to parse field-level errors from backend
-        try {
-          const parsed = JSON.parse(e.message)
-          if (typeof parsed === "object") {
-            const errors: Record<string, string> = {}
-            for (const [key, val] of Object.entries(parsed)) {
-              errors[key] = Array.isArray(val) ? val[0] : String(val)
-            }
-            setSubmitErrors(errors)
-            setSubmitError(t("errorFillRequiredFields"))
-          } else {
-            setSubmitError(e.message)
-          }
-        } catch {
-          setSubmitError(e.message)
-        }
-      } else {
-        setSubmitError(t("errorGeneric"))
-      }
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
@@ -158,53 +121,9 @@ export default function MentorDashboard() {
     .filter((o) => o.order_status === "completed")
     .reduce((sum, o) => sum + parseFloat(o.mentor_payout_amount), 0)
 
-  const { percent: completionPercent } = calcProfileCompletion(profile, {
-    hasActiveService: services.some((s) => s.is_active),
-    emailVerified: Boolean(me?.email && me.email_verified),
-    hasTelegram: Boolean(me?.has_telegram),
-  })
-
-  const FIELD_LABELS: Record<string, string> = {
-    full_name: t("fields.fullName"),
-    major: t("fields.major"),
-    grant_or_scholarship: t("fields.grantOrScholarship"),
-    school_or_university: t("fields.schoolOrUniversity"),
-    gpa: t("fields.gpa"),
-    exam_results: t("fields.examResults"),
-    detailed_bio: t("fields.detailedBio"),
-    phone: t("fields.phone"),
-    expertise_areas: t("fields.expertiseAreas"),
-    countries: t("fields.countries"),
-    languages: t("fields.languages"),
-    profile_photo: t("fields.profilePhoto"),
-    documents: t("fields.documents"),
-    services: t("fields.services"),
-    email: t("fields.email"),
-    telegram: t("fields.telegramField"),
-  }
-  const FIELD_LINKS: Record<string, { href: string; label: string }> = {
-    profile_photo: { href: "/mentors/profile", label: t("toPhoto") },
-    full_name: { href: "/mentors/profile", label: t("fillIn") },
-    major: { href: "/mentors/profile", label: t("fillIn") },
-    grant_or_scholarship: { href: "/mentors/profile", label: t("fillIn") },
-    school_or_university: { href: "/mentors/profile", label: t("fillIn") },
-    gpa: { href: "/mentors/profile", label: t("fillIn") },
-    exam_results: { href: "/mentors/profile", label: t("fillIn") },
-    detailed_bio: { href: "/mentors/profile", label: t("fillIn") },
-    phone: { href: "/mentors/profile", label: t("fillIn") },
-    expertise_areas: { href: "/mentors/profile", label: t("choose") },
-    countries: { href: "/mentors/profile", label: t("choose") },
-    languages: { href: "/mentors/profile", label: t("choose") },
-    documents: { href: "/mentors/profile", label: t("upload") },
-    services: { href: "/mentors/services", label: t("manage") },
-  }
-
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      <MentorStatusBanner
-        isSubmitted={profile.is_submitted}
-        isApproved={profile.is_approved}
-      />
+      <MentorStatusBanner isApproved={profile.is_approved} />
       <div className="max-w-6xl mx-auto px-4 py-10">
 
         {/* Header */}
@@ -303,104 +222,16 @@ export default function MentorDashboard() {
           </div>
         )}
 
-        {/* Status banner */}
+        {/* Status banner — reaching this page at all means the profile is
+            already submitted or approved (see useMentorOnboardingGate),
+            so this only ever needs the "under review" state. */}
         {!profile.is_banned && !profile.is_approved && (
-          <div className="mb-8">
-            {profile.is_submitted ? (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex items-start gap-4">
-                <span className="text-2xl">⏳</span>
-                <div>
-                  <p className="font-semibold text-indigo-900">{t("underReviewTitle")}</p>
-                  <p className="text-sm text-indigo-800 mt-1">{t("underReviewBody")}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-gray-900 mb-1">{t("completeProfileTitle")}</p>
-                    <p className="text-sm text-gray-500">{t("completeProfileBody")}</p>
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    <div className="text-2xl font-bold text-indigo-600">{completionPercent}%</div>
-                    <div className="text-xs text-gray-400">{t("percentFilled")}</div>
-                  </div>
-                </div>
-                <div className="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 rounded-full transition-all"
-                    style={{ width: `${completionPercent}%` }}
-                  />
-                </div>
-                {submitError && <p className="text-red-500 text-sm mt-3">{submitError}</p>}
-
-                {/* Checklist for submit errors */}
-                {Object.keys(submitErrors).length > 0 && (
-                  <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-4">
-                    <p className="text-xs font-semibold text-red-800 mb-2">{t("whatToFixTitle")}</p>
-                    <ul className="space-y-1.5">
-                      {Object.entries(submitErrors).map(([key, msg]) => {
-                        const label = FIELD_LABELS[key] ?? key
-                        const link = FIELD_LINKS[key]
-                        return (
-                          <li key={key} className="text-xs text-red-600 flex items-center gap-1.5 flex-wrap">
-                            <Icon name="close" size={12} className="text-red-400" />
-                            <span>
-                              <strong>{label}:</strong> {msg}
-                            </span>
-                            {link && (
-                              <Link
-                                href={link.href}
-                                className="ml-auto text-xs font-semibold text-red-700 underline hover:text-red-900"
-                              >
-                                {link.label}
-                              </Link>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Pre-submit checklist */}
-                {me && (
-                  <div className="mt-3 space-y-1">
-                    <div className={`text-xs flex items-center gap-1.5 ${me.email && me.email_verified ? "text-emerald-600" : "text-red-500"}`}>
-                      <Icon name={me.email && me.email_verified ? "check_circle" : "cancel"} size={14} filled />
-                      {me.email && me.email_verified ? t("emailVerified") : t("emailNotVerified")}
-                    </div>
-                    <div className={`text-xs flex items-center gap-1.5 ${me.has_telegram ? "text-emerald-600" : "text-red-500"}`}>
-                      <Icon name={me.has_telegram ? "check_circle" : "cancel"} size={14} filled />
-                      {me.has_telegram ? t("telegramLinked") : t("telegramNotLinked")}
-                    </div>
-                    <div className={`text-xs flex items-center gap-1.5 ${profile.profile_photo ? "text-emerald-600" : "text-red-500"}`}>
-                      <Icon name={profile.profile_photo ? "check_circle" : "cancel"} size={14} filled />
-                      {profile.profile_photo ? t("photoUploaded") : t("photoNotUploaded")}
-                    </div>
-                    <div className={`text-xs flex items-center gap-1.5 ${profile.has_documents ? "text-emerald-600" : "text-red-500"}`}>
-                      <Icon name={profile.has_documents ? "check_circle" : "cancel"} size={14} filled />
-                      <span>{profile.has_documents ? t("documentsUploaded") : t("documentsNotUploaded")}</span>
-                      {!profile.has_documents && (
-                        <Link href="/mentors/profile" className="ml-auto text-red-600 underline font-medium">
-                          {t("upload")}
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex gap-3 mt-4 flex-wrap">
-                  <button
-                    onClick={handleSubmit}
-                    disabled={submitting || completionPercent < 50 || !profile.profile_photo || !profile.has_documents}
-                    className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {submitting ? t("submitting") : t("submitForReview")}
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="mb-8 bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex items-start gap-4">
+            <span className="text-2xl">⏳</span>
+            <div>
+              <p className="font-semibold text-indigo-900">{t("underReviewTitle")}</p>
+              <p className="text-sm text-indigo-800 mt-1">{t("underReviewBody")}</p>
+            </div>
           </div>
         )}
 

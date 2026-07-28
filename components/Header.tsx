@@ -73,7 +73,12 @@ export default function Header() {
   const isStudent = role === "student"
   const isAdmin = role === "admin"
   const isAuthed = isMentor || isStudent || isAdmin
-  const homeHref = isMentor ? "/mentor/dashboard" : isAdmin ? "/crm" : "/"
+  // On the onboarding wizard, "home" for a mentor/student is gated behind
+  // finishing onboarding (see useMentorOnboardingGate) — pointing the logo
+  // at the normal dashboard would just bounce them straight back. Point it
+  // at itself there instead of dead-ending through the gate.
+  const isOnboarding = pathname.startsWith("/onboarding")
+  const homeHref = isOnboarding ? pathname : isMentor ? "/mentor/dashboard" : isAdmin ? "/crm" : "/"
 
   interface NavLink {
     href: string
@@ -111,7 +116,14 @@ export default function Header() {
     { href: "/crm", label: "CRM", icon: "admin_panel_settings" },
   ]
 
-  const navLinks: NavLink[] = isMentor ? mentorNav : isStudent ? studentNav : isAdmin ? adminNav : guestNav
+  // On the onboarding wizard itself, several of these links (dashboard,
+  // profile, schedule, services) point at pages gated behind
+  // useMentorOnboardingGate — a not-yet-submitted mentor clicking them
+  // would just get bounced straight back here. Hide the nav there rather
+  // than show links that silently do nothing.
+  const navLinks: NavLink[] = isOnboarding
+    ? []
+    : isMentor ? mentorNav : isStudent ? studentNav : isAdmin ? adminNav : guestNav
 
   const isActive = (link: NavLink) => {
     if (pathname === link.href) return true
@@ -129,7 +141,7 @@ export default function Header() {
         </SmartLink>
 
         {/* Nav links */}
-        {isAuthed ? (
+        {navLinks.length === 0 ? null : isAuthed ? (
           <nav className="hidden md:flex items-center gap-1 bg-[#fafafa] border border-gray-200/60 rounded-2xl p-1">
             {navLinks.map((link) => {
               const active = isActive(link)

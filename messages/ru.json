@@ -473,42 +473,6 @@
       "bannedBody": "Вы можете просматривать свои заказы и чаты, но не можете редактировать профиль, услуги или документы. Если считаете что это ошибка — напишите на",
       "underReviewTitle": "Профиль на проверке",
       "underReviewBody": "Мы рассмотрим и одобрим его в ближайшее время.",
-      "completeProfileTitle": "Заполни профиль и начни принимать заявки",
-      "completeProfileBody": "Абитуриенты увидят тебя только после одобрения профиля",
-      "percentFilled": "заполнено",
-      "whatToFixTitle": "Что нужно исправить:",
-      "fields": {
-        "fullName": "Полное имя",
-        "major": "Специальность",
-        "grantOrScholarship": "Грант или стипендия",
-        "schoolOrUniversity": "Университет",
-        "gpa": "GPA",
-        "examResults": "Результаты экзаменов",
-        "detailedBio": "О себе",
-        "phone": "Телефон",
-        "expertiseAreas": "Направления экспертизы",
-        "countries": "Страны",
-        "languages": "Языки",
-        "profilePhoto": "Фото профиля",
-        "documents": "Документы",
-        "services": "Активная услуга",
-        "email": "Email",
-        "telegramField": "Telegram"
-      },
-      "fillIn": "Заполнить →",
-      "choose": "Выбрать →",
-      "toPhoto": "К фото →",
-      "upload": "Загрузить →",
-      "emailVerified": "Email подтверждён",
-      "emailNotVerified": "Email не подтверждён",
-      "telegramLinked": "Telegram привязан",
-      "telegramNotLinked": "Telegram не привязан",
-      "photoUploaded": "Фото профиля загружено",
-      "photoNotUploaded": "Фото профиля не загружено",
-      "documentsUploaded": "Документы верификации загружены",
-      "documentsNotUploaded": "Документы верификации не загружены",
-      "submitting": "Отправляем...",
-      "submitForReview": "Отправить на проверку",
       "activeOrders": "Активных заказов",
       "pendingPayment": "Ожидают оплаты",
       "earnedMore": "Заработано · подробнее →",
@@ -536,9 +500,7 @@
       "setUpSchedule": "Настроить расписание",
       "manageServices": "Управлять услугами",
       "previewProfile": "Предпросмотр профиля",
-      "specializations": "Специализации",
-      "errorFillRequiredFields": "Заполните обязательные поля перед отправкой",
-      "errorGeneric": "Ошибка при отправке"
+      "specializations": "Специализации"
     },
     "MentorEarnings": {
       "title": "Финансы",
@@ -1361,9 +1323,7 @@
     "back": "Назад"
   },
   "MentorStatusBanner": {
-    "underReviewBody": "<strong>Профиль на проверке.</strong> Обычно одобряем в течение 24 часов — мы напишем в Telegram как только всё готово.",
-    "notSubmittedBody": "<strong>Профиль на проверку не отправлен.</strong> Студенты пока тебя не видят — заполни обязательные поля и нажми «Отправить на проверку».",
-    "goToSubmit": "Перейти к подаче"
+    "underReviewBody": "<strong>Профиль на проверке.</strong> Обычно одобряем в течение 24 часов — мы напишем в Telegram как только всё готово."
   },
   "DataConsentModal": {
     "title": "Согласие на обработку персональных данных",

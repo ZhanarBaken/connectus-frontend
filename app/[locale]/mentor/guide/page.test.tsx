@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { useRouter } from "@/i18n/navigation"
 import MentorGuidePage from "./page"
 
 vi.mock("@/lib/api", async () => {
@@ -11,6 +12,20 @@ vi.mock("@/lib/api", async () => {
 })
 
 import { fetchMentorProfile } from "@/lib/api"
+import type { MentorProfile } from "@/types"
+
+function mockRouter() {
+  const replace = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({
+    push: vi.fn(),
+    replace,
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  } as unknown as ReturnType<typeof useRouter>)
+  return { replace }
+}
 
 describe("MentorGuidePage", () => {
   beforeEach(() => {
@@ -61,5 +76,18 @@ describe("MentorGuidePage", () => {
   it("does not call the API when there's no access token", () => {
     render(<MentorGuidePage />)
     expect(fetchMentorProfile).not.toHaveBeenCalled()
+  })
+
+  it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
+    localStorage.setItem("access_token", "tok")
+    localStorage.setItem("role", "mentor")
+    const { replace } = mockRouter()
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      { is_submitted: false, is_approved: false } as MentorProfile,
+    )
+
+    render(<MentorGuidePage />)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/mentor"))
   })
 })

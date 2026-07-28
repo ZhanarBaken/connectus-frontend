@@ -7,6 +7,7 @@ import { fetchMentorProfile, fetchMentorServices, fetchMe, authFetch } from "@/l
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { LANGUAGE_LABELS } from "@/lib/languages"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
+import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { MentorProfile, MentorService, ExpertiseArea, User } from "@/types"
 import BackButton from "@/components/BackButton"
 import CountryPickerModal from "@/components/CountryPickerModal"
@@ -53,6 +54,7 @@ export default function MentorProfilePage() {
   const tExpertise = useTranslations("Landing.Expertise")
   const locale = useLocale()
   const router = useRouter()
+  useMentorOnboardingGate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)

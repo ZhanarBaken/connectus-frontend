@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { useRouter } from "@/i18n/navigation"
 import MentorServicesPage from "./page"
 import {
   fetchMentorServices,
@@ -11,6 +12,19 @@ import {
 import type { MentorProfile, MentorService } from "@/types"
 
 vi.mock("@/lib/api")
+
+function mockRouter() {
+  const replace = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({
+    push: vi.fn(),
+    replace,
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  } as unknown as ReturnType<typeof useRouter>)
+  return { replace }
+}
 
 function makeService(overrides: Partial<MentorService> = {}): MentorService {
   return {
@@ -73,6 +87,7 @@ function makeMentorProfile(overrides: Partial<MentorProfile> = {}): MentorProfil
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
 })
 
@@ -84,6 +99,22 @@ describe("MentorServicesPage — empty state", () => {
 
     expect(await screen.findByText("Пока нет ни одной консультации")).toBeInTheDocument()
     expect(screen.getByText("Пока нет программ сопровождения")).toBeInTheDocument()
+  })
+})
+
+describe("MentorServicesPage — onboarding gate", () => {
+  it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    const { replace } = mockRouter()
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      makeMentorProfile({ is_submitted: false, is_approved: false }),
+    )
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+
+    render(<MentorServicesPage />)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/mentor"))
   })
 })
 

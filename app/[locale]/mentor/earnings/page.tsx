@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMentorEarnings, type MentorEarnings } from "@/lib/api"
+import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
@@ -25,6 +26,7 @@ function formatDate(iso: string): string {
 export default function MentorEarningsPage() {
   const t = useTranslations("Dashboard.MentorEarnings")
   const router = useRouter()
+  useMentorOnboardingGate()
   const [data, setData] = useState<MentorEarnings | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")

@@ -473,42 +473,6 @@
       "bannedBody": "You can view your orders and chats, but you can't edit your profile, services, or documents. If you think this is a mistake, email us at",
       "underReviewTitle": "Profile under review",
       "underReviewBody": "We'll review and approve it shortly.",
-      "completeProfileTitle": "Complete your profile and start accepting requests",
-      "completeProfileBody": "Applicants will only see you once your profile is approved",
-      "percentFilled": "complete",
-      "whatToFixTitle": "What needs fixing:",
-      "fields": {
-        "fullName": "Full name",
-        "major": "Major",
-        "grantOrScholarship": "Grant or scholarship",
-        "schoolOrUniversity": "University",
-        "gpa": "GPA",
-        "examResults": "Exam results",
-        "detailedBio": "About you",
-        "phone": "Phone",
-        "expertiseAreas": "Areas of expertise",
-        "countries": "Countries",
-        "languages": "Languages",
-        "profilePhoto": "Profile photo",
-        "documents": "Documents",
-        "services": "Active service",
-        "email": "Email",
-        "telegramField": "Telegram"
-      },
-      "fillIn": "Fill in →",
-      "choose": "Choose →",
-      "toPhoto": "To photo →",
-      "upload": "Upload →",
-      "emailVerified": "Email verified",
-      "emailNotVerified": "Email not verified",
-      "telegramLinked": "Telegram linked",
-      "telegramNotLinked": "Telegram not linked",
-      "photoUploaded": "Profile photo uploaded",
-      "photoNotUploaded": "Profile photo not uploaded",
-      "documentsUploaded": "Verification documents uploaded",
-      "documentsNotUploaded": "Verification documents not uploaded",
-      "submitting": "Submitting...",
-      "submitForReview": "Submit for review",
       "activeOrders": "Active orders",
       "pendingPayment": "Awaiting payment",
       "earnedMore": "Earned · details →",
@@ -536,9 +500,7 @@
       "setUpSchedule": "Set up your schedule",
       "manageServices": "Manage services",
       "previewProfile": "Preview profile",
-      "specializations": "Specializations",
-      "errorFillRequiredFields": "Fill in the required fields before submitting",
-      "errorGeneric": "Submission failed"
+      "specializations": "Specializations"
     },
     "MentorEarnings": {
       "title": "Finances",
@@ -1361,9 +1323,7 @@
     "back": "Back"
   },
   "MentorStatusBanner": {
-    "underReviewBody": "<strong>Profile under review.</strong> We usually approve within 24 hours — we'll message you on Telegram as soon as it's ready.",
-    "notSubmittedBody": "<strong>Profile not submitted for review.</strong> Applicants can't see you yet — fill in the required fields and tap \"Submit for review\".",
-    "goToSubmit": "Go submit it"
+    "underReviewBody": "<strong>Profile under review.</strong> We usually approve within 24 hours — we'll message you on Telegram as soon as it's ready."
   },
   "DataConsentModal": {
     "title": "Consent to personal data processing",

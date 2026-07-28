@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { useRouter } from "@/i18n/navigation"
@@ -13,7 +13,6 @@ vi.mock("@/lib/api", async () => {
     fetchMentorProfile: vi.fn(),
     fetchMentorServices: vi.fn(),
     fetchOrders: vi.fn(),
-    submitMentorProfile: vi.fn(),
     fetchMe: vi.fn(),
     clearAuth: vi.fn(),
     fetchPendingSupportRequests: vi.fn(),
@@ -34,7 +33,6 @@ import {
   fetchMentorProfile,
   fetchMentorServices,
   fetchOrders,
-  submitMentorProfile,
   fetchMe,
   clearAuth,
   fetchPendingSupportRequests,
@@ -233,6 +231,19 @@ describe("MentorDashboard", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/auth/login"))
   })
 
+  it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    const { replace } = mockRouter()
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      makeMentorProfile({ is_submitted: false, is_approved: false }),
+    )
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    render(<MentorDashboard />)
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/mentor"))
+  })
+
   describe("authenticated mentor", () => {
     beforeEach(() => {
       localStorage.setItem("access_token", "fake-token")
@@ -403,97 +414,16 @@ describe("MentorDashboard", () => {
       expect(screen.getByText(/15\s000/)).toBeInTheDocument()
     })
 
-    it("submits the profile for review and shows the pending banner on success", async () => {
-      const user = userEvent.setup()
-      const draftProfile = makeMentorProfile({ is_submitted: false, is_approved: false })
-      const submittedProfile = makeMentorProfile({ is_submitted: true, is_approved: false })
-      vi.mocked(fetchMentorProfile)
-        .mockResolvedValueOnce(draftProfile)
-        .mockResolvedValueOnce(submittedProfile)
+    it("shows the under-review banner for a submitted-but-not-approved profile", async () => {
+      vi.mocked(fetchMentorProfile).mockResolvedValue(
+        makeMentorProfile({ is_submitted: true, is_approved: false }),
+      )
       vi.mocked(fetchMentorServices).mockResolvedValue([])
       vi.mocked(fetchOrders).mockResolvedValue([])
-      vi.mocked(submitMentorProfile).mockResolvedValue(undefined)
 
       render(<MentorDashboard />)
-
-      const submitButton = await screen.findByRole("button", { name: "Отправить на проверку" })
-      expect(submitButton).not.toBeDisabled()
-      await user.click(submitButton)
 
       expect(await screen.findByText("Профиль на проверке")).toBeInTheDocument()
-      expect(submitMentorProfile).toHaveBeenCalledTimes(1)
-    })
-
-    it("shows field-level errors when submission is rejected", async () => {
-      const user = userEvent.setup()
-      const draftProfile = makeMentorProfile({ is_submitted: false, is_approved: false })
-      vi.mocked(fetchMentorProfile).mockResolvedValue(draftProfile)
-      vi.mocked(fetchMentorServices).mockResolvedValue([])
-      vi.mocked(fetchOrders).mockResolvedValue([])
-      vi.mocked(submitMentorProfile).mockRejectedValue(
-        new Error(JSON.stringify({ phone: ["Это поле обязательно."] })),
-      )
-
-      render(<MentorDashboard />)
-
-      const submitButton = await screen.findByRole("button", { name: "Отправить на проверку" })
-      await user.click(submitButton)
-
-      expect(await screen.findByText("Заполните обязательные поля перед отправкой")).toBeInTheDocument()
-      const checklist = screen.getByText("Что нужно исправить:").closest("div") as HTMLElement
-      expect(within(checklist).getByText(/Телефон:/)).toBeInTheDocument()
-      expect(within(checklist).getByText(/Это поле обязательно\./)).toBeInTheDocument()
-    })
-
-    it("shows a translated label and a working fix-link for a missing-languages error", async () => {
-      // Regression: `languages` used to be entirely absent from
-      // FIELD_LABELS/FIELD_LINKS, so this error rendered as the raw
-      // backend key with no link — and there was nowhere on
-      // /mentors/profile to actually add a language either.
-      const user = userEvent.setup()
-      const draftProfile = makeMentorProfile({ is_submitted: false, is_approved: false })
-      vi.mocked(fetchMentorProfile).mockResolvedValue(draftProfile)
-      vi.mocked(fetchMentorServices).mockResolvedValue([])
-      vi.mocked(fetchOrders).mockResolvedValue([])
-      vi.mocked(submitMentorProfile).mockRejectedValue(
-        new Error(JSON.stringify({ languages: ["At least one language is required."] })),
-      )
-
-      render(<MentorDashboard />)
-
-      const submitButton = await screen.findByRole("button", { name: "Отправить на проверку" })
-      await user.click(submitButton)
-
-      const checklist = await screen.findByText("Что нужно исправить:")
-      const checklistContainer = checklist.closest("div") as HTMLElement
-      expect(within(checklistContainer).getByText(/Языки:/)).toBeInTheDocument()
-      const fixLink = within(checklistContainer).getByRole("link", { name: "Выбрать →" })
-      expect(fixLink).toHaveAttribute("href", "/mentors/profile")
-    })
-
-    it("shows a translated label and a working fix-link for a missing-active-service error", async () => {
-      // Same gap as languages above — `services` was also absent from
-      // FIELD_LABELS/FIELD_LINKS, so this rendered as the raw English
-      // backend message with no link to where a mentor actually adds one.
-      const user = userEvent.setup()
-      const draftProfile = makeMentorProfile({ is_submitted: false, is_approved: false })
-      vi.mocked(fetchMentorProfile).mockResolvedValue(draftProfile)
-      vi.mocked(fetchMentorServices).mockResolvedValue([])
-      vi.mocked(fetchOrders).mockResolvedValue([])
-      vi.mocked(submitMentorProfile).mockRejectedValue(
-        new Error(JSON.stringify({ services: ["At least one active service is required."] })),
-      )
-
-      render(<MentorDashboard />)
-
-      const submitButton = await screen.findByRole("button", { name: "Отправить на проверку" })
-      await user.click(submitButton)
-
-      const checklist = await screen.findByText("Что нужно исправить:")
-      const checklistContainer = checklist.closest("div") as HTMLElement
-      expect(within(checklistContainer).getByText(/Активная услуга:/)).toBeInTheDocument()
-      const fixLink = within(checklistContainer).getByRole("link", { name: "Управлять" })
-      expect(fixLink).toHaveAttribute("href", "/mentors/services")
     })
   })
 })

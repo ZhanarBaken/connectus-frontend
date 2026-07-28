@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
+import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
@@ -26,6 +27,7 @@ const richTags = {
 
 export default function MentorGuidePage() {
   const t = useTranslations("Dashboard.MentorGuide")
+  useMentorOnboardingGate()
 
   const SECTIONS: Section[] = [
     {

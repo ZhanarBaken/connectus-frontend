@@ -473,42 +473,6 @@
       "bannedBody": "Сіз тапсырыстарыңыз бен чаттарыңызды көре аласыз, бірақ профильді, қызметтерді немесе құжаттарды өзгерте алмайсыз. Бұл қате деп ойласаңыз — бізге жазыңыз:",
       "underReviewTitle": "Профиль тексерілуде",
       "underReviewBody": "Жақын арада қарап, бекітеміз.",
-      "completeProfileTitle": "Профильді толтырып, өтінімдерді қабылдай баста",
-      "completeProfileBody": "Талапкерлер сені тек профиль бекітілгеннен кейін көреді",
-      "percentFilled": "толтырылды",
-      "whatToFixTitle": "Түзету қажет:",
-      "fields": {
-        "fullName": "Толық аты-жөні",
-        "major": "Мамандық",
-        "grantOrScholarship": "Грант немесе стипендия",
-        "schoolOrUniversity": "Университет",
-        "gpa": "GPA",
-        "examResults": "Емтихан нәтижелері",
-        "detailedBio": "Өзің туралы",
-        "phone": "Телефон",
-        "expertiseAreas": "Сараптама бағыттары",
-        "countries": "Елдер",
-        "languages": "Тілдер",
-        "profilePhoto": "Профиль фотосуреті",
-        "documents": "Құжаттар",
-        "services": "Белсенді қызмет",
-        "email": "Email",
-        "telegramField": "Telegram"
-      },
-      "fillIn": "Толтыру →",
-      "choose": "Таңдау →",
-      "toPhoto": "Фотоға →",
-      "upload": "Жүктеу →",
-      "emailVerified": "Email расталды",
-      "emailNotVerified": "Email расталмаған",
-      "telegramLinked": "Telegram байланыстырылды",
-      "telegramNotLinked": "Telegram байланыстырылмаған",
-      "photoUploaded": "Профиль фотосуреті жүктелді",
-      "photoNotUploaded": "Профиль фотосуреті жүктелмеген",
-      "documentsUploaded": "Верификация құжаттары жүктелді",
-      "documentsNotUploaded": "Верификация құжаттары жүктелмеген",
-      "submitting": "Жіберілуде...",
-      "submitForReview": "Тексеруге жіберу",
       "activeOrders": "Белсенді тапсырыстар",
       "pendingPayment": "Төлемді күтуде",
       "earnedMore": "Табылды · толығырақ →",
@@ -536,9 +500,7 @@
       "setUpSchedule": "Кестені баптау",
       "manageServices": "Қызметтерді басқару",
       "previewProfile": "Профильді алдын ала қарау",
-      "specializations": "Мамандандырулар",
-      "errorFillRequiredFields": "Жіберер алдында міндетті өрістерді толтырыңыз",
-      "errorGeneric": "Жіберу кезінде қате"
+      "specializations": "Мамандандырулар"
     },
     "MentorEarnings": {
       "title": "Қаржы",
@@ -1361,9 +1323,7 @@
     "back": "Артқа"
   },
   "MentorStatusBanner": {
-    "underReviewBody": "<strong>Профиль тексерілуде.</strong> Әдетте 24 сағат ішінде мақұлдаймыз — дайын болғанда Telegram-ға жазамыз.",
-    "notSubmittedBody": "<strong>Профиль тексеруге жіберілмеген.</strong> Талапкерлер сені әлі көрмейді — міндетті өрістерді толтырып, «Тексеруге жіберу» батырмасын бас.",
-    "goToSubmit": "Жіберуге өту"
+    "underReviewBody": "<strong>Профиль тексерілуде.</strong> Әдетте 24 сағат ішінде мақұлдаймыз — дайын болғанда Telegram-ға жазамыз."
   },
   "DataConsentModal": {
     "title": "Дербес деректерді өңдеуге келісім",
