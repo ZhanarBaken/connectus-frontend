@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import MessagesPage from "./page"
-import { fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
-import type { Order, MentorCard } from "@/types"
+import { fetchOrders, fetchMentors, clearAuth, fetchStudentProfile } from "@/lib/api"
+import type { Order, MentorCard, StudentProfile } from "@/types"
 
 vi.mock("@/lib/api")
 
@@ -60,6 +60,9 @@ function makeMentorCard(overrides: Partial<MentorCard> = {}): MentorCard {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  // useStudentOnboardingGate's own fetch — default to "complete" so it
+  // doesn't fire an unrelated redirect in tests that don't care about it.
+  vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: true } as StudentProfile)
 })
 
 describe("MessagesPage — auth gate", () => {
@@ -80,6 +83,19 @@ describe("MessagesPage — student view", () => {
   beforeEach(() => {
     localStorage.setItem("access_token", "fake-token")
     localStorage.setItem("role", "student")
+  })
+
+  it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(), replace, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+    })
+    vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: false } as StudentProfile)
+    vi.mocked(fetchOrders).mockResolvedValue([])
+
+    render(<MessagesPage />)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
   })
 
   it("shows an empty state with a link to find a mentor", async () => {

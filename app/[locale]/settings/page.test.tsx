@@ -112,6 +112,9 @@ function makeStudentProfile(overrides: Partial<StudentProfile> = {}): StudentPro
     gpa: "",
     profile_photo: null,
     is_public: true,
+    // Default to "complete" so tests that don't care about the
+    // onboarding gate aren't silently redirected in the background.
+    is_profile_complete: true,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
@@ -215,6 +218,15 @@ describe("SettingsPage", () => {
     it("renders a single visibility toggle for students", async () => {
       render(<SettingsPage />)
       expect(await screen.findByText(/Только менторы, с которыми ты переписываешься/)).toBeInTheDocument()
+    })
+
+    it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
+      const { replace } = mockRouter()
+      vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile({ is_profile_complete: false }))
+
+      render(<SettingsPage />)
+
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
     })
 
     it("saves the student visibility toggle", async () => {

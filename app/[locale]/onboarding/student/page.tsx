@@ -86,7 +86,12 @@ export default function StudentOnboarding() {
         if (cancelled) return
         try {
           const profile = await fetchStudentProfile()
-          if (!cancelled) setProfilePhoto(profile.profile_photo ?? null)
+          if (cancelled) return
+          if (profile.is_profile_complete) {
+            router.replace("/student/dashboard")
+            return
+          }
+          setProfilePhoto(profile.profile_photo ?? null)
         } catch {
           // Non-fatal — onboarding continues with empty photo state.
         }

@@ -17,6 +17,7 @@ import {
 } from "@/lib/api"
 import { promptGoogleCredential } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { User } from "@/types"
 import { SUPPORT_EMAIL, SUPPORT_TELEGRAM_URL } from "@/lib/contacts"
 import BackButton from "@/components/BackButton"
@@ -61,6 +62,7 @@ function Toggle({ label, description, icon, checked, onChange, disabled }: Toggl
 export default function SettingsPage() {
   const t = useTranslations("Settings")
   const router = useRouter()
+  useStudentOnboardingGate()
   // Inside Telegram WebView Google's SDK is blocked, so the "Привязать"
   // path is dead. Existing links (set up in a regular browser) still
   // surface correctly via me.has_google + me.google_email_at_signup,

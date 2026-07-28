@@ -51,6 +51,7 @@ function makeProfile(overrides: Partial<StudentProfile> = {}): StudentProfile {
     gpa: "",
     profile_photo: null,
     is_public: false,
+    is_profile_complete: false,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
@@ -86,6 +87,13 @@ describe("StudentOnboarding", () => {
     render(<StudentOnboarding />)
     await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/auth/login"))
     expect(api.clearAuth).toHaveBeenCalled()
+  })
+
+  it("redirects to the dashboard when the profile is already complete", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser({ email: "student@example.com", email_verified: true }))
+    vi.mocked(api.fetchStudentProfile).mockResolvedValue(makeProfile({ is_profile_complete: true }))
+    render(<StudentOnboarding />)
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/student/dashboard"))
   })
 
   it("shows the email step when the user has no email yet", async () => {

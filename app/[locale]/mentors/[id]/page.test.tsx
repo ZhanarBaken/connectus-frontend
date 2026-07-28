@@ -10,9 +10,10 @@ import {
   fetchPublicSettings,
   fetchMentorAvailability,
   fetchMentorAvailabilityOverview,
+  fetchStudentProfile,
 } from "@/lib/api"
 import { fetchMentorReviews } from "@/lib/reviews"
-import type { Mentor, MentorService, Order } from "@/types"
+import type { Mentor, MentorService, Order, StudentProfile } from "@/types"
 import type { PublicSettings } from "@/lib/api"
 
 vi.mock("@/lib/api")
@@ -150,6 +151,21 @@ describe("MentorPage — auth gate", () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/auth/login?next=/mentors/3"))
     expect(fetchMentor).not.toHaveBeenCalled()
+  })
+
+  it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
+    localStorage.setItem("role", "student")
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(), replace, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+    })
+    vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: false } as StudentProfile)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(fetchOrders).mockResolvedValue([])
+
+    await renderMentorPage("3")
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
   })
 })
 

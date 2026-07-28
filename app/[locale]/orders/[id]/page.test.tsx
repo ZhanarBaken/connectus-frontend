@@ -27,11 +27,12 @@ import {
   deleteSupportTask,
   confirmIntroCall,
   declineIntroCall,
+  fetchStudentProfile,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation } from "@/lib/chat"
 import { fetchMentorReviews, hasReviewForOrder } from "@/lib/reviews"
-import type { Order, Mentor, MentorService, ChatMessage } from "@/types"
+import type { Order, Mentor, MentorService, ChatMessage, StudentProfile } from "@/types"
 import type { ChatConnection } from "@/lib/chat"
 
 vi.mock("@/lib/api")
@@ -161,6 +162,9 @@ function setupCommonMocks() {
   )
   vi.mocked(fetchMentorReviews).mockResolvedValue([])
   vi.mocked(hasReviewForOrder).mockResolvedValue(false)
+  // useStudentOnboardingGate's own fetch — default to "complete" so it
+  // doesn't fire an unrelated redirect in tests that don't care about it.
+  vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: true } as StudentProfile)
   vi.stubGlobal(
     "fetch",
     vi.fn().mockResolvedValue({ ok: false } as Response),
@@ -262,6 +266,20 @@ describe("OrderPage — student view", () => {
     expect(screen.getAllByText("Ожидает оплаты").length).toBeGreaterThan(0)
     expect(screen.getByText("10 000 ₸")).toBeInTheDocument()
     expect(screen.getByText("Данияр Сериков")).toBeInTheDocument()
+  })
+
+  it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(), replace, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+    })
+    vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: false } as StudentProfile)
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder())
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
   })
 
   it("cancels a pending order after confirming", async () => {

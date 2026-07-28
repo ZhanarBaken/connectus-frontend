@@ -1,10 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { useRouter } from "@/i18n/navigation"
 import OrdersPage from "./page"
-import { fetchOrders, fetchMentors } from "@/lib/api"
-import type { Order, MentorCard } from "@/types"
+import { fetchOrders, fetchMentors, fetchStudentProfile } from "@/lib/api"
+import type { Order, MentorCard, StudentProfile } from "@/types"
 
 vi.mock("@/lib/api")
+
+function mockRouter() {
+  const replace = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({
+    push: vi.fn(),
+    replace,
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  } as unknown as ReturnType<typeof useRouter>)
+  return { replace }
+}
 
 function makeOrder(overrides: Partial<Order> = {}): Order {
   return {
@@ -64,6 +78,20 @@ beforeEach(() => {
 describe("OrdersPage — student view", () => {
   beforeEach(() => {
     localStorage.setItem("role", "student")
+    // useStudentOnboardingGate's own fetch — default to "complete" so it
+    // doesn't fire an unrelated redirect in tests that don't care about it.
+    vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: true } as StudentProfile)
+  })
+
+  it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    const { replace } = mockRouter()
+    vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: false } as StudentProfile)
+    vi.mocked(fetchOrders).mockResolvedValue([])
+
+    render(<OrdersPage />)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
   })
 
   it("shows an empty state with a link to find a mentor", async () => {

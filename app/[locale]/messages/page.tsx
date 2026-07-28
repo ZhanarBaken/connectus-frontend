@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
 import { fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -38,6 +39,7 @@ export default function MessagesPage() {
   const t = useTranslations("Messages")
   const tStatus = useTranslations("OrderStatus")
   const router = useRouter()
+  useStudentOnboardingGate()
   const { isInTelegram, webApp } = useTelegramWebApp()
   useEffect(() => {
     if (webApp) {

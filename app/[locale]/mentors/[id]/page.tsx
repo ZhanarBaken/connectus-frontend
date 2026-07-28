@@ -8,6 +8,7 @@ import { track } from "@/lib/analytics"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
 import { LANGUAGE_LABELS } from "@/lib/languages"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { Mentor, MentorService, Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
@@ -29,6 +30,7 @@ export default function MentorPage({ params }: Props) {
   const tNav = useTranslations("Nav")
   const locale = useLocale()
   const router = useRouter()
+  useStudentOnboardingGate()
   const [mentor, setMentor] = useState<Mentor | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)

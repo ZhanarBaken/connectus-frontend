@@ -151,8 +151,10 @@ export interface StudentProfile {
   age: number | null
   current_school_or_university: string
   contacts: string
-  // Pre-consultation context the mentor reads before booking. The
-  // first three are required in the form; the last four are optional.
+  // Pre-consultation context the mentor reads before booking. Together
+  // with full_name/date_of_birth above, school_grade/city/
+  // school_graduation_year are the 5 fields the onboarding form
+  // requires (see is_profile_complete below) — the rest are optional.
   school_grade: string
   city: string
   school_graduation_year: number | null
@@ -162,6 +164,10 @@ export interface StudentProfile {
   gpa: string
   profile_photo: string | null
   is_public: boolean
+  // Backend-computed (apps.students.models.StudentProfile
+  // .is_profile_complete) — single source of truth for whether the 5
+  // required onboarding fields are all filled in.
+  is_profile_complete: boolean
   created_at: string
   updated_at: string
 }

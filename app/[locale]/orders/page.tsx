@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { fetchOrders, fetchMentors } from "@/lib/api"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -44,6 +45,7 @@ interface ClientGroup {
 export default function OrdersPage() {
   const t = useTranslations("Orders.List")
   const tStatus = useTranslations("OrderStatus")
+  useStudentOnboardingGate()
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)

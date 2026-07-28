@@ -34,6 +34,11 @@ function makeStudentProfile(overrides: Partial<StudentProfile> = {}): StudentPro
     gpa: "",
     profile_photo: null,
     is_public: true,
+    // Default to "complete" so tests that don't care about the
+    // onboarding gate aren't silently redirected in the background —
+    // see "redirects a student with an incomplete profile" below for
+    // the one that explicitly overrides this.
+    is_profile_complete: true,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
@@ -135,6 +140,19 @@ describe("StudentDashboard", () => {
     render(<StudentDashboard />)
     await waitFor(() => expect(clearAuth).toHaveBeenCalled())
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/auth/login"))
+  })
+
+  it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const { replace } = mockRouter()
+    vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile({ is_profile_complete: false }))
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentors).mockResolvedValue([])
+
+    render(<StudentDashboard />)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
   })
 
   describe("authenticated student", () => {

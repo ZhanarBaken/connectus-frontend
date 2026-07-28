@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchStudentProfile, updateStudentProfile, authFetch } from "@/lib/api"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { StudentProfile } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -23,6 +24,7 @@ export default function StudentProfilePage() {
   const t = useTranslations("Students.Profile")
   const tOnboarding = useTranslations("Onboarding.Student")
   const router = useRouter()
+  useStudentOnboardingGate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)

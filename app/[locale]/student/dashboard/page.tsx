@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { fetchStudentProfile, fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { StudentProfile, Order } from "@/types"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
@@ -21,6 +22,7 @@ export default function StudentDashboard() {
   const t = useTranslations("Dashboard.Student")
   const tStatus = useTranslations("OrderStatus")
   const router = useRouter()
+  useStudentOnboardingGate()
   const [profile, setProfile] = useState<StudentProfile | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})

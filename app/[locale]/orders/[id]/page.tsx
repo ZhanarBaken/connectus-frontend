@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
 import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService, SupportTask } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
@@ -68,6 +69,7 @@ export default function OrderPage({ params }: Props) {
   const t = useTranslations("Orders.Detail")
   const tStatus = useTranslations("OrderStatus")
   const router = useRouter()
+  useStudentOnboardingGate()
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
   const [studentOrders, setStudentOrders] = useState<Order[]>([]) // mentor: all orders with this student
