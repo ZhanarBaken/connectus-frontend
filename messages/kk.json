@@ -1251,7 +1251,11 @@
       "missingCity": "Қалаңды көрсет",
       "missingGraduationYear": "Мектепті бітіру жылын көрсет",
       "footerNote": "Кейін профильде өзгертуге болады",
-      "saveErrorGeneric": "Сақтау кезінде қате шықты"
+      "saveErrorGeneric": "Сақтау кезінде қате шықты",
+      "fixRedFields": "Қызылмен белгіленген өрістерді түзет",
+      "errBirthDateAgeRange": "Жасы 14-тен 100-ге дейін болуы керек.",
+      "errGraduationYearMin": "Жыл 1990-нан ерте болмауы керек.",
+      "errGraduationYearMax": "Жыл 2050-ден кеш болмауы керек."
     }
   },
   "Messages": {
@@ -1365,6 +1369,10 @@
       "photoUploadErrorDefault": "Фото жүктеу мүмкін болмады",
       "photoUploadErrorGeneric": "Фото жүктеу кезінде қате шықты",
       "saveErrorGeneric": "Сақтау кезінде қате шықты",
+      "fixRedFields": "Қызылмен белгіленген өрістерді түзет",
+      "errBirthDateAgeRange": "Жасы 14-тен 100-ге дейін болуы керек.",
+      "errGraduationYearMin": "Жыл 1990-нан ерте болмауы керек.",
+      "errGraduationYearMax": "Жыл 2050-ден кеш болмауы керек.",
       "photoTooLarge": "Фото 5 МБ-тан аспауы керек",
       "pageTitle": "Менің профилім",
       "pageSubtitle": "Бұл ақпаратты менторың көреді",

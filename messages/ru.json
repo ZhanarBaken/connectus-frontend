@@ -1251,7 +1251,11 @@
       "missingCity": "Укажи город",
       "missingGraduationYear": "Укажи год окончания школы",
       "footerNote": "Можно изменить позже в профиле",
-      "saveErrorGeneric": "Ошибка при сохранении"
+      "saveErrorGeneric": "Ошибка при сохранении",
+      "fixRedFields": "Исправь поля, отмеченные красным",
+      "errBirthDateAgeRange": "Возраст должен быть от 14 до 100 лет.",
+      "errGraduationYearMin": "Год должен быть не раньше 1990.",
+      "errGraduationYearMax": "Год должен быть не позже 2050."
     }
   },
   "Messages": {
@@ -1365,6 +1369,10 @@
       "photoUploadErrorDefault": "Не удалось загрузить фото",
       "photoUploadErrorGeneric": "Ошибка при загрузке фото",
       "saveErrorGeneric": "Ошибка при сохранении",
+      "fixRedFields": "Исправь поля, отмеченные красным",
+      "errBirthDateAgeRange": "Возраст должен быть от 14 до 100 лет.",
+      "errGraduationYearMin": "Год должен быть не раньше 1990.",
+      "errGraduationYearMax": "Год должен быть не позже 2050.",
       "photoTooLarge": "Фото не должно превышать 5 МБ",
       "pageTitle": "Мой профиль",
       "pageSubtitle": "Эту информацию увидит твой ментор",

@@ -1251,7 +1251,11 @@
       "missingCity": "Enter your city",
       "missingGraduationYear": "Enter your graduation year",
       "footerNote": "You can change this later in your profile",
-      "saveErrorGeneric": "Error saving"
+      "saveErrorGeneric": "Error saving",
+      "fixRedFields": "Fix the fields marked in red",
+      "errBirthDateAgeRange": "Age must be between 14 and 100.",
+      "errGraduationYearMin": "Year can't be earlier than 1990.",
+      "errGraduationYearMax": "Year can't be later than 2050."
     }
   },
   "Messages": {
@@ -1365,6 +1369,10 @@
       "photoUploadErrorDefault": "Couldn't upload the photo",
       "photoUploadErrorGeneric": "Error uploading the photo",
       "saveErrorGeneric": "Error saving",
+      "fixRedFields": "Fix the fields marked in red",
+      "errBirthDateAgeRange": "Age must be between 14 and 100.",
+      "errGraduationYearMin": "Year can't be earlier than 1990.",
+      "errGraduationYearMax": "Year can't be later than 2050.",
       "photoTooLarge": "The photo can't be larger than 5 MB",
       "pageTitle": "My profile",
       "pageSubtitle": "Your mentor will see this information",

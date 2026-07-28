@@ -11,7 +11,6 @@ import {
   fetchMe,
   fetchStudentProfile,
   setEmail,
-  updateStudentProfile,
 } from "@/lib/api"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import Icon from "@/components/Icon"
@@ -26,6 +25,29 @@ const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm f
 // (appearance-none), match input typography (text-gray-900), and paint
 // the chevron ourselves so the field aligns visually with text inputs.
 const selectClass = `${inputClass} appearance-none text-gray-900 pr-10 bg-no-repeat bg-[right_0.875rem_center] bg-[length:1rem_1rem] cursor-pointer bg-[url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ca3af' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 8 10 12 14 8'/%3E%3C/svg%3E")]`
+
+function Field({
+  label,
+  required = false,
+  error,
+  children,
+}: {
+  label: string
+  required?: boolean
+  error?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {label}
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </label>
+      {children}
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </div>
+  )
+}
 
 type EmailStage = "loading" | "email" | "verify" | "form"
 
@@ -50,6 +72,20 @@ export default function StudentOnboarding() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [earlySubmitHint, setEarlySubmitHint] = useState(false)
+  // Inline per-field errors filled from a backend 400 response, so a
+  // rejected value (e.g. date of birth out of the allowed age range)
+  // highlights the exact field instead of a generic bottom banner.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  // Backend validation messages are fixed, untranslated strings (see
+  // apps.students.serializers.StudentProfileSerializer / models.py
+  // validators) — map the known ones to localized copy. Unmapped
+  // messages fall back to raw text.
+  const PATCH_ERROR_MESSAGES: Record<string, string> = {
+    "Возраст должен быть от 14 до 100 лет.": t("errBirthDateAgeRange"),
+    "Ensure this value is greater than or equal to 1990.": t("errGraduationYearMin"),
+    "Ensure this value is less than or equal to 2050.": t("errGraduationYearMax"),
+  }
 
   // Email stage
   const [email, setEmailValue] = useState("")
@@ -191,22 +227,53 @@ export default function StudentOnboarding() {
   const handleFinish = async () => {
     setSaving(true)
     setError("")
+    setFieldErrors({})
     try {
-      await updateStudentProfile({
-        full_name: fullName,
-        date_of_birth: dateOfBirth || null,
-        current_school_or_university: school,
-        school_grade: schoolGrade,
-        city: city,
-        school_graduation_year: graduationYear ? Number(graduationYear) : null,
-        desired_major: desiredMajor,
-        desired_countries: desiredCountries,
-        exam_results: examResults,
-        gpa: gpa,
+      const res = await authFetch(`${BASE_URL}/students/profile/me/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          date_of_birth: dateOfBirth || null,
+          current_school_or_university: school,
+          school_grade: schoolGrade,
+          city: city,
+          school_graduation_year: graduationYear ? Number(graduationYear) : null,
+          desired_major: desiredMajor,
+          desired_countries: desiredCountries,
+          exam_results: examResults,
+          gpa: gpa,
+        }),
       })
+      if (!res.ok) {
+        // Throw the raw field-keyed JSON (not a flattened first message)
+        // so the catch below can highlight the exact offending field
+        // instead of a generic bottom-of-page banner.
+        const err = await res.json()
+        throw new Error(JSON.stringify(err))
+      }
       router.push("/student/dashboard")
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("saveErrorGeneric"))
+      const msg = e instanceof Error ? e.message : t("saveErrorGeneric")
+      try {
+        const parsed = JSON.parse(msg)
+        if (parsed && typeof parsed === "object") {
+          const errs: Record<string, string> = {}
+          for (const [k, v] of Object.entries(parsed)) {
+            const raw = Array.isArray(v) ? String(v[0]) : String(v)
+            errs[k] = PATCH_ERROR_MESSAGES[raw] ?? raw
+          }
+          setFieldErrors(errs)
+          setError(t("fixRedFields"))
+          const firstKey = Object.keys(errs)[0]
+          document.querySelector(`[data-field="${firstKey}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" })
+        } else {
+          setError(msg)
+        }
+      } catch {
+        setError(msg)
+      }
       setSaving(false)
     }
   }
@@ -367,97 +434,105 @@ export default function StudentOnboarding() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  {t("fullNameLabel")} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={t("fullNamePlaceholder")}
-                  className={inputClass}
-                />
+              <div data-field="full_name">
+                <Field label={t("fullNameLabel")} required error={fieldErrors.full_name}>
+                  <input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder={t("fullNamePlaceholder")}
+                    className={fieldErrors.full_name
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass}
+                  />
+                </Field>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  {t("dateOfBirthLabel")} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  min={dateYearsAgo(MAX_STUDENT_AGE)}
-                  max={dateYearsAgo(MIN_STUDENT_AGE)}
-                  className={inputClass}
-                />
+              <div data-field="date_of_birth">
+                <Field label={t("dateOfBirthLabel")} required error={fieldErrors.date_of_birth}>
+                  <input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    min={dateYearsAgo(MAX_STUDENT_AGE)}
+                    max={dateYearsAgo(MIN_STUDENT_AGE)}
+                    className={fieldErrors.date_of_birth
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass}
+                  />
+                </Field>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    {t("currentStatusLabel")} <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={schoolGrade}
-                    onChange={(e) => setSchoolGrade(e.target.value)}
-                    className={selectClass}
-                  >
-                    <option value="">{t("choosePlaceholder")}</option>
-                    <optgroup label={t("groupSchool")}>
-                      <option value="11 класс">{t("grade11")}</option>
-                      <option value="12 класс">{t("grade12")}</option>
-                      <option value="10 класс">{t("grade10")}</option>
-                      <option value="9 класс">{t("grade9")}</option>
-                      <option value="8 класс">{t("grade8")}</option>
-                      <option value="7 класс">{t("grade7")}</option>
-                      <option value="6 класс">{t("grade6")}</option>
-                      <option value="5 класс">{t("grade5")}</option>
-                    </optgroup>
-                    <optgroup label={t("groupOther")}>
-                      <option value="Уже окончил(а) школу">{t("alreadyGraduated")}</option>
-                      <option value="Студент вуза">{t("universityStudent")}</option>
-                      <option value="Колледж / училище">{t("college")}</option>
-                    </optgroup>
-                  </select>
+                <div data-field="school_grade">
+                  <Field label={t("currentStatusLabel")} required error={fieldErrors.school_grade}>
+                    <select
+                      value={schoolGrade}
+                      onChange={(e) => setSchoolGrade(e.target.value)}
+                      className={fieldErrors.school_grade
+                        ? `${selectClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                        : selectClass}
+                    >
+                      <option value="">{t("choosePlaceholder")}</option>
+                      <optgroup label={t("groupSchool")}>
+                        <option value="11 класс">{t("grade11")}</option>
+                        <option value="12 класс">{t("grade12")}</option>
+                        <option value="10 класс">{t("grade10")}</option>
+                        <option value="9 класс">{t("grade9")}</option>
+                        <option value="8 класс">{t("grade8")}</option>
+                        <option value="7 класс">{t("grade7")}</option>
+                        <option value="6 класс">{t("grade6")}</option>
+                        <option value="5 класс">{t("grade5")}</option>
+                      </optgroup>
+                      <optgroup label={t("groupOther")}>
+                        <option value="Уже окончил(а) школу">{t("alreadyGraduated")}</option>
+                        <option value="Студент вуза">{t("universityStudent")}</option>
+                        <option value="Колледж / училище">{t("college")}</option>
+                      </optgroup>
+                    </select>
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    {t("graduationYearLabel")} <span className="text-red-500">*</span>
-                  </label>
+                <div data-field="school_graduation_year">
+                  <Field label={t("graduationYearLabel")} required error={fieldErrors.school_graduation_year}>
+                    <input
+                      type="number"
+                      value={graduationYear}
+                      onChange={(e) => setGraduationYear(e.target.value)}
+                      min={1990}
+                      max={2050}
+                      placeholder="2026"
+                      className={fieldErrors.school_graduation_year
+                        ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                        : inputClass}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div data-field="city">
+                <Field label={t("cityLabel")} required error={fieldErrors.city}>
                   <input
-                    type="number"
-                    value={graduationYear}
-                    onChange={(e) => setGraduationYear(e.target.value)}
-                    min={1990}
-                    max={2050}
-                    placeholder="2026"
-                    className={inputClass}
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder={t("cityPlaceholder")}
+                    className={fieldErrors.city
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass}
                   />
-                </div>
+                </Field>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  {t("cityLabel")} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder={t("cityPlaceholder")}
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("institutionLabel")}</label>
-                <input
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
-                  placeholder={t("institutionPlaceholder")}
-                  className={inputClass}
-                />
+              <div data-field="current_school_or_university">
+                <Field label={t("institutionLabel")} error={fieldErrors.current_school_or_university}>
+                  <input
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    placeholder={t("institutionPlaceholder")}
+                    className={fieldErrors.current_school_or_university
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass}
+                  />
+                </Field>
               </div>
 
               <div className="pt-4 border-t border-gray-100">
@@ -466,46 +541,58 @@ export default function StudentOnboarding() {
                   {t("optionalSectionBody")}
                 </p>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("desiredMajorLabel")}</label>
-                    <input
-                      type="text"
-                      value={desiredMajor}
-                      onChange={(e) => setDesiredMajor(e.target.value)}
-                      placeholder={t("desiredMajorPlaceholder")}
-                      className={inputClass}
-                    />
+                  <div data-field="desired_major">
+                    <Field label={t("desiredMajorLabel")} error={fieldErrors.desired_major}>
+                      <input
+                        type="text"
+                        value={desiredMajor}
+                        onChange={(e) => setDesiredMajor(e.target.value)}
+                        placeholder={t("desiredMajorPlaceholder")}
+                        className={fieldErrors.desired_major
+                          ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                          : inputClass}
+                      />
+                    </Field>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("desiredCountriesLabel")}</label>
-                    <input
-                      type="text"
-                      value={desiredCountries}
-                      onChange={(e) => setDesiredCountries(e.target.value)}
-                      placeholder={t("desiredCountriesPlaceholder")}
-                      className={inputClass}
-                    />
+                  <div data-field="desired_countries">
+                    <Field label={t("desiredCountriesLabel")} error={fieldErrors.desired_countries}>
+                      <input
+                        type="text"
+                        value={desiredCountries}
+                        onChange={(e) => setDesiredCountries(e.target.value)}
+                        placeholder={t("desiredCountriesPlaceholder")}
+                        className={fieldErrors.desired_countries
+                          ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                          : inputClass}
+                      />
+                    </Field>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("examResultsLabel")}</label>
-                    <input
-                      type="text"
-                      value={examResults}
-                      onChange={(e) => setExamResults(e.target.value)}
-                      placeholder={t("examResultsPlaceholder")}
-                      className={inputClass}
-                    />
+                  <div data-field="exam_results">
+                    <Field label={t("examResultsLabel")} error={fieldErrors.exam_results}>
+                      <input
+                        type="text"
+                        value={examResults}
+                        onChange={(e) => setExamResults(e.target.value)}
+                        placeholder={t("examResultsPlaceholder")}
+                        className={fieldErrors.exam_results
+                          ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                          : inputClass}
+                      />
+                    </Field>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("gpaLabel")}</label>
-                    <input
-                      type="text"
-                      value={gpa}
-                      onChange={(e) => setGpa(e.target.value)}
-                      placeholder={t("gpaPlaceholder")}
-                      maxLength={50}
-                      className={inputClass}
-                    />
+                  <div data-field="gpa">
+                    <Field label={t("gpaLabel")} error={fieldErrors.gpa}>
+                      <input
+                        type="text"
+                        value={gpa}
+                        onChange={(e) => setGpa(e.target.value)}
+                        placeholder={t("gpaPlaceholder")}
+                        maxLength={50}
+                        className={fieldErrors.gpa
+                          ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                          : inputClass}
+                      />
+                    </Field>
                   </div>
                 </div>
               </div>

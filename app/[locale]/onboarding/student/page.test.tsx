@@ -13,10 +13,19 @@ vi.mock("@/lib/api", async (importOriginal) => {
     fetchMe: vi.fn(),
     fetchStudentProfile: vi.fn(),
     setEmail: vi.fn(),
-    updateStudentProfile: vi.fn(),
+    authFetch: vi.fn(),
     clearAuth: vi.fn(),
   }
 })
+
+// jsdom doesn't implement Element.scrollIntoView — the field-error path
+// calls it to bring the first invalid field into view after a failed
+// save, which would otherwise throw and abort the state update mid-catch.
+Element.prototype.scrollIntoView = vi.fn()
+
+function jsonResponse(data: unknown, ok = true): Response {
+  return { ok, json: async () => data } as Response
+}
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
@@ -70,7 +79,7 @@ describe("StudentOnboarding", () => {
     vi.mocked(api.fetchStudentProfile).mockReset()
     vi.mocked(api.fetchStudentProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.setEmail).mockReset()
-    vi.mocked(api.updateStudentProfile).mockReset()
+    vi.mocked(api.authFetch).mockReset()
     vi.mocked(api.clearAuth).mockReset()
     vi.mocked(useRouter).mockReturnValue({
       push,
@@ -178,12 +187,12 @@ describe("StudentOnboarding", () => {
     await user.click(screen.getByRole("button", { name: "Готово →" }))
 
     expect(await screen.findByText("Ещё не всё заполнено:")).toBeInTheDocument()
-    expect(api.updateStudentProfile).not.toHaveBeenCalled()
+    expect(api.authFetch).not.toHaveBeenCalled()
   })
 
   it("submits the completed profile and redirects to the student dashboard", async () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser({ email: "student@example.com", email_verified: true }))
-    vi.mocked(api.updateStudentProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.authFetch).mockResolvedValue(jsonResponse(makeProfile()))
     const user = userEvent.setup()
     render(<StudentOnboarding />)
     await screen.findByText("О себе")
@@ -197,16 +206,21 @@ describe("StudentOnboarding", () => {
 
     await user.click(screen.getByRole("button", { name: "Готово →" }))
 
-    await vi.waitFor(() => expect(api.updateStudentProfile).toHaveBeenCalled())
-    expect(api.updateStudentProfile).toHaveBeenCalledWith(
-      expect.objectContaining({ full_name: "Aigerim Bekova", city: "Алматы" }),
-    )
+    await vi.waitFor(() => {
+      const patchCall = vi.mocked(api.authFetch).mock.calls.find(([, init]) => init?.method === "PATCH")
+      expect(patchCall).toBeDefined()
+      const body = JSON.parse(String(patchCall?.[1]?.body))
+      expect(body).toMatchObject({ full_name: "Aigerim Bekova", city: "Алматы" })
+    })
     expect(push).toHaveBeenCalledWith("/student/dashboard")
   })
 
   it("shows an error and stays on the form when saving fails", async () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser({ email: "student@example.com", email_verified: true }))
-    vi.mocked(api.updateStudentProfile).mockRejectedValue(new Error("Ошибка сервера"))
+    // A network-level failure (not a 400 with a field-keyed body) — the
+    // message isn't JSON, so it falls through to the generic banner
+    // instead of being parsed as a field-errors dict.
+    vi.mocked(api.authFetch).mockRejectedValue(new Error("Ошибка сервера"))
     const user = userEvent.setup()
     render(<StudentOnboarding />)
     await screen.findByText("О себе")
@@ -221,5 +235,52 @@ describe("StudentOnboarding", () => {
 
     expect(await screen.findByText("Ошибка сервера")).toBeInTheDocument()
     expect(push).not.toHaveBeenCalledWith("/student/dashboard")
+  })
+
+  it("shows a field-level error returned by the backend under the offending field", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser({ email: "student@example.com", email_verified: true }))
+    vi.mocked(api.authFetch).mockResolvedValue(
+      jsonResponse({ city: ["Город обязателен"] }, false),
+    )
+    const user = userEvent.setup()
+    render(<StudentOnboarding />)
+    await screen.findByText("О себе")
+
+    await user.type(screen.getByPlaceholderText("Айгерим Бекова"), "Aigerim Bekova")
+    const dateInput3 = document.querySelector('input[type="date"]') as HTMLInputElement
+    await user.type(dateInput3, "2008-05-01")
+    await user.selectOptions(screen.getByRole("combobox"), "11 класс")
+    await user.type(screen.getByPlaceholderText("Алматы"), "Алматы")
+    await user.type(screen.getByPlaceholderText("2026"), "2026")
+    await user.click(screen.getByRole("button", { name: "Готово →" }))
+
+    expect(await screen.findByText("Город обязателен")).toBeInTheDocument()
+    expect(screen.getByText("Исправь поля, отмеченные красным")).toBeInTheDocument()
+  })
+
+  it("translates a known backend validation message instead of showing raw text", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser({ email: "student@example.com", email_verified: true }))
+    vi.mocked(api.authFetch).mockResolvedValue(
+      jsonResponse(
+        { school_graduation_year: ["Ensure this value is greater than or equal to 1990."] },
+        false,
+      ),
+    )
+    const user = userEvent.setup()
+    render(<StudentOnboarding />)
+    await screen.findByText("О себе")
+
+    await user.type(screen.getByPlaceholderText("Айгерим Бекова"), "Aigerim Bekova")
+    const dateInput4 = document.querySelector('input[type="date"]') as HTMLInputElement
+    await user.type(dateInput4, "2008-05-01")
+    await user.selectOptions(screen.getByRole("combobox"), "11 класс")
+    await user.type(screen.getByPlaceholderText("Алматы"), "Алматы")
+    await user.type(screen.getByPlaceholderText("2026"), "2026")
+    await user.click(screen.getByRole("button", { name: "Готово →" }))
+
+    expect(await screen.findByText("Год должен быть не раньше 1990.")).toBeInTheDocument()
+    expect(
+      screen.queryByText("Ensure this value is greater than or equal to 1990."),
+    ).not.toBeInTheDocument()
   })
 })

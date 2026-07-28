@@ -10,11 +10,20 @@ vi.mock("@/lib/api", async () => {
   return {
     ...actual,
     fetchStudentProfile: vi.fn(),
-    updateStudentProfile: vi.fn(),
+    authFetch: vi.fn(),
   }
 })
 
-import { fetchStudentProfile, updateStudentProfile } from "@/lib/api"
+import { fetchStudentProfile, authFetch } from "@/lib/api"
+
+// jsdom doesn't implement Element.scrollIntoView — the field-error path
+// calls it to bring the first invalid field into view after a failed
+// save, which would otherwise throw and abort the state update mid-catch.
+Element.prototype.scrollIntoView = vi.fn()
+
+function jsonResponse(data: unknown, ok = true): Response {
+  return { ok, json: async () => data } as Response
+}
 
 function makeStudentProfile(overrides: Partial<StudentProfile> = {}): StudentProfile {
   return {
@@ -125,7 +134,9 @@ describe("StudentProfilePage (app/students/profile)", () => {
     it("saves the profile and shows a success confirmation", async () => {
       const user = userEvent.setup()
       vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
-      vi.mocked(updateStudentProfile).mockResolvedValue(makeStudentProfile({ full_name: "Данияр Ахметов" }))
+      vi.mocked(authFetch).mockResolvedValue(
+        jsonResponse(makeStudentProfile({ full_name: "Данияр Ахметов" })),
+      )
       render(<StudentProfilePage />)
 
       const nameInput = await screen.findByDisplayValue("Данияр Сериков")
@@ -135,22 +146,63 @@ describe("StudentProfilePage (app/students/profile)", () => {
       const submit = screen.getByRole("button", { name: "Сохранить" })
       await user.click(submit)
 
-      expect(updateStudentProfile).toHaveBeenCalledWith(
-        expect.objectContaining({ full_name: "Данияр Ахметов" }),
-      )
+      await waitFor(() => {
+        const patchCall = vi.mocked(authFetch).mock.calls.find(([, init]) => init?.method === "PATCH")
+        expect(patchCall).toBeDefined()
+        const body = JSON.parse(String(patchCall?.[1]?.body))
+        expect(body.full_name).toBe("Данияр Ахметов")
+      })
       expect(await screen.findByText("Сохранено")).toBeInTheDocument()
     })
 
-    it("shows an error message when saving fails", async () => {
+    it("shows a generic error banner when saving fails with a non-field error", async () => {
       const user = userEvent.setup()
       vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
-      vi.mocked(updateStudentProfile).mockRejectedValue(new Error("Город обязателен"))
+      // A network-level failure (not a 400 with a field-keyed body) — the
+      // message isn't JSON, so it falls through to the generic banner
+      // instead of being parsed as a field-errors dict.
+      vi.mocked(authFetch).mockRejectedValue(new Error("Ошибка сервера"))
+      render(<StudentProfilePage />)
+
+      const submit = await screen.findByRole("button", { name: "Сохранить" })
+      await user.click(submit)
+
+      expect(await screen.findByText("Ошибка сервера")).toBeInTheDocument()
+    })
+
+    it("shows a field-level error returned by the backend under the offending field", async () => {
+      const user = userEvent.setup()
+      vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
+      vi.mocked(authFetch).mockResolvedValue(
+        jsonResponse({ city: ["Город обязателен"] }, false),
+      )
       render(<StudentProfilePage />)
 
       const submit = await screen.findByRole("button", { name: "Сохранить" })
       await user.click(submit)
 
       expect(await screen.findByText("Город обязателен")).toBeInTheDocument()
+      expect(screen.getByText("Исправь поля, отмеченные красным")).toBeInTheDocument()
+    })
+
+    it("translates a known backend validation message instead of showing raw text", async () => {
+      const user = userEvent.setup()
+      vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
+      vi.mocked(authFetch).mockResolvedValue(
+        jsonResponse(
+          { school_graduation_year: ["Ensure this value is greater than or equal to 1990."] },
+          false,
+        ),
+      )
+      render(<StudentProfilePage />)
+
+      const submit = await screen.findByRole("button", { name: "Сохранить" })
+      await user.click(submit)
+
+      expect(await screen.findByText("Год должен быть не раньше 1990.")).toBeInTheDocument()
+      expect(
+        screen.queryByText("Ensure this value is greater than or equal to 1990."),
+      ).not.toBeInTheDocument()
     })
 
     it("rejects a photo file larger than 5MB without uploading", async () => {
