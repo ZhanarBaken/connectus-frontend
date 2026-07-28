@@ -209,7 +209,6 @@ export const MOCK_STUDENT_PROFILE: StudentProfile = {
   exam_results: "",
   gpa: "",
   profile_photo: null,
-  is_public: true,
   is_profile_complete: false,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",

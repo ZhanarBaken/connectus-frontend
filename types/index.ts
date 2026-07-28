@@ -163,7 +163,6 @@ export interface StudentProfile {
   exam_results: string
   gpa: string
   profile_photo: string | null
-  is_public: boolean
   // Backend-computed (apps.students.models.StudentProfile
   // .is_profile_complete) — single source of truth for whether the 5
   // required onboarding fields are all filled in.

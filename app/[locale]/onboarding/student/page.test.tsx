@@ -59,7 +59,6 @@ function makeProfile(overrides: Partial<StudentProfile> = {}): StudentProfile {
     exam_results: "",
     gpa: "",
     profile_photo: null,
-    is_public: false,
     is_profile_complete: false,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",

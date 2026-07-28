@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import {
   fetchMentorProfile, updateMentorProfile,
-  fetchStudentProfile, updateStudentProfile,
   fetchMe,
   telegramLinkStart, telegramLinkFinalize, telegramUnlink,
   googleLink, googleUnlink,
@@ -83,9 +82,6 @@ export default function SettingsPage() {
   const [isAcceptingBookings, setIsAcceptingBookings] = useState(true)
   const [isBanned, setIsBanned] = useState(false)
 
-  // Student settings
-  const [studentIsPublic, setStudentIsPublic] = useState(true)
-
   // Linking UI
   const [mergeConflict, setMergeConflict] = useState(false)
   const [linkingAction, setLinkingAction] = useState("")
@@ -150,13 +146,6 @@ export default function SettingsPage() {
         })
         .catch(() => setError(t("loadSettingsError")))
         .finally(() => setLoading(false))
-    } else if (r === "student") {
-      fetchStudentProfile()
-        .then((p) => {
-          setStudentIsPublic(p.is_public ?? true)
-        })
-        .catch(() => setError(t("loadSettingsError")))
-        .finally(() => setLoading(false))
     } else {
       setLoading(false)
     }
@@ -205,23 +194,6 @@ export default function SettingsPage() {
       setError(e instanceof Error ? e.message : t("saveErrorGeneric"))
       if (field === "is_public") setIsPublic(!value)
       if (field === "is_accepting_bookings") setIsAcceptingBookings(!value)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleSaveStudent = async (value: boolean) => {
-    setSaving(true)
-    setError("")
-    setSaved(false)
-    try {
-      await updateStudentProfile({ is_public: value })
-      setStudentIsPublic(value)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("saveErrorGeneric"))
-      setStudentIsPublic(!value)
     } finally {
       setSaving(false)
     }
@@ -657,22 +629,6 @@ export default function SettingsPage() {
               />
             </div>
           </>
-        )}
-
-        {role === "student" && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <Toggle
-              label={t("visibilityLabel")}
-              description={t("studentVisibilityDesc")}
-              icon="visibility"
-              checked={studentIsPublic}
-              onChange={(val) => {
-                setStudentIsPublic(val)
-                handleSaveStudent(val)
-              }}
-              disabled={saving}
-            />
-          </div>
         )}
       </div>
     </div>

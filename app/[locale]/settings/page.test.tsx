@@ -12,7 +12,6 @@ vi.mock("@/lib/api", async () => {
     fetchMentorProfile: vi.fn(),
     updateMentorProfile: vi.fn(),
     fetchStudentProfile: vi.fn(),
-    updateStudentProfile: vi.fn(),
     fetchMe: vi.fn(),
     telegramLinkStart: vi.fn(),
     telegramLinkFinalize: vi.fn(),
@@ -29,7 +28,6 @@ import {
   fetchMentorProfile,
   updateMentorProfile,
   fetchStudentProfile,
-  updateStudentProfile,
   fetchMe,
   telegramLinkStart,
   telegramLinkFinalize,
@@ -111,7 +109,6 @@ function makeStudentProfile(overrides: Partial<StudentProfile> = {}): StudentPro
     exam_results: "",
     gpa: "",
     profile_photo: null,
-    is_public: true,
     // Default to "complete" so tests that don't care about the
     // onboarding gate aren't silently redirected in the background.
     is_profile_complete: true,
@@ -212,12 +209,7 @@ describe("SettingsPage", () => {
       localStorage.setItem("role", "student")
       mockRouter()
       vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "student" }))
-      vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile({ is_public: true }))
-    })
-
-    it("renders a single visibility toggle for students", async () => {
-      render(<SettingsPage />)
-      expect(await screen.findByText(/Только менторы, с которыми ты переписываешься/)).toBeInTheDocument()
+      vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
     })
 
     it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
@@ -227,19 +219,6 @@ describe("SettingsPage", () => {
       render(<SettingsPage />)
 
       await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
-    })
-
-    it("saves the student visibility toggle", async () => {
-      const user = userEvent.setup()
-      vi.mocked(updateStudentProfile).mockResolvedValue(makeStudentProfile({ is_public: false }))
-      render(<SettingsPage />)
-
-      await screen.findByText("Видимость профиля")
-      const toggle = getToggleButton("Видимость профиля")
-      await user.click(toggle)
-
-      expect(updateStudentProfile).toHaveBeenCalledWith({ is_public: false })
-      expect(await screen.findByText("Сохранено")).toBeInTheDocument()
     })
   })
 

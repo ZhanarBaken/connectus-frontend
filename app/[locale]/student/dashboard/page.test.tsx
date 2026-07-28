@@ -33,7 +33,6 @@ function makeStudentProfile(overrides: Partial<StudentProfile> = {}): StudentPro
     exam_results: "",
     gpa: "",
     profile_photo: null,
-    is_public: true,
     // Default to "complete" so tests that don't care about the
     // onboarding gate aren't silently redirected in the background —
     // see "redirects a student with an incomplete profile" below for

@@ -662,28 +662,6 @@ export async function fetchStudentProfile(): Promise<StudentProfile> {
   return res.json()
 }
 
-export async function updateStudentProfile(data: Partial<StudentProfile>): Promise<StudentProfile> {
-  if (USE_MOCKS) {
-    const profile = { ...MOCK_STUDENT_PROFILE, ...data }
-    if (typeof window !== "undefined") {
-      localStorage.setItem("student_profile", JSON.stringify(profile))
-    }
-    return profile
-  }
-
-  const res = await authFetch(`${BASE_URL}/students/profile/me/`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => null)
-    const first = err ? Object.values(err)[0] : null
-    throw new Error(first ? (Array.isArray(first) ? first[0] : String(first)) : "Failed to update profile")
-  }
-  return res.json()
-}
-
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string) {

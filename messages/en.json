@@ -1308,7 +1308,6 @@
     "mentorVisibilityDesc": "When on, applicants can see you in the mentor catalog and visit your page.",
     "acceptingBookingsLabel": "Accepting requests",
     "acceptingBookingsDesc": "When on, applicants can send consultation requests and order services.",
-    "studentVisibilityDesc": "Only mentors you've chatted with or ordered from can see your name and school. If off, they'll only see \"Applicant\".",
     "accountBannedTitle": "Account suspended",
     "accountBannedBody": "Settings are unavailable. Contact support: {email}",
     "saveErrorGeneric": "Couldn't save",
