@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { createReview, hasReviewForOrder } from "@/lib/reviews"
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ReviewForm({ orderId, mentorId, mentorName, authorName, onSubmitted }: Props) {
+  const t = useTranslations("ReviewForm")
   const [rating, setRating] = useState(5)
   const [text, setText] = useState("")
   const [submitted, setSubmitted] = useState(false)
@@ -30,7 +32,7 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
     e.preventDefault()
     setError("")
     if (text.trim().length < 10) {
-      setError("Минимум 10 символов")
+      setError(t("errorTooShort"))
       return
     }
     setSubmitting(true)
@@ -41,7 +43,7 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
       setRating(5)
       onSubmitted?.()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Не удалось оставить отзыв")
+      setError(err instanceof Error && err.message ? err.message : t("errorGeneric"))
     } finally {
       setSubmitting(false)
     }
@@ -59,20 +61,20 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
     return (
       <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center">
         <div className="text-2xl mb-2">✓</div>
-        <p className="text-sm font-semibold text-green-800">Спасибо за отзыв!</p>
-        <p className="text-xs text-green-700 mt-1">Он помогает другим абитуриентам сделать выбор</p>
+        <p className="text-sm font-semibold text-green-800">{t("thanksTitle")}</p>
+        <p className="text-xs text-green-700 mt-1">{t("thanksBody")}</p>
       </div>
     )
   }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-6">
-      <h3 className="font-semibold text-gray-900 mb-4">Оставить отзыв ментору</h3>
+      <h3 className="font-semibold text-gray-900 mb-4">{t("title")}</h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Rating */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-2">Оценка</label>
+          <label className="block text-xs font-medium text-gray-700 mb-2">{t("ratingLabel")}</label>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((s) => (
               <button
@@ -82,7 +84,7 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
                 className={`text-3xl leading-none transition-transform duration-150 hover:scale-110 ${
                   s <= rating ? "text-yellow-400" : "text-gray-200"
                 }`}
-                aria-label={`${s} звёзд`}
+                aria-label={t("starAriaLabel", { count: s })}
               >
                 ★
               </button>
@@ -93,13 +95,13 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
         {/* Text */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-2">
-            Что понравилось в работе ментора?
+            {t("commentLabel")}
           </label>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={4}
-            placeholder="Например: помог с эссе, объяснил все детали поступления..."
+            placeholder={t("commentPlaceholder")}
             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
           />
         </div>
@@ -111,7 +113,7 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
           disabled={submitting}
           className="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
         >
-          {submitting ? "Отправляем..." : "Опубликовать отзыв"}
+          {submitting ? t("submitting") : t("submit")}
         </button>
       </form>
     </div>

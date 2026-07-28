@@ -1,4 +1,8 @@
 {
+  "Metadata": {
+    "title": "Connectus — шетелде оқу үшін ментор тап",
+    "description": "Менторлар түсуге, гранттарға, визаларға және құжаттарға көмектеседі"
+  },
   "NotFound": {
     "title": "Бет табылмады",
     "subtitle": "Мұндай бет жоқ немесе жылжытылған",
@@ -416,7 +420,8 @@
       "subtitle": "Шетелдік университетке түстің бе? Тәжірибең ақшаға тұрады. Ментор бол және Қазақстан талапкерлеріне көмектес.",
       "cta": "Ментор болу",
       "learnMore": "Толығырақ білу",
-      "statVerification": "Верификация",
+      "statVerification": "Верификациялау",
+      "statHoursSuffix": "сағ",
       "statCountries": "Ел",
       "statRegistration": "Тіркелу"
     },
@@ -757,6 +762,9 @@
       "errorDispute": "Дау ашу мүмкін болмады",
       "errorCloseChat": "Чатты жабу мүмкін болмады",
       "errorInvoice": "Өтінімді жіберу мүмкін болмады",
+      "invoiceErrorLiveEngagement": "Бұл студентте осы қызмет бойынша белсенді сүйемелдеу бар — алдымен оны аяқтаңыз немесе тоқтатыңыз, содан кейін жаңа өтінім жіберуге болады.",
+      "invoiceErrorNoConversation": "Бұл студентпен ашық чат жоқ — өтінімді тек бар хат алмасу ішінде ғана жіберуге болады.",
+      "invoiceErrorServiceUnavailable": "Бұл қызмет өтінім жіберу үшін қолжетімсіз.",
       "daysHoursShort": "{days} күн {hours} сағ.",
       "daysShort": "{days} күн",
       "hoursShort": "{hours} сағ.",
@@ -1376,6 +1384,23 @@
     "errorLoginGeneric": "Telegram арқылы кіру қатесі",
     "errorAccountCreateFailed": "Аккаунт жасау мүмкін болмады",
     "errorRegisterGeneric": "Тіркелу қатесі"
+  },
+  "PlatformReviews": {
+    "emptyTitle": "Пікірлер әлі жоқ",
+    "emptyBody": "Бірінші бол — ментормен кеңесуден кейін пікір қалдыра аласың"
+  },
+  "ReviewForm": {
+    "title": "Менторға пікір қалдыру",
+    "ratingLabel": "Баға",
+    "starAriaLabel": "{count} жұлдыз",
+    "commentLabel": "Ментормен жұмыста не ұнады?",
+    "commentPlaceholder": "Мысалы: эссемен көмектесті, түсу егжей-тегжейлерін түсіндірді...",
+    "submitting": "Жіберілуде...",
+    "submit": "Пікірді жариялау",
+    "errorTooShort": "Кемінде 10 таңба",
+    "errorGeneric": "Пікір қалдыру мүмкін болмады",
+    "thanksTitle": "Пікіріңіз үшін рахмет!",
+    "thanksBody": "Бұл басқа талапкерлерге таңдау жасауға көмектеседі"
   },
   "NotificationBell": {
     "ariaLabel": "Хабарламалар",

@@ -106,14 +106,12 @@ describe("createReview", () => {
     )
   })
 
-  it("falls back to a generic message when the error body is unparsable", async () => {
+  it("throws with an empty message when the error body is unparsable — callers must supply their own translated fallback", async () => {
     mockedAuthFetch.mockResolvedValue({
       ok: false,
       json: () => Promise.reject(new Error("not json")),
     } as unknown as Response)
-    await expect(createReview(100, 5, "text")).rejects.toThrow(
-      "Не удалось оставить отзыв"
-    )
+    await expect(createReview(100, 5, "text")).rejects.toThrow("")
   })
 })
 
@@ -134,11 +132,9 @@ describe("replyToReview", () => {
     await expect(replyToReview(1, "Thanks!")).rejects.toThrow("Not your review")
   })
 
-  it("falls back to a generic message when detail is absent", async () => {
+  it("throws with an empty message when detail is absent — callers must supply their own translated fallback", async () => {
     mockedAuthFetch.mockResolvedValue(jsonResponse({}, false))
-    await expect(replyToReview(1, "Thanks!")).rejects.toThrow(
-      "Не удалось ответить на отзыв"
-    )
+    await expect(replyToReview(1, "Thanks!")).rejects.toThrow("")
   })
 })
 

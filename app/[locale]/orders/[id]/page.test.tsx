@@ -190,37 +190,50 @@ describe("invoiceDraftKey", () => {
 })
 
 describe("translateInvoiceErrorMessage", () => {
+  // Mirrors the exact ru copy in messages/ru.json's Orders.Detail
+  // namespace — a plain lookup is enough here since this test is about
+  // translateInvoiceErrorMessage's own substring-matching logic, not
+  // about verifying translation content (the JSON files' own validity
+  // is checked separately).
+  const t = (key: string) => ({
+    invoiceErrorLiveEngagement:
+      "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
+    invoiceErrorNoConversation:
+      "Нет открытого чата с этим студентом — заявку можно отправить только внутри существующей переписки.",
+    invoiceErrorServiceUnavailable: "Эта услуга недоступна для отправки заявки.",
+  })[key] ?? key
+
   it("translates an existing live engagement error", () => {
-    expect(translateInvoiceErrorMessage("There is already a live engagement for this student"))
+    expect(translateInvoiceErrorMessage("There is already a live engagement for this student", t))
       .toBe(
         "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
       )
   })
 
   it("translates a no-open-conversation error", () => {
-    expect(translateInvoiceErrorMessage("No open conversation with this student"))
+    expect(translateInvoiceErrorMessage("No open conversation with this student", t))
       .toBe("Нет открытого чата с этим студентом — заявку можно отправить только внутри существующей переписки.")
   })
 
   it("translates a service-does-not-belong-to-mentor error", () => {
-    expect(translateInvoiceErrorMessage("This service does not belong to this mentor"))
+    expect(translateInvoiceErrorMessage("This service does not belong to this mentor", t))
       .toBe("Эта услуга недоступна для отправки заявки.")
   })
 
   it("translates a not-a-support-category-service error", () => {
-    expect(translateInvoiceErrorMessage("Service is not a support-category service"))
+    expect(translateInvoiceErrorMessage("Service is not a support-category service", t))
       .toBe("Эта услуга недоступна для отправки заявки.")
   })
 
   it("matches case-insensitively", () => {
-    expect(translateInvoiceErrorMessage("THERE IS ALREADY A LIVE ENGAGEMENT here"))
+    expect(translateInvoiceErrorMessage("THERE IS ALREADY A LIVE ENGAGEMENT here", t))
       .toBe(
         "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
       )
   })
 
   it("falls back to the raw message for unrecognized input", () => {
-    expect(translateInvoiceErrorMessage("Some completely different backend error"))
+    expect(translateInvoiceErrorMessage("Some completely different backend error", t))
       .toBe("Some completely different backend error")
   })
 })

@@ -1,4 +1,8 @@
 {
+  "Metadata": {
+    "title": "Connectus — find a mentor for studying abroad",
+    "description": "Mentors help with admissions, grants, visas, and documents"
+  },
   "NotFound": {
     "title": "Page not found",
     "subtitle": "This page doesn't exist or has been moved",
@@ -417,6 +421,7 @@
       "cta": "Become a mentor",
       "learnMore": "Learn more",
       "statVerification": "Verification",
+      "statHoursSuffix": "h",
       "statCountries": "Countries",
       "statRegistration": "Sign-up cost"
     },
@@ -757,6 +762,9 @@
       "errorDispute": "Couldn't open the dispute",
       "errorCloseChat": "Couldn't close the chat",
       "errorInvoice": "Couldn't send the invoice",
+      "invoiceErrorLiveEngagement": "This student already has an active engagement for this service — finish or cancel it first, then you can send a new request.",
+      "invoiceErrorNoConversation": "There's no open chat with this student — a request can only be sent inside an existing conversation.",
+      "invoiceErrorServiceUnavailable": "This service isn't available for sending a request.",
       "daysHoursShort": "{days}d {hours}h",
       "daysShort": "{days}d",
       "hoursShort": "{hours}h",
@@ -1376,6 +1384,23 @@
     "errorLoginGeneric": "Telegram login failed",
     "errorAccountCreateFailed": "Couldn't create the account",
     "errorRegisterGeneric": "Sign-up failed"
+  },
+  "PlatformReviews": {
+    "emptyTitle": "No reviews yet",
+    "emptyBody": "Be the first — after a consultation with a mentor you'll be able to leave a review"
+  },
+  "ReviewForm": {
+    "title": "Leave a review for the mentor",
+    "ratingLabel": "Rating",
+    "starAriaLabel": "{count} stars",
+    "commentLabel": "What did you like about working with the mentor?",
+    "commentPlaceholder": "For example: helped with the essay, explained all the admission details...",
+    "submitting": "Submitting...",
+    "submit": "Publish review",
+    "errorTooShort": "At least 10 characters",
+    "errorGeneric": "Couldn't submit the review",
+    "thanksTitle": "Thanks for the review!",
+    "thanksBody": "It helps other applicants make their choice"
   },
   "NotificationBell": {
     "ariaLabel": "Notifications",

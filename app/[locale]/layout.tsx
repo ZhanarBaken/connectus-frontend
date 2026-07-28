@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { hasLocale } from "next-intl"
 import { NextIntlClientProvider } from "next-intl"
-import { getMessages, setRequestLocale } from "next-intl/server"
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server"
 import { notFound } from "next/navigation"
 import { geist, instrumentSerif } from "../fonts"
 import { IconFontHead } from "@/components/IconFontHead"
@@ -11,13 +11,21 @@ import AnalyticsInit from "@/components/AnalyticsInit"
 import Header from "@/components/Header"
 import TelegramAutoLogin from "@/components/TelegramAutoLogin"
 
-export const metadata: Metadata = {
-  title: "Connectus — найди ментора для поступления за рубеж",
-  description: "Менторы помогают с поступлением, грантами, визами и документами",
-  // Staging should never be indexed by search engines.
-  robots: process.env.NEXT_PUBLIC_IS_STAGING === "true"
-    ? { index: false, follow: false }
-    : undefined,
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "Metadata" })
+  return {
+    title: t("title"),
+    description: t("description"),
+    // Staging should never be indexed by search engines.
+    robots: process.env.NEXT_PUBLIC_IS_STAGING === "true"
+      ? { index: false, follow: false }
+      : undefined,
+  }
 }
 
 // Telegram Mini App renders inside a narrow modal that resizes with

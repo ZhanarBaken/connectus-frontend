@@ -113,7 +113,7 @@ export default function BecomeMentorPage() {
           {/* Stats */}
           <div className="mt-16 grid grid-cols-3 gap-8 max-w-md mx-auto">
             {[
-              { value: 48, suffix: "ч", label: t("hero.statVerification") },
+              { value: 48, suffix: t("hero.statHoursSuffix"), label: t("hero.statVerification") },
               { value: 15, suffix: "", label: t("hero.statCountries") },
               { value: 0, suffix: "₸", label: t("hero.statRegistration") },
             ].map((stat, i) => (

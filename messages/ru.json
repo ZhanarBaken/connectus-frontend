@@ -1,4 +1,8 @@
 {
+  "Metadata": {
+    "title": "Connectus — найди ментора для поступления за рубеж",
+    "description": "Менторы помогают с поступлением, грантами, визами и документами"
+  },
   "NotFound": {
     "title": "Страница не найдена",
     "subtitle": "Такой страницы не существует или она была перемещена",
@@ -417,6 +421,7 @@
       "cta": "Стать ментором",
       "learnMore": "Узнать подробнее",
       "statVerification": "Верификация",
+      "statHoursSuffix": "ч",
       "statCountries": "Стран",
       "statRegistration": "Регистрация"
     },
@@ -757,6 +762,9 @@
       "errorDispute": "Не удалось открыть спор",
       "errorCloseChat": "Не удалось закрыть чат",
       "errorInvoice": "Не удалось отправить заявку",
+      "invoiceErrorLiveEngagement": "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
+      "invoiceErrorNoConversation": "Нет открытого чата с этим студентом — заявку можно отправить только внутри существующей переписки.",
+      "invoiceErrorServiceUnavailable": "Эта услуга недоступна для отправки заявки.",
       "daysHoursShort": "{days} дн. {hours} ч.",
       "daysShort": "{days} дн.",
       "hoursShort": "{hours} ч.",
@@ -1376,6 +1384,23 @@
     "errorLoginGeneric": "Ошибка входа через Telegram",
     "errorAccountCreateFailed": "Не удалось создать аккаунт",
     "errorRegisterGeneric": "Ошибка регистрации"
+  },
+  "PlatformReviews": {
+    "emptyTitle": "Отзывов пока нет",
+    "emptyBody": "Будь первым — после консультации с ментором ты сможешь оставить отзыв"
+  },
+  "ReviewForm": {
+    "title": "Оставить отзыв ментору",
+    "ratingLabel": "Оценка",
+    "starAriaLabel": "{count} звёзд",
+    "commentLabel": "Что понравилось в работе ментора?",
+    "commentPlaceholder": "Например: помог с эссе, объяснил все детали поступления...",
+    "submitting": "Отправляем...",
+    "submit": "Опубликовать отзыв",
+    "errorTooShort": "Минимум 10 символов",
+    "errorGeneric": "Не удалось оставить отзыв",
+    "thanksTitle": "Спасибо за отзыв!",
+    "thanksBody": "Он помогает другим абитуриентам сделать выбор"
   },
   "NotificationBell": {
     "ariaLabel": "Уведомления",

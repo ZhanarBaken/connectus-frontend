@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { fetchAllReviews, type Review } from "@/lib/reviews"
 import Icon from "./Icon"
 
 export default function PlatformReviews() {
+  const t = useTranslations("PlatformReviews")
   const [reviews, setReviews] = useState<Review[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -22,9 +24,9 @@ export default function PlatformReviews() {
         <div className="mb-3 flex justify-center">
           <Icon name="chat" size={40} className="text-gray-300" />
         </div>
-        <h3 className="font-semibold text-gray-900 mb-2">Отзывов пока нет</h3>
+        <h3 className="font-semibold text-gray-900 mb-2">{t("emptyTitle")}</h3>
         <p className="text-sm text-gray-400">
-          Будь первым — после консультации с ментором ты сможешь оставить отзыв
+          {t("emptyBody")}
         </p>
       </div>
     )

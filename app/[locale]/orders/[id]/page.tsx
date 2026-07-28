@@ -45,17 +45,20 @@ export function invoiceDraftKey(orderId: string): string {
 
 // The backend's create_support_invoice raises plain English ValueErrors —
 // translate the ones a mentor can realistically hit; anything unrecognized
-// falls back to the raw message rather than showing nothing.
-export function translateInvoiceErrorMessage(raw: string): string {
+// falls back to the raw message rather than showing nothing. `t` is the
+// caller's own Orders.Detail translator, passed in rather than called via
+// useTranslations here since this is a plain function (also unit-tested
+// standalone), not a component.
+export function translateInvoiceErrorMessage(raw: string, t: (key: string) => string): string {
   const lower = raw.toLowerCase()
   if (lower.includes("already a live engagement")) {
-    return "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку."
+    return t("invoiceErrorLiveEngagement")
   }
   if (lower.includes("no open conversation")) {
-    return "Нет открытого чата с этим студентом — заявку можно отправить только внутри существующей переписки."
+    return t("invoiceErrorNoConversation")
   }
   if (lower.includes("does not belong to this mentor") || lower.includes("not a support-category service")) {
-    return "Эта услуга недоступна для отправки заявки."
+    return t("invoiceErrorServiceUnavailable")
   }
   return raw
 }
@@ -984,7 +987,7 @@ export default function OrderPage({ params }: Props) {
                       />
                     </div>
                     {invoiceError && (
-                      <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError)}</p>
+                      <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
                     )}
                     <div className="flex gap-2">
                       <button
