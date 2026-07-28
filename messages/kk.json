@@ -1365,6 +1365,18 @@
     "saving": "Сақталуда...",
     "save": "Сақтау"
   },
+  "TelegramAutoLogin": {
+    "loading": "Connectus-ке кіріп жатырмыз...",
+    "welcomeTitle": "Connectus-ке қош келдіңіз",
+    "chooseRoleSubtitle": "Жалғастыру үшін рөлді таңдаңыз",
+    "creating": "Жасалуда...",
+    "roleStudent": "Мен талапкермін немесе ата-анамын",
+    "roleMentor": "Мен ментормын",
+    "back": "Артқа",
+    "errorLoginGeneric": "Telegram арқылы кіру қатесі",
+    "errorAccountCreateFailed": "Аккаунт жасау мүмкін болмады",
+    "errorRegisterGeneric": "Тіркелу қатесі"
+  },
   "NotificationBell": {
     "ariaLabel": "Хабарламалар",
     "title": "Хабарламалар",

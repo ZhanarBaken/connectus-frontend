@@ -979,11 +979,13 @@ export async function telegramMiniAppLogin(
     if (err.detail === "role_required") {
       return { ok: false, reason: "role_required" }
     }
-    throw new Error(err.detail || "Не удалось войти через Telegram")
+    // Empty fallback on purpose — forward backend detail when given,
+    // otherwise let the caller show its own translated message.
+    throw new Error(err.detail || "")
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось войти через Telegram")
+    throw new Error(err.detail || "")
   }
   const data = await res.json()
   return { ok: true, ...data }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 // Deliberately using next/navigation's plain useRouter here, not
 // next-intl's locale-aware one from @/i18n/navigation. Telegram's
 // start_param deep link is constructed by the backend (separate repo),
@@ -83,6 +84,16 @@ type AuthStage = "idle" | "checking" | "needsRole" | "done"
 // (first-ever Mini App visit) — surfaces a role picker so the new user
 // can pick student/mentor without ever seeing the email/password form.
 export default function TelegramAutoLogin() {
+  const t = useTranslations("TelegramAutoLogin")
+  // The login effect below reads translations from inside a closure that
+  // must not re-run just because `t`'s reference changed (see tRef use
+  // below) — otherwise a locale switch mid-flight (this component is
+  // mounted in the locale layout itself, so it survives a client-side
+  // locale change) would still read the pre-switch `t` from the effect's
+  // stale closure. A ref sidesteps that without adding `t` to the
+  // effect's dependency array.
+  const tRef = useRef(t)
+  tRef.current = t
   const router = useRouter()
   const { isInTelegram, initData } = useTelegramWebApp()
 
@@ -174,10 +185,13 @@ export default function TelegramAutoLogin() {
           }
         }
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Ошибка входа через Telegram")
+        setError(e instanceof Error && e.message ? e.message : tRef.current("errorLoginGeneric"))
         setStage("done")
       }
     }
+    // Reads tRef.current instead of `t` directly (see the ref's own
+    // comment above) — this effect fires the login network call and must
+    // not re-run just because the user switched locale mid-flight.
   }, [isInTelegram, initData, router, submittingRole])
 
   const handlePickRole = async (role: Role) => {
@@ -199,10 +213,10 @@ export default function TelegramAutoLogin() {
         // had a chance to read localStorage and render with auth.
         window.setTimeout(() => setStage("done"), 600)
       } else {
-        setError("Не удалось создать аккаунт")
+        setError(t("errorAccountCreateFailed"))
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка регистрации")
+      setError(e instanceof Error && e.message ? e.message : t("errorRegisterGeneric"))
     } finally {
       setSubmittingRole(null)
     }
@@ -236,15 +250,15 @@ export default function TelegramAutoLogin() {
         {stage === "checking" ? (
           <div className="flex flex-col items-center gap-4">
             <div className="w-10 h-10 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
-            <p className="text-sm text-gray-500">Входим в Connectus...</p>
+            <p className="text-sm text-gray-500">{t("loading")}</p>
           </div>
         ) : (
           <>
             <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-              Добро пожаловать в Connectus
+              {t("welcomeTitle")}
             </h1>
             <p className="text-gray-500 text-sm mb-8 text-center">
-              Выбери роль чтобы продолжить
+              {t("chooseRoleSubtitle")}
             </p>
 
             <div className="flex flex-col gap-3">
@@ -253,21 +267,21 @@ export default function TelegramAutoLogin() {
                 disabled={submittingRole !== null || consentOpen}
                 className="bg-gray-900 text-white py-4 rounded-xl font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
-                {submittingRole === "student" ? "Создаём..." : "Я абитуриент или родитель"}
+                {submittingRole === "student" ? t("creating") : t("roleStudent")}
               </button>
               <button
                 onClick={() => { setPendingRole("mentor"); setConsentOpen(true) }}
                 disabled={submittingRole !== null || consentOpen}
                 className="border border-gray-300 text-gray-700 py-4 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
-                {submittingRole === "mentor" ? "Создаём..." : "Я ментор"}
+                {submittingRole === "mentor" ? t("creating") : t("roleMentor")}
               </button>
               <button
                 onClick={handleDismiss}
                 disabled={submittingRole !== null}
                 className="text-sm text-gray-500 hover:text-gray-700 py-2 disabled:opacity-50 transition-colors"
               >
-                Назад
+                {t("back")}
               </button>
             </div>
 

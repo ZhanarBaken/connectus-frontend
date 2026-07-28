@@ -1365,6 +1365,18 @@
     "saving": "Сохраняем...",
     "save": "Сохранить"
   },
+  "TelegramAutoLogin": {
+    "loading": "Входим в Connectus...",
+    "welcomeTitle": "Добро пожаловать в Connectus",
+    "chooseRoleSubtitle": "Выбери роль чтобы продолжить",
+    "creating": "Создаём...",
+    "roleStudent": "Я абитуриент или родитель",
+    "roleMentor": "Я ментор",
+    "back": "Назад",
+    "errorLoginGeneric": "Ошибка входа через Telegram",
+    "errorAccountCreateFailed": "Не удалось создать аккаунт",
+    "errorRegisterGeneric": "Ошибка регистрации"
+  },
   "NotificationBell": {
     "ariaLabel": "Уведомления",
     "title": "Уведомления",

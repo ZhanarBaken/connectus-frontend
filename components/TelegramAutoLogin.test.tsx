@@ -351,6 +351,25 @@ describe("TelegramAutoLogin", () => {
       })
     })
 
+    it("shows the translated fallback (not blank) when the register call rejects with no backend detail", async () => {
+      // Regression: telegramMiniAppLogin() used to throw a hardcoded
+      // Russian fallback string; the catch here used `e.message`
+      // unconditionally, so that hardcoded text leaked through on every
+      // locale. Now the lib function throws an empty message when the
+      // backend gives no detail, and this catch falls back to a
+      // translated key instead of rendering "".
+      await renderAtRolePicker()
+      vi.mocked(telegramMiniAppLogin).mockRejectedValueOnce(new Error(""))
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole("button", { name: "Я ментор" }))
+      await user.click(screen.getByText("consent-yes"))
+
+      await waitFor(() => {
+        expect(screen.getByText("Ошибка регистрации")).toBeInTheDocument()
+      })
+    })
+
     it("dismisses the overlay via the 'Назад' button without logging in", async () => {
       await renderAtRolePicker()
       const user = userEvent.setup()

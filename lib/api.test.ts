@@ -20,6 +20,7 @@ import {
   register,
   resendVerification,
   SESSION_EXPIRED_EVENT,
+  telegramMiniAppLogin,
   telegramStart,
   telegramUnlink,
   updateUserLocale,
@@ -558,5 +559,45 @@ describe("telegramUnlink", () => {
   it("throws with an empty message when there is no detail or non_field_errors", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
     await expect(telegramUnlink()).rejects.toThrow("")
+  })
+})
+
+describe("telegramMiniAppLogin", () => {
+  it("returns the parsed tokens on success", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ ok: true, access: "AT", refresh: "RT", user_id: 1, created: false }),
+    )
+    await expect(telegramMiniAppLogin("init-data")).resolves.toEqual({
+      ok: true, access: "AT", refresh: "RT", user_id: 1, created: false,
+    })
+  })
+
+  it("returns role_required without throwing", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ detail: "role_required" }, { status: 400 }),
+    )
+    await expect(telegramMiniAppLogin("init-data")).resolves.toEqual({
+      ok: false, reason: "role_required",
+    })
+  })
+
+  it("forwards the backend detail on a 400 that isn't role_required", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Invalid init data" }, { status: 400 }))
+    await expect(telegramMiniAppLogin("init-data")).rejects.toThrow("Invalid init data")
+  })
+
+  it("throws with an empty message on a 400 with no detail — callers must supply their own translated fallback", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
+    await expect(telegramMiniAppLogin("init-data")).rejects.toThrow("")
+  })
+
+  it("forwards the backend detail on any other failure", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Server error" }, { status: 500 }))
+    await expect(telegramMiniAppLogin("init-data")).rejects.toThrow("Server error")
+  })
+
+  it("throws with an empty message on any other failure with no detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 500 }))
+    await expect(telegramMiniAppLogin("init-data")).rejects.toThrow("")
   })
 })

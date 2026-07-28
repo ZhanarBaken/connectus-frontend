@@ -1365,6 +1365,18 @@
     "saving": "Saving...",
     "save": "Save"
   },
+  "TelegramAutoLogin": {
+    "loading": "Logging in to Connectus...",
+    "welcomeTitle": "Welcome to Connectus",
+    "chooseRoleSubtitle": "Choose a role to continue",
+    "creating": "Creating...",
+    "roleStudent": "I'm an applicant or a parent",
+    "roleMentor": "I'm a mentor",
+    "back": "Back",
+    "errorLoginGeneric": "Telegram login failed",
+    "errorAccountCreateFailed": "Couldn't create the account",
+    "errorRegisterGeneric": "Sign-up failed"
+  },
   "NotificationBell": {
     "ariaLabel": "Notifications",
     "title": "Notifications",
