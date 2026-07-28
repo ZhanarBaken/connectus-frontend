@@ -1373,6 +1373,16 @@
     "notSubmittedBody": "<strong>Profile not submitted for review.</strong> Applicants can't see you yet — fill in the required fields and tap \"Submit for review\".",
     "goToSubmit": "Go submit it"
   },
+  "DataConsentModal": {
+    "title": "Consent to personal data processing",
+    "subtitle": "Read and confirm — required by Kazakhstan Law No. 94-V",
+    "close": "Close",
+    "loadError": "Couldn't load the consent text.",
+    "retry": "Try again",
+    "notPublished": "The consent text hasn't been published yet. Please contact support.",
+    "cancel": "Cancel",
+    "consent": "I give my consent"
+  },
   "NotificationBell": {
     "ariaLabel": "Notifications",
     "title": "Notifications",

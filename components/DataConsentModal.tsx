@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { fetchPublicSettings } from "@/lib/api"
 import Icon from "./Icon"
 import MarkdownText from "./MarkdownText"
@@ -23,6 +23,7 @@ export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
   const [status, setStatus] = useState<Status>("loading")
   const [text, setText] = useState("")
   const locale = useLocale()
+  const t = useTranslations("DataConsentModal")
 
   // Reset to "loading" on close so re-opening after a network error
    // gives the fetch another chance instead of being stuck on "error".
@@ -65,16 +66,16 @@ export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
           <div className="px-6 py-5 border-b border-gray-100 flex items-start gap-3">
             <div className="flex-1">
               <h2 className="text-lg font-bold text-gray-900">
-                Согласие на обработку персональных данных
+                {t("title")}
               </h2>
               <p className="text-xs text-gray-400 mt-1">
-                Прочитай и подтверди — этого требует Закон РК №94-V
+                {t("subtitle")}
               </p>
             </div>
             <button
               type="button"
               onClick={onCancel}
-              aria-label="Закрыть"
+              aria-label={t("close")}
               className="text-gray-400 hover:text-gray-600 transition-colors p-1 [-webkit-tap-highlight-color:transparent]"
             >
               <Icon name="close" size={22} />
@@ -91,20 +92,20 @@ export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
             {status === "error" && (
               <div>
                 <p className="text-sm text-red-600 mb-3">
-                  Не удалось загрузить текст согласия.
+                  {t("loadError")}
                 </p>
                 <button
                   type="button"
                   onClick={handleRetry}
                   className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
                 >
-                  Попробовать ещё раз
+                  {t("retry")}
                 </button>
               </div>
             )}
             {status === "ready" && text.trim() === "" && (
               <p className="text-sm text-gray-500">
-                Текст согласия пока не опубликован. Обратись в поддержку.
+                {t("notPublished")}
               </p>
             )}
             {status === "ready" && text.trim() !== "" && (
@@ -121,7 +122,7 @@ export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
               onClick={onCancel}
               className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              Отмена
+              {t("cancel")}
             </button>
             <button
               type="button"
@@ -129,7 +130,7 @@ export default function DataConsentModal({ open, onConsent, onCancel }: Props) {
               disabled={status !== "ready" || text.trim() === ""}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Я даю согласие
+              {t("consent")}
             </button>
           </div>
         </div>
