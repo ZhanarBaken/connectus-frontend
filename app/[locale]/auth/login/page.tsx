@@ -4,8 +4,11 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
-import { login, fetchMe, resendVerification, googleAuth, telegramStart, AccountNotFoundError } from "@/lib/api"
-import { promptGoogleCredential } from "@/lib/googleSignIn"
+import {
+  login, fetchMe, resendVerification, googleAuth, telegramStart,
+  AccountNotFoundError, GoogleEmailTakenError, GoogleAuthNotConfiguredError,
+} from "@/lib/api"
+import { promptGoogleCredential, GoogleSignInUnavailableError } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
@@ -118,9 +121,15 @@ function LoginForm() {
     } catch (e: unknown) {
       if (e instanceof AccountNotFoundError) {
         setAccountNotFound(true)
-        setError(e.message)
+        setError(e.message || t("errorAccountNotFound"))
+      } else if (e instanceof GoogleEmailTakenError) {
+        setError(t("errorGoogleEmailTaken"))
+      } else if (e instanceof GoogleAuthNotConfiguredError) {
+        setError(t("errorGoogleNotConfigured"))
+      } else if (e instanceof GoogleSignInUnavailableError) {
+        setError(t("errorGoogleGeneric"))
       } else {
-        setError(e instanceof Error ? e.message : t("errorGoogleGeneric"))
+        setError(e instanceof Error && e.message ? e.message : t("errorGoogleGeneric"))
       }
     } finally {
       setLoading(false)

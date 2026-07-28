@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
-import { promptGoogleCredential } from "./googleSignIn"
+import { promptGoogleCredential, GoogleSignInUnavailableError } from "./googleSignIn"
 
 describe("promptGoogleCredential", () => {
   afterEach(() => {
@@ -8,15 +8,20 @@ describe("promptGoogleCredential", () => {
   })
 
   it("rejects immediately when window.google is not present", async () => {
-    await expect(promptGoogleCredential("client-id-123")).rejects.toThrow(
-      "Google SDK не загрузился. Перезагрузите страницу."
+    // Asserting the error class, not a message — this used to reject with
+    // a hardcoded Russian string that leaked straight into the UI on
+    // every locale (every caller's `e instanceof Error ? e.message : t(...)`
+    // picked the untranslated text). Callers now pick their own translated
+    // copy off the class instead.
+    await expect(promptGoogleCredential("client-id-123")).rejects.toBeInstanceOf(
+      GoogleSignInUnavailableError,
     )
   })
 
   it("rejects immediately when window.google.accounts.id is missing", async () => {
     ;(window as unknown as { google: object }).google = { accounts: {} }
-    await expect(promptGoogleCredential("client-id-123")).rejects.toThrow(
-      "Google SDK не загрузился. Перезагрузите страницу."
+    await expect(promptGoogleCredential("client-id-123")).rejects.toBeInstanceOf(
+      GoogleSignInUnavailableError,
     )
   })
 
@@ -61,7 +66,7 @@ describe("promptGoogleCredential", () => {
     await expect(promise).resolves.toBe("the-jwt-credential")
   })
 
-  it("rejects with a localized message if nothing happens before timeoutMs", async () => {
+  it("rejects with GoogleSignInUnavailableError if nothing happens before timeoutMs", async () => {
     vi.useFakeTimers()
     const initialize = vi.fn()
     const prompt = vi.fn()
@@ -70,9 +75,7 @@ describe("promptGoogleCredential", () => {
     }
 
     const promise = promptGoogleCredential("client-id-123", 5000)
-    const assertion = expect(promise).rejects.toThrow(
-      "Не удалось завершить вход через Google. Попробуйте ещё раз или войдите другим способом."
-    )
+    const assertion = expect(promise).rejects.toBeInstanceOf(GoogleSignInUnavailableError)
     await vi.advanceTimersByTimeAsync(5000)
     await assertion
   })

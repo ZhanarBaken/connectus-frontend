@@ -274,7 +274,10 @@ export interface MentorEarnings {
 
 export async function fetchMentorEarnings(): Promise<MentorEarnings> {
   const res = await authFetch(`${BASE_URL}/mentors/me/earnings/`)
-  if (!res.ok) throw new Error("Не удалось загрузить финансы")
+  // Empty message on purpose — this endpoint never returns a body worth
+  // forwarding on failure, so the caller always falls back to its own
+  // translated copy instead of trusting e.message.
+  if (!res.ok) throw new Error()
   return res.json()
 }
 
@@ -293,7 +296,8 @@ export interface MentorClients {
 
 export async function fetchMentorClients(): Promise<MentorClients> {
   const res = await authFetch(`${BASE_URL}/mentors/me/clients/`)
-  if (!res.ok) throw new Error("Не удалось загрузить список клиентов")
+  // Empty message on purpose — see fetchMentorEarnings above.
+  if (!res.ok) throw new Error()
   return res.json()
 }
 
@@ -1040,7 +1044,7 @@ export async function telegramUnlink(): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/telegram/unlink/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать Telegram")
+    throw new Error(err.detail || err.non_field_errors?.[0] || "")
   }
 }
 
@@ -1049,10 +1053,30 @@ export async function telegramUnlink(): Promise<void> {
 // Carried out of googleAuth when the backend tells us the email
 // has no account yet — the login page shows a "К регистрации"
 // button alongside the message instead of a dead-end error.
+// Message is backend-detail-or-empty; callers fall back to their own
+// translated copy when empty instead of trusting whatever language the
+// backend happened to respond in.
 export class AccountNotFoundError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "AccountNotFoundError"
+  }
+}
+
+// Thrown for the two Google-auth failures that never carry a backend
+// detail message (pure status-code checks) — callers must catch these
+// by type and show their own translated copy, not `e.message`.
+export class GoogleEmailTakenError extends Error {
+  constructor() {
+    super("Google auth: email already registered via password")
+    this.name = "GoogleEmailTakenError"
+  }
+}
+
+export class GoogleAuthNotConfiguredError extends Error {
+  constructor() {
+    super("Google auth: not configured on server")
+    this.name = "GoogleAuthNotConfiguredError"
   }
 }
 
@@ -1065,17 +1089,17 @@ export async function googleAuth(idToken: string, role?: string): Promise<{ acce
     body: JSON.stringify(body),
   })
   if (res.status === 409) {
-    throw new Error("Этот email уже зарегистрирован. Подтвердите email и войдите через пароль.")
+    throw new GoogleEmailTakenError()
   }
   if (res.status === 503) {
-    throw new Error("Google авторизация не настроена на сервере")
+    throw new GoogleAuthNotConfiguredError()
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     if (err.code === "account_not_found") {
-      throw new AccountNotFoundError(err.detail || "Аккаунт не найден. Сначала зарегистрируйтесь.")
+      throw new AccountNotFoundError(err.detail || "")
     }
-    throw new Error(err.detail || "Не удалось войти через Google")
+    throw new Error(err.detail || "")
   }
   return res.json()
 }
@@ -1088,7 +1112,9 @@ export async function googleLink(idToken: string): Promise<void> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось привязать Google")
+    // Empty fallback on purpose — forward backend detail when given,
+    // otherwise let the caller show its own translated message.
+    throw new Error(err.detail || "")
   }
 }
 
@@ -1096,7 +1122,7 @@ export async function googleUnlink(): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/google/unlink/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать Google")
+    throw new Error(err.detail || err.non_field_errors?.[0] || "")
   }
 }
 

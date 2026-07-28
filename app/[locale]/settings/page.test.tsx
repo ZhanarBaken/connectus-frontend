@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { useRouter } from "@/i18n/navigation"
 import SettingsPage from "./page"
 import type { MentorProfile, StudentProfile, User } from "@/types"
@@ -32,6 +32,7 @@ import {
   telegramLinkStart,
   telegramLinkFinalize,
   telegramUnlink,
+  googleLink,
   googleUnlink,
   setEmail,
   changeEmail,
@@ -230,6 +231,11 @@ describe("SettingsPage", () => {
       vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
     })
 
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      delete (window as unknown as { google?: unknown }).google
+    })
+
     it("shows required-for-mentors hints when telegram and email are missing", async () => {
       vi.mocked(fetchMe).mockResolvedValue(makeUser({ has_telegram: false, email: "" }))
       render(<SettingsPage />)
@@ -279,6 +285,37 @@ describe("SettingsPage", () => {
 
       expect(await screen.findByText("Google не настроен")).toBeInTheDocument()
       expect(googleUnlink).not.toHaveBeenCalled()
+    })
+
+    it("shows the translated fallback (not a raw/empty message) when googleLink fails without a backend detail", async () => {
+      // Regression: googleLink() used to throw a hardcoded Russian
+      // fallback string that leaked through this catch block on every
+      // locale; then, after that was emptied out, the catch block itself
+      // still had no truthiness guard and could render "" instead of
+      // falling back to the translated copy.
+      vi.stubEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID", "test-client-id")
+      ;(window as unknown as { google: unknown }).google = {
+        accounts: {
+          id: {
+            initialize: (config: { callback: (r: { credential: string }) => void }) => {
+              config.callback({ credential: "fake-credential" })
+            },
+            prompt: () => {},
+          },
+        },
+      }
+      const user = userEvent.setup()
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ has_google: false }))
+      vi.mocked(googleLink).mockRejectedValue(new Error(""))
+      render(<SettingsPage />)
+
+      const linkButtons = await screen.findAllByRole("button", { name: "Привязать" })
+      const googleLinkButton = linkButtons.find((btn) =>
+        btn.closest("div.flex.items-center.gap-4")?.textContent?.includes("Google"),
+      ) as HTMLElement
+      await user.click(googleLinkButton)
+
+      expect(await screen.findByText("Не удалось привязать Google")).toBeInTheDocument()
     })
 
     it("adds a new email via setEmail when none is set yet", async () => {

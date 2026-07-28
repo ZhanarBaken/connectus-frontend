@@ -1,18 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
+  AccountNotFoundError,
   authFetch,
   clearAuth,
   createSupportInvoice,
   fetchMentor,
+  fetchMentorClients,
+  fetchMentorEarnings,
   fetchOrder,
   fetchPublicSettings,
   formatCooldown,
   formatCooldownShort,
   getFreshAccessToken,
+  GoogleAuthNotConfiguredError,
+  googleAuth,
+  GoogleEmailTakenError,
+  googleLink,
+  googleUnlink,
   register,
   resendVerification,
   SESSION_EXPIRED_EVENT,
   telegramStart,
+  telegramUnlink,
   updateUserLocale,
 } from "./api"
 
@@ -446,5 +455,108 @@ describe("fetchPublicSettings", () => {
   it("throws a generic error when the request fails", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 500 }))
     await expect(fetchPublicSettings("en")).rejects.toThrow("Failed to fetch public settings")
+  })
+})
+
+describe("fetchMentorEarnings", () => {
+  it("returns the parsed earnings on success", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ pipeline_amount: "1000" }))
+    await expect(fetchMentorEarnings()).resolves.toEqual({ pipeline_amount: "1000" })
+  })
+
+  it("throws with an empty message on failure — no body worth forwarding, callers must supply their own translated copy", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 500 }))
+    await expect(fetchMentorEarnings()).rejects.toThrow("")
+  })
+})
+
+describe("fetchMentorClients", () => {
+  it("returns the parsed client lists on success", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ active: [], inactive: [] }))
+    await expect(fetchMentorClients()).resolves.toEqual({ active: [], inactive: [] })
+  })
+
+  it("throws with an empty message on failure", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 500 }))
+    await expect(fetchMentorClients()).rejects.toThrow("")
+  })
+})
+
+describe("googleAuth", () => {
+  it("returns tokens on success", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ access: "a", refresh: "r" }))
+    await expect(googleAuth("id-token")).resolves.toEqual({ access: "a", refresh: "r" })
+  })
+
+  it("throws GoogleEmailTakenError on 409, not a hardcoded-language Error", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 409 }))
+    await expect(googleAuth("id-token")).rejects.toBeInstanceOf(GoogleEmailTakenError)
+  })
+
+  it("throws GoogleAuthNotConfiguredError on 503", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 503 }))
+    await expect(googleAuth("id-token")).rejects.toBeInstanceOf(GoogleAuthNotConfiguredError)
+  })
+
+  it("throws AccountNotFoundError with the backend detail when code is account_not_found", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ code: "account_not_found", detail: "No account for this email" }, { status: 400 }),
+    )
+    const err = await googleAuth("id-token").catch((e) => e)
+    expect(err).toBeInstanceOf(AccountNotFoundError)
+    expect(err.message).toBe("No account for this email")
+  })
+
+  it("throws AccountNotFoundError with an empty message when the backend gives no detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ code: "account_not_found" }, { status: 400 }),
+    )
+    await expect(googleAuth("id-token")).rejects.toThrow("")
+  })
+
+  it("forwards the backend detail for any other failure", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Something broke" }, { status: 400 }))
+    await expect(googleAuth("id-token")).rejects.toThrow("Something broke")
+  })
+
+  it("throws with an empty message for any other failure with no detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
+    await expect(googleAuth("id-token")).rejects.toThrow("")
+  })
+})
+
+describe("googleLink", () => {
+  it("forwards the backend detail when the request fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Already linked" }, { status: 400 }))
+    await expect(googleLink("id-token")).rejects.toThrow("Already linked")
+  })
+
+  it("throws with an empty message when there is no detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
+    await expect(googleLink("id-token")).rejects.toThrow("")
+  })
+})
+
+describe("googleUnlink", () => {
+  it("forwards the backend detail when the request fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Not linked" }, { status: 400 }))
+    await expect(googleUnlink()).rejects.toThrow("Not linked")
+  })
+
+  it("throws with an empty message when there is no detail or non_field_errors", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
+    await expect(googleUnlink()).rejects.toThrow("")
+  })
+})
+
+describe("telegramUnlink", () => {
+  it("forwards the backend detail when the request fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Not linked" }, { status: 400 }))
+    await expect(telegramUnlink()).rejects.toThrow("Not linked")
+  })
+
+  it("throws with an empty message when there is no detail or non_field_errors", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
+    await expect(telegramUnlink()).rejects.toThrow("")
   })
 })

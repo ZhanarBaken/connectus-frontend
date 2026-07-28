@@ -239,6 +239,8 @@
       "errorGoogleNotAvailableInTelegram": "Google isn't available inside the Telegram app. Open the site in a browser or log in with Telegram instead.",
       "errorGoogleNotConfigured": "Google sign-in isn't configured",
       "errorGoogleGeneric": "Google login failed",
+      "errorGoogleEmailTaken": "This email is already registered with a password. Log in with your password instead.",
+      "errorAccountNotFound": "No account found with this email.",
       "errorTelegramGeneric": "Telegram login failed"
     },
     "Register": {
@@ -288,6 +290,7 @@
       "errorGoogleNotAvailableInTelegram": "Google isn't available inside the Telegram app. Open the site in a browser or sign up with Telegram instead.",
       "errorGoogleNotConfigured": "Google sign-in isn't configured",
       "errorGoogleGeneric": "Google sign-up failed",
+      "errorGoogleEmailTaken": "This email is already registered with a password. Log in with your password instead.",
       "errorTelegramGeneric": "Telegram sign-up failed",
       "errorResendGeneric": "Couldn't send the email",
       "errorCorrectEmailGeneric": "Couldn't change the email"

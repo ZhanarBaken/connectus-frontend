@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { useRouter } from "@/i18n/navigation"
 import * as api from "@/lib/api"
 import { User } from "@/types"
@@ -64,6 +64,11 @@ describe("MentorIdentityPage", () => {
     } as unknown as ReturnType<typeof useRouter>)
   })
 
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    delete (window as unknown as { google?: unknown }).google
+  })
+
   it("redirects to login when there is no access token", () => {
     localStorage.clear()
     render(<MentorIdentityPage />)
@@ -92,6 +97,32 @@ describe("MentorIdentityPage", () => {
     expect(screen.getByText("Email")).toBeInTheDocument()
     expect(screen.getByText("Telegram")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Сначала привяжи и email, и Telegram" })).toBeDisabled()
+  })
+
+  it("shows the translated fallback (not a raw/empty message) when googleLink fails without a backend detail", async () => {
+    // Regression: googleLink() used to throw a hardcoded Russian fallback
+    // string that leaked through this catch block on every locale; then,
+    // after that was emptied out, the catch block itself still had no
+    // truthiness guard and could render "" instead of the translated copy.
+    vi.stubEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID", "test-client-id")
+    ;(window as unknown as { google: unknown }).google = {
+      accounts: {
+        id: {
+          initialize: (config: { callback: (r: { credential: string }) => void }) => {
+            config.callback({ credential: "fake-credential" })
+          },
+          prompt: () => {},
+        },
+      },
+    }
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.googleLink).mockRejectedValue(new Error(""))
+
+    const user = userEvent.setup()
+    render(<MentorIdentityPage />)
+    await user.click(await screen.findByRole("button", { name: "Войти через Google" }))
+
+    expect(await screen.findByText("Не удалось привязать Google")).toBeInTheDocument()
   })
 
   it("submits a new email and shows the pending-verification copy after reload", async () => {

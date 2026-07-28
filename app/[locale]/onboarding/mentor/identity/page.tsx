@@ -14,7 +14,7 @@ import {
   telegramLinkFinalize,
   telegramLinkStart,
 } from "@/lib/api"
-import { promptGoogleCredential } from "@/lib/googleSignIn"
+import { promptGoogleCredential, GoogleSignInUnavailableError } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { User } from "@/types"
 import Icon from "@/components/Icon"
@@ -185,7 +185,11 @@ export default function MentorIdentityPage() {
       // email). reload() pulls the fresh state.
       await reload()
     } catch (e) {
-      setGoogleError(e instanceof Error ? e.message : t("googleLinkError"))
+      setGoogleError(
+        e instanceof GoogleSignInUnavailableError || !(e instanceof Error) || !e.message
+          ? t("googleLinkError")
+          : e.message,
+      )
     } finally {
       setLinkingGoogle(false)
     }

@@ -48,7 +48,7 @@ export default function MentorClientsPage() {
     }
     fetchMentorClients()
       .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : t("errorLoading")))
+      .catch((e) => setError(e instanceof Error && e.message ? e.message : t("errorLoading")))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])

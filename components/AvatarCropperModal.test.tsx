@@ -100,6 +100,26 @@ describe("AvatarCropperModal", () => {
     expect(toBlobSpy).toHaveBeenCalledWith(expect.any(Function), "image/jpeg", 0.92)
   })
 
+  it("shows an inline error and re-enables Save when cropping fails, instead of failing silently", async () => {
+    // Regression: handleSave used to throw with no surrounding catch, so a
+    // failed crop (e.g. no 2D canvas context) left the modal sitting there
+    // with the button re-enabled and zero feedback to the user.
+    getContextSpy.mockReturnValueOnce(null)
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<AvatarCropperModal file={makeFile()} onSave={onSave} onClose={vi.fn()} />)
+    const img = document.querySelector("img") as HTMLImageElement
+    Object.defineProperty(img, "naturalWidth", { value: 800, configurable: true })
+    Object.defineProperty(img, "naturalHeight", { value: 600, configurable: true })
+    fireEvent.load(img)
+
+    await user.click(screen.getByText("Сохранить"))
+
+    expect(await screen.findByText(/Не удалось обработать изображение/)).toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByText("Сохранить")).not.toBeDisabled()
+  })
+
   it("lets the user change the zoom via the range slider", () => {
     render(<AvatarCropperModal file={makeFile()} onSave={vi.fn()} onClose={vi.fn()} />)
     const slider = screen.getByLabelText("Масштаб") as HTMLInputElement

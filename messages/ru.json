@@ -239,6 +239,8 @@
       "errorGoogleNotAvailableInTelegram": "В Telegram-приложении Google недоступен. Открой сайт в браузере или используй вход через Telegram.",
       "errorGoogleNotConfigured": "Google авторизация не настроена",
       "errorGoogleGeneric": "Ошибка входа через Google",
+      "errorGoogleEmailTaken": "Этот email уже зарегистрирован с паролем. Войдите через пароль.",
+      "errorAccountNotFound": "Аккаунт с таким email не найден.",
       "errorTelegramGeneric": "Ошибка входа через Telegram"
     },
     "Register": {
@@ -288,6 +290,7 @@
       "errorGoogleNotAvailableInTelegram": "В Telegram-приложении Google недоступен. Открой сайт в браузере или используй вход через Telegram.",
       "errorGoogleNotConfigured": "Google авторизация не настроена",
       "errorGoogleGeneric": "Ошибка регистрации через Google",
+      "errorGoogleEmailTaken": "Этот email уже зарегистрирован с паролем. Войдите через пароль.",
       "errorTelegramGeneric": "Ошибка регистрации через Telegram",
       "errorResendGeneric": "Не удалось отправить письмо",
       "errorCorrectEmailGeneric": "Не удалось изменить email"

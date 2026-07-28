@@ -36,7 +36,10 @@ export async function closeConversation(conversationId: number): Promise<{ close
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось закрыть чат")
+    // Empty fallback on purpose — forward backend detail when given,
+    // otherwise let the caller show its own translated message instead
+    // of a hardcoded one.
+    throw new Error(err.detail || "")
   }
   return res.json()
 }

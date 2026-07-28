@@ -579,7 +579,7 @@ export default function OrderPage({ params }: Props) {
       await closeConversation(order.conversation_id)
       setChatClosed(true)
     } catch (e: unknown) {
-      setCloseError(e instanceof Error ? e.message : t("errorCloseChat"))
+      setCloseError(e instanceof Error && e.message ? e.message : t("errorCloseChat"))
     } finally {
       setClosingChat(false)
     }

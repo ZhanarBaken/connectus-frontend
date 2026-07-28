@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
-import { register, resendVerification, updateUnverifiedEmail, googleAuth, telegramStart, fetchMe } from "@/lib/api"
-import { promptGoogleCredential } from "@/lib/googleSignIn"
+import {
+  register, resendVerification, updateUnverifiedEmail, googleAuth, telegramStart, fetchMe,
+  GoogleEmailTakenError, GoogleAuthNotConfiguredError,
+} from "@/lib/api"
+import { promptGoogleCredential, GoogleSignInUnavailableError } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { track } from "@/lib/analytics"
 import DataConsentModal from "@/components/DataConsentModal"
@@ -160,7 +163,15 @@ export default function RegisterPage() {
         router.push("/onboarding/student")
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("errorGoogleGeneric"))
+      if (e instanceof GoogleEmailTakenError) {
+        setError(t("errorGoogleEmailTaken"))
+      } else if (e instanceof GoogleAuthNotConfiguredError) {
+        setError(t("errorGoogleNotConfigured"))
+      } else if (e instanceof GoogleSignInUnavailableError) {
+        setError(t("errorGoogleGeneric"))
+      } else {
+        setError(e instanceof Error && e.message ? e.message : t("errorGoogleGeneric"))
+      }
     } finally {
       setLoading(false)
     }

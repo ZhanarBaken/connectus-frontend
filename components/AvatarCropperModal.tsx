@@ -31,6 +31,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
   const [userScale, setUserScale] = useState(MIN_USER_SCALE)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
   const dragStateRef = useRef<{ startX: number; startY: number; origin: Position } | null>(null)
   const imageRef = useRef<HTMLImageElement | null>(null)
 
@@ -45,6 +46,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
     setImageUrl(url)
     setPosition({ x: 0, y: 0 })
     setUserScale(MIN_USER_SCALE)
+    setError("")
     return () => URL.revokeObjectURL(url)
   }, [file])
 
@@ -95,12 +97,13 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
     const img = imageRef.current
     if (!img || !naturalSize) return
     setSaving(true)
+    setError("")
     try {
       const canvas = document.createElement("canvas")
       canvas.width = OUTPUT_SIZE
       canvas.height = OUTPUT_SIZE
       const ctx = canvas.getContext("2d")
-      if (!ctx) throw new Error("Canvas 2D context unavailable")
+      if (!ctx) throw new Error()
 
       // Mirror the on-screen transform onto the canvas: same translate
       // around the centre, same scale, then draw the image with its
@@ -116,8 +119,13 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, "image/jpeg", 0.92),
       )
-      if (!blob) throw new Error("Не удалось обработать изображение")
+      if (!blob) throw new Error()
       onSave(blob)
+    } catch {
+      // Previously unhandled — the modal just sat there with the button
+      // re-enabled and no feedback, so a broken crop silently looked like
+      // nothing happened.
+      setError("Не удалось обработать изображение. Попробуйте другое фото.")
     } finally {
       setSaving(false)
     }
@@ -202,6 +210,10 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
           <p className="text-xs text-gray-400 mt-3 text-center">
             Перетаскивай фото и подкручивай масштаб ползунком
           </p>
+
+          {error && (
+            <p className="text-xs text-red-600 mt-3 text-center">{error}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 p-5 border-t border-gray-100 bg-gray-50">

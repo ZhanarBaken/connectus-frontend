@@ -15,7 +15,7 @@ vi.mock("./api", async (importOriginal) => {
   }
 })
 
-import { connectChat, fetchChatMessages, sendChatMessage } from "./chat"
+import { closeConversation, connectChat, fetchChatMessages, sendChatMessage } from "./chat"
 
 // Mirrors the non-exported `WS_RECONNECT_MAX_ATTEMPTS` constant in
 // lib/chat.ts (verified against source — kept in sync manually since
@@ -147,6 +147,25 @@ describe("sendChatMessage", () => {
   it("falls back to a default Russian message when there is no detail", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
     await expect(sendChatMessage(1, "hi")).rejects.toThrow("Не удалось отправить сообщение")
+  })
+})
+
+// ─── closeConversation ───────────────────────────────────────────────────────
+
+describe("closeConversation", () => {
+  it("returns the parsed response on success", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ closed_at: "2026-01-01T00:00:00Z" }))
+    await expect(closeConversation(1)).resolves.toEqual({ closed_at: "2026-01-01T00:00:00Z" })
+  })
+
+  it("uses err.detail when the request fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Already closed" }, { status: 400 }))
+    await expect(closeConversation(1)).rejects.toThrow("Already closed")
+  })
+
+  it("throws with an empty message when there is no detail — callers must supply their own translated fallback", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
+    await expect(closeConversation(1)).rejects.toThrow("")
   })
 })
 

@@ -14,7 +14,7 @@ import {
   formatCooldownShort,
   MergeRequiresSupportError,
 } from "@/lib/api"
-import { promptGoogleCredential } from "@/lib/googleSignIn"
+import { promptGoogleCredential, GoogleSignInUnavailableError } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { User } from "@/types"
@@ -227,7 +227,7 @@ export default function SettingsPage() {
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("unlinkErrorDefault"))
+      setError(e instanceof Error && e.message ? e.message : t("unlinkErrorDefault"))
     } finally {
       setLinkingAction("")
     }
@@ -245,7 +245,11 @@ export default function SettingsPage() {
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("googleLinkErrorDefault"))
+      setError(
+        e instanceof GoogleSignInUnavailableError || !(e instanceof Error) || !e.message
+          ? t("googleLinkErrorDefault")
+          : e.message,
+      )
     } finally {
       setLinkingAction("")
     }
@@ -265,7 +269,7 @@ export default function SettingsPage() {
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("unlinkErrorDefault"))
+      setError(e instanceof Error && e.message ? e.message : t("unlinkErrorDefault"))
     } finally {
       setLinkingAction("")
     }
