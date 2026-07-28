@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMentorEarnings, type MentorEarnings } from "@/lib/api"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
@@ -15,8 +15,8 @@ function formatAmount(value: string): string {
   return `${num.toLocaleString("ru-RU")} ₸`
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ru-RU", {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -25,6 +25,7 @@ function formatDate(iso: string): string {
 
 export default function MentorEarningsPage() {
   const t = useTranslations("Dashboard.MentorEarnings")
+  const locale = useLocale()
   const router = useRouter()
   useMentorOnboardingGate()
   const [data, setData] = useState<MentorEarnings | null>(null)
@@ -159,7 +160,7 @@ export default function MentorEarningsPage() {
                       <p className="text-lg font-bold text-gray-900">
                         +{formatAmount(p.amount)}
                       </p>
-                      <span className="text-xs text-gray-500">{formatDate(p.paid_at)}</span>
+                      <span className="text-xs text-gray-500">{formatDate(p.paid_at, locale)}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 flex-wrap text-xs">
                       <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">

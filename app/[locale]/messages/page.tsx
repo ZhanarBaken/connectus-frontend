@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
 import { fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
@@ -38,6 +38,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default function MessagesPage() {
   const t = useTranslations("Messages")
   const tStatus = useTranslations("OrderStatus")
+  const locale = useLocale()
   const router = useRouter()
   useStudentOnboardingGate()
   const { isInTelegram, webApp } = useTelegramWebApp()
@@ -151,7 +152,7 @@ export default function MessagesPage() {
               const counterpartPhoto = role === "mentor"
                 ? (order.student_info?.profile_photo ?? null)
                 : (mentorPhotos[order.mentor] ?? null)
-              const dateLabel = new Date(order.created_at).toLocaleDateString("ru-RU", {
+              const dateLabel = new Date(order.created_at).toLocaleDateString(locale, {
                 day: "numeric",
                 month: "short",
               })

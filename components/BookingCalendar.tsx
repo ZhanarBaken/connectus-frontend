@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/api"
 import {
   formatDateISO,
@@ -22,6 +22,7 @@ const MAX_MONTH_OFFSET = 2
 
 export default function BookingCalendar({ mentorId, durationMinutes, onSelect, onCancel }: Props) {
   const t = useTranslations("BookingCalendar")
+  const locale = useLocale()
   const DAY_LABELS = [
     t("monShort"), t("tueShort"), t("wedShort"), t("thuShort"),
     t("friShort"), t("satShort"), t("sunShort"),
@@ -114,8 +115,8 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
 
   const monthLabel = useMemo(() => {
     const d = new Date(visibleMonth.year, visibleMonth.month, 1)
-    return d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
-  }, [visibleMonth])
+    return d.toLocaleDateString(locale, { month: "long", year: "numeric" })
+  }, [visibleMonth, locale])
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -223,7 +224,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
       {selectedDate && (
         <div className="px-5 py-4 border-t border-gray-100">
           <p className="text-xs font-medium text-gray-500 mb-3">
-            {new Date(selectedDate + "T00:00:00").toLocaleDateString("ru-RU", {
+            {new Date(selectedDate + "T00:00:00").toLocaleDateString(locale, {
               weekday: "long",
               day: "numeric",
               month: "long",

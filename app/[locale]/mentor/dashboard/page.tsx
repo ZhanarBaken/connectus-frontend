@@ -342,7 +342,7 @@ export default function MentorDashboard() {
                             {order.student_info?.full_name?.trim().split(/\s+/)[0] || t("applicant")}
                           </p>
                           <p className="text-xs text-gray-300 mt-1">
-                            {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                            {new Date(order.created_at).toLocaleDateString(locale, { day: "numeric", month: "long" })}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-2 flex-shrink-0">
@@ -399,7 +399,7 @@ export default function MentorDashboard() {
                           {review.student_full_name}
                         </span>
                         <span className="text-xs text-gray-300 flex-shrink-0">
-                          {new Date(review.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                          {new Date(review.created_at).toLocaleDateString(locale, { day: "numeric", month: "short" })}
                         </span>
                       </div>
                     </div>

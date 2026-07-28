@@ -642,7 +642,7 @@ export default function MentorPage({ params }: Props) {
                         <span className="text-sm text-gray-400">{review.student_full_name}</span>
                         <span className="text-xs text-gray-300">·</span>
                         <span className="text-xs text-gray-300">
-                          {new Date(review.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                          {new Date(review.created_at).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}
                         </span>
                       </div>
                     </div>

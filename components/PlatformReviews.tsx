@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { fetchAllReviews, type Review } from "@/lib/reviews"
 import Icon from "./Icon"
 
 export default function PlatformReviews() {
   const t = useTranslations("PlatformReviews")
+  const locale = useLocale()
   const [reviews, setReviews] = useState<Review[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -49,7 +50,7 @@ export default function PlatformReviews() {
             <div>
               <div className="font-semibold text-gray-900 text-sm">{r.student_full_name}</div>
               <div className="text-xs text-gray-400">
-                {new Date(r.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                {new Date(r.created_at).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { fetchOrders, fetchMentors } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
@@ -45,6 +45,7 @@ interface ClientGroup {
 export default function OrdersPage() {
   const t = useTranslations("Orders.List")
   const tStatus = useTranslations("OrderStatus")
+  const locale = useLocale()
   useStudentOnboardingGate()
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
@@ -212,7 +213,7 @@ export default function OrdersPage() {
                           <div className="flex-1 min-w-0">
                             <h4 className="text-sm font-medium text-gray-900 truncate">{order.service_title}</h4>
                             <p className="text-xs text-gray-400 mt-0.5">
-                              {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                              {new Date(order.created_at).toLocaleDateString(locale, { day: "numeric", month: "long" })}
                             </p>
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
@@ -256,7 +257,7 @@ export default function OrdersPage() {
                     {mentorNames[order.mentor] || t("mentorDefault")}
                   </p>
                   <p className="text-xs text-gray-300 mt-1">
-                    {new Date(order.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                    {new Date(order.created_at).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">

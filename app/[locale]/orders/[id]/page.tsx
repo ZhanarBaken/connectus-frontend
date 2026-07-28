@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, use } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
 import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
@@ -71,6 +71,7 @@ export default function OrderPage({ params }: Props) {
   const { id } = use(params)
   const t = useTranslations("Orders.Detail")
   const tStatus = useTranslations("OrderStatus")
+  const locale = useLocale()
   const router = useRouter()
   useStudentOnboardingGate()
   const [order, setOrder] = useState<Order | null>(null)
@@ -611,11 +612,11 @@ export default function OrderPage({ params }: Props) {
   }
 
   const formatTime = (iso: string) => {
-    return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+    return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
   }
 
   const formatDate = (iso: string) => {
-    return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+    return new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
   }
 
   if (loading) {
@@ -728,7 +729,7 @@ export default function OrderPage({ params }: Props) {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">{t("scheduledAt")}</span>
                     <span className="text-gray-600">
-                      {new Date(order.scheduled_at).toLocaleString("ru-RU", {
+                      {new Date(order.scheduled_at).toLocaleString(locale, {
                         day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
                       })}
                     </span>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { fetchStudentProfile, fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
@@ -21,6 +21,7 @@ const ORDER_STATUS_STYLES: Record<string, string> = {
 export default function StudentDashboard() {
   const t = useTranslations("Dashboard.Student")
   const tStatus = useTranslations("OrderStatus")
+  const locale = useLocale()
   const router = useRouter()
   useStudentOnboardingGate()
   const [profile, setProfile] = useState<StudentProfile | null>(null)
@@ -149,7 +150,7 @@ export default function StudentDashboard() {
                         <h3 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{order.service_title}</h3>
                         <p className="text-sm text-gray-500 mt-0.5 truncate">{mentorNames[order.mentor] || t("mentorFallback")}</p>
                         <p className="text-xs text-gray-300 mt-1">
-                          {new Date(order.created_at).toLocaleDateString("ru-RU", {
+                          {new Date(order.created_at).toLocaleDateString(locale, {
                             day: "numeric", month: "long", year: "numeric",
                           })}
                         </p>
