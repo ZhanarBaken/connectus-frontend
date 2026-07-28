@@ -11,9 +11,9 @@ const richTags = {
 }
 
 // Sticky-баннер для менторов с тремя состояниями:
-//   красный — профиль не подан на проверку, студенты пока не видят
-//   жёлтый  — подан и ждёт админа
-//   ничего  — профиль одобрен либо ещё грузится / не ментор
+//   красный  — профиль не подан на проверку, студенты пока не видят
+//   индиго   — подан и ждёт админа
+//   ничего   — профиль одобрен либо ещё грузится / не ментор
 //
 // Принимает либо пару флагов от родителя (тогда нулевой fetch), либо
 // без пропсов — тогда сам один раз дёрнет /mentors/profile/me/. В
@@ -63,9 +63,9 @@ export default function MentorStatusBanner({
 
   if (state.isSubmitted) {
     return (
-      <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center gap-2 text-sm text-amber-900">
-          <Icon name="hourglass_empty" size={18} className="text-amber-600 flex-shrink-0" />
+      <div className="bg-indigo-50 border-b border-indigo-200 px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center gap-2 text-sm text-indigo-900">
+          <Icon name="hourglass_empty" size={18} className="text-indigo-600 flex-shrink-0" />
           <p>
             {t.rich("underReviewBody", richTags)}
           </p>

@@ -3,17 +3,17 @@
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
-import { fetchMentorProfile, updateMentorProfile, authFetch } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchMe, updateMentorProfile, authFetch } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { LANGUAGE_LABELS } from "@/lib/languages"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
-import { MentorProfile, ExpertiseArea } from "@/types"
+import { MentorProfile, MentorService, ExpertiseArea, User } from "@/types"
 import BackButton from "@/components/BackButton"
 import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
-import MentorDocumentsUploader from "@/components/MentorDocumentsUploader"
+import MentorDocumentsUploader, { MentorDocument } from "@/components/MentorDocumentsUploader"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -96,6 +96,14 @@ export default function MentorProfilePage() {
   const [banReason, setBanReason] = useState("")
   const photoInputRef = useRef<HTMLInputElement>(null)
 
+  // Extra data the real submission gate cares about but that doesn't
+  // live on MentorProfile itself — fetched alongside the profile purely
+  // to make the completion % below match apps.mentors.models.MentorProfile
+  // .submission_errors() instead of only covering a subset of fields.
+  const [services, setServices] = useState<MentorService[]>([])
+  const [me, setMe] = useState<User | null>(null)
+  const [documents, setDocuments] = useState<MentorDocument[]>([])
+
   useEffect(() => {
     fetchMentorProfile()
       .then((p: MentorProfile) => {
@@ -118,6 +126,11 @@ export default function MentorProfilePage() {
       })
       .catch(() => setError(t("loadProfileError")))
       .finally(() => setLoading(false))
+    // Best-effort: a failure here can only ever push the completion %
+    // down (defaults are "nothing yet"), never falsely up to 100% — but
+    // still logged so a stuck-low percent is debuggable.
+    fetchMentorServices().then(setServices).catch((e) => console.error("fetchMentorServices failed", e))
+    fetchMe().then(setMe).catch((e) => console.error("fetchMe failed", e))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -234,16 +247,35 @@ export default function MentorProfilePage() {
   // экрана. Поля, которые юзер сейчас редактирует, читаются из state
   // (могут быть несохранённые правки) — это специально, чтобы прогресс
   // мгновенно реагировал на ввод.
-  const { percent: completionPercent } = calcProfileCompletion({
-    profile_photo: profilePhoto,
-    full_name: fullName,
-    school_or_university: school,
-    countries: countries.map((c) => ({ country: c })),
-    major,
-    detailed_bio: bio,
-    grant_or_scholarship: grant,
-    expertise_areas: expertiseAreas.map((a) => ({ area: a as ExpertiseArea })),
-  } as MentorProfile)
+  // Matches apps.mentors.models.MentorProfile.submission_errors() exactly —
+  // a diploma AND an enrollment certificate specifically, not just any
+  // document. A single wrong-kind upload must not read as "documents done".
+  const hasRequiredDocuments =
+    documents.some((d) => d.kind === "diploma") &&
+    documents.some((d) => d.kind === "enrollment_certificate")
+
+  const { percent: completionPercent } = calcProfileCompletion(
+    {
+      profile_photo: profilePhoto,
+      full_name: fullName,
+      school_or_university: school,
+      countries: countries.map((c) => ({ country: c })),
+      major,
+      detailed_bio: bio,
+      grant_or_scholarship: grant,
+      gpa,
+      exam_results: examResults,
+      phone,
+      expertise_areas: expertiseAreas.map((a) => ({ area: a as ExpertiseArea })),
+      languages: languages.map((l) => ({ language: l })),
+      has_documents: hasRequiredDocuments,
+    } as MentorProfile,
+    {
+      hasActiveService: services.some((s) => s.is_active),
+      emailVerified: Boolean(me?.email && me.email_verified),
+      hasTelegram: Boolean(me?.has_telegram),
+    },
+  )
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -587,7 +619,7 @@ export default function MentorProfilePage() {
             <p className="text-sm text-gray-400 mb-5">
               {t("documentsSubtitle")}
             </p>
-            <MentorDocumentsUploader isBanned={isBanned} />
+            <MentorDocumentsUploader isBanned={isBanned} onDocumentsChange={setDocuments} />
           </div>
 
           {error && (

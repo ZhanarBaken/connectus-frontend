@@ -157,7 +157,11 @@ export default function MentorDashboard() {
     .filter((o) => o.order_status === "completed")
     .reduce((sum, o) => sum + parseFloat(o.mentor_payout_amount), 0)
 
-  const { percent: completionPercent } = calcProfileCompletion(profile)
+  const { percent: completionPercent } = calcProfileCompletion(profile, {
+    hasActiveService: services.some((s) => s.is_active),
+    emailVerified: Boolean(me?.email && me.email_verified),
+    hasTelegram: Boolean(me?.has_telegram),
+  })
 
   const FIELD_LABELS: Record<string, string> = {
     full_name: t("fields.fullName"),
@@ -302,11 +306,11 @@ export default function MentorDashboard() {
         {!profile.is_banned && !profile.is_approved && (
           <div className="mb-8">
             {profile.is_submitted ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
+              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex items-start gap-4">
                 <span className="text-2xl">⏳</span>
                 <div>
-                  <p className="font-semibold text-amber-800">{t("underReviewTitle")}</p>
-                  <p className="text-sm text-amber-700 mt-1">{t("underReviewBody")}</p>
+                  <p className="font-semibold text-indigo-900">{t("underReviewTitle")}</p>
+                  <p className="text-sm text-indigo-800 mt-1">{t("underReviewBody")}</p>
                 </div>
               </div>
             ) : (

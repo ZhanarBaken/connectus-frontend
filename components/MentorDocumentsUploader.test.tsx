@@ -91,12 +91,15 @@ describe("MentorDocumentsUploader", () => {
     expect(screen.getByText(/Blurry scan/)).toBeInTheDocument()
   })
 
-  it("calls onCountChange with the initial document count after load", async () => {
+  it("calls onDocumentsChange with the initial document list after load", async () => {
     vi.mocked(authFetch).mockResolvedValue(jsonResponse([makeDoc(), makeDoc({ id: 2 })]))
-    const onCountChange = vi.fn()
-    render(<MentorDocumentsUploader onCountChange={onCountChange} />)
+    const onDocumentsChange = vi.fn()
+    render(<MentorDocumentsUploader onDocumentsChange={onDocumentsChange} />)
     await waitFor(() => {
-      expect(onCountChange).toHaveBeenCalledWith(2)
+      expect(onDocumentsChange).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 1 }),
+        expect.objectContaining({ id: 2 }),
+      ])
     })
   })
 
@@ -123,8 +126,8 @@ describe("MentorDocumentsUploader", () => {
       .mockResolvedValueOnce(jsonResponse(makeDoc({ id: 9, original_filename: "new.pdf" }))) // upload POST
 
     const user = userEvent.setup()
-    const onCountChange = vi.fn()
-    render(<MentorDocumentsUploader onCountChange={onCountChange} />)
+    const onDocumentsChange = vi.fn()
+    render(<MentorDocumentsUploader onDocumentsChange={onDocumentsChange} />)
     await waitFor(() => screen.getByText("Документов пока нет"))
 
     const file = makeFile("new.pdf", 1024, "application/pdf")
@@ -135,7 +138,9 @@ describe("MentorDocumentsUploader", () => {
     await waitFor(() => {
       expect(screen.getByText("new.pdf")).toBeInTheDocument()
     })
-    expect(onCountChange).toHaveBeenLastCalledWith(1)
+    expect(onDocumentsChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ id: 9, original_filename: "new.pdf" }),
+    ])
 
     const [, uploadCall] = vi.mocked(authFetch).mock.calls
     expect(uploadCall[1]?.method).toBe("POST")
@@ -182,9 +187,9 @@ describe("MentorDocumentsUploader", () => {
       .mockResolvedValueOnce(jsonResponse({}))
 
     vi.spyOn(window, "confirm").mockReturnValue(true)
-    const onCountChange = vi.fn()
+    const onDocumentsChange = vi.fn()
     const user = userEvent.setup()
-    render(<MentorDocumentsUploader onCountChange={onCountChange} />)
+    render(<MentorDocumentsUploader onDocumentsChange={onDocumentsChange} />)
     await waitFor(() => screen.getByText("a.pdf"))
 
     await user.click(screen.getByLabelText("Удалить"))
@@ -192,7 +197,7 @@ describe("MentorDocumentsUploader", () => {
     await waitFor(() => {
       expect(screen.queryByText("a.pdf")).not.toBeInTheDocument()
     })
-    expect(onCountChange).toHaveBeenLastCalledWith(0)
+    expect(onDocumentsChange).toHaveBeenLastCalledWith([])
   })
 
   it("does not delete when the confirm dialog is dismissed", async () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import MentorProfilePage from "./page"
-import { fetchMentorProfile, updateMentorProfile, authFetch } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchMe, updateMentorProfile, authFetch } from "@/lib/api"
 import type { MentorProfile } from "@/types"
 
 vi.mock("@/lib/api")
@@ -58,6 +58,15 @@ beforeEach(() => {
   // on mount via authFetch — default to an empty document list so it
   // doesn't error out before each test configures anything specific.
   vi.mocked(authFetch).mockResolvedValue(jsonResponse([]))
+  // Fetched alongside the profile purely to feed the completion-percent
+  // calculation (services/email/telegram) — default to "nothing yet" so
+  // tests that don't care about the percent aren't forced to mock these.
+  vi.mocked(fetchMentorServices).mockResolvedValue([])
+  vi.mocked(fetchMe).mockResolvedValue({
+    id: 1, email: "mentor@example.com", role: "mentor", email_verified: false,
+    has_telegram: false, telegram_username: null, has_google: false,
+    google_email_at_signup: null, has_password: true, created_at: "2026-01-01T00:00:00Z",
+  })
 })
 
 describe("MentorProfilePage — loading and prefill", () => {
@@ -77,6 +86,103 @@ describe("MentorProfilePage — loading and prefill", () => {
     render(<MentorProfilePage />)
 
     expect(await screen.findByText("Не удалось загрузить профиль")).toBeInTheDocument()
+  })
+
+  it("does not show 100% just because every text field is filled — services/email/telegram/documents/languages still count", async () => {
+    // Regression: the completion % used to only cover a subset of
+    // fields (not gpa/exam_results/phone/languages/documents/services/
+    // email/telegram), so a mentor could see 100% here and still get
+    // rejected by the backend's real submission gate.
+    vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+    // Defaults from beforeEach already have no services, no verified
+    // email/telegram, and authFetch resolves an empty document list —
+    // so languages=[] (also unfilled on makeMentorProfile) is the only
+    // other gap, but that alone is enough to prove it's not 100%.
+
+    render(<MentorProfilePage />)
+
+    const percent = await screen.findByText(/%$/)
+    expect(percent.textContent).not.toBe("100%")
+  })
+
+  it("reaches 100% once every field, an active service, and a verified email+Telegram are all present", async () => {
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      makeMentorProfile({
+        profile_photo: "https://cdn.example.com/avatar.jpg",
+        languages: [{ language: "ru" }],
+        has_documents: true,
+      }),
+    )
+    vi.mocked(fetchMentorServices).mockResolvedValue([
+      {
+        id: 1, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+        duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
+        meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
+        is_price_negotiable: false, intro_call_enabled: false, is_active: true,
+      },
+    ])
+    vi.mocked(fetchMe).mockResolvedValue({
+      id: 1, email: "mentor@example.com", role: "mentor", email_verified: true,
+      has_telegram: true, telegram_username: "mentoruser", has_google: false,
+      google_email_at_signup: null, has_password: true, created_at: "2026-01-01T00:00:00Z",
+    })
+    vi.mocked(authFetch).mockResolvedValue(
+      jsonResponse([
+        {
+          id: 1, kind: "diploma", original_filename: "diploma.pdf", content_type: "application/pdf",
+          size_bytes: 1024, status: "pending", review_note: "", uploaded_at: "2026-01-01T00:00:00Z",
+          download_url: "https://cdn.example.com/diploma.pdf",
+        },
+        {
+          id: 2, kind: "enrollment_certificate", original_filename: "enroll.pdf", content_type: "application/pdf",
+          size_bytes: 2048, status: "pending", review_note: "", uploaded_at: "2026-01-01T00:00:00Z",
+          download_url: "https://cdn.example.com/enroll.pdf",
+        },
+      ]),
+    )
+
+    render(<MentorProfilePage />)
+
+    expect(await screen.findByText("100%")).toBeInTheDocument()
+  })
+
+  it("does not count documents as done with only one of the two required kinds", async () => {
+    // Regression: the backend requires a diploma AND an enrollment
+    // certificate specifically (apps.mentors.models.MentorProfile
+    // .submission_errors) — a single document of only one kind (or the
+    // wrong kind entirely) must not read as "documents done".
+    vi.mocked(fetchMentorProfile).mockResolvedValue(
+      makeMentorProfile({
+        profile_photo: "https://cdn.example.com/avatar.jpg",
+        languages: [{ language: "ru" }],
+        has_documents: true,
+      }),
+    )
+    vi.mocked(fetchMentorServices).mockResolvedValue([
+      {
+        id: 1, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+        duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
+        meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
+        is_price_negotiable: false, intro_call_enabled: false, is_active: true,
+      },
+    ])
+    vi.mocked(fetchMe).mockResolvedValue({
+      id: 1, email: "mentor@example.com", role: "mentor", email_verified: true,
+      has_telegram: true, telegram_username: "mentoruser", has_google: false,
+      google_email_at_signup: null, has_password: true, created_at: "2026-01-01T00:00:00Z",
+    })
+    vi.mocked(authFetch).mockResolvedValue(
+      jsonResponse([{
+        id: 1, kind: "diploma", original_filename: "diploma.pdf", content_type: "application/pdf",
+        size_bytes: 1024, status: "pending", review_note: "", uploaded_at: "2026-01-01T00:00:00Z",
+        download_url: "https://cdn.example.com/diploma.pdf",
+      }]),
+    )
+
+    render(<MentorProfilePage />)
+
+    const percent = await screen.findByText(/%$/)
+    expect(percent.textContent).not.toBe("100%")
   })
 })
 

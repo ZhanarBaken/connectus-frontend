@@ -28,15 +28,17 @@ function formatFileSize(bytes: number): string {
 interface Props {
   // When provided, banned state is gated externally. Defaults to false.
   isBanned?: boolean
-  // Notifies parent when count changes — useful for progress / submit-gate
-  // logic on the edit page.
-  onCountChange?: (count: number) => void
+  // Notifies parent with the full document list on every change — the
+  // parent needs the actual `kind`s, not just a count, to reproduce the
+  // backend's real requirement (a diploma AND an enrollment certificate
+  // specifically, not just "any document").
+  onDocumentsChange?: (documents: MentorDocument[]) => void
 }
 
 // Inline uploader + list for mentor's verification documents.
 // Same UI as the standalone /mentors/documents/ page, extracted so the
 // edit-profile page can embed it without duplicating the upload logic.
-export default function MentorDocumentsUploader({ isBanned = false, onCountChange }: Props) {
+export default function MentorDocumentsUploader({ isBanned = false, onDocumentsChange }: Props) {
   const t = useTranslations("Mentors.Documents")
   const tDoc = useTranslations("Onboarding.Mentor")
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -74,7 +76,7 @@ export default function MentorDocumentsUploader({ isBanned = false, onCountChang
         if (cancelled) return
         const list: MentorDocument[] = Array.isArray(data) ? data : data.results ?? []
         setDocuments(list)
-        onCountChange?.(list.length)
+        onDocumentsChange?.(list)
       } catch (e: unknown) {
         if (cancelled) return
         setError(e instanceof Error ? e.message : t("loadErrorGeneric"))
@@ -111,7 +113,7 @@ export default function MentorDocumentsUploader({ isBanned = false, onCountChang
       const doc: MentorDocument = await res.json()
       setDocuments((prev) => {
         const next = [doc, ...prev]
-        onCountChange?.(next.length)
+        onDocumentsChange?.(next)
         return next
       })
       setFile(null)
@@ -134,7 +136,7 @@ export default function MentorDocumentsUploader({ isBanned = false, onCountChang
       }
       setDocuments((prev) => {
         const next = prev.filter((d) => d.id !== id)
-        onCountChange?.(next.length)
+        onDocumentsChange?.(next)
         return next
       })
     } catch (e: unknown) {
