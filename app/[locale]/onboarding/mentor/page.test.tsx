@@ -18,6 +18,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
     createMentorService: vi.fn(),
     updateMentorProfile: vi.fn(),
     submitMentorProfile: vi.fn(),
+    fetchMyMentorSchedule: vi.fn(),
+    saveMyMentorSchedule: vi.fn(),
   }
 })
 
@@ -105,6 +107,9 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.updateMentorProfile).mockReset()
     vi.mocked(api.updateMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.submitMentorProfile).mockReset()
+    vi.mocked(api.fetchMyMentorSchedule).mockReset()
+    vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({ timezone: "Asia/Almaty", weekly: [], blocks: [] })
+    vi.mocked(api.saveMyMentorSchedule).mockReset()
     vi.mocked(useRouter).mockReturnValue({
       push,
       replace,
@@ -442,6 +447,86 @@ describe("MentorOnboarding", () => {
     expect(screen.getByDisplayValue("Первичная консультация")).toBeInTheDocument()
   })
 
+  it("toggles a day on and saves a weekly schedule on the Schedule tab", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.saveMyMentorSchedule).mockResolvedValue({
+      timezone: "Asia/Almaty",
+      weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
+      blocks: [],
+    })
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Когда ты доступен?" })
+
+    await user.click(screen.getByRole("button", { name: "Понедельник" }))
+    await user.click(screen.getByRole("button", { name: "Сохранить расписание" }))
+
+    await waitFor(() => expect(api.saveMyMentorSchedule).toHaveBeenCalledWith({
+      weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
+      blocks: [],
+    }))
+  })
+
+  it("routes an availability submission error to the Schedule tab", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(
+      makeProfile({
+        profile_photo: "https://cdn.example.com/avatar.jpg",
+        full_name: "Aigerim Bekova",
+        detailed_bio: "Опытный ментор с 3 годами практики.",
+        phone: "+7 777 000 00 00",
+        languages: [{ language: "ru" }],
+        countries: [{ country: "US" }],
+        school_or_university: "MIT",
+        major: "Computer Science",
+        grant_or_scholarship: "Болашак",
+        gpa: "3.8",
+        exam_results: "IELTS 7.5",
+        expertise_areas: [{ area: "admission" }],
+      }),
+    )
+    vi.mocked(api.authFetch).mockResolvedValue(
+      jsonResponse([
+        { id: 1, kind: "diploma", original_filename: "diploma.pdf", size_bytes: 1024, status: "pending" },
+        { id: 2, kind: "enrollment_certificate", original_filename: "enroll.pdf", size_bytes: 2048, status: "pending" },
+      ]),
+    )
+    vi.mocked(api.fetchMentorServices).mockResolvedValue([
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+    ])
+    // Client-side tabDone already considers the schedule complete (a
+    // window was saved above), so this simulates a race where the
+    // backend still rejects — same pattern as the documents/services
+    // race-condition tests above.
+    vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
+      timezone: "Asia/Almaty",
+      weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
+      blocks: [],
+    })
+    vi.mocked(api.submitMentorProfile).mockRejectedValue(
+      new Error(JSON.stringify({ availability: "At least one weekly availability window is required." })),
+    )
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Отправить профиль на проверку →" }))
+
+    expect(await screen.findByText("Исправь ошибки перед отправкой:")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Когда ты доступен?" })).toBeInTheDocument()
+    // The raw backend message must never reach the screen — only the
+    // translated copy.
+    expect(screen.queryByText("At least one weekly availability window is required.")).not.toBeInTheDocument()
+    expect(screen.getAllByText("Включи хотя бы один день в расписании и сохрани.").length).toBeGreaterThan(0)
+  })
+
   it("shows the early-submit hint listing missing sections when incomplete", async () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
@@ -482,6 +567,11 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
       { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
+    vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
+      timezone: "Asia/Almaty",
+      weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
+      blocks: [],
+    })
     vi.mocked(api.submitMentorProfile).mockResolvedValue(undefined)
     const user = userEvent.setup()
     render(<MentorOnboarding />)
@@ -520,6 +610,11 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
       { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
+    vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
+      timezone: "Asia/Almaty",
+      weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
+      blocks: [],
+    })
     vi.mocked(api.submitMentorProfile).mockRejectedValue(
       new Error(JSON.stringify({ grant_or_scholarship: "Обязательное поле" })),
     )
@@ -572,6 +667,11 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
       { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
+    vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
+      timezone: "Asia/Almaty",
+      weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
+      blocks: [],
+    })
     vi.mocked(api.submitMentorProfile).mockRejectedValue(
       new Error(JSON.stringify({ services: "At least one active service is required." })),
     )
@@ -620,6 +720,11 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
       { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
+    vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
+      timezone: "Asia/Almaty",
+      weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
+      blocks: [],
+    })
     // Client-side tabDone gating already considers documents complete
     // (both kinds uploaded above), so this simulates a race where the
     // backend still rejects — the exact scenario the field-error UX

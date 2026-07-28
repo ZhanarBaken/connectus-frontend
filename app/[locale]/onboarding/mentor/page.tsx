@@ -10,11 +10,21 @@ import {
   fetchMe,
   fetchMentorProfile,
   fetchMentorServices,
+  fetchMyMentorSchedule,
+  saveMyMentorSchedule,
   updateMentorProfile,
   submitMentorProfile,
 } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { LANGUAGE_CODES, languageLabel } from "@/lib/languages"
+import {
+  emptyWeekSchedule,
+  flatToWeekSchedule,
+  weekScheduleToFlat,
+  type ScheduleBlock,
+  type TimeSlot,
+  type WeekSchedule,
+} from "@/lib/schedule"
 import { ExpertiseArea, MentorService } from "@/types"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import CountryPickerModal from "@/components/CountryPickerModal"
@@ -23,9 +33,16 @@ import Logo from "@/components/Logo"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-type Tab = "about" | "education" | "expertise" | "services"
+type Tab = "about" | "education" | "expertise" | "services" | "schedule"
 
-const TAB_IDS: Tab[] = ["about", "education", "expertise", "services"]
+const TAB_IDS: Tab[] = ["about", "education", "expertise", "services", "schedule"]
+
+const TIME_OPTIONS: string[] = []
+for (let h = 0; h < 24; h++) {
+  for (const m of [0, 30]) {
+    TIME_OPTIONS.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`)
+  }
+}
 
 const EXPERTISE_OPTIONS = [
   { value: "admission",    icon: "flag"            },
@@ -65,6 +82,9 @@ export default function MentorOnboarding() {
   // the support-category fields — same concepts, single source of truth
   // for that copy, instead of a second parallel translation set.
   const tServices = useTranslations("Mentors.Services")
+  // Reuses the /mentors/schedule page's copy for day labels and the
+  // save/add-slot actions — same concepts, single source of truth.
+  const tSchedule = useTranslations("Mentors.Schedule")
   const locale = useLocale()
   const router = useRouter()
   const [ready, setReady]     = useState(false)
@@ -81,6 +101,12 @@ export default function MentorOnboarding() {
     { id: "education", label: t("tabEducation") },
     { id: "expertise", label: t("tabExpertise") },
     { id: "services", label: t("tabServices") },
+    { id: "schedule", label: t("tabSchedule") },
+  ]
+
+  const DAY_LABELS_FULL = [
+    tSchedule("monday"), tSchedule("tuesday"), tSchedule("wednesday"),
+    tSchedule("thursday"), tSchedule("friday"), tSchedule("saturday"), tSchedule("sunday"),
   ]
 
   const DOCUMENT_KIND_OPTIONS = [
@@ -110,6 +136,7 @@ export default function MentorOnboarding() {
     diploma_document: t("errDiplomaRequired"),
     enrollment_document: t("errEnrollmentRequired"),
     services: t("errServicesRequired"),
+    availability: t("errAvailabilityRequired"),
     email: t("errEmailRequired"),
     telegram: t("errTelegramRequired"),
   }
@@ -171,6 +198,20 @@ export default function MentorOnboarding() {
   const [creatingService, setCreatingService] = useState(false)
   const [serviceError, setServiceError] = useState("")
 
+  // Schedule — a mentor needs at least one weekly availability window to
+  // submit (apps.mentors.models.MentorProfile.submission_errors). Unlike
+  // the other tabs, availability isn't saved on blur/toggle — it's an
+  // explicit "Save schedule" action, same as the full /mentors/schedule
+  // editor, since toggling several days/slots before committing avoids a
+  // PUT per click. `availabilitySaved` tracks the confirmed-persisted
+  // state (mirrors how `tabDone.services` reflects created services, not
+  // whatever's currently typed into the add-service form).
+  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>(emptyWeekSchedule())
+  const [scheduleBlocks, setScheduleBlocks] = useState<ScheduleBlock[]>([])
+  const [availabilitySaved, setAvailabilitySaved] = useState(false)
+  const [savingSchedule, setSavingSchedule] = useState(false)
+  const [scheduleError, setScheduleError] = useState("")
+
   // ─── Load profile on mount ─────────────────────────────────────
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : ""
@@ -215,6 +256,12 @@ export default function MentorOnboarding() {
         } catch { /* non-fatal */ }
         try {
           setServices(await fetchMentorServices())
+        } catch { /* non-fatal */ }
+        try {
+          const schedule = await fetchMyMentorSchedule()
+          setWeekSchedule(flatToWeekSchedule(schedule.weekly))
+          setScheduleBlocks(schedule.blocks)
+          setAvailabilitySaved(schedule.weekly.length > 0)
         } catch { /* non-fatal */ }
         setReady(true)
       })
@@ -394,6 +441,59 @@ export default function MentorOnboarding() {
     }
   }
 
+  // ─── Schedule ────────────────────────────────────────────────────
+  const toggleDay = (day: number) => {
+    setWeekSchedule((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        enabled: !prev[day].enabled,
+        slots: prev[day].enabled
+          ? prev[day].slots
+          : prev[day].slots.length
+            ? prev[day].slots
+            : [{ start: "10:00", end: "18:00" }],
+      },
+    }))
+  }
+
+  const updateSlot = (day: number, idx: number, field: keyof TimeSlot, value: string) => {
+    setWeekSchedule((prev) => {
+      const slots = [...prev[day].slots]
+      slots[idx] = { ...slots[idx], [field]: value }
+      return { ...prev, [day]: { ...prev[day], slots } }
+    })
+  }
+
+  const addSlot = (day: number) => {
+    setWeekSchedule((prev) => {
+      const slots = [...prev[day].slots, { start: "10:00", end: "18:00" }]
+      return { ...prev, [day]: { ...prev[day], slots } }
+    })
+  }
+
+  const removeSlot = (day: number, idx: number) => {
+    setWeekSchedule((prev) => {
+      const slots = prev[day].slots.filter((_, i) => i !== idx)
+      return { ...prev, [day]: { ...prev[day], slots } }
+    })
+  }
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true)
+    setScheduleError("")
+    try {
+      const weekly = weekScheduleToFlat(weekSchedule)
+      await saveMyMentorSchedule({ weekly, blocks: scheduleBlocks })
+      setAvailabilitySaved(weekly.length > 0)
+      flashSaved()
+    } catch (e) {
+      setScheduleError(e instanceof Error ? e.message : tSchedule("saveError"))
+    } finally {
+      setSavingSchedule(false)
+    }
+  }
+
   // ─── Submit ────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -468,6 +568,7 @@ export default function MentorOnboarding() {
       documents.some((d) => d.kind === "diploma") &&
       documents.some((d) => d.kind === "enrollment_certificate"),
     services: services.some((s) => s.is_active),
+    schedule: availabilitySaved,
   }
   const allDone = Object.values(tabDone).every(Boolean)
 
@@ -1287,6 +1388,109 @@ export default function MentorOnboarding() {
               <p className="text-xs text-gray-400 mt-3">{t("servicesMoreHint")}</p>
             </div>
           )}
+
+          {/* ── РАСПИСАНИЕ ── */}
+          {tab === "schedule" && (
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">{t("scheduleHeading")}</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                {t("scheduleSubtitle")} <span className="text-red-400">*</span>
+              </p>
+
+              <div data-field="availability" className="space-y-2">
+                {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+                  const ds = weekSchedule[day]
+                  if (!ds) return null
+                  const enabled = ds.enabled
+                  return (
+                    <div
+                      key={day}
+                      className={`border border-gray-200 rounded-2xl p-4 transition-opacity ${enabled ? "" : "opacity-60"}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleDay(day)}
+                          aria-pressed={enabled}
+                          aria-label={DAY_LABELS_FULL[day]}
+                          className={`relative inline-flex w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                            enabled ? "bg-indigo-600" : "bg-gray-200"
+                          } cursor-pointer`}
+                        >
+                          <span
+                            className={`inline-block w-5 h-5 rounded-full bg-white shadow transform-gpu transition-transform duration-200 mt-0.5 ${
+                              enabled ? "translate-x-[22px]" : "translate-x-0.5"
+                            }`}
+                          />
+                        </button>
+                        <span className={`text-sm font-semibold ${enabled ? "text-gray-900" : "text-gray-400"}`}>
+                          {DAY_LABELS_FULL[day]}
+                        </span>
+                      </div>
+
+                      {enabled && (
+                        <div className="mt-3 ml-14 space-y-2">
+                          {ds.slots.map((slot, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <select
+                                value={slot.start}
+                                onChange={(e) => updateSlot(day, idx, "start", e.target.value)}
+                                className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                              >
+                                {TIME_OPTIONS.map((time) => (
+                                  <option key={time} value={time}>{time}</option>
+                                ))}
+                              </select>
+                              <span className="text-gray-400 text-sm">&mdash;</span>
+                              <select
+                                value={slot.end}
+                                onChange={(e) => updateSlot(day, idx, "end", e.target.value)}
+                                className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                              >
+                                {TIME_OPTIONS.map((time) => (
+                                  <option key={time} value={time}>{time}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => removeSlot(day, idx)}
+                                className="ml-1 p-1 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                                aria-label={tSchedule("removeSlot")}
+                              >
+                                <Icon name="close" size={16} />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => addSlot(day)}
+                            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 font-medium mt-1 transition-colors"
+                          >
+                            <Icon name="add" size={14} />
+                            {tSchedule("addSlot")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {fieldError("availability") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("availability")}</p>
+                )}
+              </div>
+
+              {scheduleError && <p className="text-xs text-red-500 mt-3">{scheduleError}</p>}
+              <button
+                type="button"
+                onClick={handleSaveSchedule}
+                disabled={savingSchedule}
+                className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 mt-4"
+              >
+                {savingSchedule ? t("savingSchedule") : tSchedule("saveSchedule")}
+              </button>
+              <p className="text-xs text-gray-400 mt-3">{t("scheduleMoreHint")}</p>
+            </div>
+          )}
         </div>
 
         {/* Tab navigation */}
@@ -1348,6 +1552,7 @@ export default function MentorOnboarding() {
               {!tabDone.education && <li>{t("educationMissing")}</li>}
               {!tabDone.expertise && <li>{t("expertiseMissing")}</li>}
               {!tabDone.services && <li>{t("servicesMissing")}</li>}
+              {!tabDone.schedule && <li>{t("scheduleMissing")}</li>}
             </ul>
           </div>
         )}
@@ -1378,7 +1583,7 @@ const FIELD_ERROR_PRIORITY = [
   "full_name", "major", "grant_or_scholarship", "school_or_university",
   "gpa", "exam_results", "detailed_bio", "phone", "expertise_areas",
   "countries", "languages", "profile_photo", "diploma_document",
-  "enrollment_document", "services", "email", "telegram",
+  "enrollment_document", "services", "availability", "email", "telegram",
 ]
 
 // Map backend error keys to tabs.
@@ -1390,5 +1595,6 @@ function tabForError(errors: Record<string, string>): Tab | null {
   ) return "education"
   if (errors.expertise_areas || errors.diploma_document || errors.enrollment_document) return "expertise"
   if (errors.services) return "services"
+  if (errors.availability) return "schedule"
   return null
 }
