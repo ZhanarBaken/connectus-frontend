@@ -912,7 +912,6 @@
       "deleteErrorGeneric": "Жою қатесі"
     },
     "Profile": {
-      "requiredLabel": "міндетті",
       "loadProfileError": "Профильді жүктеу мүмкін болмады",
       "photoUploadErrorDefault": "Фото жүктеу мүмкін болмады",
       "photoUploadErrorGeneric": "Фото жүктеу кезінде қате шықты",

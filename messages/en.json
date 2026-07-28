@@ -912,7 +912,6 @@
       "deleteErrorGeneric": "Delete error"
     },
     "Profile": {
-      "requiredLabel": "required",
       "loadProfileError": "Couldn't load the profile",
       "photoUploadErrorDefault": "Couldn't upload the photo",
       "photoUploadErrorGeneric": "Error uploading the photo",

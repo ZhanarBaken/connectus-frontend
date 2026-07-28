@@ -912,7 +912,6 @@
       "deleteErrorGeneric": "Ошибка удаления"
     },
     "Profile": {
-      "requiredLabel": "обязательно",
       "loadProfileError": "Не удалось загрузить профиль",
       "photoUploadErrorDefault": "Не удалось загрузить фото",
       "photoUploadErrorGeneric": "Ошибка при загрузке фото",

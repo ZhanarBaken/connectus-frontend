@@ -21,14 +21,12 @@ function Field({
   label,
   hint,
   required = false,
-  requiredLabel,
   error,
   children,
 }: {
   label: string
   hint?: string
   required?: boolean
-  requiredLabel?: string
   error?: string
   children: React.ReactNode
 }) {
@@ -36,9 +34,7 @@ function Field({
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
-        {required && (
-          <span className="ml-1.5 text-xs font-normal text-gray-400">{requiredLabel}</span>
-        )}
+        {required && <span className="ml-1 text-red-400">*</span>}
       </label>
       {children}
       {error ? (
@@ -400,7 +396,7 @@ export default function MentorProfilePage() {
             <h2 className="text-base font-semibold text-gray-900 mb-5">{t("basicInfoTitle")}</h2>
             <div className="grid sm:grid-cols-2 gap-5">
               <div data-field="full_name">
-                <Field label={t("fullNameLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.full_name}>
+                <Field label={t("fullNameLabel")} required error={fieldErrors.full_name}>
                   <input value={fullName} onChange={(e) => setFullName(e.target.value)}
                     placeholder={t("fullNamePlaceholder")}
                     className={fieldErrors.full_name
@@ -409,7 +405,7 @@ export default function MentorProfilePage() {
                 </Field>
               </div>
               <div className="sm:col-span-2" data-field="countries">
-                <Field label={t("countriesLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.countries}>
+                <Field label={t("countriesLabel")} required error={fieldErrors.countries}>
                   <div className="flex flex-wrap gap-2">
                     {POPULAR_COUNTRY_CODES.map((c) => (
                       <button
@@ -469,7 +465,7 @@ export default function MentorProfilePage() {
                 />
               </div>
               <div data-field="school_or_university">
-                <Field label={t("universityLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.school_or_university}>
+                <Field label={t("universityLabel")} required error={fieldErrors.school_or_university}>
                   <input value={school} onChange={(e) => setSchool(e.target.value)}
                     placeholder={t("universityPlaceholder")}
                     className={fieldErrors.school_or_university
@@ -478,7 +474,7 @@ export default function MentorProfilePage() {
                 </Field>
               </div>
               <div data-field="major">
-                <Field label={t("majorLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.major}>
+                <Field label={t("majorLabel")} required error={fieldErrors.major}>
                   <input value={major} onChange={(e) => setMajor(e.target.value)}
                     placeholder={t("majorPlaceholder")}
                     className={fieldErrors.major
@@ -487,7 +483,7 @@ export default function MentorProfilePage() {
                 </Field>
               </div>
               <div data-field="grant_or_scholarship">
-                <Field label={t("grantLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.grant_or_scholarship}>
+                <Field label={t("grantLabel")} required error={fieldErrors.grant_or_scholarship}>
                   <input value={grant} onChange={(e) => setGrant(e.target.value)}
                     placeholder={t("grantPlaceholder")}
                     className={fieldErrors.grant_or_scholarship
@@ -496,7 +492,7 @@ export default function MentorProfilePage() {
                 </Field>
               </div>
               <div data-field="gpa">
-                <Field label={t("gpaLabel")} required requiredLabel={t("requiredLabel")} error={fieldErrors.gpa}>
+                <Field label={t("gpaLabel")} required error={fieldErrors.gpa}>
                   <input value={gpa} onChange={(e) => setGpa(e.target.value)}
                     placeholder={t("gpaPlaceholder")}
                     className={fieldErrors.gpa
@@ -515,7 +511,6 @@ export default function MentorProfilePage() {
                 <Field
                   label={t("examResultsLabel")}
                   required
-                  requiredLabel={t("requiredLabel")}
                   hint={t("examResultsHint")}
                   error={fieldErrors.exam_results}
                 >
@@ -530,7 +525,6 @@ export default function MentorProfilePage() {
                 <Field
                   label={t("phoneLabel")}
                   required
-                  requiredLabel={t("requiredLabel")}
                   hint={t("phoneHint")}
                   error={fieldErrors.phone}
                 >
@@ -558,7 +552,6 @@ export default function MentorProfilePage() {
             <Field
               label={t("aboutLabel")}
               required
-              requiredLabel={t("requiredLabel")}
               hint={t("aboutHint")}
               error={fieldErrors.detailed_bio}
             >
@@ -575,7 +568,7 @@ export default function MentorProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="expertise_areas">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
               {t("specializationTitle")}
-              <span className="ml-1.5 text-xs font-normal text-gray-400">{t("requiredLabel")}</span>
+              <span className="ml-1 text-red-400">*</span>
             </h2>
             <p className="text-sm text-gray-400 mb-5">{t("specializationSubtitle")}</p>
             <div className="flex flex-wrap gap-3">
@@ -604,7 +597,7 @@ export default function MentorProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="languages">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
               {t("languagesTitle")}
-              <span className="ml-1.5 text-xs font-normal text-gray-400">{t("requiredLabel")}</span>
+              <span className="ml-1 text-red-400">*</span>
             </h2>
             <p className="text-sm text-gray-400 mb-5">{t("languagesSubtitle")}</p>
             <div className="flex flex-wrap gap-3">
@@ -643,7 +636,7 @@ export default function MentorProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="documents">
             <h2 className="text-base font-semibold text-gray-900 mb-1">
               {t("documentsTitle")}
-              <span className="ml-1.5 text-xs font-normal text-gray-400">{t("requiredLabel")}</span>
+              <span className="ml-1 text-red-400">*</span>
             </h2>
             <p className="text-sm text-gray-400 mb-5">
               {t("documentsSubtitle")}
