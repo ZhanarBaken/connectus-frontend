@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import MentorProfilePage from "./page"
-import { fetchMentorProfile, fetchMentorServices, fetchMe, updateMentorProfile, authFetch } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchMe, authFetch } from "@/lib/api"
 import type { MentorProfile } from "@/types"
 
 vi.mock("@/lib/api")
@@ -222,22 +222,36 @@ describe("MentorProfilePage — editing", () => {
     vi.mocked(fetchMentorProfile).mockResolvedValue(
       makeMentorProfile({ languages: [{ language: "ru" }] }),
     )
-    vi.mocked(updateMentorProfile).mockResolvedValue(makeMentorProfile())
+    // handleSubmit now PATCHes directly via authFetch (not updateMentorProfile)
+    // so it can see the full field-keyed error dict on failure — the mount-time
+    // documents GET (empty list) still needs its own response.
+    vi.mocked(authFetch).mockImplementation(async (_url, init) => {
+      if (init?.method === "PATCH") return jsonResponse(makeMentorProfile())
+      return jsonResponse([])
+    })
     render(<MentorProfilePage />)
 
     const enChip = await screen.findByRole("button", { name: /English/ })
     fireEvent.click(enChip)
     fireEvent.click(screen.getByRole("button", { name: "Сохранить профиль" }))
 
-    await waitFor(() => expect(updateMentorProfile).toHaveBeenCalledWith(
+    await waitFor(() => expect(authFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/mentors/profile/me/"),
       expect.objectContaining({
-        languages: expect.arrayContaining([{ language: "ru" }, { language: "en" }]),
+        method: "PATCH",
+        body: expect.stringContaining('"ru"'),
       }),
     ))
+    const patchCall = vi.mocked(authFetch).mock.calls.find(([, init]) => init?.method === "PATCH")
+    const body = JSON.parse(String(patchCall?.[1]?.body))
+    expect(body.languages).toEqual(expect.arrayContaining([{ language: "ru" }, { language: "en" }]))
   })
 
   it("saves successfully and shows the confirmation banner", async () => {
-    vi.mocked(updateMentorProfile).mockResolvedValue(makeMentorProfile())
+    vi.mocked(authFetch).mockImplementation(async (_url, init) => {
+      if (init?.method === "PATCH") return jsonResponse(makeMentorProfile())
+      return jsonResponse([])
+    })
 
     render(<MentorProfilePage />)
 
@@ -245,16 +259,20 @@ describe("MentorProfilePage — editing", () => {
     fireEvent.change(nameInput, { target: { value: "Данияр С." } })
     fireEvent.click(screen.getByRole("button", { name: "Сохранить профиль" }))
 
-    await waitFor(() => expect(updateMentorProfile).toHaveBeenCalledWith(
-      expect.objectContaining({ full_name: "Данияр С." }),
-    ))
+    await waitFor(() => {
+      const patchCall = vi.mocked(authFetch).mock.calls.find(([, init]) => init?.method === "PATCH")
+      expect(patchCall).toBeDefined()
+      const body = JSON.parse(String(patchCall?.[1]?.body))
+      expect(body.full_name).toBe("Данияр С.")
+    })
     expect(await screen.findByText("✓ Профиль сохранён! Перенаправляем...")).toBeInTheDocument()
   })
 
   it("shows field-level errors returned by the backend", async () => {
-    vi.mocked(updateMentorProfile).mockRejectedValue(
-      new Error(JSON.stringify({ full_name: ["Слишком короткое имя"] })),
-    )
+    vi.mocked(authFetch).mockImplementation(async (_url, init) => {
+      if (init?.method === "PATCH") return jsonResponse({ full_name: ["Слишком короткое имя"] }, false)
+      return jsonResponse([])
+    })
 
     render(<MentorProfilePage />)
 
@@ -263,6 +281,33 @@ describe("MentorProfilePage — editing", () => {
 
     expect(await screen.findByText("Слишком короткое имя")).toBeInTheDocument()
     expect(screen.getByText("Исправь поля, отмеченные красным")).toBeInTheDocument()
+  })
+
+  it("translates a known backend validation message instead of showing raw text", async () => {
+    // Regression: updateMentorProfile used to collapse the backend's
+    // field-keyed error dict into a single flattened string, so the raw,
+    // untranslated, harshly-worded backend message ("Похоже на ерунду...")
+    // showed up in a generic bottom banner instead of under the phone field.
+    vi.mocked(authFetch).mockImplementation(async (_url, init) => {
+      if (init?.method === "PATCH") {
+        return jsonResponse({
+          phone: ["Похоже на ерунду — введи номер цифрами, можно с +, пробелами и скобками."],
+        }, false)
+      }
+      return jsonResponse([])
+    })
+
+    render(<MentorProfilePage />)
+
+    await screen.findByDisplayValue("Данияр Сериков")
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить профиль" }))
+
+    expect(
+      await screen.findByText("Введи номер телефона цифрами — можно с +, пробелами и скобками."),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText("Похоже на ерунду — введи номер цифрами, можно с +, пробелами и скобками."),
+    ).not.toBeInTheDocument()
   })
 })
 

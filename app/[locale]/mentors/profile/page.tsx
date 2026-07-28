@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
-import { fetchMentorProfile, fetchMentorServices, fetchMe, updateMentorProfile, authFetch } from "@/lib/api"
+import { fetchMentorProfile, fetchMentorServices, fetchMe, authFetch } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { LANGUAGE_LABELS } from "@/lib/languages"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
@@ -63,6 +63,21 @@ export default function MentorProfilePage() {
   // Inline per-field errors filled either from local pre-save validation
   // or from a backend 400 response.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  // Backend validation messages are fixed, untranslated strings (see
+  // apps.mentors.serializers.MentorProfileSerializer) — map the known
+  // ones to localized copy so mentors don't see raw Russian/English text
+  // regardless of site language. Unmapped messages fall back to raw text.
+  const PATCH_ERROR_MESSAGES: Record<string, string> = {
+    "Похоже на ерунду — введи номер цифрами, можно с +, пробелами и скобками.": t("errPhoneInvalid"),
+    "В номере должны быть цифры.": t("errPhoneNoDigits"),
+    "Это поле обязательно — изменить можно, очистить нельзя.": t("errCannotBeCleared"),
+    "Нельзя убрать всё — оставь хотя бы одну запись.": t("errListCannotBeEmptied"),
+    "Не более 10 стран.": t("errTooManyCountries"),
+    "Не более 10 языков.": t("errTooManyLanguages"),
+    "Дубликаты стран в запросе.": t("errDuplicateCountries"),
+    "Дубликаты языков в запросе.": t("errDuplicateLanguages"),
+  }
 
   const EXPERTISE_OPTIONS = [
     { value: "admission", label: tExpertise("admission") },
@@ -192,21 +207,32 @@ export default function MentorProfilePage() {
     setError("")
     setFieldErrors({})
     try {
-      await updateMentorProfile({
-        full_name: fullName,
-        countries: countries.map((c) => ({ country: c })),
-        school_or_university: school,
-        major,
-        grant_or_scholarship: grant,
-        gpa,
-        exam_results: examResults,
-        detailed_bio: bio,
-        phone,
-        linkedin_url: linkedin,
-        expertise_areas: expertiseAreas.map((area) => ({ area: area as ExpertiseArea })),
-        languages: languages.map((language) => ({ language })),
-        payout_details: payoutDetails,
+      const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          countries: countries.map((c) => ({ country: c })),
+          school_or_university: school,
+          major,
+          grant_or_scholarship: grant,
+          gpa,
+          exam_results: examResults,
+          detailed_bio: bio,
+          phone,
+          linkedin_url: linkedin,
+          expertise_areas: expertiseAreas.map((area) => ({ area: area as ExpertiseArea })),
+          languages: languages.map((language) => ({ language })),
+          payout_details: payoutDetails,
+        }),
       })
+      if (!res.ok) {
+        // Throw the raw field-keyed JSON (not a flattened first message)
+        // so the catch below can highlight the exact offending field
+        // instead of a generic bottom-of-page banner.
+        const err = await res.json()
+        throw new Error(JSON.stringify(err))
+      }
       setSaved(true)
       setTimeout(() => router.push("/mentor/dashboard"), 1000)
     } catch (e: unknown) {
@@ -218,7 +244,8 @@ export default function MentorProfilePage() {
         if (parsed && typeof parsed === "object") {
           const errs: Record<string, string> = {}
           for (const [k, v] of Object.entries(parsed)) {
-            errs[k] = Array.isArray(v) ? String(v[0]) : String(v)
+            const raw = Array.isArray(v) ? String(v[0]) : String(v)
+            errs[k] = PATCH_ERROR_MESSAGES[raw] ?? raw
           }
           setFieldErrors(errs)
           setError(t("fixRedFields"))
