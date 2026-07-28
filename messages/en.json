@@ -1355,6 +1355,16 @@
     "empty": "Nothing found",
     "selected": "Selected"
   },
+  "AvatarCropperModal": {
+    "title": "Adjust your avatar",
+    "close": "Close",
+    "zoomLabel": "Zoom",
+    "hint": "Drag the photo and use the slider to zoom",
+    "error": "Couldn't process the image. Try a different photo.",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "save": "Save"
+  },
   "NotificationBell": {
     "ariaLabel": "Notifications",
     "title": "Notifications",

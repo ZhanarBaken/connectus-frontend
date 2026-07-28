@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import Icon from "./Icon"
 
 const CONTAINER_SIZE = 280
@@ -26,6 +27,7 @@ type Position = { x: number; y: number }
  *  events cover both touch and mouse on every supported browser.
  */
 export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
+  const t = useTranslations("AvatarCropperModal")
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null)
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
@@ -125,7 +127,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
       // Previously unhandled — the modal just sat there with the button
       // re-enabled and no feedback, so a broken crop silently looked like
       // nothing happened.
-      setError("Не удалось обработать изображение. Попробуйте другое фото.")
+      setError(t("error"))
     } finally {
       setSaving(false)
     }
@@ -137,12 +139,12 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">Подгони аватарку</h3>
+          <h3 className="font-semibold text-gray-900">{t("title")}</h3>
           <button
             onClick={onClose}
             disabled={saving}
             type="button"
-            aria-label="Закрыть"
+            aria-label={t("close")}
             className="p-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
             <Icon name="close" size={20} className="text-gray-500" />
@@ -201,14 +203,14 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
                 value={userScale}
                 onChange={(e) => setUserScale(Number(e.target.value))}
                 className="flex-1 accent-indigo-500"
-                aria-label="Масштаб"
+                aria-label={t("zoomLabel")}
               />
               <Icon name="zoom_in" size={16} />
             </label>
           </div>
 
           <p className="text-xs text-gray-400 mt-3 text-center">
-            Перетаскивай фото и подкручивай масштаб ползунком
+            {t("hint")}
           </p>
 
           {error && (
@@ -223,7 +225,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
             type="button"
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
-            Отмена
+            {t("cancel")}
           </button>
           <button
             onClick={handleSave}
@@ -231,7 +233,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
             type="button"
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
-            {saving ? "Сохраняем..." : "Сохранить"}
+            {saving ? t("saving") : t("save")}
           </button>
         </div>
       </div>
