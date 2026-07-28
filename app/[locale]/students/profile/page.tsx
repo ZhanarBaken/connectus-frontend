@@ -5,43 +5,15 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchStudentProfile, authFetch } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
+import { usePatchWithFieldErrors } from "@/lib/usePatchWithFieldErrors"
+import { inputClass, selectClass } from "@/lib/formStyles"
 import { StudentProfile } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
+import Field from "@/components/Field"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
-
-const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
-
-// Native <select> renders its own grey arrow and uses a system font that
-// looks heavier than the input next to it. We kill the native chrome
-// (appearance-none), match input typography (text-gray-900), and paint
-// the chevron ourselves so the field aligns visually with text inputs.
-const selectClass = `${inputClass} appearance-none text-gray-900 pr-10 bg-no-repeat bg-[right_0.875rem_center] bg-[length:1rem_1rem] cursor-pointer bg-[url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ca3af' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 8 10 12 14 8'/%3E%3C/svg%3E")]`
-
-function Field({
-  label,
-  required = false,
-  error,
-  children,
-}: {
-  label: string
-  required?: boolean
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}
-        {required && <span className="ml-1 text-red-500">*</span>}
-      </label>
-      {children}
-      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
-    </div>
-  )
-}
 
 export default function StudentProfilePage() {
   const t = useTranslations("Students.Profile")
@@ -52,10 +24,6 @@ export default function StudentProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
-  // Inline per-field errors filled from a backend 400 response, so a
-  // rejected value (e.g. graduation year out of range) highlights the
-  // exact field instead of a generic bottom banner.
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   // Backend validation messages are fixed, untranslated strings (see
   // apps.students.serializers.StudentProfileSerializer / models.py
@@ -66,6 +34,7 @@ export default function StudentProfilePage() {
     "Ensure this value is greater than or equal to 1990.": t("errGraduationYearMin"),
     "Ensure this value is less than or equal to 2050.": t("errGraduationYearMax"),
   }
+  const { fieldErrors, submitPatch } = usePatchWithFieldErrors(PATCH_ERROR_MESSAGES, t("fixRedFields"))
 
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
@@ -131,58 +100,28 @@ export default function StudentProfilePage() {
     e.preventDefault()
     setSaving(true)
     setSaved(false)
-    setError("")
-    setFieldErrors({})
-    try {
-      const res = await authFetch(`${BASE_URL}/students/profile/me/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: fullName,
-          age: Number(age) || 0,
-          current_school_or_university: school,
-          school_grade: schoolGrade,
-          city: city,
-          school_graduation_year: graduationYear ? Number(graduationYear) : null,
-          desired_major: desiredMajor,
-          desired_countries: desiredCountries,
-          exam_results: examResults,
-          gpa: gpa,
-        }),
-      })
-      if (!res.ok) {
-        // Throw the raw field-keyed JSON (not a flattened first message)
-        // so the catch below can highlight the exact offending field
-        // instead of a generic bottom-of-page banner.
-        const err = await res.json()
-        throw new Error(JSON.stringify(err))
-      }
+    const ok = await submitPatch(
+      `${BASE_URL}/students/profile/me/`,
+      {
+        full_name: fullName,
+        age: Number(age) || 0,
+        current_school_or_university: school,
+        school_grade: schoolGrade,
+        city: city,
+        school_graduation_year: graduationYear ? Number(graduationYear) : null,
+        desired_major: desiredMajor,
+        desired_countries: desiredCountries,
+        exam_results: examResults,
+        gpa: gpa,
+      },
+      setError,
+      t("saveErrorGeneric"),
+    )
+    if (ok) {
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t("saveErrorGeneric")
-      try {
-        const parsed = JSON.parse(msg)
-        if (parsed && typeof parsed === "object") {
-          const errs: Record<string, string> = {}
-          for (const [k, v] of Object.entries(parsed)) {
-            const raw = Array.isArray(v) ? String(v[0]) : String(v)
-            errs[k] = PATCH_ERROR_MESSAGES[raw] ?? raw
-          }
-          setFieldErrors(errs)
-          setError(t("fixRedFields"))
-          const firstKey = Object.keys(errs)[0]
-          document.querySelector(`[data-field="${firstKey}"]`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" })
-        } else {
-          setError(msg)
-        }
-      } catch {
-        setError(msg)
-      }
-    } finally {
-      setSaving(false)
     }
+    setSaving(false)
   }
 
   if (loading) {

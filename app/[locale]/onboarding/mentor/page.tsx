@@ -26,6 +26,7 @@ import {
   type WeekSchedule,
 } from "@/lib/schedule"
 import { ExpertiseArea, MentorService } from "@/types"
+import { inputClass } from "@/lib/formStyles"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import CountryPickerModal from "@/components/CountryPickerModal"
 import Icon from "@/components/Icon"
@@ -64,9 +65,6 @@ function formatDocSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
-
-const inputClass =
-  "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
 // Matches apps.services.models.CONSULTATION_DESCRIPTION_MIN_LENGTH —
 // the paid_consultation category's description has a real minimum

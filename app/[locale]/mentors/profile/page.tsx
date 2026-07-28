@@ -8,6 +8,8 @@ import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countrie
 import { LANGUAGE_LABELS } from "@/lib/languages"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
+import { usePatchWithFieldErrors } from "@/lib/usePatchWithFieldErrors"
+import { inputClass } from "@/lib/formStyles"
 import { MentorProfile, MentorService, ExpertiseArea, User } from "@/types"
 import BackButton from "@/components/BackButton"
 import CountryPickerModal from "@/components/CountryPickerModal"
@@ -15,39 +17,9 @@ import Icon from "@/components/Icon"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
 import MentorDocumentsUploader, { MentorDocument } from "@/components/MentorDocumentsUploader"
+import Field from "@/components/Field"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
-
-function Field({
-  label,
-  hint,
-  required = false,
-  error,
-  children,
-}: {
-  label: string
-  hint?: string
-  required?: boolean
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}
-        {required && <span className="ml-1 text-red-400">*</span>}
-      </label>
-      {children}
-      {error ? (
-        <p className="text-xs text-red-600 mt-1">{error}</p>
-      ) : hint ? (
-        <p className="text-xs text-gray-400 mt-1">{hint}</p>
-      ) : null}
-    </div>
-  )
-}
-
-const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
 export default function MentorProfilePage() {
   const t = useTranslations("Mentors.Profile")
@@ -59,9 +31,6 @@ export default function MentorProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
-  // Inline per-field errors filled either from local pre-save validation
-  // or from a backend 400 response.
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   // Backend validation messages are fixed, untranslated strings (see
   // apps.mentors.serializers.MentorProfileSerializer) — map the known
@@ -77,6 +46,7 @@ export default function MentorProfilePage() {
     "Дубликаты стран в запросе.": t("errDuplicateCountries"),
     "Дубликаты языков в запросе.": t("errDuplicateLanguages"),
   }
+  const { fieldErrors, submitPatch } = usePatchWithFieldErrors(PATCH_ERROR_MESSAGES, t("fixRedFields"))
 
   const EXPERTISE_OPTIONS = [
     { value: "admission", label: tExpertise("admission") },
@@ -203,60 +173,30 @@ export default function MentorProfilePage() {
     // конкретные инпуты.
     setSaving(true)
     setSaved(false)
-    setError("")
-    setFieldErrors({})
-    try {
-      const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: fullName,
-          countries: countries.map((c) => ({ country: c })),
-          school_or_university: school,
-          major,
-          grant_or_scholarship: grant,
-          gpa,
-          exam_results: examResults,
-          detailed_bio: bio,
-          phone,
-          linkedin_url: linkedin,
-          expertise_areas: expertiseAreas.map((area) => ({ area: area as ExpertiseArea })),
-          languages: languages.map((language) => ({ language })),
-          payout_details: payoutDetails,
-        }),
-      })
-      if (!res.ok) {
-        // Throw the raw field-keyed JSON (not a flattened first message)
-        // so the catch below can highlight the exact offending field
-        // instead of a generic bottom-of-page banner.
-        const err = await res.json()
-        throw new Error(JSON.stringify(err))
-      }
+    const ok = await submitPatch(
+      `${BASE_URL}/mentors/profile/me/`,
+      {
+        full_name: fullName,
+        countries: countries.map((c) => ({ country: c })),
+        school_or_university: school,
+        major,
+        grant_or_scholarship: grant,
+        gpa,
+        exam_results: examResults,
+        detailed_bio: bio,
+        phone,
+        linkedin_url: linkedin,
+        expertise_areas: expertiseAreas.map((area) => ({ area: area as ExpertiseArea })),
+        languages: languages.map((language) => ({ language })),
+        payout_details: payoutDetails,
+      },
+      setError,
+      t("saveErrorGeneric"),
+    )
+    if (ok) {
       setSaved(true)
       setTimeout(() => router.push("/mentor/dashboard"), 1000)
-    } catch (e: unknown) {
-      // Try to parse field-level errors from backend so we can mark
-      // the specific fields red instead of a generic banner.
-      const msg = e instanceof Error ? e.message : t("saveErrorGeneric")
-      try {
-        const parsed = JSON.parse(msg)
-        if (parsed && typeof parsed === "object") {
-          const errs: Record<string, string> = {}
-          for (const [k, v] of Object.entries(parsed)) {
-            const raw = Array.isArray(v) ? String(v[0]) : String(v)
-            errs[k] = PATCH_ERROR_MESSAGES[raw] ?? raw
-          }
-          setFieldErrors(errs)
-          setError(t("fixRedFields"))
-          const firstKey = Object.keys(errs)[0]
-          document.querySelector(`[data-field="${firstKey}"]`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" })
-        } else {
-          setError(msg)
-        }
-      } catch {
-        setError(msg)
-      }
+    } else {
       setSaving(false)
     }
   }

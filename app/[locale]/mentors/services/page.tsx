@@ -12,11 +12,10 @@ import {
 import { MentorService } from "@/types"
 import { SUPPORT_EMAIL } from "@/lib/contacts"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
+import { inputClass } from "@/lib/formStyles"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
-
-const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white"
 
 // "consultation" (the retired free-intro category) never appears here —
 // the backend blocks creating/editing into it and no longer surfaces it.
