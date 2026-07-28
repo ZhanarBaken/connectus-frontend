@@ -72,18 +72,12 @@ describe("Header", () => {
     expect(screen.queryByText("Клиенты")).not.toBeInTheDocument()
   })
 
-  it("points the logo at the current page instead of the dashboard while on the onboarding wizard", async () => {
-    // Same dead-click issue as the nav links above — homeHref would
-    // otherwise still point at /mentor/dashboard and bounce a not-yet-
-    // submitted mentor straight back through useMentorOnboardingGate.
+  it("points the logo at / even while on the onboarding wizard", async () => {
     localStorage.setItem("role", "mentor")
     vi.mocked(usePathname).mockReturnValue("/onboarding/mentor")
     renderHeader()
     await waitFor(() =>
-      expect(screen.getByText("Connectus").closest("a")).toHaveAttribute(
-        "href",
-        "/onboarding/mentor",
-      ),
+      expect(screen.getByText("Connectus").closest("a")).toHaveAttribute("href", "/"),
     )
   })
 
@@ -100,14 +94,11 @@ describe("Header", () => {
     await waitFor(() => expect(screen.getByText("CRM")).toBeInTheDocument())
   })
 
-  it("points the logo home link at the mentor dashboard for mentors", async () => {
+  it("points the logo home link at / for mentors", async () => {
     localStorage.setItem("role", "mentor")
     renderHeader()
     await waitFor(() =>
-      expect(screen.getByText("Connectus").closest("a")).toHaveAttribute(
-        "href",
-        "/mentor/dashboard",
-      ),
+      expect(screen.getByText("Connectus").closest("a")).toHaveAttribute("href", "/"),
     )
   })
 

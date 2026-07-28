@@ -73,12 +73,10 @@ export default function Header() {
   const isStudent = role === "student"
   const isAdmin = role === "admin"
   const isAuthed = isMentor || isStudent || isAdmin
-  // On the onboarding wizard, "home" for a mentor/student is gated behind
-  // finishing onboarding (see useMentorOnboardingGate) — pointing the logo
-  // at the normal dashboard would just bounce them straight back. Point it
-  // at itself there instead of dead-ending through the gate.
   const isOnboarding = pathname.startsWith("/onboarding")
-  const homeHref = isOnboarding ? pathname : isMentor ? "/mentor/dashboard" : isAdmin ? "/crm" : "/"
+  // The logo always goes to the public landing page — a predictable "go
+  // home" affordance regardless of role or onboarding state.
+  const homeHref = "/"
 
   interface NavLink {
     href: string
