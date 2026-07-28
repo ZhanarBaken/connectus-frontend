@@ -89,6 +89,34 @@ export default function MentorOnboarding() {
     { value: "other", label: t("docOther") },
   ]
 
+  // Translated copy for every key apps.mentors.models.MentorProfile
+  // .submission_errors() can return — the backend's own messages are
+  // fixed English strings ("This field is required." etc.), so we show
+  // our own localized text instead of the raw value from the response.
+  const FIELD_ERROR_MESSAGES: Record<string, string> = {
+    full_name: t("errRequired"),
+    major: t("errRequired"),
+    grant_or_scholarship: t("errRequired"),
+    school_or_university: t("errRequired"),
+    gpa: t("errRequired"),
+    exam_results: t("errRequired"),
+    detailed_bio: t("errRequired"),
+    phone: t("errRequired"),
+    expertise_areas: t("errExpertiseRequired"),
+    countries: t("errCountriesRequired"),
+    languages: t("errLanguagesRequired"),
+    profile_photo: t("errPhotoRequired"),
+    diploma_document: t("errDiplomaRequired"),
+    enrollment_document: t("errEnrollmentRequired"),
+    services: t("errServicesRequired"),
+    email: t("errEmailRequired"),
+    telegram: t("errTelegramRequired"),
+  }
+  const fieldError = (key: string): string | undefined =>
+    submitError[key] ? (FIELD_ERROR_MESSAGES[key] ?? submitError[key]) : undefined
+  const fieldClass = (key: string): string =>
+    fieldError(key) ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400` : inputClass
+
   // Photo
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [pickedFile, setPickedFile]     = useState<File | null>(null)
@@ -396,6 +424,21 @@ export default function MentorOnboarding() {
             setSubmitError(parsed as Record<string, string>)
             const errorTab = tabForError(parsed)
             if (errorTab) setTab(errorTab)
+            // Scroll to the first offending field once the tab switch
+            // above has committed — same pattern as /mentors/profile's
+            // fieldErrors scroll, just deferred a tick since here the
+            // target field's tab may not even be mounted yet.
+            const firstKey = FIELD_ERROR_PRIORITY.find((k) => k in parsed)
+            if (firstKey) {
+              // diploma_document and enrollment_document share one upload
+              // widget in the UI, so both errors render under the same
+              // data-field element.
+              const scrollTarget = firstKey === "enrollment_document" ? "diploma_document" : firstKey
+              setTimeout(() => {
+                document.querySelector(`[data-field="${scrollTarget}"]`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }, 50)
+            }
           } else {
             setSubmitError({ detail: e.message })
           }
@@ -527,7 +570,7 @@ export default function MentorOnboarding() {
               <h2 className="text-lg font-bold text-gray-900 mb-1">{t("aboutHeading")}</h2>
 
               {/* Фото профиля */}
-              <div>
+              <div data-field="profile_photo">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("photoLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -580,8 +623,11 @@ export default function MentorOnboarding() {
                     {profilePhoto ? t("changePhoto") : t("photoFormats")}
                   </p>
                 </div>
+                {fieldError("profile_photo") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("profile_photo")}</p>
+                )}
               </div>
-              <div>
+              <div data-field="full_name">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("fullNameLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -590,10 +636,13 @@ export default function MentorOnboarding() {
                   onChange={(e) => setFullName(e.target.value)}
                   onBlur={saveAbout}
                   placeholder={t("fullNamePlaceholder")}
-                  className={inputClass}
+                  className={fieldClass("full_name")}
                 />
+                {fieldError("full_name") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("full_name")}</p>
+                )}
               </div>
-              <div>
+              <div data-field="detailed_bio">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("bioLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -603,11 +652,15 @@ export default function MentorOnboarding() {
                   onBlur={saveAbout}
                   rows={4}
                   placeholder={t("bioPlaceholder")}
-                  className={`${inputClass} resize-none`}
+                  className={`${fieldClass("detailed_bio")} resize-none`}
                 />
-                <p className="text-xs text-gray-400 mt-1">{t("bioHint")}</p>
+                {fieldError("detailed_bio") ? (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("detailed_bio")}</p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1">{t("bioHint")}</p>
+                )}
               </div>
-              <div>
+              <div data-field="phone">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("phoneLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -617,11 +670,15 @@ export default function MentorOnboarding() {
                   onBlur={saveAbout}
                   type="tel"
                   placeholder={t("phonePlaceholder")}
-                  className={inputClass}
+                  className={fieldClass("phone")}
                 />
-                <p className="text-xs text-gray-400 mt-1">{t("phoneHint")}</p>
+                {fieldError("phone") ? (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("phone")}</p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1">{t("phoneHint")}</p>
+                )}
               </div>
-              <div>
+              <div data-field="languages">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("languagesLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -651,6 +708,9 @@ export default function MentorOnboarding() {
                     )
                   })}
                 </div>
+                {fieldError("languages") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("languages")}</p>
+                )}
               </div>
               <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 cursor-pointer hover:border-violet-300 hover:bg-violet-50/40 transition-all group">
                 <input
@@ -674,7 +734,7 @@ export default function MentorOnboarding() {
           {tab === "education" && (
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-gray-900 mb-1">{t("educationHeading")}</h2>
-              <div>
+              <div data-field="countries">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("countriesLabel")} <span className="text-red-400">*</span>{" "}
                   <span className="text-gray-400 font-normal">{t("countriesMulti")}</span>
@@ -746,8 +806,11 @@ export default function MentorOnboarding() {
                   }}
                   onClose={() => setPickerOpen(false)}
                 />
+                {fieldError("countries") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("countries")}</p>
+                )}
               </div>
-              <div>
+              <div data-field="school_or_university">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("universityLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -756,10 +819,13 @@ export default function MentorOnboarding() {
                   onChange={(e) => setSchool(e.target.value)}
                   onBlur={saveEducation}
                   placeholder={t("universityPlaceholder")}
-                  className={inputClass}
+                  className={fieldClass("school_or_university")}
                 />
+                {fieldError("school_or_university") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("school_or_university")}</p>
+                )}
               </div>
-              <div>
+              <div data-field="major">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("majorLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -768,11 +834,14 @@ export default function MentorOnboarding() {
                   onChange={(e) => setMajor(e.target.value)}
                   onBlur={saveEducation}
                   placeholder={t("majorPlaceholder")}
-                  className={inputClass}
+                  className={fieldClass("major")}
                 />
+                {fieldError("major") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("major")}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div data-field="grant_or_scholarship">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     {t("grantLabel")} <span className="text-red-400">*</span>
                   </label>
@@ -781,10 +850,13 @@ export default function MentorOnboarding() {
                     onChange={(e) => setGrant(e.target.value)}
                     onBlur={saveEducation}
                     placeholder={t("grantPlaceholder")}
-                    className={inputClass}
+                    className={fieldClass("grant_or_scholarship")}
                   />
+                  {fieldError("grant_or_scholarship") && (
+                    <p className="text-xs text-red-600 mt-1">{fieldError("grant_or_scholarship")}</p>
+                  )}
                 </div>
-                <div>
+                <div data-field="gpa">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     {t("gpaLabel")} <span className="text-red-400">*</span>
                   </label>
@@ -793,11 +865,14 @@ export default function MentorOnboarding() {
                     onChange={(e) => setGpa(e.target.value)}
                     onBlur={saveEducation}
                     placeholder={t("gpaPlaceholder")}
-                    className={inputClass}
+                    className={fieldClass("gpa")}
                   />
+                  {fieldError("gpa") && (
+                    <p className="text-xs text-red-600 mt-1">{fieldError("gpa")}</p>
+                  )}
                 </div>
               </div>
-              <div>
+              <div data-field="exam_results">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("examResultsLabel")} <span className="text-red-400">*</span>
                 </label>
@@ -806,8 +881,11 @@ export default function MentorOnboarding() {
                   onChange={(e) => setExamResults(e.target.value)}
                   onBlur={saveEducation}
                   placeholder={t("examResultsPlaceholder")}
-                  className={inputClass}
+                  className={fieldClass("exam_results")}
                 />
+                {fieldError("exam_results") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("exam_results")}</p>
+                )}
               </div>
             </div>
           )}
@@ -819,7 +897,7 @@ export default function MentorOnboarding() {
               <p className="text-gray-400 text-sm mb-4">
                 {t("expertiseSubtitle")} <span className="text-red-400">*</span>
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div data-field="expertise_areas" className="grid grid-cols-2 gap-3">
                 {EXPERTISE_OPTIONS.map((opt) => {
                   const active = expertise.includes(opt.value)
                   return (
@@ -850,9 +928,12 @@ export default function MentorOnboarding() {
                   )
                 })}
               </div>
+              {fieldError("expertise_areas") && (
+                <p className="text-xs text-red-600 mt-1">{fieldError("expertise_areas")}</p>
+              )}
 
               {/* ── ДОКУМЕНТЫ ── */}
-              <div className="mt-6 pt-6 border-t border-gray-100">
+              <div data-field="diploma_document" className="mt-6 pt-6 border-t border-gray-100">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-base font-bold text-gray-900">{t("documentsTitle")}</h3>
                 <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{t("documentsMulti")}</span>
@@ -904,6 +985,12 @@ export default function MentorOnboarding() {
                 >
                   {uploadingDoc ? t("uploading") : documents.length > 0 ? t("uploadAnother") : t("uploadDocument")}
                 </button>
+                {fieldError("diploma_document") && (
+                  <p className="text-xs text-red-600 mt-2">{fieldError("diploma_document")}</p>
+                )}
+                {fieldError("enrollment_document") && (
+                  <p className="text-xs text-red-600 mt-1">{fieldError("enrollment_document")}</p>
+                )}
               </div>
 
               {documents.length > 0 && (
@@ -943,7 +1030,7 @@ export default function MentorOnboarding() {
                 {t("servicesSubtitle")} <span className="text-red-400">*</span>
               </p>
 
-              <div className="border border-gray-200 rounded-2xl p-4 mb-4 space-y-3">
+              <div data-field="services" className="border border-gray-200 rounded-2xl p-4 mb-4 space-y-3">
                 {/* Category toggle — a mentor can add either (or both,
                     one at a time: the form resets and stays open after
                     each successful add, so switching type and adding
@@ -1140,6 +1227,9 @@ export default function MentorOnboarding() {
                 )}
 
                 {serviceError && <p className="text-xs text-red-500">{serviceError}</p>}
+                {fieldError("services") && (
+                  <p className="text-xs text-red-600">{fieldError("services")}</p>
+                )}
                 <button
                   onClick={handleCreateService}
                   disabled={
@@ -1224,7 +1314,7 @@ export default function MentorOnboarding() {
             <p className="text-sm font-semibold text-red-700 mb-1">{t("fixErrorsTitle")}</p>
             <ul className="text-xs text-red-600 space-y-0.5 list-disc list-inside">
               {Object.entries(submitError).map(([k, v]) => (
-                <li key={k}>{v}</li>
+                <li key={k}>{FIELD_ERROR_MESSAGES[k] ?? v}</li>
               ))}
             </ul>
           </div>
@@ -1278,6 +1368,17 @@ export default function MentorOnboarding() {
     </div>
   )
 }
+
+// Same order apps.mentors.models.MentorProfile.submission_errors() builds
+// its dict in — used to pick which field to scroll to when several are
+// wrong at once (the tab-level grouping in tabForError below still only
+// shows one tab, so this picks a sensible "first" within it too).
+const FIELD_ERROR_PRIORITY = [
+  "full_name", "major", "grant_or_scholarship", "school_or_university",
+  "gpa", "exam_results", "detailed_bio", "phone", "expertise_areas",
+  "countries", "languages", "profile_photo", "diploma_document",
+  "enrollment_document", "services", "email", "telegram",
+]
 
 // Map backend error keys to tabs.
 function tabForError(errors: Record<string, string>): Tab | null {

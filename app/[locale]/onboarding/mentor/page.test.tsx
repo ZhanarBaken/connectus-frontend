@@ -21,6 +21,11 @@ vi.mock("@/lib/api", async (importOriginal) => {
   }
 })
 
+// jsdom doesn't implement Element.scrollIntoView — the field-error path
+// calls it to bring the first invalid field into view after a failed
+// submit, which would otherwise throw and abort the state update mid-catch.
+Element.prototype.scrollIntoView = vi.fn()
+
 function makeUser(overrides: Partial<User> = {}): User {
   return {
     id: 1,
@@ -525,10 +530,16 @@ describe("MentorOnboarding", () => {
     await user.click(screen.getByRole("button", { name: "Отправить профиль на проверку →" }))
 
     expect(await screen.findByText("Исправь ошибки перед отправкой:")).toBeInTheDocument()
-    expect(screen.getByText("Обязательное поле")).toBeInTheDocument()
+    // The raw backend message ("Обязательное поле", no period) must never
+    // reach the screen — it's always swapped for the translated copy.
+    expect(screen.queryByText("Обязательное поле")).not.toBeInTheDocument()
+    expect(screen.getAllByText("Обязательное поле.").length).toBeGreaterThan(0)
     // The error is on an "education" field — the UI should have switched
     // from the default "about" tab to "education".
     expect(screen.getByRole("heading", { name: "Образование" })).toBeInTheDocument()
+    const grantInput = screen.getByPlaceholderText("Болашак, Chevening...")
+    expect(grantInput).toBeInTheDocument()
+    expect(grantInput.className).toContain("border-red-300")
     expect(screen.getByPlaceholderText("MIT, UCL, TU Munich...")).toBeInTheDocument()
   })
 
@@ -572,5 +583,63 @@ describe("MentorOnboarding", () => {
 
     expect(await screen.findByText("Исправь ошибки перед отправкой:")).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Услуги" })).toBeInTheDocument()
+    // The raw backend message must never reach the screen — only the
+    // translated copy.
+    expect(screen.queryByText("At least one active service is required.")).not.toBeInTheDocument()
+    expect(screen.getAllByText("Добавь хотя бы одну активную услугу.").length).toBeGreaterThan(0)
+  })
+
+  it("scrolls to the shared documents field when only enrollment_document is rejected", async () => {
+    // Regression: diploma_document and enrollment_document share one
+    // upload widget (a single data-field="diploma_document" wrapper) —
+    // an enrollment_document-only error must still resolve to that
+    // shared element instead of silently finding nothing to scroll to.
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(
+      makeProfile({
+        profile_photo: "https://cdn.example.com/avatar.jpg",
+        full_name: "Aigerim Bekova",
+        detailed_bio: "Опытный ментор с 3 годами практики.",
+        phone: "+7 777 000 00 00",
+        languages: [{ language: "ru" }],
+        countries: [{ country: "US" }],
+        school_or_university: "MIT",
+        major: "Computer Science",
+        grant_or_scholarship: "Болашак",
+        gpa: "3.8",
+        exam_results: "IELTS 7.5",
+        expertise_areas: [{ area: "admission" }],
+      }),
+    )
+    vi.mocked(api.authFetch).mockResolvedValue(
+      jsonResponse([
+        { id: 1, kind: "diploma", original_filename: "diploma.pdf", size_bytes: 1024, status: "pending" },
+        { id: 2, kind: "enrollment_certificate", original_filename: "enroll.pdf", size_bytes: 2048, status: "pending" },
+      ]),
+    )
+    vi.mocked(api.fetchMentorServices).mockResolvedValue([
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+    ])
+    // Client-side tabDone gating already considers documents complete
+    // (both kinds uploaded above), so this simulates a race where the
+    // backend still rejects — the exact scenario the field-error UX
+    // needs to surface correctly.
+    vi.mocked(api.submitMentorProfile).mockRejectedValue(
+      new Error(JSON.stringify({ enrollment_document: "An enrollment certificate document is required." })),
+    )
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Отправить профиль на проверку →" }))
+
+    expect(await screen.findByText("Исправь ошибки перед отправкой:")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Экспертиза" })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+    })
+    const target = document.querySelector('[data-field="diploma_document"]')
+    expect(target).not.toBeNull()
+    expect(vi.mocked(Element.prototype.scrollIntoView).mock.instances).toContain(target)
   })
 })
