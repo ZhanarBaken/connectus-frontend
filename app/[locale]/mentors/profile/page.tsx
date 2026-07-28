@@ -269,6 +269,8 @@ export default function MentorProfilePage() {
       expertise_areas: expertiseAreas.map((a) => ({ area: a as ExpertiseArea })),
       languages: languages.map((l) => ({ language: l })),
       has_documents: hasRequiredDocuments,
+      linkedin_url: linkedin,
+      payout_details: payoutDetails,
     } as MentorProfile,
     {
       hasActiveService: services.some((s) => s.is_active),

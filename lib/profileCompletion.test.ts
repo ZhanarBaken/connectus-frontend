@@ -5,7 +5,7 @@ import type { MentorProfile } from "@/types"
 const emptyExtras = { hasActiveService: false, emailVerified: false, hasTelegram: false }
 const fullExtras = { hasActiveService: true, emailVerified: true, hasTelegram: true }
 
-// Fully-empty profile — every one of the 16 checked fields is falsy.
+// Fully-empty profile — every one of the 18 checked fields is falsy.
 function emptyProfile(): MentorProfile {
   return {
     id: 1,
@@ -42,8 +42,9 @@ function emptyProfile(): MentorProfile {
   }
 }
 
-// Fully-filled profile — all fields the model itself carries present;
-// the remaining 3 (service/email/telegram) come from `fullExtras`.
+// Fully-filled profile — all fields the model itself carries present,
+// including the two optional ones (linkedin_url, payout_details); the
+// remaining 3 (service/email/telegram) come from `fullExtras`.
 function fullProfile(): MentorProfile {
   return {
     ...emptyProfile(),
@@ -60,18 +61,20 @@ function fullProfile(): MentorProfile {
     expertise_areas: [{ area: "admission" }],
     languages: [{ language: "ru" }],
     has_documents: true,
+    linkedin_url: "https://linkedin.com/in/aigerim",
+    payout_details: "Kaspi: +7 777 000 00 00",
   }
 }
 
 describe("calcProfileCompletion", () => {
   it("returns 0 filled / 0% for a completely empty profile with no extras", () => {
     const result = calcProfileCompletion(emptyProfile(), emptyExtras)
-    expect(result).toEqual({ filled: 0, total: 16, percent: 0 })
+    expect(result).toEqual({ filled: 0, total: 18, percent: 0 })
   })
 
-  it("returns 16 filled / 100% for a fully-filled profile with all extras", () => {
+  it("returns 18 filled / 100% for a fully-filled profile with all extras", () => {
     const result = calcProfileCompletion(fullProfile(), fullExtras)
-    expect(result).toEqual({ filled: 16, total: 16, percent: 100 })
+    expect(result).toEqual({ filled: 18, total: 18, percent: 100 })
   })
 
   it("counts whitespace-only strings as not filled", () => {
@@ -80,20 +83,20 @@ describe("calcProfileCompletion", () => {
     expect(result.filled).toBe(0)
   })
 
-  it("counts a single filled field correctly (1/16 -> 6%)", () => {
+  it("counts a single filled field correctly (1/18 -> 6%)", () => {
     const profile = { ...emptyProfile(), full_name: "Aigerim" }
     const result = calcProfileCompletion(profile, emptyExtras)
     expect(result.filled).toBe(1)
-    expect(result.percent).toBe(6) // round(1/16 * 100) = 6.25 -> 6
+    expect(result.percent).toBe(6) // round(1/18 * 100) = 5.56 -> 6
   })
 
   it("treats countries/expertise_areas/languages presence via array length, not truthiness", () => {
     const withEmptyArrays = { ...fullProfile(), countries: [], expertise_areas: [], languages: [] }
     const result = calcProfileCompletion(withEmptyArrays, fullExtras)
-    expect(result.filled).toBe(13)
+    expect(result.filled).toBe(15)
   })
 
-  it("rounds percent to nearest integer for partial completion (3/16 -> 19%)", () => {
+  it("rounds percent to nearest integer for partial completion (3/18 -> 17%)", () => {
     const profile = {
       ...emptyProfile(),
       profile_photo: "photo.jpg",
@@ -102,7 +105,7 @@ describe("calcProfileCompletion", () => {
     }
     const result = calcProfileCompletion(profile, emptyExtras)
     expect(result.filled).toBe(3)
-    expect(result.percent).toBe(19) // round(3/16*100) = 18.75 -> 19
+    expect(result.percent).toBe(17) // round(3/18*100) = 16.67 -> 17
   })
 
   it("does not count a filled model without an active service/email/telegram as 100%", () => {
@@ -111,6 +114,17 @@ describe("calcProfileCompletion", () => {
     // added a service yet — the real submission gate needs all of it.
     const result = calcProfileCompletion(fullProfile(), emptyExtras)
     expect(result.percent).toBeLessThan(100)
+  })
+
+  it("counts the optional linkedin_url and payout_details fields too", () => {
+    // The user explicitly asked for the percentage to reflect the whole
+    // form, not just what the backend requires to submit — linkedin_url
+    // and payout_details are optional for submission but still part of
+    // "how much of the form is filled in".
+    const withoutOptional = { ...fullProfile(), linkedin_url: "", payout_details: "" }
+    const result = calcProfileCompletion(withoutOptional, fullExtras)
+    expect(result.percent).toBeLessThan(100)
+    expect(result.filled).toBe(16)
   })
 
   it("each of the three extras independently affects the count", () => {

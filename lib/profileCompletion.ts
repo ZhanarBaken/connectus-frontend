@@ -8,10 +8,12 @@ import { MentorProfile } from "@/types"
 //
 // Раньше считала только часть полей и не совпадала с реальным гейтом на
 // бэке (`MentorProfile.submission_errors()`) — профиль мог показывать
-// 100%, но не проходить отправку на проверку. Теперь считает по тому же
-// набору, что и бэк: все текстовые поля, языки, документы, активная
-// услуга, email и Telegram — тот самый набор extras передаёт вызывающая
-// страница, так как эти данные не хранятся в самом MentorProfile.
+// 100%, но не проходить отправку на проверку. Теперь считает по всем
+// полям формы — и по обязательным для отправки (текстовые поля, языки,
+// документы, активная услуга, email, Telegram — тот самый набор extras
+// передаёт вызывающая страница, так как эти данные не хранятся в самом
+// MentorProfile), и по необязательным (LinkedIn, реквизиты для выплаты) —
+// это честный «сколько от всей анкеты заполнено», а не только гейт.
 export interface ProfileCompletionExtras {
   hasActiveService: boolean
   emailVerified: boolean
@@ -40,6 +42,8 @@ export function calcProfileCompletion(
     (p.expertise_areas ?? []).length > 0,
     (p.languages ?? []).length > 0,
     Boolean(p.has_documents),
+    Boolean(p.linkedin_url?.trim()),
+    Boolean(p.payout_details?.trim()),
     extras.hasActiveService,
     extras.emailVerified,
     extras.hasTelegram,

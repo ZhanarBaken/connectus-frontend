@@ -111,6 +111,8 @@ describe("MentorProfilePage — loading and prefill", () => {
         profile_photo: "https://cdn.example.com/avatar.jpg",
         languages: [{ language: "ru" }],
         has_documents: true,
+        linkedin_url: "https://linkedin.com/in/daniyar",
+        payout_details: "Kaspi: +7 777 000 00 00",
       }),
     )
     vi.mocked(fetchMentorServices).mockResolvedValue([
