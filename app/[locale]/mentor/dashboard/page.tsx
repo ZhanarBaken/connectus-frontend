@@ -195,7 +195,7 @@ export default function MentorDashboard() {
     expertise_areas: { href: "/mentors/profile", label: t("choose") },
     countries: { href: "/mentors/profile", label: t("choose") },
     languages: { href: "/mentors/profile", label: t("choose") },
-    documents: { href: "/mentors/documents", label: t("upload") },
+    documents: { href: "/mentors/profile", label: t("upload") },
     services: { href: "/mentors/services", label: t("manage") },
   }
 
@@ -382,7 +382,7 @@ export default function MentorDashboard() {
                       <Icon name={profile.has_documents ? "check_circle" : "cancel"} size={14} filled />
                       <span>{profile.has_documents ? t("documentsUploaded") : t("documentsNotUploaded")}</span>
                       {!profile.has_documents && (
-                        <Link href="/mentors/documents" className="ml-auto text-red-600 underline font-medium">
+                        <Link href="/mentors/profile" className="ml-auto text-red-600 underline font-medium">
                           {t("upload")}
                         </Link>
                       )}
@@ -631,7 +631,6 @@ export default function MentorDashboard() {
                   { href: "/mentors/profile", icon: "person", label: t("editProfile") },
                   { href: "/mentors/schedule", icon: "calendar_month", label: t("setUpSchedule") },
                   { href: "/mentors/services", icon: "description", label: t("manageServices") },
-                  { href: "/mentors/documents", icon: "folder", label: t("verificationDocuments") },
                   { href: `/mentors/${profile.id}`, icon: "visibility", label: t("previewProfile") },
                 ].map((item) => (
                   <Link

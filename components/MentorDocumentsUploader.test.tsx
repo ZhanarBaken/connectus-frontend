@@ -222,7 +222,7 @@ describe("MentorDocumentsUploader", () => {
     )
     render(<MentorDocumentsUploader />)
     await waitFor(() => screen.getByText("a.pdf"))
-    const card = screen.getByText("a.pdf").closest("div.bg-white") as HTMLElement
+    const card = screen.getByText("a.pdf").closest("div.bg-gray-50") as HTMLElement
     expect(within(card).queryByLabelText("Удалить")).not.toBeInTheDocument()
   })
 })
