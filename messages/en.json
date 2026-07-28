@@ -1383,6 +1383,13 @@
     "cancel": "Cancel",
     "consent": "I give my consent"
   },
+  "CountryPickerModal": {
+    "title": "Choose a country",
+    "close": "Close",
+    "searchPlaceholder": "Search...",
+    "empty": "Nothing found",
+    "selected": "Selected"
+  },
   "NotificationBell": {
     "ariaLabel": "Notifications",
     "title": "Notifications",

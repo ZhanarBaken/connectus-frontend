@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import {
   authFetch,
@@ -65,6 +65,7 @@ export default function MentorOnboarding() {
   // the support-category fields — same concepts, single source of truth
   // for that copy, instead of a second parallel translation set.
   const tServices = useTranslations("Mentors.Services")
+  const locale = useLocale()
   const router = useRouter()
   const [ready, setReady]     = useState(false)
   const [tab, setTab]         = useState<Tab>("about")
@@ -758,7 +759,7 @@ export default function MentorOnboarding() {
                       }`}
                     >
                       {countries.includes(c) && <span className="mr-1">✓</span>}
-                      {countryFlag(c)} {countryLabel(c)}
+                      {countryFlag(c)} {countryLabel(c, locale)}
                     </button>
                   ))}
                   <button
@@ -778,7 +779,7 @@ export default function MentorOnboarding() {
                           key={c}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border-2 border-gray-900 text-xs font-medium text-gray-900"
                         >
-                          {countryFlag(c)} {countryLabel(c)}
+                          {countryFlag(c)} {countryLabel(c, locale)}
                           <button
                             type="button"
                             onClick={() => {
@@ -786,7 +787,7 @@ export default function MentorOnboarding() {
                               setCountries(next)
                               void saveCountries(next)
                             }}
-                            aria-label={t("removeCountry", { country: countryLabel(c) })}
+                            aria-label={t("removeCountry", { country: countryLabel(c, locale) })}
                             className="ml-0.5 text-gray-400 hover:text-red-500"
                           >✕</button>
                         </span>

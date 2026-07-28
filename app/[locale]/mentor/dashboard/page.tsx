@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { fetchMentorProfile, fetchMentorServices, fetchOrders, submitMentorProfile, fetchMe, clearAuth, fetchPendingSupportRequests, acceptSupportRequest, declineSupportRequest } from "@/lib/api"
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/contacts"
@@ -17,6 +17,7 @@ export default function MentorDashboard() {
   const t = useTranslations("Dashboard.Mentor")
   const tStatus = useTranslations("OrderStatus")
   const tExpertise = useTranslations("Landing.Expertise")
+  const locale = useLocale()
   const router = useRouter()
   const [profile, setProfile] = useState<MentorProfile | null>(null)
   const [services, setServices] = useState<MentorService[]>([])
@@ -223,7 +224,7 @@ export default function MentorDashboard() {
             {profile.school_or_university && (
               <p className="text-gray-500 mt-1 text-sm">
                 {profile.school_or_university}
-                {profile.countries.length > 0 && ` · ${countriesLabelInline(profile.countries)}`}
+                {profile.countries.length > 0 && ` · ${countriesLabelInline(profile.countries, locale)}`}
               </p>
             )}
             {/* Auth badges */}

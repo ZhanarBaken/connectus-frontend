@@ -231,7 +231,7 @@ export default function MentorPage({ params }: Props) {
                         key={c.country}
                         className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium"
                       >
-                        {countryFlag(c.country)} {countryLabel(c.country)}
+                        {countryFlag(c.country)} {countryLabel(c.country, locale)}
                       </span>
                     ))}
                   </div>

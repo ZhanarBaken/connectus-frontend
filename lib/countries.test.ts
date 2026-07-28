@@ -75,6 +75,27 @@ describe("countryLabel", () => {
     expect(label.length).toBeGreaterThan(0)
   })
 
+  it("defaults to the Russian label when no locale is passed", () => {
+    expect(countryLabel("US")).toBe("США")
+  })
+
+  it("returns the English label for a popular country when locale=en", () => {
+    expect(countryLabel("US", "en")).toBe("USA")
+    expect(countryLabel("GB", "en")).toBe("UK")
+  })
+
+  it("returns the Kazakh label for a popular country when locale=kk", () => {
+    expect(countryLabel("US", "kk")).toBe("АҚШ")
+    expect(countryLabel("GB", "kk")).toBe("Ұлыбритания")
+  })
+
+  it("falls back to Intl.DisplayNames in the requested locale for a non-popular code", () => {
+    const ru = countryLabel("KZ", "ru")
+    const en = countryLabel("KZ", "en")
+    expect(en).not.toBe(ru)
+    expect(en.length).toBeGreaterThan(0)
+  })
+
   it("falls back to the upper-cased code when Intl.DisplayNames is unavailable", async () => {
     const original = Intl.DisplayNames
     // @ts-expect-error simulating an environment without Intl.DisplayNames
@@ -151,5 +172,10 @@ describe("countriesLabelInline", () => {
   it("joins flag + label pairs with comma", () => {
     const countries = [{ country: "US" }, { country: "GB" }]
     expect(countriesLabelInline(countries)).toBe("🇺🇸 США, 🇬🇧 Великобритания")
+  })
+
+  it("uses the requested locale's labels", () => {
+    const countries = [{ country: "US" }, { country: "GB" }]
+    expect(countriesLabelInline(countries, "en")).toBe("🇺🇸 USA, 🇬🇧 UK")
   })
 })

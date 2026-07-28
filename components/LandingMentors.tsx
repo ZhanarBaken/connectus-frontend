@@ -1,6 +1,6 @@
 "use client"
 
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import { track } from "@/lib/analytics"
@@ -12,6 +12,7 @@ import ScrollReveal from "./ScrollReveal"
 export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
   const t = useTranslations("Landing.MentorsSection")
   const tExpertise = useTranslations("Landing.Expertise")
+  const locale = useLocale()
   return (
     <section className="py-24 px-4 bg-white">
       <div className="max-w-6xl mx-auto">
@@ -80,7 +81,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                           {mentor.school_or_university}
                         </p>
                         {(mentor.countries ?? []).length > 0 && (
-                          <p className="text-xs text-gray-400 mt-0.5 truncate" title={(mentor.countries ?? []).map((c) => countryLabel(c.country)).join(", ")}>
+                          <p className="text-xs text-gray-400 mt-0.5 truncate" title={(mentor.countries ?? []).map((c) => countryLabel(c.country, locale)).join(", ")}>
                             {countriesFlagsCompact(mentor.countries)} {t("helpsAdmission")}
                           </p>
                         )}

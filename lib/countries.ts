@@ -34,30 +34,38 @@ export const ALL_COUNTRY_CODES: string[] = [
   "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW",
 ]
 
-// Fixed Russian labels for the popular countries — matches what the
-// rest of the UI used before the picker was added. Anything outside
-// this map falls through to Intl.DisplayNames.
-const POPULAR_LABELS: Record<string, string> = {
-  US: "США",
-  GB: "Великобритания",
-  DE: "Германия",
-  ES: "Испания",
-  IT: "Италия",
-  FR: "Франция",
-  NL: "Нидерланды",
-  CA: "Канада",
-  AU: "Австралия",
+// Curated short labels for the popular countries, per site locale —
+// matches what the rest of the UI used before the picker was added.
+// Kept hand-picked (rather than deferring to Intl.DisplayNames) because
+// the official region names ("Соединенные Штаты", "United States of
+// America") read as too formal for a one-tap chip. Anything outside
+// this map falls through to Intl.DisplayNames for that locale.
+const POPULAR_LABELS: Record<string, Record<string, string>> = {
+  ru: {
+    US: "США", GB: "Великобритания", DE: "Германия", ES: "Испания",
+    IT: "Италия", FR: "Франция", NL: "Нидерланды", CA: "Канада", AU: "Австралия",
+  },
+  en: {
+    US: "USA", GB: "UK", DE: "Germany", ES: "Spain",
+    IT: "Italy", FR: "France", NL: "Netherlands", CA: "Canada", AU: "Australia",
+  },
+  kk: {
+    US: "АҚШ", GB: "Ұлыбритания", DE: "Германия", ES: "Испания",
+    IT: "Италия", FR: "Франция", NL: "Нидерланд", CA: "Канада", AU: "Аустралия",
+  },
 }
 
-// Cache the formatter — constructing it on every label lookup tanks
-// big lists in the picker.
-let _displayNames: Intl.DisplayNames | null = null
-function _getDisplayNames(): Intl.DisplayNames | null {
-  if (_displayNames) return _displayNames
+// Cache one formatter per locale — constructing it on every label
+// lookup tanks big lists in the picker.
+const _displayNamesCache = new Map<string, Intl.DisplayNames>()
+function _getDisplayNames(locale: string): Intl.DisplayNames | null {
+  const cached = _displayNamesCache.get(locale)
+  if (cached) return cached
   if (typeof Intl === "undefined" || typeof Intl.DisplayNames === "undefined") return null
   try {
-    _displayNames = new Intl.DisplayNames(["ru"], { type: "region" })
-    return _displayNames
+    const dn = new Intl.DisplayNames([locale], { type: "region" })
+    _displayNamesCache.set(locale, dn)
+    return dn
   } catch {
     return null
   }
@@ -77,11 +85,12 @@ export function countryFlag(code: string): string {
   return String.fromCodePoint(0x1F1A5 + a, 0x1F1A5 + b)
 }
 
-export function countryLabel(code: string): string {
+export function countryLabel(code: string, locale: string = "ru"): string {
   if (!code) return ""
   const upper = code.toUpperCase()
-  if (POPULAR_LABELS[upper]) return POPULAR_LABELS[upper]
-  const dn = _getDisplayNames()
+  const popular = POPULAR_LABELS[locale] ?? POPULAR_LABELS.ru
+  if (popular[upper]) return popular[upper]
+  const dn = _getDisplayNames(locale)
   if (dn) {
     try {
       const name = dn.of(upper)
@@ -110,9 +119,9 @@ export function countriesFlagsInline(countries?: { country: string }[]): string 
 }
 
 /** Full labels: "🇺🇸 США, 🇬🇧 Великобритания" */
-export function countriesLabelInline(countries?: { country: string }[]): string {
+export function countriesLabelInline(countries?: { country: string }[], locale: string = "ru"): string {
   if (!countries?.length) return "—"
   return countries
-    .map((c) => `${countryFlag(c.country)} ${countryLabel(c.country)}`)
+    .map((c) => `${countryFlag(c.country)} ${countryLabel(c.country, locale)}`)
     .join(", ")
 }

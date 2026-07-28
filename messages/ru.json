@@ -1383,6 +1383,13 @@
     "cancel": "Отмена",
     "consent": "Я даю согласие"
   },
+  "CountryPickerModal": {
+    "title": "Выбери страну",
+    "close": "Закрыть",
+    "searchPlaceholder": "Поиск...",
+    "empty": "Ничего не нашлось",
+    "selected": "Выбрано"
+  },
   "NotificationBell": {
     "ariaLabel": "Уведомления",
     "title": "Уведомления",

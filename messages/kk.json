@@ -1383,6 +1383,13 @@
     "cancel": "Бас тарту",
     "consent": "Келісім беремін"
   },
+  "CountryPickerModal": {
+    "title": "Елді таңда",
+    "close": "Жабу",
+    "searchPlaceholder": "Іздеу...",
+    "empty": "Ештеңе табылмады",
+    "selected": "Таңдалды"
+  },
   "NotificationBell": {
     "ariaLabel": "Хабарламалар",
     "title": "Хабарламалар",

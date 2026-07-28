@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import { track } from "@/lib/analytics"
@@ -21,6 +21,7 @@ const EXPERTISE_VALUES = ["admission", "scholarships", "visa", "documents"] as c
 export default function MentorsList({ mentors }: Props) {
   const t = useTranslations("Mentors.Catalog")
   const tExpertise = useTranslations("Landing.Expertise")
+  const locale = useLocale()
   const router = useRouter()
   const { isInTelegram } = useTelegramWebApp()
   const [authChecked, setAuthChecked] = useState(false)
@@ -124,7 +125,7 @@ export default function MentorsList({ mentors }: Props) {
                 <option value="">{t("allCountries")}</option>
                 {countries.map((c) => (
                   <option key={c} value={c}>
-                    {countryFlag(c)} {countryLabel(c)}
+                    {countryFlag(c)} {countryLabel(c, locale)}
                   </option>
                 ))}
               </select>
@@ -317,7 +318,7 @@ export default function MentorsList({ mentors }: Props) {
                       {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
                     </p>
                     {(mentor.countries ?? []).length > 0 && (
-                      <p className="text-xs text-gray-400 mt-0.5" title={mentor.countries.map((c) => countryLabel(c.country)).join(", ")}>
+                      <p className="text-xs text-gray-400 mt-0.5" title={mentor.countries.map((c) => countryLabel(c.country, locale)).join(", ")}>
                         {countriesFlagsCompact(mentor.countries)} {t("helpsAdmission")}
                       </p>
                     )}

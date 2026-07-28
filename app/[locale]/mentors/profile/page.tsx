@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMentorProfile, fetchMentorServices, fetchMe, authFetch } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
@@ -51,6 +51,7 @@ const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm f
 export default function MentorProfilePage() {
   const t = useTranslations("Mentors.Profile")
   const tExpertise = useTranslations("Landing.Expertise")
+  const locale = useLocale()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -419,7 +420,7 @@ export default function MentorProfilePage() {
                         }`}
                       >
                         {countries.includes(c) && <span className="mr-1">✓</span>}
-                        {countryFlag(c)} {countryLabel(c)}
+                        {countryFlag(c)} {countryLabel(c, locale)}
                       </button>
                     ))}
                     <button
@@ -442,11 +443,11 @@ export default function MentorProfilePage() {
                             key={c}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border-2 border-gray-900 text-sm font-medium text-gray-900"
                           >
-                            {countryFlag(c)} {countryLabel(c)}
+                            {countryFlag(c)} {countryLabel(c, locale)}
                             <button
                               type="button"
                               onClick={() => toggleCountry(c)}
-                              aria-label={t("removeCountry", { country: countryLabel(c) })}
+                              aria-label={t("removeCountry", { country: countryLabel(c, locale) })}
                               className="ml-0.5 text-gray-400 hover:text-red-500"
                             >
                               ✕
