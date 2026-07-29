@@ -236,6 +236,23 @@ describe("SettingsPage", () => {
       delete (window as unknown as { google?: unknown }).google
     })
 
+    it("shows a retryable error instead of silently hiding the connected-accounts card when loadMe fails", async () => {
+      // Regression: loadMe()'s catch was empty — a failed fetchMe() meant
+      // the whole "Connected accounts" card (telegram/google/email/password)
+      // just never appeared, with zero indication anything went wrong.
+      const user = userEvent.setup()
+      vi.mocked(fetchMe).mockRejectedValue(new Error("network"))
+      render(<SettingsPage />)
+
+      expect(await screen.findByText("Не удалось загрузить данные аккаунта")).toBeInTheDocument()
+      expect(screen.queryByText("Привязанные аккаунты")).not.toBeInTheDocument()
+
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ has_telegram: false, email: "" }))
+      await user.click(screen.getByText("Повторить"))
+
+      await waitFor(() => expect(screen.getByText("Привязанные аккаунты")).toBeInTheDocument())
+    })
+
     it("shows required-for-mentors hints when telegram and email are missing", async () => {
       vi.mocked(fetchMe).mockResolvedValue(makeUser({ has_telegram: false, email: "" }))
       render(<SettingsPage />)

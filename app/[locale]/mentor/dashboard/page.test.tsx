@@ -323,6 +323,49 @@ describe("MentorDashboard", () => {
       await waitFor(() => expect(screen.queryByText("Новые запросы")).not.toBeInTheDocument())
     })
 
+    it("shows a retryable error instead of silently hiding the queue when loading support requests fails", async () => {
+      // Regression: fetchPendingSupportRequests().catch(() => {}) meant a
+      // failed fetch looked identical to "no pending requests" — the whole
+      // section just never appeared.
+      const user = userEvent.setup()
+      vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      vi.mocked(fetchPendingSupportRequests).mockRejectedValueOnce(new Error("network"))
+
+      render(<MentorDashboard />)
+
+      expect(await screen.findByText("Не удалось загрузить новые запросы")).toBeInTheDocument()
+      expect(screen.queryByText("Новые запросы")).not.toBeInTheDocument()
+
+      vi.mocked(fetchPendingSupportRequests).mockResolvedValueOnce([makeSupportRequest()])
+      await user.click(screen.getByText("Повторить"))
+
+      await waitFor(() => expect(screen.getByText("Новые запросы")).toBeInTheDocument())
+    })
+
+    it("shows an inline error when accepting a request fails", async () => {
+      // Regression: handleAcceptRequest's catch was empty — a failed accept
+      // silently left the request in the list with no feedback at all.
+      const user = userEvent.setup()
+      vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+      vi.mocked(fetchMentorServices).mockResolvedValue([])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+      const request = makeSupportRequest()
+      vi.mocked(fetchPendingSupportRequests).mockResolvedValue([request])
+      vi.mocked(acceptSupportRequest).mockRejectedValueOnce(new Error("Не удалось выполнить действие с запросом"))
+
+      render(<MentorDashboard />)
+
+      await screen.findByText("Новые запросы")
+      await user.click(screen.getByText("Принять"))
+
+      await waitFor(() => {
+        expect(screen.getByText("Не удалось выполнить действие с запросом")).toBeInTheDocument()
+      })
+      expect(screen.getByText("Новые запросы")).toBeInTheDocument()
+    })
+
     it("shows the empty orders state when there are no orders", async () => {
       vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
       vi.mocked(fetchMentorServices).mockResolvedValue([])

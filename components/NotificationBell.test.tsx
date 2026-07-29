@@ -91,6 +91,74 @@ describe("NotificationBell", () => {
     })
   })
 
+  it("shows a retryable error instead of an empty state when loading fails", async () => {
+    // Regression: fetchNotifications() failures were swallowed with an
+    // empty catch, so the panel showed "no notifications" identically
+    // to a genuinely empty inbox.
+    vi.mocked(fetchNotifications).mockRejectedValueOnce(new Error("network"))
+    const user = userEvent.setup()
+    render(<NotificationBell />)
+    await user.click(screen.getByLabelText("Уведомления"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось загрузить уведомления")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Нет уведомлений")).not.toBeInTheDocument()
+
+    vi.mocked(fetchNotifications).mockResolvedValueOnce([makeNotification({ title: "Заказ оплачен" })])
+    await user.click(screen.getByRole("button", { name: "Повторить" }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Заказ оплачен")).toBeInTheDocument()
+    })
+  })
+
+  it("shows an inline error when marking all as read fails", async () => {
+    // Regression: handleMarkAllRead had no try/catch at all — a
+    // rejection just vanished with no feedback to the user.
+    vi.mocked(fetchUnreadNotificationCount).mockResolvedValue(1)
+    vi.mocked(fetchNotifications).mockResolvedValue([makeNotification({ title: "First" })])
+    vi.mocked(markNotificationsRead).mockRejectedValueOnce(new Error("network"))
+    const user = userEvent.setup()
+    render(<NotificationBell />)
+
+    await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument())
+    await user.click(screen.getByLabelText("Уведомления"))
+    await waitFor(() => screen.getByText("First"))
+
+    await user.click(screen.getByRole("button", { name: "Прочитать все" }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось отметить всё прочитанным")).toBeInTheDocument()
+    })
+    // Count is untouched since the request actually failed.
+    expect(screen.getByText("1")).toBeInTheDocument()
+  })
+
+  it("still navigates when markNotificationsRead fails on a notification click", async () => {
+    // Regression: handleClick had no try/catch — a mark-as-read failure
+    // meant setOpen(false)/router.push never ran, so clicking a
+    // notification silently did nothing at all.
+    vi.mocked(fetchUnreadNotificationCount).mockResolvedValue(1)
+    vi.mocked(fetchNotifications).mockResolvedValue([
+      makeNotification({ id: 7, title: "Order update", url: "/orders/7", is_read: false }),
+    ])
+    vi.mocked(markNotificationsRead).mockRejectedValueOnce(new Error("network"))
+    const user = userEvent.setup()
+    render(<NotificationBell />)
+
+    await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument())
+    await user.click(screen.getByLabelText("Уведомления"))
+    await waitFor(() => screen.getByText("Order update"))
+
+    await user.click(screen.getByText("Order update"))
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith("/orders/7")
+    })
+    expect(screen.queryByText("Order update")).not.toBeInTheDocument()
+  })
+
   it("toggles closed when clicking the bell again", async () => {
     const user = userEvent.setup()
     render(<NotificationBell />)

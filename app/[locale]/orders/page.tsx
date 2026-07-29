@@ -49,6 +49,7 @@ export default function OrdersPage() {
   useStudentOnboardingGate()
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
+  const [mentorNamesLoadError, setMentorNamesLoadError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
   const [expandedClient, setExpandedClient] = useState<number | null>(null)
@@ -69,22 +70,25 @@ export default function OrdersPage() {
     return null
   }
 
+  const loadMentorNames = async () => {
+    setMentorNamesLoadError(false)
+    try {
+      const mentors = await fetchMentors()
+      const map: Record<number, string> = {}
+      for (const m of mentors) map[m.id] = m.full_name
+      setMentorNames(map)
+    } catch {
+      setMentorNamesLoadError(true)
+    }
+  }
+
   useEffect(() => {
     const r = localStorage.getItem("role")
     setRole(r)
     fetchOrders()
       .then(async (list) => {
         setOrders(list)
-        if (r !== "mentor") {
-          try {
-            const mentors = await fetchMentors()
-            const map: Record<number, string> = {}
-            for (const m of mentors) map[m.id] = m.full_name
-            setMentorNames(map)
-          } catch {
-            // ignore
-          }
-        }
+        if (r !== "mentor") await loadMentorNames()
       })
       .finally(() => setLoading(false))
   }, [])
@@ -131,6 +135,15 @@ export default function OrdersPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-8">
           {isMentor ? t("titleMentor") : t("titleStudent")}
         </h1>
+
+        {!isMentor && mentorNamesLoadError && (
+          <p className="text-xs text-red-600 mb-4">
+            {t("mentorNamesLoadError")}{" "}
+            <button type="button" onClick={loadMentorNames} className="font-semibold underline hover:no-underline">
+              {t("retry")}
+            </button>
+          </p>
+        )}
 
         {orders.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">

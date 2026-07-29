@@ -115,6 +115,24 @@ describe("OrdersPage — student view", () => {
     expect(screen.getByText("5 000 ₸", { exact: false })).toBeInTheDocument()
   })
 
+  it("shows a retryable error when loading mentor names fails, without blocking the order list", async () => {
+    // Regression: the fetchMentors() call was wrapped in a try/catch that
+    // silently swallowed failures — orders still rendered, but with no
+    // indication that mentor names/photos failed to load.
+    vi.mocked(fetchOrders).mockResolvedValue([makeOrder()])
+    vi.mocked(fetchMentors).mockRejectedValueOnce(new Error("network"))
+
+    render(<OrdersPage />)
+
+    expect(await screen.findByText("Первичная консультация")).toBeInTheDocument()
+    expect(screen.getByText("Не удалось загрузить имена менторов")).toBeInTheDocument()
+
+    vi.mocked(fetchMentors).mockResolvedValueOnce([makeMentorCard()])
+    fireEvent.click(screen.getByText("Повторить"))
+
+    await waitFor(() => expect(screen.getByText("Данияр Сериков")).toBeInTheDocument())
+  })
+
   it("tags an overdue pending-payment order", async () => {
     const overdueOrder = makeOrder({
       installment_number: 2,

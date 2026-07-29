@@ -20,12 +20,24 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [loadError, setLoadError] = useState(false)
+
+  const checkExisting = () => {
+    setLoading(true)
+    setLoadError(false)
+    hasReviewForOrder(orderId)
+      .then((done) => {
+        setSubmitted(done)
+      })
+      .catch(() => {
+        setLoadError(true)
+      })
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
-    hasReviewForOrder(orderId).then((done) => {
-      setSubmitted(done)
-      setLoading(false)
-    })
+    checkExisting()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,6 +65,21 @@ export default function ReviewForm({ orderId, mentorId, mentorName, authorName, 
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
         <div className="w-6 h-6 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+        <p className="text-sm text-red-600 mb-3">{t("errorLoadFailed")}</p>
+        <button
+          type="button"
+          onClick={checkExisting}
+          className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+        >
+          {t("retry")}
+        </button>
       </div>
     )
   }

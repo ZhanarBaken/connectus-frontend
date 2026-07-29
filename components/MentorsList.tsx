@@ -14,11 +14,12 @@ import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
 
 interface Props {
   mentors: MentorCard[]
+  loadError?: boolean
 }
 
 const EXPERTISE_VALUES = ["admission", "scholarships", "visa", "documents"] as const
 
-export default function MentorsList({ mentors }: Props) {
+export default function MentorsList({ mentors, loadError = false }: Props) {
   const t = useTranslations("Mentors.Catalog")
   const tExpertise = useTranslations("Landing.Expertise")
   const locale = useLocale()
@@ -77,6 +78,26 @@ export default function MentorsList({ mentors }: Props) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4">
+        <div className="text-center py-24">
+          <div className="mb-4 flex justify-center">
+            <Icon name="error_outline" size={48} className="text-gray-300" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">{t("loadErrorTitle")}</h3>
+          <p className="text-gray-400 mb-6">{t("loadErrorBody")}</p>
+          <button
+            onClick={() => router.refresh()}
+            className="text-indigo-600 font-medium text-sm hover:underline"
+          >
+            {t("retry")}
+          </button>
+        </div>
       </div>
     )
   }

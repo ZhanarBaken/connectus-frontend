@@ -7,7 +7,6 @@ vi.mock("./api", () => ({
 import { authFetch } from "./api"
 import {
   fetchMentorReviews,
-  fetchAllReviews,
   createReview,
   replyToReview,
   hasReviewForOrder,
@@ -58,20 +57,6 @@ describe("fetchMentorReviews", () => {
   it("returns an empty array when the response is not ok", async () => {
     mockedAuthFetch.mockResolvedValue(jsonResponse({}, false))
     const reviews = await fetchMentorReviews(10)
-    expect(reviews).toEqual([])
-  })
-})
-
-describe("fetchAllReviews", () => {
-  it("returns data.results when present", async () => {
-    mockedAuthFetch.mockResolvedValue(jsonResponse({ results: [sampleReview] }))
-    const reviews = await fetchAllReviews()
-    expect(reviews).toEqual([sampleReview])
-  })
-
-  it("returns an empty array on failure", async () => {
-    mockedAuthFetch.mockResolvedValue(jsonResponse({}, false))
-    const reviews = await fetchAllReviews()
     expect(reviews).toEqual([])
   })
 })

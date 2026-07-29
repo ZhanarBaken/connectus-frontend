@@ -15,6 +15,7 @@ import {
   authFetch,
   markChatRead,
   fetchOrderDocuments,
+  deleteOrderDocument,
   setDocumentStatus,
   fetchDocumentComments,
   postDocumentComment,
@@ -667,6 +668,62 @@ describe("OrderPage — document review", () => {
     await waitFor(() => expect(postDocumentComment).toHaveBeenCalledWith(42, 1, "Всё хорошо"))
     expect(await screen.findByText("Всё хорошо")).toBeInTheDocument()
   })
+
+  it("shows an inline error when verifying a document fails", async () => {
+    // Regression: the verify/needs-revision buttons had empty catches —
+    // a failed status change just silently re-enabled the button.
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc()])
+    vi.mocked(setDocumentStatus).mockRejectedValue(new Error("Не удалось выполнить действие с документом"))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Подтвердить"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось выполнить действие с документом")).toBeInTheDocument()
+    })
+  })
+
+  it("shows an inline error when deleting a document fails", async () => {
+    // Regression: the delete-document (×) button had an empty catch.
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    // authFetch (setupCommonMocks) resolves currentUserId=1 — mark that user as the uploader
+    // so the delete button (only shown to the uploader) renders.
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc({ uploaded_by: 1, uploaded_by_email: "mentor@test.com" })])
+    vi.mocked(deleteOrderDocument).mockRejectedValue(new Error("Не удалось выполнить действие с документом"))
+
+    await renderOrderPage("42")
+
+    const docRow = (await screen.findByText("diploma.pdf")).closest(".group") as HTMLElement
+    // Row order: filename/download button, delete (×) button, comments-toggle button.
+    const buttons = docRow.querySelectorAll("button")
+    const deleteButton = buttons[1] as HTMLElement
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось выполнить действие с документом")).toBeInTheDocument()
+    })
+    expect(screen.getByText("diploma.pdf")).toBeInTheDocument()
+  })
+
+  it("shows a distinct error when loading documents fails (not the shared docs/tasks message)", async () => {
+    // Regression: docsLoadError and tasksLoadError used to share one
+    // "couldn't load documents and tasks" string — misleading when only
+    // one of the two independent fetches actually failed.
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockRejectedValue(new Error("network"))
+
+    await renderOrderPage("42")
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось загрузить документы")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Не удалось загрузить задачи")).not.toBeInTheDocument()
+  })
 })
 
 describe("OrderPage — support tasks", () => {
@@ -772,6 +829,70 @@ describe("OrderPage — support tasks", () => {
 
     await waitFor(() => expect(deleteSupportTask).toHaveBeenCalledWith(5, 1))
     await waitFor(() => expect(screen.queryByText("Загрузи эссе на проверку")).not.toBeInTheDocument())
+  })
+
+  it("shows an inline error when marking a task done fails", async () => {
+    // Regression: handleToggleTaskDone had an empty catch — a failed
+    // toggle just silently reverted with zero feedback.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(updateSupportTask).mockRejectedValue(new Error("Не удалось обновить задачу"))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByLabelText("Загрузи эссе на проверку"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось обновить задачу")).toBeInTheDocument()
+    })
+  })
+
+  it("shows an inline error when deleting a task fails", async () => {
+    // Regression: handleDeleteTask had an empty catch — a failed delete
+    // just silently kept the task in the list with zero feedback.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(deleteSupportTask).mockRejectedValue(new Error("Не удалось удалить задачу"))
+
+    await renderOrderPage("42")
+
+    const taskRow = (await screen.findByText("Загрузи эссе на проверку")).closest(".group") as HTMLElement
+    const deleteButton = taskRow.querySelector("button:last-child") as HTMLElement
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось удалить задачу")).toBeInTheDocument()
+    })
+    expect(screen.getByText("Загрузи эссе на проверку")).toBeInTheDocument()
+  })
+
+  it("shows an inline error instead of an empty list when loading tasks fails", async () => {
+    // Regression: fetchSupportTasks().catch(() => {}) rendered the same
+    // "no tasks yet" empty state as a genuinely empty list.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockRejectedValue(new Error("network"))
+
+    await renderOrderPage("42")
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось загрузить задачи")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Пока нет задач")).not.toBeInTheDocument()
   })
 
   it("shows the student a read-only list with no add form", async () => {

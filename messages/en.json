@@ -487,6 +487,9 @@
       "supportRequestsTitle": "New requests",
       "supportRequestAccept": "Accept",
       "supportRequestDecline": "Decline",
+      "supportRequestsLoadError": "Couldn't load new requests",
+      "supportRequestActionError": "Couldn't complete that action on the request",
+      "retry": "Retry",
       "orders": "Orders",
       "total": "total",
       "noOrdersTitle": "No orders yet",
@@ -599,7 +602,9 @@
       "edit": "Edit",
       "noName": "No name",
       "yearsOld": "{age} years old",
-      "editProfile": "Edit profile"
+      "editProfile": "Edit profile",
+      "mentorNamesLoadError": "Couldn't load mentor names and photos",
+      "retry": "Retry"
     }
   },
   "Orders": {
@@ -616,7 +621,9 @@
       "applicantDefault": "Applicant",
       "mentorDefault": "Mentor",
       "paused": "Paused",
-      "overdue": "Overdue"
+      "overdue": "Overdue",
+      "mentorNamesLoadError": "Couldn't load mentor names",
+      "retry": "Retry"
     },
     "Detail": {
       "orderNumber": "Order #{id}",
@@ -667,6 +674,8 @@
       "taskCreating": "Adding...",
       "taskAdd": "Add",
       "taskCreateError": "Failed to create the task",
+      "taskUpdateError": "Failed to update the task",
+      "taskDeleteError": "Failed to delete the task",
       "invoiceTitle": "Support-engagement invoice",
       "invoiceBody": "Once you and the applicant agree on price and timeline, send an invoice — it will arrive as a bill in the chat.",
       "invoiceSent": "Invoice sent — the applicant will see it in the chat.",
@@ -750,6 +759,13 @@
       "chatClosedReopenStudent": "Book a new consultation with this mentor to resume the conversation.",
       "attachTitle": "Attach a file (PDF, JPEG, PNG)",
       "messagePlaceholder": "Type a message...",
+      "chatSendError": "Couldn't send the message",
+      "chatHistoryError": "Couldn't load the chat history",
+      "docActionError": "Couldn't complete the document action",
+      "servicesLoadError": "Couldn't load the service list",
+      "docsLoadError": "Couldn't load documents",
+      "tasksLoadError": "Couldn't load tasks",
+      "retry": "Retry",
       "noContactsWarning": "Sharing personal contacts is against the platform rules",
       "chatLockedTitle": "Chat is locked",
       "chatLockedBody": "The chat will open once an admin confirms the consultation payment.",
@@ -848,6 +864,9 @@
       "notFoundTitle": "No mentors found",
       "notFoundBody": "Try changing the filters or search query",
       "resetAllFilters": "Reset all filters",
+      "loadErrorTitle": "Couldn't load mentors",
+      "loadErrorBody": "Check your connection and try again",
+      "retry": "Retry",
       "verifiedTitle": "The platform verified this mentor's documents",
       "universalBadgeTitle": "This mentor helps with several tracks at once",
       "universalBadge": "Universal",
@@ -1279,10 +1298,14 @@
     "findMentor": "Find a mentor",
     "applicantDefault": "Applicant",
     "mentorDefault": "Mentor",
-    "openChat": "Open chat →"
+    "openChat": "Open chat →",
+    "mentorNamesLoadError": "Couldn't load mentor names and photos",
+    "retry": "Retry"
   },
   "Settings": {
     "loadSettingsError": "Couldn't load settings",
+    "meLoadError": "Couldn't load your account data",
+    "retry": "Retry",
     "pageTitle": "Settings",
     "pageSubtitle": "Manage your account and visibility",
     "mergeConflictTitle": "Telegram is already linked to another account",
@@ -1385,10 +1408,6 @@
     "errorAccountCreateFailed": "Couldn't create the account",
     "errorRegisterGeneric": "Sign-up failed"
   },
-  "PlatformReviews": {
-    "emptyTitle": "No reviews yet",
-    "emptyBody": "Be the first — after a consultation with a mentor you'll be able to leave a review"
-  },
   "ReviewForm": {
     "title": "Leave a review for the mentor",
     "ratingLabel": "Rating",
@@ -1399,6 +1418,8 @@
     "submit": "Publish review",
     "errorTooShort": "At least 10 characters",
     "errorGeneric": "Couldn't submit the review",
+    "errorLoadFailed": "Couldn't check whether you've already left a review",
+    "retry": "Retry",
     "thanksTitle": "Thanks for the review!",
     "thanksBody": "It helps other applicants make their choice"
   },
@@ -1407,6 +1428,9 @@
     "title": "Notifications",
     "markAllRead": "Mark all read",
     "empty": "No notifications",
+    "errorLoad": "Couldn't load notifications",
+    "errorMarkAllRead": "Couldn't mark everything as read",
+    "retry": "Retry",
     "justNow": "just now",
     "minutesAgo": "{minutes}m",
     "hoursAgo": "{hours}h",

@@ -331,6 +331,24 @@ export default function MentorOnboarding() {
     }
   }, [flashSaved, t])
 
+  const saveLanguages = useCallback(async (next: string[]) => {
+    try {
+      await updateMentorProfile({ languages: next.map((l) => ({ language: l })) })
+      flashSaved()
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : t("saveErrorGeneric"))
+    }
+  }, [flashSaved, t])
+
+  const saveIsUniversal = useCallback(async (next: boolean) => {
+    try {
+      await updateMentorProfile({ is_universal: next })
+      flashSaved()
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : t("saveErrorGeneric"))
+    }
+  }, [flashSaved, t])
+
   // ─── Photo upload ──────────────────────────────────────────────
   const uploadCroppedPhoto = async (blob: Blob) => {
     setUploadingPhoto(true)
@@ -795,7 +813,7 @@ export default function MentorOnboarding() {
                             ? languages.filter((l) => l !== value)
                             : [...languages, value]
                           setLanguages(next)
-                          updateMentorProfile({ languages: next.map((l) => ({ language: l })) }).then(flashSaved).catch(() => {})
+                          void saveLanguages(next)
                         }}
                         className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-all ${
                           active
@@ -818,7 +836,7 @@ export default function MentorOnboarding() {
                   checked={isUniversal}
                   onChange={(e) => {
                     setIsUniversal(e.target.checked)
-                    updateMentorProfile({ is_universal: e.target.checked }).catch(() => {})
+                    void saveIsUniversal(e.target.checked)
                   }}
                   className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-violet-600 flex-shrink-0"
                 />

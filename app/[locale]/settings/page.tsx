@@ -76,6 +76,7 @@ export default function SettingsPage() {
 
   // Account info
   const [me, setMe] = useState<User | null>(null)
+  const [meLoadError, setMeLoadError] = useState(false)
 
   // Mentor settings
   const [isPublic, setIsPublic] = useState(true)
@@ -121,11 +122,12 @@ export default function SettingsPage() {
   const loadMe = async () => {
     const token = localStorage.getItem("access_token")
     if (!token) return
+    setMeLoadError(false)
     try {
       const user = await fetchMe(token)
       setMe(user)
     } catch {
-      // ignore
+      setMeLoadError(true)
     }
   }
 
@@ -392,6 +394,18 @@ export default function SettingsPage() {
         )}
 
         {/* ── Connected accounts ──────────────────────────── */}
+        {!me && meLoadError && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6 text-center">
+            <p className="text-sm text-red-600 mb-3">{t("meLoadError")}</p>
+            <button
+              type="button"
+              onClick={() => { void loadMe() }}
+              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              {t("retry")}
+            </button>
+          </div>
+        )}
         {me && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-5">{t("connectedAccountsTitle")}</h2>

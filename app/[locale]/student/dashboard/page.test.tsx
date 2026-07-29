@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { useRouter } from "@/i18n/navigation"
 import StudentDashboard from "./page"
@@ -198,15 +198,24 @@ describe("StudentDashboard", () => {
       expect(screen.getByText("Оплачен")).toBeInTheDocument()
     })
 
-    it("falls back to a generic label when the mentor lookup fails", async () => {
+    it("falls back to a generic label and shows a retryable error when the mentor lookup fails", async () => {
+      // Regression: fetchMentors().catch(() => []) silently swallowed the
+      // failure — the generic label appeared with zero indication that
+      // real mentor names/photos failed to load.
       vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
       vi.mocked(fetchOrders).mockResolvedValue([makeOrder()])
-      vi.mocked(fetchMentors).mockRejectedValue(new Error("network error"))
+      vi.mocked(fetchMentors).mockRejectedValueOnce(new Error("network error"))
 
       render(<StudentDashboard />)
 
       expect(await screen.findByText("Проверка эссе")).toBeInTheDocument()
       expect(screen.getByText("Ментор")).toBeInTheDocument()
+      expect(screen.getByText("Не удалось загрузить имена и фото менторов")).toBeInTheDocument()
+
+      vi.mocked(fetchMentors).mockResolvedValueOnce([makeMentorCard()])
+      fireEvent.click(screen.getByText("Повторить"))
+
+      await waitFor(() => expect(screen.getByText("Айгерим Ержанова")).toBeInTheDocument())
     })
 
     it("splits stats correctly across active / pending / completed orders", async () => {

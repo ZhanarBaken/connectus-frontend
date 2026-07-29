@@ -82,6 +82,7 @@ export default function OrderPage({ params }: Props) {
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [chatHistoryLoadError, setChatHistoryLoadError] = useState(false)
   const [newMessage, setNewMessage] = useState("")
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [sending, setSending] = useState(false)
@@ -107,7 +108,9 @@ export default function OrderPage({ params }: Props) {
   const [chatClosed, setChatClosed] = useState(false)
   const [closingChat, setClosingChat] = useState(false)
   const [closeError, setCloseError] = useState("")
+  const [chatSendError, setChatSendError] = useState("")
   const [supportServices, setSupportServices] = useState<MentorService[]>([])
+  const [supportServicesLoadError, setSupportServicesLoadError] = useState(false)
   const [invoiceFormOpen, setInvoiceFormOpen] = useState(false)
   const [invoiceServiceId, setInvoiceServiceId] = useState<number | null>(null)
   const [invoicePrice, setInvoicePrice] = useState("")
@@ -117,6 +120,8 @@ export default function OrderPage({ params }: Props) {
   const [invoiceSent, setInvoiceSent] = useState(false)
   const [disputeWindowMs, setDisputeWindowMs] = useState<number | null>(null)
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
+  const [docsLoadError, setDocsLoadError] = useState(false)
+  const [docActionError, setDocActionError] = useState("")
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const docInputRef = useRef<HTMLInputElement>(null)
   const [updatingDocStatusId, setUpdatingDocStatusId] = useState<number | null>(null)
@@ -126,6 +131,7 @@ export default function OrderPage({ params }: Props) {
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [postingCommentDocId, setPostingCommentDocId] = useState<number | null>(null)
   const [tasks, setTasks] = useState<SupportTask[]>([])
+  const [tasksLoadError, setTasksLoadError] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskDeadline, setNewTaskDeadline] = useState("")
   const [creatingTask, setCreatingTask] = useState(false)
@@ -242,7 +248,7 @@ export default function OrderPage({ params }: Props) {
             const services = await fetchMentorServices()
             setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active))
           } catch {
-            // ignore
+            setSupportServicesLoadError(true)
           }
         }
         // Resolve current user id (used to flag own messages)
@@ -259,9 +265,9 @@ export default function OrderPage({ params }: Props) {
           // ignore
         }
         // Load order documents
-        fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => {})
+        fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
         if (found.support_engagement !== null) {
-          fetchSupportTasks(found.support_engagement).then(setTasks).catch(() => {})
+          fetchSupportTasks(found.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
         }
       })
       .catch(() => router.replace("/orders"))
@@ -279,7 +285,9 @@ export default function OrderPage({ params }: Props) {
         if (!cancelled) setMessages(history)
       })
       .catch(() => {
-        // ignore — chat will still try to open
+        // Chat still tries to open (WS-only, no history) — but the user
+        // must be able to tell "empty history" from "history failed to load".
+        if (!cancelled) setChatHistoryLoadError(true)
       })
 
     // Mark conversation as read when opening
@@ -483,11 +491,12 @@ export default function OrderPage({ params }: Props) {
   const handleToggleTaskDone = async (task: SupportTask) => {
     if (!order?.support_engagement) return
     setUpdatingTaskId(task.id)
+    setTaskError("")
     try {
       const updated = await updateSupportTask(order.support_engagement, task.id, { is_done: !task.is_done })
       setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
-    } catch {
-      // ignore — the checkbox simply stays in its previous state
+    } catch (err: unknown) {
+      setTaskError(err instanceof Error && err.message ? err.message : t("taskUpdateError"))
     } finally {
       setUpdatingTaskId(null)
     }
@@ -496,11 +505,12 @@ export default function OrderPage({ params }: Props) {
   const handleDeleteTask = async (task: SupportTask) => {
     if (!order?.support_engagement) return
     setUpdatingTaskId(task.id)
+    setTaskError("")
     try {
       await deleteSupportTask(order.support_engagement, task.id)
       setTasks((prev) => prev.filter((t) => t.id !== task.id))
-    } catch {
-      // ignore
+    } catch (err: unknown) {
+      setTaskError(err instanceof Error && err.message ? err.message : t("taskDeleteError"))
     } finally {
       setUpdatingTaskId(null)
     }
@@ -540,13 +550,15 @@ export default function OrderPage({ params }: Props) {
     // Otherwise use WS for instant delivery
     if (hasFiles) {
       setSending(true)
+      setChatSendError("")
       try {
         await sendChatMessage(order.conversation_id, text, attachedFiles)
         // WS will broadcast the message back — don't append manually
         setNewMessage("")
         setAttachedFiles([])
-      } catch {
+      } catch (err: unknown) {
         // keep message/files so user can retry
+        setChatSendError(err instanceof Error && err.message ? err.message : t("chatSendError"))
       } finally {
         setSending(false)
       }
@@ -934,12 +946,32 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Mentor: send a support-engagement invoice inside this chat */}
-            {role === "mentor" && canChat && !chatClosed && supportServices.length > 0 && (
+            {role === "mentor" && canChat && !chatClosed && (supportServices.length > 0 || supportServicesLoadError) && (
               <div className="bg-white border border-gray-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">{t("invoiceTitle")}</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
                   {t("invoiceBody")}
                 </p>
+                {supportServicesLoadError ? (
+                  <div>
+                    <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSupportServicesLoadError(false)
+                        fetchMentorServices()
+                          .then((services) =>
+                            setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
+                          )
+                          .catch(() => setSupportServicesLoadError(true))
+                      }}
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                    >
+                      {t("retry")}
+                    </button>
+                  </div>
+                ) : (
+                <>
                 {invoiceSent && !invoiceFormOpen && (
                   <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-3">
                     {t("invoiceSent")}
@@ -1007,6 +1039,8 @@ export default function OrderPage({ params }: Props) {
                       </button>
                     </div>
                   </form>
+                )}
+                </>
                 )}
               </div>
             )}
@@ -1304,6 +1338,10 @@ export default function OrderPage({ params }: Props) {
                   {t("tasksTitle")}
                 </h3>
 
+                {tasksLoadError && (
+                  <p className="text-xs text-red-600 mb-2">{t("tasksLoadError")}</p>
+                )}
+
                 {tasks.length > 0 && (
                   <div className="space-y-2 mb-3">
                     {tasks.map((task) => (
@@ -1345,7 +1383,7 @@ export default function OrderPage({ params }: Props) {
                   </div>
                 )}
 
-                {tasks.length === 0 && (
+                {tasks.length === 0 && !tasksLoadError && (
                   <p className="text-xs text-gray-400 mb-3">{t("tasksEmpty")}</p>
                 )}
 
@@ -1392,6 +1430,14 @@ export default function OrderPage({ params }: Props) {
                   <span className="text-xs text-gray-400">{orderDocs.length} / 10</span>
                 </div>
 
+                {docsLoadError && (
+                  <p className="text-xs text-red-600 mb-2">{t("docsLoadError")}</p>
+                )}
+
+                {docActionError && (
+                  <p className="text-xs text-red-600 mb-2">{docActionError}</p>
+                )}
+
                 {orderDocs.length > 0 && (
                   <div className="space-y-2 mb-3">
                     {orderDocs.map((doc) => {
@@ -1437,9 +1483,12 @@ export default function OrderPage({ params }: Props) {
                           {currentUserEmail && currentUserEmail === doc.uploaded_by_email && (
                             <button
                               onClick={() => {
+                                setDocActionError("")
                                 deleteOrderDocument(order.id, doc.id)
                                   .then(() => setOrderDocs((prev) => prev.filter((d) => d.id !== doc.id)))
-                                  .catch(() => {})
+                                  .catch((err: unknown) => {
+                                    setDocActionError(err instanceof Error && err.message ? err.message : t("docActionError"))
+                                  })
                               }}
                               className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all flex-shrink-0"
                             >
@@ -1479,11 +1528,14 @@ export default function OrderPage({ params }: Props) {
                                 disabled={updatingDocStatusId === doc.id}
                                 onClick={() => {
                                   setUpdatingDocStatusId(doc.id)
+                                  setDocActionError("")
                                   setDocumentStatus(order.id, doc.id, "verified")
                                     .then((updated) =>
                                       setOrderDocs((prev) => prev.map((d) => (d.id === doc.id ? updated : d)))
                                     )
-                                    .catch(() => {})
+                                    .catch((err: unknown) => {
+                                      setDocActionError(err instanceof Error && err.message ? err.message : t("docActionError"))
+                                    })
                                     .finally(() => setUpdatingDocStatusId(null))
                                 }}
                                 className="text-[10px] text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
@@ -1494,11 +1546,14 @@ export default function OrderPage({ params }: Props) {
                                 disabled={updatingDocStatusId === doc.id}
                                 onClick={() => {
                                   setUpdatingDocStatusId(doc.id)
+                                  setDocActionError("")
                                   setDocumentStatus(order.id, doc.id, "needs_revision")
                                     .then((updated) =>
                                       setOrderDocs((prev) => prev.map((d) => (d.id === doc.id ? updated : d)))
                                     )
-                                    .catch(() => {})
+                                    .catch((err: unknown) => {
+                                      setDocActionError(err instanceof Error && err.message ? err.message : t("docActionError"))
+                                    })
                                     .finally(() => setUpdatingDocStatusId(null))
                                 }}
                                 className="text-[10px] text-amber-600 hover:text-amber-700 font-medium disabled:opacity-50"
@@ -1514,8 +1569,12 @@ export default function OrderPage({ params }: Props) {
                               setOpenCommentsDocId(next)
                               if (next !== null && docComments[doc.id] === undefined) {
                                 setLoadingCommentsDocId(doc.id)
+                                setDocActionError("")
                                 fetchDocumentComments(order.id, doc.id)
                                   .then((list) => setDocComments((prev) => ({ ...prev, [doc.id]: list })))
+                                  .catch((err: unknown) => {
+                                    setDocActionError(err instanceof Error && err.message ? err.message : t("docActionError"))
+                                  })
                                   .finally(() => setLoadingCommentsDocId(null))
                               }
                             }}
@@ -1542,6 +1601,7 @@ export default function OrderPage({ params }: Props) {
                                 const text = (commentDrafts[doc.id] ?? "").trim()
                                 if (!text) return
                                 setPostingCommentDocId(doc.id)
+                                setDocActionError("")
                                 postDocumentComment(order.id, doc.id, text)
                                   .then((created) => {
                                     setDocComments((prev) => ({
@@ -1550,7 +1610,9 @@ export default function OrderPage({ params }: Props) {
                                     }))
                                     setCommentDrafts((prev) => ({ ...prev, [doc.id]: "" }))
                                   })
-                                  .catch(() => {})
+                                  .catch((err: unknown) => {
+                                    setDocActionError(err instanceof Error && err.message ? err.message : t("docActionError"))
+                                  })
                                   .finally(() => setPostingCommentDocId(null))
                               }}
                               className="flex items-center gap-1.5"
@@ -1723,7 +1785,24 @@ export default function OrderPage({ params }: Props) {
               {canChat ? (
                 <>
                   <div ref={chatRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                    {messages.length === 0 && (
+                    {chatHistoryLoadError ? (
+                      <div className="text-center py-8">
+                        <p className="text-red-600 text-sm mb-2">{t("chatHistoryError")}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!order?.conversation_id) return
+                            setChatHistoryLoadError(false)
+                            fetchChatMessages(order.conversation_id)
+                              .then(setMessages)
+                              .catch(() => setChatHistoryLoadError(true))
+                          }}
+                          className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                        >
+                          {t("retry")}
+                        </button>
+                      </div>
+                    ) : messages.length === 0 && (
                       <div className="text-center py-8">
                         <p className="text-gray-400 text-sm">{t("startConversation")}</p>
                       </div>
@@ -1844,6 +1923,9 @@ export default function OrderPage({ params }: Props) {
                     </div>
                   ) : (
                     <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0">
+                      {chatSendError && (
+                        <p className="text-xs text-red-600 mb-2">{chatSendError}</p>
+                      )}
                       {/* Attached files preview */}
                       {attachedFiles.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-2">

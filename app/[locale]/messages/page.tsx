@@ -51,7 +51,25 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [mentorPhotos, setMentorPhotos] = useState<Record<number, string | null>>({})
+  const [mentorNamesLoadError, setMentorNamesLoadError] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const loadMentorNames = async () => {
+    setMentorNamesLoadError(false)
+    try {
+      const mentors = await fetchMentors()
+      const nameMap: Record<number, string> = {}
+      const photoMap: Record<number, string | null> = {}
+      for (const m of mentors) {
+        nameMap[m.id] = m.full_name
+        photoMap[m.id] = m.profile_photo
+      }
+      setMentorNames(nameMap)
+      setMentorPhotos(photoMap)
+    } catch {
+      setMentorNamesLoadError(true)
+    }
+  }
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -60,7 +78,7 @@ export default function MessagesPage() {
     setRole(r)
 
     fetchOrders()
-      .then(async (orders) => {
+      .then((orders) => {
         // Show only orders that already have a chat conversation.
         // The backend creates one when a mentor accepts a free consultation.
         const withChat = orders
@@ -77,21 +95,7 @@ export default function MessagesPage() {
         }
         setConversations(unique)
 
-        if (r !== "mentor") {
-          try {
-            const mentors = await fetchMentors()
-            const nameMap: Record<number, string> = {}
-            const photoMap: Record<number, string | null> = {}
-            for (const m of mentors) {
-              nameMap[m.id] = m.full_name
-              photoMap[m.id] = m.profile_photo
-            }
-            setMentorNames(nameMap)
-            setMentorPhotos(photoMap)
-          } catch {
-            // ignore
-          }
-        }
+        if (r !== "mentor") loadMentorNames()
       })
       .catch(() => {
         clearAuth()
@@ -122,6 +126,15 @@ export default function MessagesPage() {
               : t("subtitleStudent")}
           </p>
         </div>
+
+        {role !== "mentor" && mentorNamesLoadError && (
+          <p className="text-xs text-red-600 mb-4">
+            {t("mentorNamesLoadError")}{" "}
+            <button type="button" onClick={loadMentorNames} className="font-semibold underline hover:no-underline">
+              {t("retry")}
+            </button>
+          </p>
+        )}
 
         {conversations.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">

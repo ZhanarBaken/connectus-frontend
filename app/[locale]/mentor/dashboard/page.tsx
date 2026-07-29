@@ -24,7 +24,9 @@ export default function MentorDashboard() {
   const [services, setServices] = useState<MentorService[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([])
+  const [supportRequestsLoadError, setSupportRequestsLoadError] = useState(false)
   const [respondingRequestId, setRespondingRequestId] = useState<number | null>(null)
+  const [supportRequestActionError, setSupportRequestActionError] = useState("")
   const [reviews, setReviews] = useState<Review[]>([])
   const [me, setMe] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -53,6 +55,13 @@ export default function MentorDashboard() {
     return mapped ? tStatus(mapped) : status
   }
 
+  const loadSupportRequests = () => {
+    setSupportRequestsLoadError(false)
+    fetchPendingSupportRequests()
+      .then(setSupportRequests)
+      .catch(() => setSupportRequestsLoadError(true))
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     const role = localStorage.getItem("role")
@@ -65,7 +74,7 @@ export default function MentorDashboard() {
         setServices(s)
         setOrders(o)
         fetchMentorReviews(p.id).then(setReviews)
-        fetchPendingSupportRequests().then(setSupportRequests).catch(() => {})
+        loadSupportRequests()
         const token = localStorage.getItem("access_token")
         if (token) fetchMe(token).then(setMe).catch(() => {})
       })
@@ -83,11 +92,12 @@ export default function MentorDashboard() {
 
   const handleAcceptRequest = async (request: SupportRequest) => {
     setRespondingRequestId(request.id)
+    setSupportRequestActionError("")
     try {
       await acceptSupportRequest(request.id)
       setSupportRequests((prev) => prev.filter((r) => r.id !== request.id))
-    } catch {
-      // ignore — the request just stays in the list, mentor can retry
+    } catch (err: unknown) {
+      setSupportRequestActionError(err instanceof Error && err.message ? err.message : t("supportRequestActionError"))
     } finally {
       setRespondingRequestId(null)
     }
@@ -95,11 +105,12 @@ export default function MentorDashboard() {
 
   const handleDeclineRequest = async (request: SupportRequest) => {
     setRespondingRequestId(request.id)
+    setSupportRequestActionError("")
     try {
       await declineSupportRequest(request.id)
       setSupportRequests((prev) => prev.filter((r) => r.id !== request.id))
-    } catch {
-      // ignore
+    } catch (err: unknown) {
+      setSupportRequestActionError(err instanceof Error && err.message ? err.message : t("supportRequestActionError"))
     } finally {
       setRespondingRequestId(null)
     }
@@ -268,12 +279,27 @@ export default function MentorDashboard() {
           <div className="lg:col-span-2 space-y-8">
 
             {/* Pending support requests (no-intro-call "Запросить" pings) */}
+            {supportRequestsLoadError && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <p className="text-sm text-red-600 mb-3">{t("supportRequestsLoadError")}</p>
+                <button
+                  type="button"
+                  onClick={loadSupportRequests}
+                  className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                >
+                  {t("retry")}
+                </button>
+              </div>
+            )}
             {supportRequests.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-gray-900">{t("supportRequestsTitle")}</h2>
                   <span className="text-sm text-gray-400">{supportRequests.length}</span>
                 </div>
+                {supportRequestActionError && (
+                  <p className="text-xs text-red-600 mb-3">{supportRequestActionError}</p>
+                )}
                 <div className="space-y-3">
                   {supportRequests.map((request) => (
                     <div

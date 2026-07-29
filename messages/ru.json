@@ -487,6 +487,9 @@
       "supportRequestsTitle": "Новые запросы",
       "supportRequestAccept": "Принять",
       "supportRequestDecline": "Отклонить",
+      "supportRequestsLoadError": "Не удалось загрузить новые запросы",
+      "supportRequestActionError": "Не удалось выполнить действие с запросом",
+      "retry": "Повторить",
       "orders": "Заказы",
       "total": "всего",
       "noOrdersTitle": "Пока нет заказов",
@@ -599,7 +602,9 @@
       "edit": "Изменить",
       "noName": "Без имени",
       "yearsOld": "{age} лет",
-      "editProfile": "Редактировать профиль"
+      "editProfile": "Редактировать профиль",
+      "mentorNamesLoadError": "Не удалось загрузить имена и фото менторов",
+      "retry": "Повторить"
     }
   },
   "Orders": {
@@ -616,7 +621,9 @@
       "applicantDefault": "Абитуриент",
       "mentorDefault": "Ментор",
       "paused": "Приостановлено",
-      "overdue": "Просрочено"
+      "overdue": "Просрочено",
+      "mentorNamesLoadError": "Не удалось загрузить имена менторов",
+      "retry": "Повторить"
     },
     "Detail": {
       "orderNumber": "Заказ #{id}",
@@ -667,6 +674,8 @@
       "taskCreating": "Добавляем...",
       "taskAdd": "Добавить",
       "taskCreateError": "Не удалось создать задачу",
+      "taskUpdateError": "Не удалось обновить задачу",
+      "taskDeleteError": "Не удалось удалить задачу",
       "invoiceTitle": "Заявка на сопровождение",
       "invoiceBody": "Обсудили с абитуриентом цену и сроки — отправь заявку, она придёт как счёт в чат.",
       "invoiceSent": "Заявка отправлена — абитуриент увидит её в чате.",
@@ -750,6 +759,13 @@
       "chatClosedReopenStudent": "Закажи новую консультацию у этого ментора, чтобы возобновить общение.",
       "attachTitle": "Прикрепить файл (PDF, JPEG, PNG)",
       "messagePlaceholder": "Написать сообщение...",
+      "chatSendError": "Не удалось отправить сообщение",
+      "chatHistoryError": "Не удалось загрузить историю переписки",
+      "docActionError": "Не удалось выполнить действие с документом",
+      "servicesLoadError": "Не удалось загрузить список услуг",
+      "docsLoadError": "Не удалось загрузить документы",
+      "tasksLoadError": "Не удалось загрузить задачи",
+      "retry": "Повторить",
       "noContactsWarning": "Запрещено передавать личные контакты — нарушение правил платформы",
       "chatLockedTitle": "Чат заблокирован",
       "chatLockedBody": "Чат откроется после того, как админ подтвердит оплату консультации.",
@@ -848,6 +864,9 @@
       "notFoundTitle": "Менторов не найдено",
       "notFoundBody": "Попробуй изменить фильтры или поисковый запрос",
       "resetAllFilters": "Сбросить все фильтры",
+      "loadErrorTitle": "Не удалось загрузить менторов",
+      "loadErrorBody": "Проверь соединение и попробуй ещё раз",
+      "retry": "Повторить",
       "verifiedTitle": "Платформа подтвердила документы ментора",
       "universalBadgeTitle": "Ментор помогает сразу по нескольким направлениям",
       "universalBadge": "Универсальный",
@@ -1279,10 +1298,14 @@
     "findMentor": "Найти ментора",
     "applicantDefault": "Абитуриент",
     "mentorDefault": "Ментор",
-    "openChat": "Открыть чат →"
+    "openChat": "Открыть чат →",
+    "mentorNamesLoadError": "Не удалось загрузить имена и фото менторов",
+    "retry": "Повторить"
   },
   "Settings": {
     "loadSettingsError": "Не удалось загрузить настройки",
+    "meLoadError": "Не удалось загрузить данные аккаунта",
+    "retry": "Повторить",
     "pageTitle": "Настройки",
     "pageSubtitle": "Управляй аккаунтом и видимостью",
     "mergeConflictTitle": "Telegram уже привязан к другому аккаунту",
@@ -1385,10 +1408,6 @@
     "errorAccountCreateFailed": "Не удалось создать аккаунт",
     "errorRegisterGeneric": "Ошибка регистрации"
   },
-  "PlatformReviews": {
-    "emptyTitle": "Отзывов пока нет",
-    "emptyBody": "Будь первым — после консультации с ментором ты сможешь оставить отзыв"
-  },
   "ReviewForm": {
     "title": "Оставить отзыв ментору",
     "ratingLabel": "Оценка",
@@ -1399,6 +1418,8 @@
     "submit": "Опубликовать отзыв",
     "errorTooShort": "Минимум 10 символов",
     "errorGeneric": "Не удалось оставить отзыв",
+    "errorLoadFailed": "Не удалось проверить, оставлен ли уже отзыв",
+    "retry": "Повторить",
     "thanksTitle": "Спасибо за отзыв!",
     "thanksBody": "Он помогает другим абитуриентам сделать выбор"
   },
@@ -1407,6 +1428,9 @@
     "title": "Уведомления",
     "markAllRead": "Прочитать все",
     "empty": "Нет уведомлений",
+    "errorLoad": "Не удалось загрузить уведомления",
+    "errorMarkAllRead": "Не удалось отметить всё прочитанным",
+    "retry": "Повторить",
     "justNow": "только что",
     "minutesAgo": "{minutes} мин",
     "hoursAgo": "{hours} ч",

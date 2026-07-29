@@ -45,6 +45,11 @@ export default function NotificationBell() {
   const [items, setItems] = useState<NotificationItem[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  // Distinguishes "genuinely no notifications" from "couldn't load
+  // them" — both used to render the same empty state, so a fetch
+  // failure looked identical to an empty inbox.
+  const [loadError, setLoadError] = useState(false)
+  const [actionError, setActionError] = useState("")
   const ref = useRef<HTMLDivElement>(null)
 
   // Subscribe to the notifications WebSocket. Polling is kept as a
@@ -173,34 +178,50 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  const handleOpen = useCallback(async () => {
+  const loadNotifications = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const data = await fetchNotifications()
+      setItems(data)
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const handleOpen = useCallback(() => {
     if (open) {
       setOpen(false)
       return
     }
     setOpen(true)
-    setLoading(true)
-    try {
-      const data = await fetchNotifications()
-      setItems(data)
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false)
-    }
-  }, [open])
+    void loadNotifications()
+  }, [open, loadNotifications])
 
   const handleMarkAllRead = async () => {
-    await markNotificationsRead()
-    setCount(0)
-    setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    setActionError("")
+    try {
+      await markNotificationsRead()
+      setCount(0)
+      setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    } catch {
+      setActionError(t("errorMarkAllRead"))
+    }
   }
 
   const handleClick = async (n: NotificationItem) => {
     if (!n.is_read) {
-      await markNotificationsRead([n.id])
-      setCount((c) => Math.max(0, c - 1))
-      setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)))
+      try {
+        await markNotificationsRead([n.id])
+        setCount((c) => Math.max(0, c - 1))
+        setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)))
+      } catch {
+        // Marking as read is secondary bookkeeping — don't block the
+        // primary action (opening the notification) on this failing;
+        // the count will resync on the next poll/WS push regardless.
+      }
     }
     setOpen(false)
     if (n.url) router.push(n.url)
@@ -247,11 +268,27 @@ export default function NotificationBell() {
             )}
           </div>
 
+          {actionError && (
+            <p className="px-4 py-2 text-xs text-red-600 border-b border-gray-100">{actionError}</p>
+          )}
+
           {/* List */}
           <div className="max-h-[400px] overflow-y-auto">
             {loading ? (
               <div className="py-12 flex justify-center">
                 <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : loadError ? (
+              <div className="py-12 text-center">
+                <Icon name="error_outline" size={32} className="text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400 mb-3">{t("errorLoad")}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadNotifications()}
+                  className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                >
+                  {t("retry")}
+                </button>
               </div>
             ) : items.length === 0 ? (
               <div className="py-12 text-center">

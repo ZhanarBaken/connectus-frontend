@@ -487,6 +487,9 @@
       "supportRequestsTitle": "Жаңа сұраулар",
       "supportRequestAccept": "Қабылдау",
       "supportRequestDecline": "Қабылдамау",
+      "supportRequestsLoadError": "Жаңа сұрауларды жүктеу мүмкін болмады",
+      "supportRequestActionError": "Сұраумен әрекетті орындау мүмкін болмады",
+      "retry": "Қайталау",
       "orders": "Тапсырыстар",
       "total": "барлығы",
       "noOrdersTitle": "Әзірге тапсырыстар жоқ",
@@ -599,7 +602,9 @@
       "edit": "Өзгерту",
       "noName": "Аты-жөні жоқ",
       "yearsOld": "{age} жаста",
-      "editProfile": "Профильді өзгерту"
+      "editProfile": "Профильді өзгерту",
+      "mentorNamesLoadError": "Менторлардың аты-жөні мен фотосын жүктеу мүмкін болмады",
+      "retry": "Қайталау"
     }
   },
   "Orders": {
@@ -616,7 +621,9 @@
       "applicantDefault": "Талапкер",
       "mentorDefault": "Ментор",
       "paused": "Тоқтатылды",
-      "overdue": "Мерзімі өтті"
+      "overdue": "Мерзімі өтті",
+      "mentorNamesLoadError": "Менторлардың атын жүктеу мүмкін болмады",
+      "retry": "Қайталау"
     },
     "Detail": {
       "orderNumber": "Тапсырыс #{id}",
@@ -667,6 +674,8 @@
       "taskCreating": "Қосылуда...",
       "taskAdd": "Қосу",
       "taskCreateError": "Тапсырманы құру мүмкін болмады",
+      "taskUpdateError": "Тапсырманы жаңарту мүмкін болмады",
+      "taskDeleteError": "Тапсырманы жою мүмкін болмады",
       "invoiceTitle": "Сопровождениеге өтінім",
       "invoiceBody": "Талапкермен бағаны және мерзімді талқыладың ба — өтінімді жібер, ол чатқа шот ретінде келеді.",
       "invoiceSent": "Өтінім жіберілді — талапкер оны чатта көреді.",
@@ -750,6 +759,13 @@
       "chatClosedReopenStudent": "Қарым-қатынасты жалғастыру үшін осы ментордан жаңа кеңеске жазыл.",
       "attachTitle": "Файл тіркеу (PDF, JPEG, PNG)",
       "messagePlaceholder": "Хабарлама жазу...",
+      "chatSendError": "Хабарламаны жіберу мүмкін болмады",
+      "chatHistoryError": "Хат алмасу тарихын жүктеу мүмкін болмады",
+      "docActionError": "Құжатпен әрекетті орындау мүмкін болмады",
+      "servicesLoadError": "Қызметтер тізімін жүктеу мүмкін болмады",
+      "docsLoadError": "Құжаттарды жүктеу мүмкін болмады",
+      "tasksLoadError": "Тапсырмаларды жүктеу мүмкін болмады",
+      "retry": "Қайталау",
       "noContactsWarning": "Жеке байланыс деректерін беруге тыйым салынған — платформа ережелерін бұзу",
       "chatLockedTitle": "Чат бұғатталған",
       "chatLockedBody": "Чат админ кеңес төлемін растағаннан кейін ашылады.",
@@ -848,6 +864,9 @@
       "notFoundTitle": "Менторлар табылмады",
       "notFoundBody": "Сүзгілерді немесе іздеу сұранысын өзгертіп көр",
       "resetAllFilters": "Барлық сүзгілерді тазарту",
+      "loadErrorTitle": "Менторларды жүктеу мүмкін болмады",
+      "loadErrorBody": "Байланысты тексеріп, қайталап көр",
+      "retry": "Қайталау",
       "verifiedTitle": "Платформа ментордың құжаттарын растады",
       "universalBadgeTitle": "Ментор бірнеше бағыт бойынша бірден көмектеседі",
       "universalBadge": "Әмбебап",
@@ -1279,10 +1298,14 @@
     "findMentor": "Ментор табу",
     "applicantDefault": "Талапкер",
     "mentorDefault": "Ментор",
-    "openChat": "Чатты ашу →"
+    "openChat": "Чатты ашу →",
+    "mentorNamesLoadError": "Менторлардың аты-жөні мен фотосын жүктеу мүмкін болмады",
+    "retry": "Қайталау"
   },
   "Settings": {
     "loadSettingsError": "Баптауларды жүктеу мүмкін болмады",
+    "meLoadError": "Аккаунт деректерін жүктеу мүмкін болмады",
+    "retry": "Қайталау",
     "pageTitle": "Баптаулар",
     "pageSubtitle": "Аккаунтты және көрінуді басқар",
     "mergeConflictTitle": "Telegram басқа аккаунтқа байланыстырылған",
@@ -1385,10 +1408,6 @@
     "errorAccountCreateFailed": "Аккаунт жасау мүмкін болмады",
     "errorRegisterGeneric": "Тіркелу қатесі"
   },
-  "PlatformReviews": {
-    "emptyTitle": "Пікірлер әлі жоқ",
-    "emptyBody": "Бірінші бол — ментормен кеңесуден кейін пікір қалдыра аласың"
-  },
   "ReviewForm": {
     "title": "Менторға пікір қалдыру",
     "ratingLabel": "Баға",
@@ -1399,6 +1418,8 @@
     "submit": "Пікірді жариялау",
     "errorTooShort": "Кемінде 10 таңба",
     "errorGeneric": "Пікір қалдыру мүмкін болмады",
+    "errorLoadFailed": "Пікір қалдырылғанын тексеру мүмкін болмады",
+    "retry": "Қайталау",
     "thanksTitle": "Пікіріңіз үшін рахмет!",
     "thanksBody": "Бұл басқа талапкерлерге таңдау жасауға көмектеседі"
   },
@@ -1407,6 +1428,9 @@
     "title": "Хабарламалар",
     "markAllRead": "Барлығын оқу",
     "empty": "Хабарламалар жоқ",
+    "errorLoad": "Хабарламаларды жүктеу мүмкін болмады",
+    "errorMarkAllRead": "Барлығын оқылды деп белгілеу мүмкін болмады",
+    "retry": "Қайталау",
     "justNow": "жаңа ғана",
     "minutesAgo": "{minutes} мин",
     "hoursAgo": "{hours} сағ",

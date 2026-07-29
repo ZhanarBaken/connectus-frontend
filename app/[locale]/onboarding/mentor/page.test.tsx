@@ -211,6 +211,36 @@ describe("MentorOnboarding", () => {
     expect(await screen.findByText("Не удалось сохранить")).toBeInTheDocument()
   })
 
+  it("shows a save error when toggling a language chip fails", async () => {
+    // Regression: the language-chip auto-save was .catch(() => {}) — a
+    // failed request left the chip toggled in the UI with no feedback.
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.updateMentorProfile).mockRejectedValue(new Error("Не удалось сохранить"))
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    const chip = await screen.findByText("English")
+    await user.click(chip)
+
+    expect(await screen.findByText("Не удалось сохранить")).toBeInTheDocument()
+  })
+
+  it("shows a save error when toggling the universal-mentor checkbox fails", async () => {
+    // Regression: the isUniversal checkbox auto-save was .catch(() => {})
+    // — a failed request left the checkbox toggled with no feedback.
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.updateMentorProfile).mockRejectedValue(new Error("Не удалось сохранить"))
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByText("Универсальный ментор")
+    await user.click(screen.getByRole("checkbox"))
+
+    expect(await screen.findByText("Не удалось сохранить")).toBeInTheDocument()
+  })
+
   it("rejects a profile photo over 5MB with an inline error", async () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())

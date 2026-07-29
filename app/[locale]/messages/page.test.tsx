@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import MessagesPage from "./page"
 import { fetchOrders, fetchMentors, clearAuth, fetchStudentProfile } from "@/lib/api"
@@ -117,6 +117,24 @@ describe("MessagesPage — student view", () => {
     expect(screen.getByText("Первичная консультация")).toBeInTheDocument()
     expect(screen.getByText("В работе")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /Данияр Сериков/ })).toHaveAttribute("href", "/orders/1")
+  })
+
+  it("shows a retryable error when loading mentor names fails, without blocking the conversation list", async () => {
+    // Regression: the fetchMentors() call was wrapped in a try/catch that
+    // silently swallowed failures — conversations still rendered (with the
+    // generic "Ментор" fallback), but with no indication anything failed.
+    vi.mocked(fetchOrders).mockResolvedValue([makeOrder()])
+    vi.mocked(fetchMentors).mockRejectedValueOnce(new Error("network"))
+
+    render(<MessagesPage />)
+
+    expect(await screen.findByText("Первичная консультация")).toBeInTheDocument()
+    expect(screen.getByText("Не удалось загрузить имена и фото менторов")).toBeInTheDocument()
+
+    vi.mocked(fetchMentors).mockResolvedValueOnce([makeMentorCard()])
+    fireEvent.click(screen.getByText("Повторить"))
+
+    await waitFor(() => expect(screen.getByText("Данияр Сериков")).toBeInTheDocument())
   })
 
   it("only shows orders that have an open conversation", async () => {

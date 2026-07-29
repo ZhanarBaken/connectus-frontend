@@ -45,12 +45,15 @@ describe("MentorsPage (server component)", () => {
     expect(await screen.findByText("Данияр Сериков")).toBeInTheDocument()
   })
 
-  it("degrades gracefully to an empty list when fetchMentors throws", async () => {
+  it("shows a distinct load-error state (not the empty-catalog state) when fetchMentors throws", async () => {
+    // Regression: fetchMentors().catch(() => []) made a down backend look
+    // identical to "we genuinely have zero mentors."
     vi.mocked(fetchMentors).mockRejectedValue(new Error("backend unreachable"))
 
     const jsx = await MentorsPage()
     render(jsx)
 
-    expect(await screen.findByText("Менторов не найдено")).toBeInTheDocument()
+    expect(await screen.findByText("Не удалось загрузить менторов")).toBeInTheDocument()
+    expect(screen.queryByText("Менторов не найдено")).not.toBeInTheDocument()
   })
 })

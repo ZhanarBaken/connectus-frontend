@@ -129,6 +129,36 @@ describe("MentorsList", () => {
     })
   })
 
+  describe("load error (authenticated)", () => {
+    beforeEach(() => {
+      localStorage.setItem("access_token", "tok")
+    })
+
+    it("shows a distinct retryable error instead of the empty-catalog state when loadError is true", async () => {
+      // Regression: the server component swallowed fetchMentors() failures
+      // into an empty array, which rendered identically to "no mentors
+      // found" — the user had no way to tell a down backend from a
+      // genuinely empty catalog.
+      const refresh = vi.fn()
+      vi.mocked(useRouter).mockReturnValue({
+        push,
+        replace,
+        back: vi.fn(),
+        forward: vi.fn(),
+        refresh,
+        prefetch: vi.fn(),
+      } as unknown as ReturnType<typeof useRouter>)
+
+      render(<MentorsList mentors={[]} loadError />)
+
+      expect(await screen.findByText("Не удалось загрузить менторов")).toBeInTheDocument()
+      expect(screen.queryByText("Менторов не найдено")).not.toBeInTheDocument()
+
+      await userEvent.setup().click(screen.getByText("Повторить"))
+      expect(refresh).toHaveBeenCalled()
+    })
+  })
+
   describe("filtering (authenticated)", () => {
     beforeEach(() => {
       localStorage.setItem("access_token", "tok")

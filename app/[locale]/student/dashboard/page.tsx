@@ -27,6 +27,7 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState<StudentProfile | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
+  const [mentorNamesLoadError, setMentorNamesLoadError] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const orderStatusLabel = (status: string): string => {
@@ -42,19 +43,29 @@ export default function StudentDashboard() {
     return mapped ? tStatus(mapped) : status
   }
 
+  const loadMentorNames = async () => {
+    setMentorNamesLoadError(false)
+    try {
+      const mentors = await fetchMentors()
+      const map: Record<number, string> = {}
+      for (const m of mentors) map[m.id] = m.full_name
+      setMentorNames(map)
+    } catch {
+      setMentorNamesLoadError(true)
+    }
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     const role = localStorage.getItem("role")
     if (!token) { router.replace("/auth/login"); return }
     if (role === "mentor") { router.replace("/mentor/dashboard"); return }
 
-    Promise.all([fetchStudentProfile(), fetchOrders(), fetchMentors().catch(() => [])])
-      .then(([p, o, mentors]) => {
+    Promise.all([fetchStudentProfile(), fetchOrders()])
+      .then(([p, o]) => {
         setProfile(p)
         setOrders(o)
-        const map: Record<number, string> = {}
-        for (const m of mentors) map[m.id] = m.full_name
-        setMentorNames(map)
+        loadMentorNames()
       })
       .catch(() => {
         // A stale/invalid token would otherwise send the login page
@@ -124,6 +135,15 @@ export default function StudentDashboard() {
               <h2 className="text-lg font-bold text-gray-900">{t("myOrders")}</h2>
               <span className="text-sm text-gray-400">{orders.length} {t("total")}</span>
             </div>
+
+            {mentorNamesLoadError && (
+              <p className="text-xs text-red-600 mb-3">
+                {t("mentorNamesLoadError")}{" "}
+                <button type="button" onClick={loadMentorNames} className="font-semibold underline hover:no-underline">
+                  {t("retry")}
+                </button>
+              </p>
+            )}
 
             {orders.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-200 p-8 flex flex-col items-center justify-center text-center min-h-[280px]">

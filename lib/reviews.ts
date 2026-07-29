@@ -21,13 +21,6 @@ export async function fetchMentorReviews(mentorId: number): Promise<Review[]> {
   return data.results ?? data
 }
 
-export async function fetchAllReviews(): Promise<Review[]> {
-  const res = await authFetch(`${BASE_URL}/reviews/`)
-  if (!res.ok) return []
-  const data = await res.json()
-  return data.results ?? data
-}
-
 export async function createReview(orderId: number, rating: number, text: string): Promise<Review> {
   const res = await authFetch(`${BASE_URL}/reviews/`, {
     method: "POST",

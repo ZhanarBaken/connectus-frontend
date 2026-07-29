@@ -30,6 +30,26 @@ describe("ReviewForm", () => {
     expect(screen.queryByRole("button", { name: /Опубликовать отзыв/ })).not.toBeInTheDocument()
   })
 
+  it("shows a retryable error instead of spinning forever when the initial check fails", async () => {
+    // Regression: hasReviewForOrder().then(...) used to have no .catch at
+    // all — a rejection left the component stuck in the loading state
+    // forever, with zero feedback.
+    vi.mocked(hasReviewForOrder).mockRejectedValueOnce(new Error("network"))
+    const user = userEvent.setup()
+    render(<ReviewForm orderId={1} mentorId={1} mentorName="Mentor" authorName="Student" />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось проверить, оставлен ли уже отзыв")).toBeInTheDocument()
+    })
+
+    vi.mocked(hasReviewForOrder).mockResolvedValueOnce(false)
+    await user.click(screen.getByRole("button", { name: "Повторить" }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Опубликовать отзыв/ })).toBeInTheDocument()
+    })
+  })
+
   it("renders the form once loading resolves with no existing review", async () => {
     vi.mocked(hasReviewForOrder).mockResolvedValue(false)
     render(<ReviewForm orderId={1} mentorId={1} mentorName="Mentor" authorName="Student" />)
