@@ -479,8 +479,6 @@
       "identityBannerCta": "Finish setup",
       "bannedTitle": "Account suspended",
       "bannedBody": "You can view your orders and chats, but you can't edit your profile, services, or documents. If you think this is a mistake, email us at",
-      "underReviewTitle": "Profile under review",
-      "underReviewBody": "We'll review and approve it shortly.",
       "activeOrders": "Active orders",
       "pendingPayment": "Awaiting payment",
       "earnedMore": "Earned · details →",

@@ -457,7 +457,11 @@ describe("MentorDashboard", () => {
       expect(screen.getByText(/15\s000/)).toBeInTheDocument()
     })
 
-    it("shows the under-review banner for a submitted-but-not-approved profile", async () => {
+    it("shows the under-review banner (with the 24-hour reassurance) for a submitted-but-not-approved profile", async () => {
+      // Regression: the page used to also render its own duplicate
+      // "Профиль на проверке" banner without the 24-hour copy,
+      // alongside <MentorStatusBanner> — now MentorStatusBanner is the
+      // only one, and it's the version with the 24-hour text.
       vi.mocked(fetchMentorProfile).mockResolvedValue(
         makeMentorProfile({ is_submitted: true, is_approved: false }),
       )
@@ -466,7 +470,7 @@ describe("MentorDashboard", () => {
 
       render(<MentorDashboard />)
 
-      expect(await screen.findByText("Профиль на проверке")).toBeInTheDocument()
+      expect(await screen.findByText(/24 часов/)).toBeInTheDocument()
     })
   })
 })

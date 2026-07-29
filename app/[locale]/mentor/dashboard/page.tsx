@@ -233,18 +233,10 @@ export default function MentorDashboard() {
           </div>
         )}
 
-        {/* Status banner — reaching this page at all means the profile is
-            already submitted or approved (see useMentorOnboardingGate),
-            so this only ever needs the "under review" state. */}
-        {!profile.is_banned && !profile.is_approved && (
-          <div className="mb-8 bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex items-start gap-4">
-            <span className="text-2xl">⏳</span>
-            <div>
-              <p className="font-semibold text-indigo-900">{t("underReviewTitle")}</p>
-              <p className="text-sm text-indigo-800 mt-1">{t("underReviewBody")}</p>
-            </div>
-          </div>
-        )}
+        {/* Under-review state is already covered by <MentorStatusBanner>
+            above (line ~137) — it has the same condition plus the
+            24-hour reassurance copy, so no separate banner is needed
+            here. */}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-10">
