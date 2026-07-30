@@ -755,7 +755,13 @@ export async function confirmPasswordReset(token: string, password: string): Pro
   }
 }
 
-export async function register(email: string, password: string, role: string, agreedToTerms: boolean) {
+// country always ships (default "KZ") — this has exactly one call site,
+// the registration page, which always has a real value in state. Unlike
+// telegramStart/googleAuth below, there's no country-agnostic login path
+// reusing this function that a hardcoded default could clobber.
+export async function register(
+  email: string, password: string, role: string, agreedToTerms: boolean, country: string = "KZ",
+) {
   if (USE_MOCKS) {
     return { id: 1, email, role }
   }
@@ -763,7 +769,7 @@ export async function register(email: string, password: string, role: string, ag
   const res = await fetch(`${BASE_URL}/auth/register/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, role, agreed_to_terms: agreedToTerms }),
+    body: JSON.stringify({ email, password, role, agreed_to_terms: agreedToTerms, country }),
   })
   if (!res.ok) {
     const data = await res.json()
@@ -903,11 +909,20 @@ export async function getFreshAccessToken(): Promise<string | null> {
  */
 // ─── Telegram auth ──────────────────────────────────────────────────────────
 
-export async function telegramStart(role: string, locale: string): Promise<{ token: string; bot_url: string }> {
+// country is optional and only sent when truthy — the login page also
+// calls this (role="student", no country selector on that screen) for
+// its own Telegram-login-attempt flow, and omitting the key entirely
+// lets the backend's own default apply rather than this function
+// silently forcing one.
+export async function telegramStart(
+  role: string, locale: string, country?: string,
+): Promise<{ token: string; bot_url: string }> {
+  const body: Record<string, string> = { role, locale }
+  if (country) body.country = country
   const res = await fetch(`${BASE_URL}/auth/telegram/start/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role, locale }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -1082,9 +1097,15 @@ export class GoogleAuthNotConfiguredError extends Error {
   }
 }
 
-export async function googleAuth(idToken: string, role?: string): Promise<{ access: string; refresh: string; created?: boolean }> {
+// role/country both optional and only sent when present — the login
+// page calls this with neither (existing-user login, where the backend
+// treats a missing role as "not a signup" and ignores country entirely).
+export async function googleAuth(
+  idToken: string, role?: string, country?: string,
+): Promise<{ access: string; refresh: string; created?: boolean }> {
   const body: Record<string, string> = { id_token: idToken }
   if (role) body.role = role
+  if (country) body.country = country
   const res = await fetch(`${BASE_URL}/auth/google/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

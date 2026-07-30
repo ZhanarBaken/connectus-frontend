@@ -11,6 +11,7 @@ import { promptGoogleCredential, GoogleSignInUnavailableError } from "@/lib/goog
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { track } from "@/lib/analytics"
 import DataConsentModal from "@/components/DataConsentModal"
+import CountrySelect from "@/components/CountrySelect"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
@@ -41,6 +42,7 @@ export default function RegisterPage() {
   ]
   const [step, setStep] = useState<1 | 2>(1)
   const [role, setRole] = useState<Role>("student")
+  const [country, setCountry] = useState("KZ")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [agreedToTerms, setAgreedToTerms] = useState(false)
@@ -107,7 +109,7 @@ export default function RegisterPage() {
     setError("")
     setLoading(true)
     try {
-      await register(email, password, role, agreedToTerms)
+      await register(email, password, role, agreedToTerms, country)
       // Save role so login can route correctly later (also returned by /auth/me)
       localStorage.setItem("pending_role", role)
       track("signup_form_submitted", { role })
@@ -145,7 +147,7 @@ export default function RegisterPage() {
     setError("")
     try {
       const credential = await promptGoogleCredential(clientId)
-      const data = await googleAuth(credential, role)
+      const data = await googleAuth(credential, role, country)
       localStorage.setItem("access_token", data.access)
       localStorage.setItem("refresh_token", data.refresh)
       const me = await fetchMe(data.access)
@@ -191,7 +193,7 @@ export default function RegisterPage() {
     setLoading(true)
     setError("")
     try {
-      const data = await telegramStart(role, locale)
+      const data = await telegramStart(role, locale, country)
       localStorage.setItem("tg_signup_token", data.token)
       window.location.href = data.bot_url
     } catch (e: unknown) {
@@ -459,6 +461,12 @@ export default function RegisterPage() {
                   {role === "mentor" ? t("asMentor") : t("asStudent")}
                 </span>
               </p>
+
+              {/* Shared across all three signup methods below — whichever
+                  one the user actually taps carries this same value. */}
+              <div className="mb-5">
+                <CountrySelect value={country} onChange={setCountry} />
+              </div>
 
               {/* Telegram — primary signup method for browser users.
                   Inside a Mini App this would open the bot link from

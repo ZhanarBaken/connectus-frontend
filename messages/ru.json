@@ -1384,6 +1384,10 @@
     "empty": "Ничего не нашлось",
     "selected": "Выбрано"
   },
+  "CountrySelect": {
+    "label": "Страна",
+    "otherCountry": "Другая страна"
+  },
   "AvatarCropperModal": {
     "title": "Подгони аватарку",
     "close": "Закрыть",

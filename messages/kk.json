@@ -1384,6 +1384,10 @@
     "empty": "Ештеңе табылмады",
     "selected": "Таңдалды"
   },
+  "CountrySelect": {
+    "label": "Ел",
+    "otherCountry": "Басқа ел"
+  },
   "AvatarCropperModal": {
     "title": "Аватарыңды баптау",
     "close": "Жабу",

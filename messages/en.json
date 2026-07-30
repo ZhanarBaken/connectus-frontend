@@ -1384,6 +1384,10 @@
     "empty": "Nothing found",
     "selected": "Selected"
   },
+  "CountrySelect": {
+    "label": "Country",
+    "otherCountry": "Other country"
+  },
   "AvatarCropperModal": {
     "title": "Adjust your avatar",
     "close": "Close",

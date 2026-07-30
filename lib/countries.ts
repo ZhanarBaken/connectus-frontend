@@ -12,6 +12,14 @@ export const COUNTRY_CODES = POPULAR_COUNTRY_CODES
 
 export type CountryCode = (typeof POPULAR_COUNTRY_CODES)[number]
 
+// Separate list for "what country is the USER themself based in"
+// (registration) — platform's actual current CIS user base, distinct
+// from POPULAR_COUNTRY_CODES above (which are study-abroad destinations
+// for a mentor's target-country picker, an unrelated concept).
+export const CIS_COUNTRY_CODES = [
+  "KZ", "RU", "UZ", "KG", "TJ", "AZ", "AM", "BY", "TM",
+] as const
+
 // Full ISO 3166-1 alpha-2 list. Used by the country picker to expose
 // every country in the world via search; emoji flags are derived from
 // the code itself, names come from Intl.DisplayNames.

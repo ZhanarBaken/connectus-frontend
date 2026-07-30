@@ -115,7 +115,25 @@ describe("RegisterPage", () => {
     await giveConsent(user)
 
     expect(await screen.findByText("Проверь почту")).toBeInTheDocument()
-    expect(api.register).toHaveBeenCalledWith("student@example.com", "supersecretpw123", "student", true)
+    expect(api.register).toHaveBeenCalledWith("student@example.com", "supersecretpw123", "student", true, "KZ")
+  })
+
+  it("passes the chosen country to whichever signup method is used", async () => {
+    vi.mocked(api.register).mockResolvedValue({ id: 1, email: "student@example.com", role: "student" })
+    const user = userEvent.setup()
+    render(<RegisterPage />)
+
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.click(screen.getByText(/Узбекистан/))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "student@example.com")
+    await user.type(screen.getByPlaceholderText("Минимум 12 символов"), "supersecretpw123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "Создать аккаунт через email" }))
+
+    await giveConsent(user)
+
+    await screen.findByText("Проверь почту")
+    expect(api.register).toHaveBeenCalledWith("student@example.com", "supersecretpw123", "student", true, "UZ")
   })
 
   it("does not re-show the consent modal on a second signup flow in the same session", async () => {
@@ -197,7 +215,7 @@ describe("RegisterPage", () => {
     await giveConsent(user)
 
     await vi.waitFor(() => {
-      expect(api.telegramStart).toHaveBeenCalledWith("student", "ru")
+      expect(api.telegramStart).toHaveBeenCalledWith("student", "ru", "KZ")
     })
   })
 
