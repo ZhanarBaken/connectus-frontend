@@ -1004,6 +1004,7 @@
       "serviceErrorMeetingsMax": "Кездесулер саны {max}-дан аспауы керек.",
       "serviceErrorMeetingsMaxLessThanMin": "Кездесулердің максимум саны минимумнан кіші бола алмайды.",
       "serviceErrorMeetingsRequired": "«Сүйемелдеу» қызметі үшін кездесулер диапазонын көрсетіңіз.",
+      "serviceErrorDurationMonthsRequired": "«Сүйемелдеу» ұзақтығының ай бойынша диапазонын көрсетіңіз.",
       "serviceErrorDurationMonthsMin": "Мерзім кемінде {min} ай болуы керек.",
       "serviceErrorDurationMonthsMax": "Мерзім {max} айдан аспауы керек.",
       "serviceErrorDurationMonthsMaxLessThanMin": "Максималды мерзім минималдыдан кіші бола алмайды.",

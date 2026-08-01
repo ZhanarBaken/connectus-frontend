@@ -60,25 +60,25 @@ export function translateInvoiceErrorMessage(raw: string, t: (key: string) => st
   if (lower.includes("does not belong to this mentor") || lower.includes("not a support-category service")) {
     return t("invoiceErrorServiceUnavailable")
   }
-  if (lower.includes("целым числом тенге")) {
+  if (lower.includes("whole number of tenge")) {
     return t("invoiceErrorPriceFractional")
   }
-  if (lower.includes("цена должна быть не меньше")) {
+  if (lower.includes("price must be at least")) {
     return t("invoiceErrorPriceMin")
   }
-  if (lower.includes("цена должна быть не больше")) {
+  if (lower.includes("price cannot be more than")) {
     return t("invoiceErrorPriceMax")
   }
-  if (lower.includes("введите цену числом")) {
+  if (lower.includes("enter the price as a number")) {
     return t("invoiceErrorPriceInvalid")
   }
-  if (lower.includes("срок должен быть не меньше")) {
+  if (lower.includes("duration must be at least")) {
     return t("invoiceErrorMonthsMin")
   }
-  if (lower.includes("срок должен быть не больше")) {
+  if (lower.includes("duration cannot be more than")) {
     return t("invoiceErrorMonthsMax")
   }
-  if (lower.includes("введите срок числом")) {
+  if (lower.includes("enter the duration as a number")) {
     return t("invoiceErrorMonthsInvalid")
   }
   return raw

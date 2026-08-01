@@ -1004,6 +1004,7 @@
       "serviceErrorMeetingsMax": "Количество встреч должно быть не больше {max}.",
       "serviceErrorMeetingsMaxLessThanMin": "Максимум встреч не может быть меньше минимума.",
       "serviceErrorMeetingsRequired": "Укажи диапазон количества встреч для услуги «сопровождение».",
+      "serviceErrorDurationMonthsRequired": "Укажи диапазон длительности сопровождения в месяцах.",
       "serviceErrorDurationMonthsMin": "Длительность должна быть не меньше {min} мес.",
       "serviceErrorDurationMonthsMax": "Длительность должна быть не больше {max} мес.",
       "serviceErrorDurationMonthsMaxLessThanMin": "Максимальная длительность не может быть меньше минимальной.",

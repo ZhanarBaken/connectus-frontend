@@ -1004,6 +1004,7 @@
       "serviceErrorMeetingsMax": "Number of meetings can't be more than {max}.",
       "serviceErrorMeetingsMaxLessThanMin": "The maximum number of meetings can't be lower than the minimum.",
       "serviceErrorMeetingsRequired": "Set the meetings range for the \"support\" service.",
+      "serviceErrorDurationMonthsRequired": "Set the duration range for the support engagement, in months.",
       "serviceErrorDurationMonthsMin": "Duration must be at least {min} mo.",
       "serviceErrorDurationMonthsMax": "Duration can't be more than {max} mo.",
       "serviceErrorDurationMonthsMaxLessThanMin": "The maximum duration can't be lower than the minimum.",

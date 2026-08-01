@@ -57,17 +57,16 @@ function formCategoryOf(service: MentorService): FormCategory {
   return "other"
 }
 
-// The backend's field/serializer validators raise plain-text messages
-// (a mix of hardcoded Russian and, historically, English — see
-// apps.services.models/serializers) — translate the ones a mentor can
-// realistically hit; anything unrecognized falls back to the raw text
-// rather than showing nothing. Numbers embedded in the backend message
-// (bounds like "от 0 до 200000") are lifted out via regex and
-// re-interpolated into the translated sentence, so the two bases never
-// need to be kept in sync by hand.
+// The backend's field/serializer validators raise plain-text English
+// messages (see apps.services.models/serializers) — translate the ones
+// a mentor can realistically hit; anything unrecognized falls back to
+// the raw text rather than showing nothing. Numbers embedded in the
+// backend message (bounds like "between 0 and 200000") are lifted out
+// via regex and re-interpolated into the translated sentence, so the
+// two bases never need to be kept in sync by hand.
 function extractNumbers(raw: string): string[] {
   // `\d+(?:\.\d+)?` (not `[\d.]+`) so a sentence-ending period after a
-  // whole number ("...не меньше 1.") isn't swallowed into the match —
+  // whole number ("...at least 1.") isn't swallowed into the match —
   // only a decimal point actually followed by more digits counts.
   return raw.match(/\d+(?:\.\d+)?/g) ?? []
 }
@@ -76,58 +75,61 @@ export function translateServiceErrorMessage(raw: string, t: (key: string, value
   const lower = raw.toLowerCase()
   const nums = extractNumbers(raw)
 
-  if (lower.includes("цена не может быть отрицательной")) {
+  if (lower.includes("price cannot be negative")) {
     return t("serviceErrorPriceNegative")
   }
-  if (lower.includes("целым числом тенге")) {
+  if (lower.includes("whole number of tenge")) {
     return t("serviceErrorPriceFractional")
   }
-  if (lower.includes("цена должна быть от")) {
+  if (lower.includes("price must be between")) {
     return t("serviceErrorPriceRange", { min: nums[0] ?? "0", max: nums[1] ?? "" })
   }
-  if (lower.includes("класс должен быть не меньше")) {
+  if (lower.includes("grade must be at least")) {
     return t("serviceErrorGradeMin", { min: nums[0] ?? "" })
   }
-  if (lower.includes("класс должен быть не больше")) {
+  if (lower.includes("grade cannot be more than")) {
     return t("serviceErrorGradeMax", { max: nums[0] ?? "" })
   }
-  if (lower.includes("grade_max не может быть меньше grade_min")) {
+  if (lower.includes("grade_max cannot be less than grade_min")) {
     return t("serviceErrorGradeMaxLessThanMin")
   }
-  if (lower.includes("количество встреч должно быть не меньше")) {
+  if (lower.includes("number of meetings must be at least")) {
     return t("serviceErrorMeetingsMin", { min: nums[0] ?? "" })
   }
-  if (lower.includes("количество встреч должно быть не больше")) {
+  if (lower.includes("number of meetings cannot be more than")) {
     return t("serviceErrorMeetingsMax", { max: nums[0] ?? "" })
   }
-  if (lower.includes("meetings_max не может быть меньше meetings_min")) {
+  if (lower.includes("meetings_max cannot be less than meetings_min")) {
     return t("serviceErrorMeetingsMaxLessThanMin")
   }
-  if (lower.includes("укажите диапазон количества встреч")) {
+  if (lower.includes("set the meetings range")) {
     return t("serviceErrorMeetingsRequired")
   }
-  if (lower.includes("длительность должна быть не меньше") && lower.includes("мес")) {
+  if (lower.includes("set the duration range in months")) {
+    return t("serviceErrorDurationMonthsRequired")
+  }
+  if (lower.includes("duration must be at least") && lower.includes("mo")) {
     return t("serviceErrorDurationMonthsMin", { min: nums[0] ?? "" })
   }
-  if (lower.includes("длительность должна быть не больше") && lower.includes("мес")) {
+  if (lower.includes("duration cannot be more than") && lower.includes("mo")) {
     return t("serviceErrorDurationMonthsMax", { max: nums[0] ?? "" })
   }
-  if (lower.includes("duration_months_max не может быть меньше duration_months_min")) {
+  if (lower.includes("duration_months_max cannot be less than duration_months_min")) {
     return t("serviceErrorDurationMonthsMaxLessThanMin")
   }
-  if (lower.includes("длительность должна быть от") && lower.includes("минут")) {
+  if (lower.includes("duration must be between") && lower.includes("minutes")) {
     return t("serviceErrorDurationMinutesRange", { min: nums[0] ?? "", max: nums[1] ?? "" })
   }
-  if (lower.includes("название не может быть пустым") || lower.includes("title cannot be blank")) {
+  if (lower.includes("title cannot be blank")) {
     return t("serviceErrorTitleBlank")
   }
-  if (lower.includes("больше не используется для новых услуг")) {
+  if (lower.includes("is no longer available for new services")) {
     return t("serviceErrorCategoryRetired")
   }
-  if (lower.includes("intro_call_enabled доступен только")) {
+  if (lower.includes("intro_call_enabled is only available")) {
     return t("serviceErrorIntroCallSupportOnly")
   }
-  if (lower.includes("is_price_negotiable доступен только")) {
+  if (lower.includes("is_price_negotiable is only available")) {
     return t("serviceErrorNegotiableSupportOnly")
   }
   return raw
