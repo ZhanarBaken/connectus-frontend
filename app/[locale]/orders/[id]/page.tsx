@@ -945,106 +945,6 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Mentor: send a support-engagement invoice inside this chat */}
-            {role === "mentor" && canChat && !chatClosed && (supportServices.length > 0 || supportServicesLoadError) && (
-              <div className="bg-white border border-gray-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">{t("invoiceTitle")}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  {t("invoiceBody")}
-                </p>
-                {supportServicesLoadError ? (
-                  <div>
-                    <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSupportServicesLoadError(false)
-                        fetchMentorServices()
-                          .then((services) =>
-                            setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
-                          )
-                          .catch(() => setSupportServicesLoadError(true))
-                      }}
-                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                    >
-                      {t("retry")}
-                    </button>
-                  </div>
-                ) : (
-                <>
-                {invoiceSent && !invoiceFormOpen && (
-                  <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-3">
-                    {t("invoiceSent")}
-                  </p>
-                )}
-                {!invoiceFormOpen ? (
-                  <button
-                    onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false) }}
-                    className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                  >
-                    {t("sendInvoiceCta")}
-                  </button>
-                ) : (
-                  <form onSubmit={handleSendInvoice} className="space-y-3">
-                    <select
-                      value={invoiceServiceId ?? ""}
-                      onChange={(e) => setInvoiceServiceId(Number(e.target.value))}
-                      required
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                    >
-                      <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
-                      {supportServices.map((s) => (
-                        <option key={s.id} value={s.id}>{s.title}</option>
-                      ))}
-                    </select>
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        value={invoicePrice}
-                        onChange={(e) => setInvoicePrice(e.target.value)}
-                        required
-                        type="number"
-                        min="0"
-                        step="1000"
-                        placeholder={t("invoicePricePlaceholder")}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                      />
-                      <input
-                        value={invoiceMonths}
-                        onChange={(e) => setInvoiceMonths(e.target.value)}
-                        required
-                        type="number"
-                        min="1"
-                        max="36"
-                        placeholder={t("invoiceMonthsPlaceholder")}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                      />
-                    </div>
-                    {invoiceError && (
-                      <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={sendingInvoice || invoiceServiceId === null}
-                        className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                      >
-                        {sendingInvoice ? t("sending") : t("send")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setInvoiceFormOpen(false)}
-                        className="border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                      >
-                        {t("cancel")}
-                      </button>
-                    </div>
-                  </form>
-                )}
-                </>
-                )}
-              </div>
-            )}
-
             {/* Mentor: close chat */}
             {role === "mentor" && canChat && !chatClosed && (
               <div className="bg-white border border-gray-100 rounded-2xl p-6">
@@ -1780,6 +1680,105 @@ export default function OrderPage({ params }: Props) {
                   </span>
                 )}
               </div>
+
+              {/* Mentor: send a support-engagement invoice — lives right
+                  under the chat header (not on the main order page) so
+                  it's reachable from inside the fullscreen Mini App chat
+                  overlay too, not just the collapsed sidebar view. */}
+              {role === "mentor" && canChat && !chatClosed && (supportServices.length > 0 || supportServicesLoadError) && (
+                <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
+                  {supportServicesLoadError ? (
+                    <div>
+                      <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSupportServicesLoadError(false)
+                          fetchMentorServices()
+                            .then((services) =>
+                              setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
+                            )
+                            .catch(() => setSupportServicesLoadError(true))
+                        }}
+                        className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                      >
+                        {t("retry")}
+                      </button>
+                    </div>
+                  ) : (
+                  <>
+                  {invoiceSent && !invoiceFormOpen && (
+                    <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1">
+                      {t("invoiceSent")}
+                    </p>
+                  )}
+                  {!invoiceFormOpen ? (
+                    <button
+                      onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false) }}
+                      className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                    >
+                      {t("sendInvoiceCta")}
+                    </button>
+                  ) : (
+                    <form onSubmit={handleSendInvoice} className="space-y-2">
+                      <select
+                        value={invoiceServiceId ?? ""}
+                        onChange={(e) => setInvoiceServiceId(Number(e.target.value))}
+                        required
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                      >
+                        <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
+                        {supportServices.map((s) => (
+                          <option key={s.id} value={s.id}>{s.title}</option>
+                        ))}
+                      </select>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          value={invoicePrice}
+                          onChange={(e) => setInvoicePrice(e.target.value)}
+                          required
+                          type="number"
+                          min="0"
+                          step="1000"
+                          placeholder={t("invoicePricePlaceholder")}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                        />
+                        <input
+                          value={invoiceMonths}
+                          onChange={(e) => setInvoiceMonths(e.target.value)}
+                          required
+                          type="number"
+                          min="1"
+                          max="36"
+                          placeholder={t("invoiceMonthsPlaceholder")}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                        />
+                      </div>
+                      {invoiceError && (
+                        <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={sendingInvoice || invoiceServiceId === null}
+                          className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                        >
+                          {sendingInvoice ? t("sending") : t("send")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceFormOpen(false)}
+                          className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                        >
+                          {t("cancel")}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                  </>
+                  )}
+                </div>
+              )}
 
               {/* Messages */}
               {canChat ? (
