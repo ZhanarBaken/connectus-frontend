@@ -58,6 +58,20 @@ function Toggle({ label, description, icon, checked, onChange, disabled }: Toggl
   )
 }
 
+// Length is guarded client-side before submit, so only Django's
+// content-rule validators (common / all-numeric) can reach the backend
+// and come back as raw, untranslated English.
+function translatePasswordErrorMessage(raw: string, t: (key: string) => string): string {
+  const lower = raw.toLowerCase()
+  if (lower.includes("too common")) {
+    return t("passwordErrorTooCommon")
+  }
+  if (lower.includes("entirely numeric")) {
+    return t("passwordErrorEntirelyNumeric")
+  }
+  return raw
+}
+
 export default function SettingsPage() {
   const t = useTranslations("Settings")
   const router = useRouter()
@@ -324,7 +338,7 @@ export default function SettingsPage() {
       await loadMe()
       setTimeout(() => setSuccess(""), 2000)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("passwordSetErrorDefault"))
+      setError(e instanceof Error ? translatePasswordErrorMessage(e.message, t) : t("passwordSetErrorDefault"))
     } finally {
       setLinkingAction("")
     }

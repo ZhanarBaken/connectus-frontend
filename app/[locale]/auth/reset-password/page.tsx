@@ -8,6 +8,20 @@ import { confirmPasswordReset } from "@/lib/api"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
+// Length is guarded client-side before submit, so only Django's
+// content-rule validators (common / all-numeric) can reach the backend
+// and come back as raw, untranslated English.
+function translatePasswordErrorMessage(raw: string, t: (key: string) => string): string {
+  const lower = raw.toLowerCase()
+  if (lower.includes("too common")) {
+    return t("errorPasswordTooCommon")
+  }
+  if (lower.includes("entirely numeric")) {
+    return t("errorPasswordEntirelyNumeric")
+  }
+  return raw
+}
+
 function ResetPasswordForm() {
   const t = useTranslations("Auth.ResetPassword")
   const params = useSearchParams()
@@ -38,7 +52,7 @@ function ResetPasswordForm() {
       // a fresh login with the new password instead of auto-logging in.
       setTimeout(() => router.replace("/auth/login"), 1500)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("errorGeneric"))
+      setError(e instanceof Error ? translatePasswordErrorMessage(e.message, t) : t("errorGeneric"))
     } finally {
       setLoading(false)
     }

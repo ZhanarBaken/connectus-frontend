@@ -16,6 +16,31 @@ import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 import { TG_AUTH_EVENT } from "@/components/TelegramAutoLogin"
 
+// The backend's password/email validators (DRF field defaults + Django's
+// AUTH_PASSWORD_VALIDATORS + a custom UniqueValidator message) raise
+// plain English text with no locale awareness — translate the ones a
+// user can realistically hit; anything unrecognized falls back to the
+// raw text rather than showing nothing.
+export function translateRegisterErrorMessage(raw: string, t: (key: string) => string): string {
+  const lower = raw.toLowerCase()
+  if (lower.includes("at least 12 characters")) {
+    return t("errorPasswordTooShort")
+  }
+  if (lower.includes("too common")) {
+    return t("errorPasswordTooCommon")
+  }
+  if (lower.includes("entirely numeric")) {
+    return t("errorPasswordEntirelyNumeric")
+  }
+  if (lower.includes("already registered")) {
+    return t("errorEmailTaken")
+  }
+  if (lower.includes("must agree to the terms")) {
+    return t("errorMustAgreeToTerms")
+  }
+  return raw
+}
+
 // Which signup flow was started before consent was required. Set when
 // the user taps a CTA, cleared after the consent modal resolves.
 type PendingAuth = "email" | "google" | "telegram" | null
@@ -115,7 +140,7 @@ export default function RegisterPage() {
       track("signup_form_submitted", { role })
       setRegistered(true)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("errorGeneric"))
+      setError(e instanceof Error ? translateRegisterErrorMessage(e.message, t) : t("errorGeneric"))
     } finally {
       setLoading(false)
     }
