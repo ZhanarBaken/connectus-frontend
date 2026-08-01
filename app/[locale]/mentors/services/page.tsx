@@ -57,6 +57,82 @@ function formCategoryOf(service: MentorService): FormCategory {
   return "other"
 }
 
+// The backend's field/serializer validators raise plain-text messages
+// (a mix of hardcoded Russian and, historically, English — see
+// apps.services.models/serializers) — translate the ones a mentor can
+// realistically hit; anything unrecognized falls back to the raw text
+// rather than showing nothing. Numbers embedded in the backend message
+// (bounds like "от 0 до 200000") are lifted out via regex and
+// re-interpolated into the translated sentence, so the two bases never
+// need to be kept in sync by hand.
+function extractNumbers(raw: string): string[] {
+  // `\d+(?:\.\d+)?` (not `[\d.]+`) so a sentence-ending period after a
+  // whole number ("...не меньше 1.") isn't swallowed into the match —
+  // only a decimal point actually followed by more digits counts.
+  return raw.match(/\d+(?:\.\d+)?/g) ?? []
+}
+
+export function translateServiceErrorMessage(raw: string, t: (key: string, values?: Record<string, string | number>) => string): string {
+  const lower = raw.toLowerCase()
+  const nums = extractNumbers(raw)
+
+  if (lower.includes("цена не может быть отрицательной")) {
+    return t("serviceErrorPriceNegative")
+  }
+  if (lower.includes("целым числом тенге")) {
+    return t("serviceErrorPriceFractional")
+  }
+  if (lower.includes("цена должна быть от")) {
+    return t("serviceErrorPriceRange", { min: nums[0] ?? "0", max: nums[1] ?? "" })
+  }
+  if (lower.includes("класс должен быть не меньше")) {
+    return t("serviceErrorGradeMin", { min: nums[0] ?? "" })
+  }
+  if (lower.includes("класс должен быть не больше")) {
+    return t("serviceErrorGradeMax", { max: nums[0] ?? "" })
+  }
+  if (lower.includes("grade_max не может быть меньше grade_min")) {
+    return t("serviceErrorGradeMaxLessThanMin")
+  }
+  if (lower.includes("количество встреч должно быть не меньше")) {
+    return t("serviceErrorMeetingsMin", { min: nums[0] ?? "" })
+  }
+  if (lower.includes("количество встреч должно быть не больше")) {
+    return t("serviceErrorMeetingsMax", { max: nums[0] ?? "" })
+  }
+  if (lower.includes("meetings_max не может быть меньше meetings_min")) {
+    return t("serviceErrorMeetingsMaxLessThanMin")
+  }
+  if (lower.includes("укажите диапазон количества встреч")) {
+    return t("serviceErrorMeetingsRequired")
+  }
+  if (lower.includes("длительность должна быть не меньше") && lower.includes("мес")) {
+    return t("serviceErrorDurationMonthsMin", { min: nums[0] ?? "" })
+  }
+  if (lower.includes("длительность должна быть не больше") && lower.includes("мес")) {
+    return t("serviceErrorDurationMonthsMax", { max: nums[0] ?? "" })
+  }
+  if (lower.includes("duration_months_max не может быть меньше duration_months_min")) {
+    return t("serviceErrorDurationMonthsMaxLessThanMin")
+  }
+  if (lower.includes("длительность должна быть от") && lower.includes("минут")) {
+    return t("serviceErrorDurationMinutesRange", { min: nums[0] ?? "", max: nums[1] ?? "" })
+  }
+  if (lower.includes("название не может быть пустым") || lower.includes("title cannot be blank")) {
+    return t("serviceErrorTitleBlank")
+  }
+  if (lower.includes("больше не используется для новых услуг")) {
+    return t("serviceErrorCategoryRetired")
+  }
+  if (lower.includes("intro_call_enabled доступен только")) {
+    return t("serviceErrorIntroCallSupportOnly")
+  }
+  if (lower.includes("is_price_negotiable доступен только")) {
+    return t("serviceErrorNegotiableSupportOnly")
+  }
+  return raw
+}
+
 export default function MentorServicesPage() {
   const t = useTranslations("Mentors.Services")
   useMentorOnboardingGate()
@@ -189,7 +265,7 @@ export default function MentorServicesPage() {
       }
       cancelForm()
     } catch (e: unknown) {
-      setFormError(e instanceof Error ? e.message : t("saveErrorGeneric"))
+      setFormError(e instanceof Error ? translateServiceErrorMessage(e.message, t) : t("saveErrorGeneric"))
     } finally {
       setSubmitting(false)
     }
