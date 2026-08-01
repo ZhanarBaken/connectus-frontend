@@ -132,6 +132,12 @@ export function translateServiceErrorMessage(raw: string, t: (key: string, value
   if (lower.includes("is_price_negotiable is only available")) {
     return t("serviceErrorNegotiableSupportOnly")
   }
+  if (lower.includes("cannot delete the last active service")) {
+    return t("serviceErrorCannotDeleteLastActive")
+  }
+  if (lower.includes("has active engagements")) {
+    return t("serviceErrorHasActiveEngagements")
+  }
   return raw
 }
 
@@ -284,7 +290,7 @@ export default function MentorServicesPage() {
       // happened.
       setServices((prev) => prev.filter((s) => s.id !== id))
     } catch (e: unknown) {
-      setDeleteError(e instanceof Error ? e.message : t("deleteErrorGeneric"))
+      setDeleteError(e instanceof Error ? translateServiceErrorMessage(e.message, t) : t("deleteErrorGeneric"))
     }
   }
 

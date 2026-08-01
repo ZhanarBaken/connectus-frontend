@@ -19,6 +19,71 @@ import Icon from "@/components/Icon"
 // apps.services.models.SUPPORT_INTRO_CALL_DURATION_MINUTES on the backend.
 const DEFAULT_INTRO_CALL_DURATION_MINUTES = 15
 
+// apps.orders.serializers.OrderCreateSerializer.validate() raises plain
+// English text with no locale awareness — translate the ones a student
+// can realistically hit; anything unrecognized falls back to the raw
+// text rather than showing nothing. `email_verification_required` is a
+// stable machine code (apps.orders.serializers.EmailVerificationRequired),
+// not prose — matched by exact equality, not substring.
+export function translateOrderErrorMessage(raw: string, t: (key: string) => string): string {
+  if (raw === "email_verification_required") {
+    return t("orderErrorEmailVerificationRequired")
+  }
+  const lower = raw.toLowerCase()
+  if (lower.includes("not currently active")) {
+    return t("orderErrorServiceInactive")
+  }
+  if (lower.includes("not currently available")) {
+    return t("orderErrorMentorUnavailable")
+  }
+  if (lower.includes("not currently accepting bookings")) {
+    return t("orderErrorMentorNotAcceptingBookings")
+  }
+  if (lower.includes("paused due to a missed payment")) {
+    return t("orderErrorEngagementPaused")
+  }
+  if (lower.includes("only available through a chat invoice")) {
+    return t("orderErrorSupportInviteOnly")
+  }
+  if (lower.includes("pick a session time")) {
+    return t("orderErrorPickSessionTime")
+  }
+  if (lower.includes("book a slot in the past")) {
+    return t("orderErrorSlotInPast")
+  }
+  if (lower.includes("just taken")) {
+    return t("orderErrorSlotJustTaken")
+  }
+  if (lower.includes("slot is unavailable")) {
+    return t("orderErrorSlotUnavailable")
+  }
+  if (lower.includes("already have an intro-call booked")) {
+    return t("orderErrorIntroCallAlreadyBooked")
+  }
+  if (lower.includes("already have an active consultation")) {
+    return t("orderErrorConsultationAlreadyActive")
+  }
+  if (lower.includes("booked instantly")) {
+    return t("orderErrorFreeConsultationNoTime")
+  }
+  if (lower.includes("time slot is required")) {
+    return t("orderErrorSlotRequired")
+  }
+  if (lower.includes("has intro call enabled")) {
+    return t("orderErrorIntroCallEnabledUseBooking")
+  }
+  if (lower.includes("sent a request recently")) {
+    return t("orderErrorRequestSupportCooldown")
+  }
+  if (lower.includes("no longer active")) {
+    return t("orderErrorEngagementNoLongerActive")
+  }
+  if (lower.includes("intro call is no longer available")) {
+    return t("orderErrorIntroCallNoLongerAvailable")
+  }
+  return raw
+}
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -79,7 +144,7 @@ export default function MentorPage({ params }: Props) {
       const created = await createOrder(serviceId)
       router.push(`/orders/${created.id}`)
     } catch (err: unknown) {
-      setOrderError(err instanceof Error ? err.message : t("orderError"))
+      setOrderError(err instanceof Error ? translateOrderErrorMessage(err.message, t) : t("orderError"))
       setOrderingServiceId(null)
     }
   }
@@ -93,7 +158,7 @@ export default function MentorPage({ params }: Props) {
     } catch (err: unknown) {
       setRequestSupportError({
         serviceId,
-        message: err instanceof Error ? err.message : t("requestSupportError"),
+        message: err instanceof Error ? translateOrderErrorMessage(err.message, t) : t("requestSupportError"),
       })
     } finally {
       setRequestingSupportId(null)
@@ -730,7 +795,7 @@ export default function MentorPage({ params }: Props) {
                     const created = await createOrder(serviceId, scheduledAt)
                     router.push(`/orders/${created.id}`)
                   } catch (err: unknown) {
-                    setOrderError(err instanceof Error ? err.message : t("orderError"))
+                    setOrderError(err instanceof Error ? translateOrderErrorMessage(err.message, t) : t("orderError"))
                     setOrderingServiceId(null)
                     // The engagement may have just paused (or an intro-call
                     // been used up) while this modal was open — refetch so
