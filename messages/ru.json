@@ -993,6 +993,10 @@
     "Schedule": {
       "loadError": "Не удалось загрузить расписание",
       "saveError": "Не удалось сохранить расписание",
+      "errorEndBeforeStart": "Время окончания должно быть позже времени начала.",
+      "errorOverlappingWindows": "Пересекаются интервалы в {day}.",
+      "errorDuplicateBlockedDate": "Дата {date} заблокирована дважды.",
+      "errorOverlappingExceptions": "Пересекаются интервалы-исключения на {date}.",
       "pageTitle": "Расписание",
       "pageSubtitle": "Настрой доступные часы для записи",
       "timezoneLabel": "Часовой пояс: {timezone}",

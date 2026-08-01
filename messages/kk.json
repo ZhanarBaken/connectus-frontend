@@ -993,6 +993,10 @@
     "Schedule": {
       "loadError": "Кестені жүктеу мүмкін болмады",
       "saveError": "Кестені сақтау мүмкін болмады",
+      "errorEndBeforeStart": "Аяқталу уақыты бастау уақытынан кейін болуы керек.",
+      "errorOverlappingWindows": "{day} күнінде аралықтар қабаттасады.",
+      "errorDuplicateBlockedDate": "{date} күні екі рет бұғатталған.",
+      "errorOverlappingExceptions": "{date} күніне ерекшелік аралықтары қабаттасады.",
       "pageTitle": "Кесте",
       "pageSubtitle": "Жазылу үшін қолжетімді сағаттарды баптa",
       "timezoneLabel": "Уақыт белдеуі: {timezone}",

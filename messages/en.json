@@ -993,6 +993,10 @@
     "Schedule": {
       "loadError": "Couldn't load the schedule",
       "saveError": "Couldn't save the schedule",
+      "errorEndBeforeStart": "End time must be after start time.",
+      "errorOverlappingWindows": "Overlapping time windows on {day}.",
+      "errorDuplicateBlockedDate": "Date {date} is blocked twice.",
+      "errorOverlappingExceptions": "Overlapping exception windows on {date}.",
       "pageTitle": "Schedule",
       "pageSubtitle": "Set the hours you're available for bookings",
       "timezoneLabel": "Timezone: {timezone}",

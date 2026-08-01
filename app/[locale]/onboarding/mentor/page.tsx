@@ -25,6 +25,7 @@ import {
   type TimeSlot,
   type WeekSchedule,
 } from "@/lib/schedule"
+import { translateScheduleErrorMessage } from "@/lib/scheduleErrors"
 import { ExpertiseArea, MentorService } from "@/types"
 import { inputClass } from "@/lib/formStyles"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
@@ -504,7 +505,7 @@ export default function MentorOnboarding() {
       setAvailabilitySaved(weekly.length > 0)
       flashSaved()
     } catch (e) {
-      setScheduleError(e instanceof Error ? e.message : tSchedule("saveError"))
+      setScheduleError(e instanceof Error ? translateScheduleErrorMessage(e.message, tSchedule) : tSchedule("saveError"))
     } finally {
       setSavingSchedule(false)
     }

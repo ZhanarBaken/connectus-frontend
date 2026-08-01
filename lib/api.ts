@@ -1290,11 +1290,37 @@ export async function markChatRead(conversationId: number): Promise<void> {
 
 import type { MentorSchedule, ScheduleBlock, ScheduleWindow } from "./schedule"
 
+// MentorScheduleSerializer's `weekly` field nests a ListSerializer of its
+// own (MentorAvailabilityWindowSerializer, many=True) — a validate() error
+// inside ONE of those items comes back as
+// `{"weekly": [{"non_field_errors": ["..."]}]}`, not the flat
+// `{"weekly": ["..."]}` shape a top-level field validator produces (e.g.
+// validate_weekly's overlap check). `Object.values(err)[0]` only unwraps
+// one level, so the nested case stringified to "[object Object]" instead
+// of the actual message. Walk arbitrarily deep instead.
+export function firstErrorMessage(err: unknown): string | undefined {
+  if (typeof err === "string") return err
+  if (Array.isArray(err)) {
+    for (const item of err) {
+      const found = firstErrorMessage(item)
+      if (found) return found
+    }
+    return undefined
+  }
+  if (err && typeof err === "object") {
+    for (const value of Object.values(err)) {
+      const found = firstErrorMessage(value)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
 export async function fetchMyMentorSchedule(): Promise<MentorSchedule> {
   const res = await authFetch(`${BASE_URL}/mentors/me/schedule/`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось загрузить расписание")
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to load schedule")
   }
   return res.json()
 }
@@ -1310,12 +1336,7 @@ export async function saveMyMentorSchedule(payload: {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    // Bubble up the first field-level message if present (overlap, etc.).
-    const first = Object.values(err)[0]
-    throw new Error(
-      err.detail ||
-        (Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось сохранить расписание")),
-    )
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to save schedule")
   }
   return res.json()
 }

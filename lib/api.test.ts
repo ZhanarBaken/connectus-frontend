@@ -9,6 +9,7 @@ import {
   fetchMentorEarnings,
   fetchOrder,
   fetchPublicSettings,
+  firstErrorMessage,
   formatCooldown,
   formatCooldownShort,
   getFreshAccessToken,
@@ -25,6 +26,37 @@ import {
   telegramUnlink,
   updateUserLocale,
 } from "./api"
+
+describe("firstErrorMessage", () => {
+  it("returns a flat top-level string list's first item", () => {
+    expect(firstErrorMessage({ weekly: ["Overlapping windows on weekday 0."] }))
+      .toBe("Overlapping windows on weekday 0.")
+  })
+
+  it("digs through a nested ListSerializer item shape", () => {
+    // Regression: MentorScheduleSerializer's `weekly` field is itself a
+    // ListSerializer of MentorAvailabilityWindowSerializer (many=True) —
+    // a validate() error on ONE item comes back doubly-nested, not the
+    // flat {"weekly": ["..."]} shape a parent-level field validator
+    // produces. A shallow `Object.values(err)[0]` extraction only
+    // unwraps one level and stringifies the remaining object to
+    // "[object Object]" instead of finding the real message.
+    const shape = { weekly: [{ non_field_errors: ["end_time must be strictly after start_time."] }] }
+    expect(firstErrorMessage(shape)).toBe("end_time must be strictly after start_time.")
+  })
+
+  it("returns undefined for an empty object", () => {
+    expect(firstErrorMessage({})).toBeUndefined()
+  })
+
+  it("returns undefined for an empty array", () => {
+    expect(firstErrorMessage([])).toBeUndefined()
+  })
+
+  it("returns the bare string unchanged", () => {
+    expect(firstErrorMessage("Cannot book a slot in the past.")).toBe("Cannot book a slot in the past.")
+  })
+})
 
 describe("formatCooldown", () => {
   it("formats seconds under a minute", () => {

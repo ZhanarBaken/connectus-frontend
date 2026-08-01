@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMyMentorSchedule, saveMyMentorSchedule } from "@/lib/api"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
+import { translateScheduleErrorMessage } from "@/lib/scheduleErrors"
 import {
   emptyWeekSchedule,
   flatToWeekSchedule,
@@ -63,7 +64,7 @@ export default function MentorSchedulePage() {
         setTimezone(schedule.timezone)
       })
       .catch((err) =>
-        setError(err instanceof Error ? err.message : t("loadError")),
+        setError(err instanceof Error ? translateScheduleErrorMessage(err.message, t) : t("loadError")),
       )
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,7 +146,7 @@ export default function MentorSchedulePage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("saveError"))
+      setError(err instanceof Error ? translateScheduleErrorMessage(err.message, t) : t("saveError"))
     } finally {
       setSaving(false)
     }
