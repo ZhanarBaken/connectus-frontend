@@ -9,7 +9,7 @@
 // SSR-safe — only call from "use client" components.
 
 import { ChatAttachment, ChatMessage } from "@/types"
-import { authFetch, getFreshAccessToken } from "./api"
+import { authFetch, firstErrorMessage, getFreshAccessToken } from "./api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -121,7 +121,9 @@ export async function sendChatMessage(
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось отправить сообщение")
+    // `err.detail` alone misses attachment validation errors (size/MIME
+    // type), which come back field-keyed (e.g. {"files": ["..."]}).
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to send the message")
   }
   return res.json()
 }

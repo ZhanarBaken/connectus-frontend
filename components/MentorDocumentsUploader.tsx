@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { authFetch } from "@/lib/api"
+import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
 import Icon from "@/components/Icon"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -18,6 +19,11 @@ export interface MentorDocument {
   uploaded_at: string
   download_url: string
 }
+
+// Matches apps.mentors.models.DOCUMENT_ALLOWED_TYPES — the `accept`
+// attribute on the file input only filters the OS picker dialog, it does
+// NOT apply to drag-and-drop, so this needs its own explicit check there.
+const ALLOWED_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"]
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -108,7 +114,8 @@ export default function MentorDocumentsUploader({ isBanned = false, onDocumentsC
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         const first = Object.values(err)[0]
-        throw new Error(Array.isArray(first) ? first[0] : err.detail || String(first || t("loadErrorGeneric")))
+        const raw = Array.isArray(first) ? String(first[0]) : String(err.detail || first || t("loadErrorGeneric"))
+        throw new Error(translateFileUploadErrorMessage(raw, t))
       }
       const doc: MentorDocument = await res.json()
       setDocuments((prev) => {
@@ -149,7 +156,16 @@ export default function MentorDocumentsUploader({ isBanned = false, onDocumentsC
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     const dropped = e.dataTransfer.files[0]
-    if (dropped) setFile(dropped)
+    if (!dropped) return
+    // The picker's `accept` attribute doesn't constrain drag-and-drop —
+    // check explicitly so a mentor dragging e.g. a .docx gets an
+    // immediate, translated message instead of a round trip to the API.
+    if (!ALLOWED_DOCUMENT_TYPES.includes(dropped.type)) {
+      setUploadError(t("fileTypeNotAllowed"))
+      return
+    }
+    setUploadError("")
+    setFile(dropped)
   }
 
   if (loading) {

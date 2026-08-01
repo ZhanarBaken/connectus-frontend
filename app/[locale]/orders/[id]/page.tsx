@@ -6,6 +6,7 @@ import { useRouter, Link } from "@/i18n/navigation"
 import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
+import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
 import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService, SupportTask } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
@@ -579,7 +580,11 @@ export default function OrderPage({ params }: Props) {
         setAttachedFiles([])
       } catch (err: unknown) {
         // keep message/files so user can retry
-        setChatSendError(err instanceof Error && err.message ? err.message : t("chatSendError"))
+        setChatSendError(
+          err instanceof Error && err.message
+            ? translateFileUploadErrorMessage(err.message, t)
+            : t("chatSendError"),
+        )
       } finally {
         setSending(false)
       }
@@ -592,12 +597,27 @@ export default function OrderPage({ params }: Props) {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    // Max 3 files, 10MB each, PDF/JPEG/PNG only
+    // Max 3 files, 10MB each, PDF/JPEG/PNG only — matches
+    // apps.chat.models.ATTACHMENT_MAX_MB/ATTACHMENT_ALLOWED_TYPES.
+    let rejected: "type" | "size" | null = null
     const valid = files.filter((f) => {
-      if (f.size > 10 * 1024 * 1024) return false
-      if (!["application/pdf", "image/jpeg", "image/png"].includes(f.type)) return false
+      if (!["application/pdf", "image/jpeg", "image/png"].includes(f.type)) {
+        rejected ??= "type"
+        return false
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        rejected ??= "size"
+        return false
+      }
       return true
     })
+    if (rejected === "type") {
+      setChatSendError(t("fileTypeNotAllowed"))
+    } else if (rejected === "size") {
+      setChatSendError(t("chatFileTooLarge"))
+    } else {
+      setChatSendError("")
+    }
     setAttachedFiles((prev) => [...prev, ...valid].slice(0, 3))
     // Reset input so same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = ""
@@ -1118,7 +1138,7 @@ export default function OrderPage({ params }: Props) {
                       )
                       setOrderDocs((prev) => [doc, ...prev])
                     } catch (err) {
-                      setReceiptError(err instanceof Error ? err.message : t("uploadFailed"))
+                      setReceiptError(err instanceof Error ? translateFileUploadErrorMessage(err.message, t) : t("uploadFailed"))
                     } finally {
                       setUploadingReceipt(false)
                     }
@@ -1587,7 +1607,7 @@ export default function OrderPage({ params }: Props) {
                           const doc = await uploadOrderDocument(order.id, file, desc || undefined)
                           setOrderDocs((prev) => [doc, ...prev])
                         } catch (err) {
-                          alert(err instanceof Error ? err.message : t("uploadFailed"))
+                          alert(err instanceof Error ? translateFileUploadErrorMessage(err.message, t) : t("uploadFailed"))
                         } finally {
                           setUploadingDoc(false)
                           if (docInputRef.current) docInputRef.current.value = ""

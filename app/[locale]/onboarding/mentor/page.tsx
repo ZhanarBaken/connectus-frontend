@@ -26,6 +26,7 @@ import {
   type WeekSchedule,
 } from "@/lib/schedule"
 import { translateScheduleErrorMessage } from "@/lib/scheduleErrors"
+import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
 import { ExpertiseArea, MentorService } from "@/types"
 import { inputClass } from "@/lib/formStyles"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
@@ -360,9 +361,8 @@ export default function MentorOnboarding() {
       const res = await authFetch(`${BASE_URL}/mentors/profile/me/`, { method: "PATCH", body: fd })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(
-          err.profile_photo?.[0] || err.profile_photo || err.detail || t("saveErrorGeneric")
-        )
+        const raw = err.profile_photo?.[0] || err.profile_photo || err.detail || t("saveErrorGeneric")
+        throw new Error(translateFileUploadErrorMessage(raw, t))
       }
       const data = await res.json()
       setProfilePhoto(data.profile_photo ?? null)

@@ -575,7 +575,9 @@ export async function uploadOrderDocument(
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось загрузить документ")
+    // `err.detail` alone misses this — a `file` field validation error
+    // (size/MIME type) comes back as {"file": ["..."]}, not `detail`.
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to upload the document")
   }
   return res.json()
 }
@@ -586,7 +588,7 @@ export async function deleteOrderDocument(orderId: number, docId: number): Promi
   })
   if (!res.ok && res.status !== 204) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось удалить документ")
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to delete the document")
   }
 }
 

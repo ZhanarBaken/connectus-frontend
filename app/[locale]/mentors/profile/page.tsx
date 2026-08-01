@@ -9,6 +9,7 @@ import { LANGUAGE_LABELS } from "@/lib/languages"
 import { calcProfileCompletion } from "@/lib/profileCompletion"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { usePatchWithFieldErrors } from "@/lib/usePatchWithFieldErrors"
+import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
 import { inputClass } from "@/lib/formStyles"
 import { MentorProfile, MentorService, ExpertiseArea, User } from "@/types"
 import BackButton from "@/components/BackButton"
@@ -147,9 +148,8 @@ export default function MentorProfilePage() {
           if (err.profile_photo) msg = Array.isArray(err.profile_photo) ? err.profile_photo[0] : err.profile_photo
           else if (err.detail) msg = err.detail
           else if (err.non_field_errors) msg = err.non_field_errors[0]
-          else msg = JSON.stringify(err)
         } catch {}
-        throw new Error(`${res.status}: ${msg}`)
+        throw new Error(translateFileUploadErrorMessage(msg, t))
       }
       const data = await res.json()
       setProfilePhoto(data.profile_photo ?? null)

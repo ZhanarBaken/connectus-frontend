@@ -144,9 +144,18 @@ describe("sendChatMessage", () => {
     await expect(sendChatMessage(1, "hi")).rejects.toThrow("Chat is closed")
   })
 
-  it("falls back to a default Russian message when there is no detail", async () => {
+  it("falls back to a default message when there is no detail or field error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
-    await expect(sendChatMessage(1, "hi")).rejects.toThrow("Не удалось отправить сообщение")
+    await expect(sendChatMessage(1, "hi")).rejects.toThrow("Failed to send the message")
+  })
+
+  it("digs into a field-keyed error (e.g. attachment validation) when there is no detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ files: ["File type 'text/plain' is not allowed. Allowed: application/pdf."] }, { status: 400 }),
+    )
+    await expect(sendChatMessage(1, "hi")).rejects.toThrow(
+      "File type 'text/plain' is not allowed. Allowed: application/pdf.",
+    )
   })
 })
 
