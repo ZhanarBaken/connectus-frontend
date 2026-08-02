@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import OrdersPage from "./page"
@@ -73,6 +73,10 @@ function makeMentorCard(overrides: Partial<MentorCard> = {}): MentorCard {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+})
+
+afterEach(() => {
+  window.Telegram = undefined
 })
 
 describe("OrdersPage — student view", () => {
@@ -204,5 +208,30 @@ describe("OrdersPage — mentor view", () => {
 
     await waitFor(() => expect(fetchOrders).toHaveBeenCalled())
     expect(fetchMentors).not.toHaveBeenCalled()
+  })
+
+  it("links the Chat button straight to the order page outside Telegram", async () => {
+    vi.mocked(fetchOrders).mockResolvedValue([
+      makeOrder({ id: 1, student: 7, conversation_id: 55 }),
+    ])
+
+    render(<OrdersPage />)
+
+    const chatLink = await screen.findByRole("link", { name: /Чат/ })
+    expect(chatLink).toHaveAttribute("href", "/orders/1")
+  })
+
+  it("appends ?chat=open to the Chat link inside the Telegram Mini App", async () => {
+    window.Telegram = {
+      WebApp: { initData: "raw-init-data", ready: vi.fn() } as unknown as TelegramWebApp,
+    }
+    vi.mocked(fetchOrders).mockResolvedValue([
+      makeOrder({ id: 1, student: 7, conversation_id: 55 }),
+    ])
+
+    render(<OrdersPage />)
+
+    const chatLink = await screen.findByRole("link", { name: /Чат/ })
+    expect(chatLink).toHaveAttribute("href", "/orders/1?chat=open")
   })
 })

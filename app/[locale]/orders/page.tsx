@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { fetchOrders, fetchMentors } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
@@ -47,6 +48,7 @@ export default function OrdersPage() {
   const tStatus = useTranslations("OrderStatus")
   const locale = useLocale()
   useStudentOnboardingGate()
+  const { isInTelegram } = useTelegramWebApp()
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [mentorNamesLoadError, setMentorNamesLoadError] = useState(false)
@@ -205,7 +207,12 @@ export default function OrdersPage() {
                     </button>
                     {chatOrder && (
                       <Link
-                        href={`/orders/${chatOrder.id}`}
+                        // Inside the Mini App the order page hides the chat
+                        // behind a CTA by default — but tapping "Chat" here
+                        // clearly means "open the chat", so deep-link straight
+                        // into the fullscreen overlay (same param the /messages
+                        // inbox and TG notifications already use).
+                        href={isInTelegram ? `/orders/${chatOrder.id}?chat=open` : `/orders/${chatOrder.id}`}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors flex-shrink-0"
                       >
                         <Icon name="chat" size={16} />
