@@ -21,22 +21,25 @@ import type { Role } from "@/types"
 // Telegram exposes whatever string the bot put after `?startapp=` in
 // `initDataUnsafe.start_param`. We use it as a tiny routing key —
 // e.g. server-side notification builds `order_<id>` so a tap on the
-// TG message lands on the right order screen post-login. Returning
+// TG message lands on the right order screen post-login, or
+// `chat_<id>` for a direct chat message notification with no order
+// behind it (see apps.chat.notifications on the backend). Returning
 // null when the value isn't recognised keeps the auto-login flow
 // from accidentally redirecting to an attacker-shaped path.
 function resolveStartParamTarget(raw: string | null | undefined): string | null {
   if (!raw) return null
-  const orderMatch = /^order_(\d+)(?:_(ru|en|kk))?$/.exec(raw)
-  if (orderMatch) {
-    const [, orderId, taggedLocale] = orderMatch
-    // "ru" is the default (unprefixed) locale — only en/kk get a
-    // path prefix, matching i18n/routing.ts's localePrefix: "as-needed".
-    const prefix = taggedLocale && taggedLocale !== "ru" ? `/${taggedLocale}` : ""
+  const match = /^(order|chat)_(\d+)(?:_(ru|en|kk))?$/.exec(raw)
+  if (!match) return null
+  const [, kind, id, taggedLocale] = match
+  // "ru" is the default (unprefixed) locale — only en/kk get a
+  // path prefix, matching i18n/routing.ts's localePrefix: "as-needed".
+  const prefix = taggedLocale && taggedLocale !== "ru" ? `/${taggedLocale}` : ""
+  if (kind === "order") {
     // ?chat=open tells the order page to open the chat overlay
     // straight away on mount (the param is read inside that page).
-    return `${prefix}/orders/${orderId}?chat=open`
+    return `${prefix}/orders/${id}?chat=open`
   }
-  return null
+  return `${prefix}/messages/${id}`
 }
 
 // Parse start_param directly from the URL hash before the WebApp SDK

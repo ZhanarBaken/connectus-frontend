@@ -283,6 +283,54 @@ describe("TelegramAutoLogin", () => {
     })
   })
 
+  describe("deep-link auto-login (start_param=chat_<id>, no order behind the conversation)", () => {
+    it("auto-fires login and navigates to the standalone chat page on success", async () => {
+      setDeepLink("chat_88")
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "mentor" }))
+
+      render(<TelegramAutoLogin />)
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith("/messages/88")
+      })
+    })
+
+    it("routes to a locale-prefixed chat path when the deep link is tagged with a non-default locale", async () => {
+      setDeepLink("chat_88_en")
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "mentor" }))
+
+      render(<TelegramAutoLogin />)
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith("/en/messages/88")
+      })
+    })
+  })
+
   describe("role picker flow", () => {
     async function renderAtRolePicker() {
       setDeepLink("order_1")
