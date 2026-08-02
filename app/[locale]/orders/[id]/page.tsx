@@ -11,6 +11,7 @@ import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, Mentor
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
+import DatePicker from "@/components/DatePicker"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 import { Linkified } from "@/components/Linkified"
@@ -1339,12 +1340,12 @@ export default function OrderPage({ params }: Props) {
                         maxLength={200}
                         className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                       />
-                      <input
-                        type="date"
-                        aria-label={t("taskDeadlinePlaceholder")}
+                      <DatePicker
                         value={newTaskDeadline}
-                        onChange={(e) => setNewTaskDeadline(e.target.value)}
-                        className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                        onChange={setNewTaskDeadline}
+                        placeholder={t("taskDeadlinePlaceholder")}
+                        ariaLabel={t("taskDeadlinePlaceholder")}
+                        className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                       />
                     </div>
                     <button

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { act, render, screen, waitFor, fireEvent } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { useRouter } from "@/i18n/navigation"
 import OrderPage, { invoiceDraftKey, translateInvoiceErrorMessage } from "./page"
 import {
@@ -792,6 +793,43 @@ describe("OrderPage — support tasks", () => {
       expect(createSupportTask).toHaveBeenCalledWith(5, { title: "Загрузи эссе на проверку", deadline: null }),
     )
     expect(await screen.findByText("Загрузи эссе на проверку")).toBeInTheDocument()
+  })
+
+  it("lets the mentor add a task with a deadline picked from the calendar", async () => {
+    // Regression: the deadline field used to be a native <input
+    // type="date">, whose browser-owned popup could render clipped
+    // off-screen inside a narrow layout (reported in the Telegram Mini
+    // App). Now it's a DatePicker — this exercises the actual click →
+    // open calendar → pick day → submit flow end to end.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date("2026-07-15T12:00:00"))
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([])
+    vi.mocked(createSupportTask).mockResolvedValue(makeTask({ deadline: "2026-07-20" }))
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await renderOrderPage("42")
+
+    fireEvent.change(await screen.findByPlaceholderText("Новая задача"), {
+      target: { value: "Загрузи эссе на проверку" },
+    })
+    await user.click(screen.getByRole("button", { name: "Дедлайн" }))
+    const dayButtons = screen.getAllByRole("button", { name: "20" })
+    await user.click(dayButtons.find((b) => !b.hasAttribute("disabled"))!)
+    fireEvent.click(screen.getByText("Добавить"))
+
+    await waitFor(() =>
+      expect(createSupportTask).toHaveBeenCalledWith(5, {
+        title: "Загрузи эссе на проверку",
+        deadline: "2026-07-20",
+      }),
+    )
+    vi.useRealTimers()
   })
 
   it("lets the mentor mark a task done", async () => {
