@@ -673,7 +673,7 @@ export default function MentorOnboarding() {
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex-1 min-w-0 flex items-center justify-center gap-1 py-2 px-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 tab === id
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
