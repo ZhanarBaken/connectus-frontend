@@ -25,14 +25,21 @@ interface Props {
   // name there instead.
   titleOverride?: React.ReactNode
   // The order page's CTA-collapse row (shown before the chat is expanded
-  // in the Mini App) previews connection state and the latest message —
-  // both live inside this component's own state, so mirror them out.
-  onConnectedChange?: (connected: boolean) => void
+  // in the Mini App) previews the other party's presence and the latest
+  // message — both live inside this component's own state, so mirror
+  // them out.
+  onOtherPartyOnlineChange?: (online: boolean) => void
   onPreviewChange?: (preview: string | null) => void
   // Bump (any value change) to force a message-history refetch — e.g.
   // after the order page's invoice form posts a system message that
   // the backend doesn't push over the websocket.
   refetchTrigger?: number
+  // Fires after a file attachment is successfully sent — the backend
+  // mirrors it into the order's OrderDocument list in the same request
+  // (apps.chat.views.MessageListView.post), but that side effect isn't
+  // reflected in this component's own state, so the caller (the order
+  // page's Files sidebar) needs to know to refetch its own document list.
+  onAttachmentSent?: () => void
 }
 
 // The actual chat UI (header, message list, input) — reusable between the
@@ -41,7 +48,7 @@ interface Props {
 // (which doesn't need that chrome, since chat is the whole page there).
 export default function ChatPanel({
   conversationId, currentUserId, headerAction, leadingHeaderAction, titleOverride,
-  onConnectedChange, onPreviewChange, refetchTrigger,
+  onOtherPartyOnlineChange, onPreviewChange, refetchTrigger, onAttachmentSent,
 }: Props) {
   const t = useTranslations("Orders.Detail")
   const locale = useLocale()
@@ -52,6 +59,7 @@ export default function ChatPanel({
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [sending, setSending] = useState(false)
   const [wsConnected, setWsConnected] = useState(false)
+  const [otherPartyOnline, setOtherPartyOnline] = useState(false)
   const [chatSendError, setChatSendError] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
@@ -80,8 +88,12 @@ export default function ChatPanel({
 
     const conn = connectChat(conversationId, {
       onOpen: () => setWsConnected(true),
-      onClose: () => setWsConnected(false),
-      onError: () => setWsConnected(false),
+      // Our own socket dropping (even before a reconnect kicks in)
+      // means we no longer have a live signal about the other side
+      // either — don't leave a stale "online" showing.
+      onClose: () => { setWsConnected(false); setOtherPartyOnline(false) },
+      onError: () => { setWsConnected(false); setOtherPartyOnline(false) },
+      onPresenceChange: (online) => setOtherPartyOnline(online),
       onMessage: (msg) => {
         setMessages((prev) => {
           // De-dupe in case the message also came back via REST refetch
@@ -97,6 +109,9 @@ export default function ChatPanel({
       conn.close()
       wsRef.current = null
       setWsConnected(false)
+      // Our own socket is gone, so we no longer have a live signal about
+      // the other party either — don't leave a stale "online" showing.
+      setOtherPartyOnline(false)
     }
   }, [conversationId])
 
@@ -126,8 +141,8 @@ export default function ChatPanel({
   }, [messages])
 
   useEffect(() => {
-    onConnectedChange?.(wsConnected)
-  }, [wsConnected, onConnectedChange])
+    onOtherPartyOnlineChange?.(otherPartyOnline)
+  }, [otherPartyOnline, onOtherPartyOnlineChange])
 
   useEffect(() => {
     if (refetchTrigger === undefined) return
@@ -171,6 +186,7 @@ export default function ChatPanel({
         // WS will broadcast the message back — don't append manually
         setNewMessage("")
         setAttachedFiles([])
+        onAttachmentSent?.()
       } catch (err: unknown) {
         // keep message/files so user can retry
         setChatSendError(
@@ -231,11 +247,14 @@ export default function ChatPanel({
             <p className="text-xs text-gray-400 mt-0.5">{t("messagesSubtitleOpen")}</p>
           </div>
         )}
+        {/* Green only when the OTHER participant is actually here —
+            showing it the moment *our own* socket connects (regardless
+            of whether anyone's on the other end) was misleading. */}
         <span className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-full ${
-          wsConnected ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"
+          wsConnected && otherPartyOnline ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"
         }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? "bg-green-500" : "bg-gray-400"}`} />
-          {wsConnected ? t("statusOnline") : t("statusConnecting")}
+          <span className={`w-1.5 h-1.5 rounded-full ${wsConnected && otherPartyOnline ? "bg-green-500" : "bg-gray-400"}`} />
+          {!wsConnected ? t("statusConnecting") : otherPartyOnline ? t("statusOnline") : t("statusOffline")}
         </span>
       </div>
 

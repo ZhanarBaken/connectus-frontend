@@ -104,8 +104,9 @@ export default function OrderPage({ params }: Props) {
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
   // Mirrored out of ChatPanel — only needed for the Mini App's
-  // collapsed CTA row preview (dot + last-message text) below.
-  const [chatConnected, setChatConnected] = useState(false)
+  // collapsed CTA row preview (dot + last-message text) below. Reflects
+  // whether the OTHER participant is online, not our own connection.
+  const [otherPartyOnline, setOtherPartyOnline] = useState(false)
   const [chatPreview, setChatPreview] = useState<string | null>(null)
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState("")
@@ -133,6 +134,7 @@ export default function OrderPage({ params }: Props) {
   const [sendingInvoice, setSendingInvoice] = useState(false)
   const [invoiceError, setInvoiceError] = useState("")
   const [invoiceSent, setInvoiceSent] = useState(false)
+  const [lastInvoiceOrder, setLastInvoiceOrder] = useState<Order | null>(null)
   // Bumped after a support invoice is sent, so ChatPanel refetches —
   // the backend's system message for it isn't pushed over the websocket.
   const [invoiceChatRefetchSignal, setInvoiceChatRefetchSignal] = useState(0)
@@ -140,8 +142,6 @@ export default function OrderPage({ params }: Props) {
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
   const [docsLoadError, setDocsLoadError] = useState(false)
   const [docActionError, setDocActionError] = useState("")
-  const [uploadingDoc, setUploadingDoc] = useState(false)
-  const docInputRef = useRef<HTMLInputElement>(null)
   const [updatingDocStatusId, setUpdatingDocStatusId] = useState<number | null>(null)
   const [openCommentsDocId, setOpenCommentsDocId] = useState<number | null>(null)
   const [docComments, setDocComments] = useState<Record<number, OrderDocumentComment[]>>({})
@@ -152,6 +152,7 @@ export default function OrderPage({ params }: Props) {
   const [tasksLoadError, setTasksLoadError] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskDeadline, setNewTaskDeadline] = useState("")
+  const [taskFormOpen, setTaskFormOpen] = useState(false)
   const [creatingTask, setCreatingTask] = useState(false)
   const [taskError, setTaskError] = useState("")
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null)
@@ -404,6 +405,7 @@ export default function OrderPage({ params }: Props) {
       setTasks((prev) => [...prev, task])
       setNewTaskTitle("")
       setNewTaskDeadline("")
+      setTaskFormOpen(false)
     } catch (err: unknown) {
       setTaskError(err instanceof Error ? err.message : t("taskCreateError"))
     } finally {
@@ -468,7 +470,8 @@ export default function OrderPage({ params }: Props) {
     setSendingInvoice(true)
     setInvoiceError("")
     try {
-      await createSupportInvoice(invoiceServiceId, order.student, invoicePrice, Number(invoiceMonths))
+      const created = await createSupportInvoice(invoiceServiceId, order.student, invoicePrice, Number(invoiceMonths))
+      setLastInvoiceOrder(created)
       setInvoiceSent(true)
       setInvoiceFormOpen(false)
       // The chat message the backend posts isn't pushed over the
@@ -508,6 +511,13 @@ export default function OrderPage({ params }: Props) {
     order.payout_category === "consultation" ||
     order.payout_category === "primary_consultation" ||
     order.payout_category === "paid_consultation"
+  // Free-intro categories only (unlike isAnyConsultation, excludes
+  // paid_consultation — that one IS reviewable per the backend, see
+  // apps.reviews.serializers.ReviewCreateSerializer.validate_order).
+  const isFreeConsultation =
+    order.payout_category === "consultation" ||
+    order.payout_category === "primary_consultation"
+  const isSupport = order.payout_category === "support"
 
   // Student can open a dispute only during the window after completion.
   // disputeWindowMs is loaded from /api/v1/settings/public/ — null means still loading.
@@ -724,8 +734,11 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Mentor: complete any in_progress order */}
-            {role === "mentor" && order.order_status === "in_progress" && (
+            {/* Mentor: complete any in_progress order — except support
+                installments, which complete automatically (paying the
+                next one, or ending the engagement) instead of through a
+                manual step; see apps.orders.services on the backend. */}
+            {role === "mentor" && order.order_status === "in_progress" && !isSupport && (
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">
                   {isAnyConsultation ? t("completeConsultationTitle") : t("completeServiceTitle")}
@@ -749,6 +762,20 @@ export default function OrderPage({ params }: Props) {
                       ? t("completeConsultationCta")
                       : t("completeServiceCta")}
                 </button>
+              </div>
+            )}
+
+            {/* Mentor: support installments have no manual complete step —
+                explain how payout for this one actually happens, so the
+                missing button doesn't read as the feature vanishing. */}
+            {role === "mentor" && order.order_status === "in_progress" && isSupport && (
+              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+                <h3 className="font-semibold text-gray-900 mb-1 text-sm">
+                  {t("supportAutoCompleteTitle")}
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {t("supportAutoCompleteBody")}
+                </p>
               </div>
             )}
 
@@ -811,7 +838,9 @@ export default function OrderPage({ params }: Props) {
                 <p className="text-xs text-blue-700 leading-relaxed">
                   {isAnyConsultation
                     ? t("inProgressBodyConsultation")
-                    : t("inProgressBody")}
+                    : isSupport
+                      ? t("inProgressBodySupport")
+                      : t("inProgressBody")}
                 </p>
               </div>
             )}
@@ -978,9 +1007,14 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Review form — student only, after paid deliverable order
-                is completed. Consultations are intro contact, not work. */}
-            {role !== "mentor" && order.order_status === "completed" && !isAnyConsultation && (
+            {/* Review form — student only. Free-intro consultations are
+                intro contact, not work, so never reviewable. Everything
+                else needs order_status "completed" — except support
+                engagements, which run for months, so the backend (see
+                apps.reviews.serializers.ReviewCreateSerializer.validate_order)
+                allows reviewing while still "in_progress" too. */}
+            {role !== "mentor" && !isFreeConsultation
+              && (order.order_status === "completed" || (isSupport && order.order_status === "in_progress")) && (
               <ReviewForm
                 orderId={order.id}
                 mentorId={order.mentor}
@@ -1052,6 +1086,13 @@ export default function OrderPage({ params }: Props) {
                   <p className="text-xs text-red-600 mb-2">{t("tasksLoadError")}</p>
                 )}
 
+                {/* Mark-done/delete errors — creation errors show inline
+                    in the chat's "add task" form instead, next to where
+                    that action actually happens. */}
+                {taskError && !taskFormOpen && (
+                  <p className="text-xs text-red-600 mb-2">{taskError}</p>
+                )}
+
                 {tasks.length > 0 && (
                   <div className="space-y-2 mb-3">
                     {tasks.map((task) => (
@@ -1094,37 +1135,7 @@ export default function OrderPage({ params }: Props) {
                 )}
 
                 {tasks.length === 0 && !tasksLoadError && (
-                  <p className="text-xs text-gray-400 mb-3">{t("tasksEmpty")}</p>
-                )}
-
-                {role === "mentor" && (
-                  <form onSubmit={handleCreateTask} className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        placeholder={t("taskTitlePlaceholder")}
-                        maxLength={200}
-                        className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                      />
-                      <DatePicker
-                        value={newTaskDeadline}
-                        onChange={setNewTaskDeadline}
-                        placeholder={t("taskDeadlinePlaceholder")}
-                        ariaLabel={t("taskDeadlinePlaceholder")}
-                        className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={creatingTask || !newTaskTitle.trim()}
-                      className="self-start bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                    >
-                      {creatingTask ? t("taskCreating") : t("taskAdd")}
-                    </button>
-                    {taskError && <p className="text-xs text-red-600">{taskError}</p>}
-                  </form>
+                  <p className="text-xs text-gray-400">{t("tasksEmpty")}</p>
                 )}
               </div>
             )}
@@ -1352,52 +1363,12 @@ export default function OrderPage({ params }: Props) {
                   </div>
                 )}
 
-                {/* Upload with description */}
-                {orderDocs.length >= 10 ? (
-                  <p className="text-xs text-gray-400 text-center py-2">
-                    {t("filesLimit")}
-                  </p>
-                ) : (
-                  <>
-                    <input
-                      ref={docInputRef}
-                      type="file"
-                      accept="application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0]
-                        if (!file) return
-                        if (file.size > 20 * 1024 * 1024) {
-                          alert(t("fileTooLarge"))
-                          return
-                        }
-                        const desc = prompt(t("filePrompt"), "")
-                        setUploadingDoc(true)
-                        try {
-                          const doc = await uploadOrderDocument(order.id, file, desc || undefined)
-                          setOrderDocs((prev) => [doc, ...prev])
-                        } catch (err) {
-                          alert(err instanceof Error ? translateFileUploadErrorMessage(err.message, t) : t("uploadFailed"))
-                        } finally {
-                          setUploadingDoc(false)
-                          if (docInputRef.current) docInputRef.current.value = ""
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <button
-                      onClick={() => docInputRef.current?.click()}
-                      disabled={uploadingDoc}
-                      className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 font-medium py-2 rounded-lg border border-dashed border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50"
-                    >
-                      {uploadingDoc ? (
-                        <div className="w-3.5 h-3.5 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Icon name="upload_file" size={14} />
-                      )}
-                      {uploadingDoc ? t("uploadingFile") : t("uploadFile")}
-                    </button>
-                  </>
-                )}
+                {/* Files are attached via chat now (any file sent in the
+                    chat automatically lands here too) — no separate
+                    upload control on this page any more. */}
+                <p className="text-xs text-gray-400 text-center py-2">
+                  {t("filesUploadViaChatHint")}
+                </p>
               </div>
             )}
 
@@ -1420,7 +1391,7 @@ export default function OrderPage({ params }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-gray-900">{t("chatTitle")}</p>
-                    {chatConnected && (
+                    {otherPartyOnline && (
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                     )}
                   </div>
@@ -1450,9 +1421,12 @@ export default function OrderPage({ params }: Props) {
                 <ChatPanel
                   conversationId={order.conversation_id}
                   currentUserId={currentUserId}
-                  onConnectedChange={setChatConnected}
+                  onOtherPartyOnlineChange={setOtherPartyOnline}
                   onPreviewChange={setChatPreview}
                   refetchTrigger={invoiceChatRefetchSignal}
+                  onAttachmentSent={() => {
+                    fetchOrderDocuments(order.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
+                  }}
                   leadingHeaderAction={isInTelegram && chatExpanded && (
                     <button
                       type="button"
@@ -1463,7 +1437,8 @@ export default function OrderPage({ params }: Props) {
                       <Icon name="arrow_back" size={22} />
                     </button>
                   )}
-                  headerAction={role === "mentor" && (supportServices.length > 0 || supportServicesLoadError) && (
+                  headerAction={<>
+                    {role === "mentor" && (supportServices.length > 0 || supportServicesLoadError) && (
                     <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
                       {supportServicesLoadError ? (
                         <div>
@@ -1486,13 +1461,21 @@ export default function OrderPage({ params }: Props) {
                       ) : (
                       <>
                       {invoiceSent && !invoiceFormOpen && (
-                        <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1">
-                          {t("invoiceSent")}
-                        </p>
+                        <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1 space-y-1">
+                          <p>{t("invoiceSent")}</p>
+                          {lastInvoiceOrder && (
+                            <p className="text-emerald-800">
+                              {t("invoiceSentAmounts", {
+                                clientCharge: Number(lastInvoiceOrder.total_price).toLocaleString("ru-RU"),
+                                mentorPayout: Number(lastInvoiceOrder.mentor_payout_amount).toLocaleString("ru-RU"),
+                              })}
+                            </p>
+                          )}
+                        </div>
                       )}
                       {!invoiceFormOpen ? (
                         <button
-                          onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false) }}
+                          onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false); setLastInvoiceOrder(null); setTaskFormOpen(false) }}
                           className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
                         >
                           {t("sendInvoiceCta")}
@@ -1556,7 +1539,67 @@ export default function OrderPage({ params }: Props) {
                       </>
                       )}
                     </div>
-                  )}
+                    )}
+                    {/* Lives inside ChatPanel, so it only renders when
+                        canChat is true (see the parent `canChat &&` guard
+                        around <ChatPanel> below) — safe for a support
+                        order specifically: create_support_invoice on the
+                        backend refuses to create the engagement's first
+                        order at all unless an open Conversation already
+                        exists for this mentor/student pair, and the
+                        conversation_id the API returns isn't filtered by
+                        closed_at, so it stays non-null for every later
+                        installment too. */}
+                    {role === "mentor" && order.support_engagement !== null && (
+                    <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
+                      {!taskFormOpen ? (
+                        <button
+                          onClick={() => { setTaskFormOpen(true); setInvoiceFormOpen(false) }}
+                          className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                        >
+                          {t("taskAddCta")}
+                        </button>
+                      ) : (
+                        <form onSubmit={handleCreateTask} className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={newTaskTitle}
+                              onChange={(e) => setNewTaskTitle(e.target.value)}
+                              placeholder={t("taskTitlePlaceholder")}
+                              maxLength={200}
+                              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                            />
+                            <DatePicker
+                              value={newTaskDeadline}
+                              onChange={setNewTaskDeadline}
+                              placeholder={t("taskDeadlinePlaceholder")}
+                              ariaLabel={t("taskDeadlinePlaceholder")}
+                              className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                            />
+                          </div>
+                          {taskError && <p className="text-xs text-red-600">{taskError}</p>}
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              disabled={creatingTask || !newTaskTitle.trim()}
+                              className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                            >
+                              {creatingTask ? t("taskCreating") : t("taskAdd")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setTaskFormOpen(false); setTaskError("") }}
+                              className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                            >
+                              {t("cancel")}
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                    )}
+                  </>}
                 />
               ) : (
                 <>

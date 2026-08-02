@@ -240,6 +240,21 @@ describe("connectChat", () => {
     expect(onMessage).not.toHaveBeenCalled()
   })
 
+  it("routes presence payloads to onPresenceChange instead of onMessage", async () => {
+    const onMessage = vi.fn()
+    const onPresenceChange = vi.fn()
+    connectChat(1, { onMessage, onPresenceChange })
+    await flushMicrotasks()
+
+    const ws = FakeWebSocket.instances[0]
+    ws.onmessage?.({ data: JSON.stringify({ type: "presence", online: true }) })
+    expect(onPresenceChange).toHaveBeenCalledWith(true)
+    expect(onMessage).not.toHaveBeenCalled()
+
+    ws.onmessage?.({ data: JSON.stringify({ type: "presence", online: false }) })
+    expect(onPresenceChange).toHaveBeenCalledWith(false)
+  })
+
   it("does NOT reconnect on the permanent close code 4003", async () => {
     vi.useFakeTimers()
     const onMessage = vi.fn()

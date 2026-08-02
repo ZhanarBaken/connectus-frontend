@@ -172,6 +172,11 @@ export function connectChat(
     onClose?: (code: number) => void
     onError?: () => void
     onServerError?: (err: string) => void
+    // Whether the OTHER participant currently has this chat open — sent
+    // once right after connecting, then again on their every
+    // connect/disconnect. Distinct from onOpen/onClose, which are about
+    // *this* socket's own connection.
+    onPresenceChange?: (online: boolean) => void
   },
 ): ChatConnection {
   let ws: WebSocket | null = null
@@ -229,6 +234,10 @@ export function connectChat(
         // Backend may send {error: '...'} when the message is rejected (e.g. closed chat)
         if (data && typeof data.error === "string") {
           handlers.onServerError?.(data.error)
+          return
+        }
+        if (data && data.type === "presence") {
+          handlers.onPresenceChange?.(Boolean(data.online))
           return
         }
         const msg = data as WsMessageEvent
