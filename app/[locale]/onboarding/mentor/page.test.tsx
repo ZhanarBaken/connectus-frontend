@@ -312,6 +312,75 @@ describe("MentorOnboarding", () => {
     )
   })
 
+  it("collapses the add-service form after a successful add, and reopens it on demand", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.createMentorService).mockResolvedValue({
+      id: 20, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+      duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
+      meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
+      is_price_negotiable: false, intro_call_enabled: false, is_active: true,
+    })
+    const user = userEvent.setup()
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    const longDescription = "Разбираем твою ситуацию и составляем подробный план поступления в выбранный университет вместе."
+    await user.type(screen.getByPlaceholderText("Первичная консультация"), "Первичная консультация")
+    await user.type(screen.getByPlaceholderText(/Разбираем твою ситуацию/), longDescription)
+    await user.type(screen.getByPlaceholderText("10000"), "5000")
+    await user.click(screen.getByRole("button", { name: "+ Добавить услугу" }))
+    await screen.findByText("Первичная консультация")
+
+    // The form fields (and its own submit button) are gone — replaced by
+    // a compact reopen trigger — so the list of what's already added
+    // can't be confused with a still-open form.
+    expect(screen.queryByPlaceholderText("Первичная консультация")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "+ Добавить услугу" })).not.toBeInTheDocument()
+    const reopenButton = screen.getByRole("button", { name: "+ Добавить ещё услугу" })
+
+    await user.click(reopenButton)
+
+    expect(screen.getByPlaceholderText("Первичная консультация")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "+ Добавить услугу" })).toBeInTheDocument()
+    // The already-added service is still listed while the form is open again.
+    expect(screen.getByText("Первичная консультация")).toBeInTheDocument()
+  })
+
+  it("starts with the add-service form collapsed when services already exist from a previous visit", async () => {
+    vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
+    vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
+    vi.mocked(api.fetchMentorServices).mockResolvedValue([
+      {
+        id: 30, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+        duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
+        meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
+        is_price_negotiable: false, intro_call_enabled: false, is_active: true,
+      },
+    ])
+    render(<MentorOnboarding />)
+
+    await screen.findByRole("heading", { name: "О себе" })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await user.click(screen.getByRole("button", { name: "Вперёд →" }))
+    await screen.findByRole("heading", { name: "Услуги" })
+
+    // A returning mentor who already has a service shouldn't see the form
+    // sitting open on top of it on page load — that's the exact confusion
+    // the collapse was built to fix, and it must hold on a fresh mount
+    // (not just right after an in-session add).
+    expect(await screen.findByText("Первичная консультация")).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText("Первичная консультация")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "+ Добавить ещё услугу" })).toBeInTheDocument()
+  })
+
   it("creates a support-category service after switching the type toggle", async () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())

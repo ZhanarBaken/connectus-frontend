@@ -1197,6 +1197,7 @@
       "serviceDurationLabel": "Длительность, мин",
       "minutes": "мин",
       "addService": "+ Добавить услугу",
+      "addAnotherService": "Добавить ещё услугу",
       "creatingService": "Добавляем...",
       "serviceInactive": "неактивна",
       "servicesMoreHint": "Остальные услуги и категории (например, сопровождение) можно настроить позже в разделе «Услуги».",

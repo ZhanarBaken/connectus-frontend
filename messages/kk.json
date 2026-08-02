@@ -1197,6 +1197,7 @@
       "serviceDurationLabel": "Ұзақтығы, мин",
       "minutes": "мин",
       "addService": "+ Қызмет қосу",
+      "addAnotherService": "Тағы бір қызмет қосу",
       "creatingService": "Қосылуда...",
       "serviceInactive": "белсенді емес",
       "servicesMoreHint": "Басқа қызметтер мен санаттарды (мысалы, қолдау) кейін «Қызметтер» бөлімінде баптауға болады.",

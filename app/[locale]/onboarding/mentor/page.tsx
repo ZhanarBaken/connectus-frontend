@@ -200,6 +200,10 @@ export default function MentorOnboarding() {
   const [serviceIntroCallEnabled, setServiceIntroCallEnabled] = useState(true)
   const [creatingService, setCreatingService] = useState(false)
   const [serviceError, setServiceError] = useState("")
+  // Collapses to a compact "+ add another" trigger after the first
+  // successful add, so the form and the already-added list read as two
+  // distinct things instead of running together with no separator.
+  const [serviceFormOpen, setServiceFormOpen] = useState(true)
 
   // Schedule — a mentor needs at least one weekly availability window to
   // submit (apps.mentors.models.MentorProfile.submission_errors). Unlike
@@ -258,7 +262,13 @@ export default function MentorOnboarding() {
           }
         } catch { /* non-fatal */ }
         try {
-          setServices(await fetchMentorServices())
+          const existingServices = await fetchMentorServices()
+          setServices(existingServices)
+          // Start collapsed if there's already at least one service from
+          // a previous visit — otherwise a returning mentor sees the same
+          // "form on top of an unlabeled list" confusion this collapse
+          // was built to fix, right on page load.
+          if (existingServices.length > 0) setServiceFormOpen(false)
         } catch { /* non-fatal */ }
         try {
           const schedule = await fetchMyMentorSchedule()
@@ -488,6 +498,7 @@ export default function MentorOnboarding() {
       setServiceDurationMonthsMax("")
       setServiceIsPriceNegotiable(false)
       setServiceIntroCallEnabled(true)
+      setServiceFormOpen(false)
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : t("saveErrorGeneric"))
     } finally {
@@ -1218,11 +1229,59 @@ export default function MentorOnboarding() {
                 {t("servicesSubtitle")} <span className="text-red-400">*</span>
               </p>
 
+              {services.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {services.map((s) => {
+                    const isSupport = s.payout_category === "support"
+                    const parts: string[] = []
+                    if (isSupport) {
+                      if (s.meetings_min !== null && s.meetings_max !== null) {
+                        parts.push(tServices("meetingsRange", { min: s.meetings_min, max: s.meetings_max }))
+                      }
+                      if (s.duration_months_min !== null && s.duration_months_max !== null) {
+                        parts.push(tServices("monthsRange", { min: s.duration_months_min, max: s.duration_months_max }))
+                      }
+                    } else {
+                      parts.push(s.is_price_negotiable ? tServices("negotiablePrice") : `${s.price} ₸`)
+                      parts.push(`${s.duration_minutes} ${t("minutes")}`)
+                    }
+                    const summary = parts.join(" · ")
+                    return (
+                      <div key={s.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                        <Icon name={isSupport ? "groups" : "description"} size={20} className="text-gray-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
+                          <p className="text-xs text-gray-400">{summary}</p>
+                        </div>
+                        {!s.is_active && (
+                          <span className="text-xs text-gray-400 flex-shrink-0">{t("serviceInactive")}</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Deliberately `services.length`, not the `is_active`-aware
+                  check `tabDone.services` uses below — a service list to
+                  show (even an inactive one) is reason enough to collapse
+                  the form; whether it's enough to actually submit is a
+                  separate concern handled entirely by tabDone/allDone. */}
+              {!serviceFormOpen && services.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setServiceFormOpen(true)}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-2xl py-3 text-sm font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors mb-4"
+                >
+                  + {t("addAnotherService")}
+                </button>
+              ) : (
               <div data-field="services" className="border border-gray-200 rounded-2xl p-4 mb-4 space-y-3">
                 {/* Category toggle — a mentor can add either (or both,
-                    one at a time: the form resets and stays open after
-                    each successful add, so switching type and adding
-                    again just works). */}
+                    one at a time: the form resets and collapses to the
+                    "+ add another" trigger after each successful add,
+                    so switching type just means reopening and picking
+                    the other one). */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -1438,38 +1497,6 @@ export default function MentorOnboarding() {
                   {creatingService ? t("creatingService") : t("addService")}
                 </button>
               </div>
-
-              {services.length > 0 && (
-                <div className="space-y-2">
-                  {services.map((s) => {
-                    const isSupport = s.payout_category === "support"
-                    const parts: string[] = []
-                    if (isSupport) {
-                      if (s.meetings_min !== null && s.meetings_max !== null) {
-                        parts.push(tServices("meetingsRange", { min: s.meetings_min, max: s.meetings_max }))
-                      }
-                      if (s.duration_months_min !== null && s.duration_months_max !== null) {
-                        parts.push(tServices("monthsRange", { min: s.duration_months_min, max: s.duration_months_max }))
-                      }
-                    } else {
-                      parts.push(s.is_price_negotiable ? tServices("negotiablePrice") : `${s.price} ₸`)
-                      parts.push(`${s.duration_minutes} ${t("minutes")}`)
-                    }
-                    const summary = parts.join(" · ")
-                    return (
-                      <div key={s.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                        <Icon name={isSupport ? "groups" : "description"} size={20} className="text-gray-400 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
-                          <p className="text-xs text-gray-400">{summary}</p>
-                        </div>
-                        {!s.is_active && (
-                          <span className="text-xs text-gray-400 flex-shrink-0">{t("serviceInactive")}</span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
               )}
               <p className="text-xs text-gray-400 mt-3">{t("servicesMoreHint")}</p>
             </div>

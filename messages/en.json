@@ -1197,6 +1197,7 @@
       "serviceDurationLabel": "Duration (minutes)",
       "minutes": "min",
       "addService": "+ Add service",
+      "addAnotherService": "Add another service",
       "creatingService": "Adding...",
       "serviceInactive": "inactive",
       "servicesMoreHint": "Other services and categories (e.g. support) can be set up later in the Services section.",
