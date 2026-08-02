@@ -579,7 +579,6 @@ export default function MentorProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6" data-field="documents">
             <h2 className="text-base font-semibold text-gray-900 mb-1">
               {t("documentsTitle")}
-              <span className="ml-1 text-red-400">*</span>
             </h2>
             <p className="text-sm text-gray-400 mb-5">
               {t("documentsSubtitle")}

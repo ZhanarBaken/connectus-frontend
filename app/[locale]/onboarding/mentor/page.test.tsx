@@ -275,7 +275,6 @@ describe("MentorOnboarding", () => {
     const docFile = new File(["content"], "diploma.pdf", { type: "application/pdf" })
     const docInput = container.querySelector('input[type="file"][accept^="application"]') as HTMLInputElement
     await user.upload(docInput, docFile)
-    await user.click(screen.getByRole("button", { name: "Загрузить документ" }))
 
     expect(await screen.findByText("diploma.pdf")).toBeInTheDocument()
   })
@@ -719,11 +718,11 @@ describe("MentorOnboarding", () => {
     expect(screen.getAllByText("Добавь хотя бы одну активную услугу.").length).toBeGreaterThan(0)
   })
 
-  it("scrolls to the shared documents field when only enrollment_document is rejected", async () => {
-    // Regression: diploma_document and enrollment_document share one
-    // upload widget (a single data-field="diploma_document" wrapper) —
-    // an enrollment_document-only error must still resolve to that
-    // shared element instead of silently finding nothing to scroll to.
+  it("scrolls to the enrollment_document slot when only that document is rejected", async () => {
+    // diploma and enrollment_certificate each get their own compact
+    // upload slot (and their own data-field wrapper) now — an
+    // enrollment_document-only error must resolve to its own slot,
+    // not the diploma one.
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(
       makeProfile({
@@ -773,7 +772,7 @@ describe("MentorOnboarding", () => {
     await waitFor(() => {
       expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
     })
-    const target = document.querySelector('[data-field="diploma_document"]')
+    const target = document.querySelector('[data-field="enrollment_document"]')
     expect(target).not.toBeNull()
     expect(vi.mocked(Element.prototype.scrollIntoView).mock.instances).toContain(target)
   })

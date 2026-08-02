@@ -23,9 +23,13 @@ export interface MentorDocument {
 // Matches apps.mentors.models.DOCUMENT_ALLOWED_TYPES — the `accept`
 // attribute on the file input only filters the OS picker dialog, it does
 // NOT apply to drag-and-drop, so this needs its own explicit check there.
-const ALLOWED_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"]
+export const ALLOWED_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"]
 
-function formatFileSize(bytes: number): string {
+// Matches apps.mentors.models.MentorProfile.submission_errors() — only
+// these two kinds actually block submission, the rest are optional.
+const REQUIRED_DOCUMENT_KINDS = new Set(["diploma", "enrollment_certificate"])
+
+export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -41,13 +45,15 @@ interface Props {
   onDocumentsChange?: (documents: MentorDocument[]) => void
 }
 
-// Inline uploader + list for mentor's verification documents.
+// Inline uploader + list for mentor's verification documents, one compact
+// slot per document kind (rather than a single type-picker + dropzone) so
+// which documents are required is unambiguous at a glance.
 // Shared between the /mentors/profile edit page and other mentor surfaces
 // that need document management, so the upload/list/delete logic lives once.
 export default function MentorDocumentsUploader({ isBanned = false, onDocumentsChange }: Props) {
   const t = useTranslations("Mentors.Documents")
   const tDoc = useTranslations("Onboarding.Mentor")
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const KIND_OPTIONS: { value: string; label: string }[] = [
     // Паспорт / виза убраны (не подтверждают поступление). Существующие
@@ -66,10 +72,8 @@ export default function MentorDocumentsUploader({ isBanned = false, onDocumentsC
   const [documents, setDocuments] = useState<MentorDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [kind, setKind] = useState("diploma")
-  const [file, setFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState("")
+  const [uploadingKind, setUploadingKind] = useState<string | null>(null)
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({})
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -95,14 +99,29 @@ export default function MentorDocumentsUploader({ isBanned = false, onDocumentsC
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleUpload() {
-    if (!file) return
-    if (file.size > 15 * 1024 * 1024) {
-      setUploadError(t("fileTooLarge"))
+  async function uploadFile(kind: string, file: File) {
+    // A second click/drop before the in-flight request resolves would
+    // otherwise fire a duplicate POST for the same (or another) kind.
+    if (uploadingKind) return
+    // The picker's `accept` attribute only filters the OS dialog (and not
+    // at all when the user picks "All files"), and drag-and-drop bypasses
+    // it entirely — so both paths funnel through this one explicit check
+    // instead of a round trip to the API.
+    if (!ALLOWED_DOCUMENT_TYPES.includes(file.type)) {
+      setUploadErrors((prev) => ({ ...prev, [kind]: t("fileTypeNotAllowed") }))
       return
     }
-    setUploading(true)
-    setUploadError("")
+    if (file.size > 15 * 1024 * 1024) {
+      setUploadErrors((prev) => ({ ...prev, [kind]: t("fileTooLarge") }))
+      return
+    }
+    setUploadErrors((prev) => {
+      if (!(kind in prev)) return prev
+      const next = { ...prev }
+      delete next[kind]
+      return next
+    })
+    setUploadingKind(kind)
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -123,13 +142,25 @@ export default function MentorDocumentsUploader({ isBanned = false, onDocumentsC
         onDocumentsChange?.(next)
         return next
       })
-      setFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ""
     } catch (e: unknown) {
-      setUploadError(e instanceof Error ? e.message : t("loadErrorGeneric"))
+      setUploadErrors((prev) => ({ ...prev, [kind]: e instanceof Error ? e.message : t("loadErrorGeneric") }))
     } finally {
-      setUploading(false)
+      setUploadingKind(null)
     }
+  }
+
+  function handleFileInputChange(kind: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const chosen = e.target.files?.[0]
+    e.target.value = ""
+    if (!chosen) return
+    uploadFile(kind, chosen)
+  }
+
+  function handleDrop(kind: string, e: React.DragEvent) {
+    e.preventDefault()
+    const dropped = e.dataTransfer.files[0]
+    if (!dropped) return
+    uploadFile(kind, dropped)
   }
 
   async function handleDelete(id: number) {
@@ -153,21 +184,6 @@ export default function MentorDocumentsUploader({ isBanned = false, onDocumentsC
     }
   }
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    const dropped = e.dataTransfer.files[0]
-    if (!dropped) return
-    // The picker's `accept` attribute doesn't constrain drag-and-drop —
-    // check explicitly so a mentor dragging e.g. a .docx gets an
-    // immediate, translated message instead of a round trip to the API.
-    if (!ALLOWED_DOCUMENT_TYPES.includes(dropped.type)) {
-      setUploadError(t("fileTypeNotAllowed"))
-      return
-    }
-    setUploadError("")
-    setFile(dropped)
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
@@ -177,142 +193,140 @@ export default function MentorDocumentsUploader({ isBanned = false, onDocumentsC
   }
 
   return (
-    <div className="space-y-5">
-      {/* Upload form */}
-      {!isBanned && (
-        <div className="border border-gray-200 rounded-2xl p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("documentTypeLabel")}</label>
-          <select
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 mb-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-          >
-            {KIND_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-
-          <div
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 transition-colors mb-3"
-          >
-            <Icon name="upload_file" size={32} className="text-gray-300 mx-auto mb-2" />
-            {file ? (
-              <p className="text-sm text-gray-700 font-medium">{file.name} ({formatFileSize(file.size)})</p>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500">{t("dropHint")}</p>
-                <p className="text-xs text-gray-400 mt-1">{t("fileFormats")}</p>
-              </>
-            )}
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf,image/jpeg,image/png"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-
-          {uploadError && (
-            <p className="text-xs text-red-500 mb-2">{uploadError}</p>
-          )}
-
-          <button
-            type="button"
-            onClick={handleUpload}
-            disabled={!file || uploading}
-            className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-          >
-            {uploading ? t("uploading") : t("upload")}
-          </button>
-        </div>
-      )}
-
+    <div className="space-y-3">
       {error && (
         <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
           {error}
         </div>
       )}
 
-      {/* Documents list */}
-      {documents.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-6 text-center">
-          <Icon name="folder_open" size={32} className="text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">{t("noDocumentsTitle")}</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {documents.map((doc) => {
-            const badge = STATUS_BADGE[doc.status] || STATUS_BADGE.pending
-            const isImage = doc.content_type.startsWith("image/")
-            return (
-              <div key={doc.id} className="flex items-start gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                <Icon
-                  name={isImage ? "image" : "picture_as_pdf"}
-                  size={20}
-                  className="text-gray-400 flex-shrink-0 mt-0.5"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {doc.original_filename}
-                    </p>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.className}`}>
-                      {badge.label}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    {KIND_OPTIONS.find((o) => o.value === doc.kind)?.label || doc.kind}
-                    {" · "}{formatFileSize(doc.size_bytes)}
-                  </p>
-                  {doc.status === "rejected" && doc.review_note && (
-                    <div className="mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                      <p className="text-xs text-red-600">
-                        <span className="font-medium">{t("rejectionReason")}</span> {doc.review_note}
-                      </p>
+      {KIND_OPTIONS.map((opt) => {
+        const kindDocs = documents.filter((d) => d.kind === opt.value)
+        const required = REQUIRED_DOCUMENT_KINDS.has(opt.value)
+        const isUploading = uploadingKind === opt.value
+        // Another kind's upload is in flight — only one can run at a time
+        // (see the single-flight guard in uploadFile), so this slot should
+        // read as disabled rather than silently no-op if clicked.
+        const blockedByOtherUpload = uploadingKind !== null && !isUploading
+        const slotError = uploadErrors[opt.value]
+
+        return (
+          <div key={opt.value} className="border border-gray-200 rounded-xl p-3">
+            <div className="flex items-center gap-1 mb-2">
+              <p className="text-sm font-medium text-gray-700">{opt.label}</p>
+              {required && <span className="text-red-400 text-sm leading-none">*</span>}
+            </div>
+
+            {kindDocs.length > 0 && (
+              <div className="space-y-2 mb-2">
+                {kindDocs.map((doc) => {
+                  const badge = STATUS_BADGE[doc.status] || STATUS_BADGE.pending
+                  const isImage = doc.content_type.startsWith("image/")
+                  return (
+                    <div key={doc.id} className="flex items-start gap-2.5 bg-gray-50 rounded-lg px-3 py-2">
+                      <Icon
+                        name={isImage ? "image" : "picture_as_pdf"}
+                        size={18}
+                        className="text-gray-400 flex-shrink-0 mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs font-medium text-gray-900 truncate">{doc.original_filename}</p>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-400">{formatFileSize(doc.size_bytes)}</p>
+                        {doc.status === "rejected" && doc.review_note && (
+                          <div className="mt-1.5 bg-red-50 border border-red-100 rounded-lg px-2 py-1.5">
+                            <p className="text-[11px] text-red-600">
+                              <span className="font-medium">{t("rejectionReason")}</span> {doc.review_note}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await authFetch(`${BASE_URL}/mentors/documents/${doc.id}/`)
+                              if (res.ok) {
+                                const fresh = await res.json()
+                                setDocuments((prev) => prev.map((d) => d.id === doc.id ? fresh : d))
+                                window.open(fresh.download_url, "_blank")
+                              }
+                            } catch {
+                              window.open(doc.download_url, "_blank")
+                            }
+                          }}
+                          className="text-gray-400 hover:text-gray-900 transition-colors"
+                          aria-label={t("downloadAriaLabel")}
+                        >
+                          <Icon name="download" size={16} />
+                        </button>
+                        {doc.status !== "approved" && !isBanned && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(doc.id)}
+                            disabled={deletingId === doc.id}
+                            className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                            aria-label={t("deleteAriaLabel")}
+                          >
+                            <Icon name="delete" size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                  )
+                })}
+              </div>
+            )}
+
+            {!isBanned && (
+              <>
+                {kindDocs.length === 0 ? (
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDrop(opt.value, e)}
+                    onClick={() => fileInputRefs.current[opt.value]?.click()}
+                    className={`border-2 border-dashed border-gray-200 rounded-lg py-2.5 px-3 text-center transition-colors ${
+                      blockedByOtherUpload ? "opacity-50 pointer-events-none" : "cursor-pointer hover:border-gray-400"
+                    }`}
+                  >
+                    {isUploading ? (
+                      <p className="text-xs text-gray-400">{t("uploading")}</p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-500">{t("dropHint")}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{t("fileFormats")}</p>
+                      </>
+                    )}
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        const res = await authFetch(`${BASE_URL}/mentors/documents/${doc.id}/`)
-                        if (res.ok) {
-                          const fresh = await res.json()
-                          setDocuments((prev) => prev.map((d) => d.id === doc.id ? fresh : d))
-                          window.open(fresh.download_url, "_blank")
-                        }
-                      } catch {
-                        window.open(doc.download_url, "_blank")
-                      }
-                    }}
-                    className="text-gray-400 hover:text-gray-900 transition-colors"
-                    aria-label={t("downloadAriaLabel")}
+                    onClick={() => fileInputRefs.current[opt.value]?.click()}
+                    disabled={uploadingKind !== null}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
                   >
-                    <Icon name="download" size={18} />
+                    {isUploading ? t("uploading") : `+ ${t("addAnother")}`}
                   </button>
-                  {doc.status !== "approved" && !isBanned && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(doc.id)}
-                      disabled={deletingId === doc.id}
-                      className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                      aria-label={t("deleteAriaLabel")}
-                    >
-                      <Icon name="delete" size={18} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+                )}
+                <input
+                  ref={(el) => { fileInputRefs.current[opt.value] = el }}
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  className="hidden"
+                  onChange={(e) => handleFileInputChange(opt.value, e)}
+                />
+              </>
+            )}
+
+            {slotError && <p className="text-xs text-red-500 mt-1.5">{slotError}</p>}
+          </div>
+        )
+      })}
     </div>
   )
 }

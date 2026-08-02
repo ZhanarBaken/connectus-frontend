@@ -31,6 +31,11 @@ import { ExpertiseArea, MentorService } from "@/types"
 import { inputClass } from "@/lib/formStyles"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import CountryPickerModal from "@/components/CountryPickerModal"
+import {
+  MentorDocument,
+  ALLOWED_DOCUMENT_TYPES,
+  formatFileSize,
+} from "@/components/MentorDocumentsUploader"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
@@ -54,19 +59,9 @@ const EXPERTISE_OPTIONS = [
   { value: "visa",         icon: "flight_takeoff"  },
 ]
 
-interface OnboardingDocument {
-  id: number
-  kind: string
-  original_filename: string
-  size_bytes: number
-  status: "pending" | "approved" | "rejected"
-}
-
-function formatDocSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+// Matches apps.mentors.models.MentorProfile.submission_errors() — only
+// these two kinds actually block submission, the rest are optional.
+const REQUIRED_DOCUMENT_KINDS = new Set(["diploma", "enrollment_certificate"])
 
 // Matches apps.services.models.CONSULTATION_DESCRIPTION_MIN_LENGTH —
 // the paid_consultation category's description has a real minimum
@@ -85,6 +80,9 @@ export default function MentorOnboarding() {
   // Reuses the /mentors/schedule page's copy for day labels and the
   // save/add-slot actions — same concepts, single source of truth.
   const tSchedule = useTranslations("Mentors.Schedule")
+  // Reuses the /mentors/profile page's document-status copy (badges,
+  // rejection reason, download/delete aria labels) — same concepts.
+  const tMentorDocs = useTranslations("Mentors.Documents")
   const locale = useLocale()
   const router = useRouter()
   const [ready, setReady]     = useState(false)
@@ -115,6 +113,12 @@ export default function MentorOnboarding() {
     { value: "university_id", label: t("docUniversityId") },
     { value: "other", label: t("docOther") },
   ]
+
+  const DOC_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+    pending: { label: tMentorDocs("statusPending"), className: "bg-yellow-50 text-yellow-700" },
+    approved: { label: tMentorDocs("statusApproved"), className: "bg-green-50 text-green-700" },
+    rejected: { label: tMentorDocs("statusRejected"), className: "bg-red-50 text-red-700" },
+  }
 
   // Translated copy for every key apps.mentors.models.MentorProfile
   // .submission_errors() can return — the backend's own messages are
@@ -171,12 +175,11 @@ export default function MentorOnboarding() {
   const [expertise, setExpertise] = useState<string[]>([])
 
   // Documents
-  const [documents, setDocuments]   = useState<OnboardingDocument[]>([])
-  const [docKind, setDocKind]       = useState("diploma")
-  const [docFile, setDocFile]       = useState<File | null>(null)
-  const [uploadingDoc, setUploadingDoc] = useState(false)
-  const [docError, setDocError]     = useState("")
-  const docInputRef = useRef<HTMLInputElement>(null)
+  const [documents, setDocuments]   = useState<MentorDocument[]>([])
+  const [uploadingDocKind, setUploadingDocKind] = useState<string | null>(null)
+  const [docErrors, setDocErrors]   = useState<Record<string, string>>({})
+  const [deletingDocId, setDeletingDocId] = useState<number | null>(null)
+  const docInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // Services — a mentor needs at least one active service to submit
   // (apps.mentors.models.MentorProfile.submission_errors). This is
@@ -375,42 +378,76 @@ export default function MentorOnboarding() {
   }
 
   // ─── Document upload / delete ──────────────────────────────────
-  const handleUploadDocument = async () => {
-    if (!docFile) return
-    if (docFile.size > 15 * 1024 * 1024) { setDocError(t("docTooLarge")); return }
-    setUploadingDoc(true)
-    setDocError("")
+  const uploadDocument = async (kind: string, file: File) => {
+    // A second click/drop before the in-flight request resolves would
+    // otherwise fire a duplicate POST for the same (or another) kind.
+    if (uploadingDocKind) return
+    // The picker's `accept` attribute only filters the OS dialog (and not
+    // at all when the user picks "All files"), and drag-and-drop bypasses
+    // it entirely — so both paths funnel through this one explicit check
+    // instead of a round trip to the API.
+    if (!ALLOWED_DOCUMENT_TYPES.includes(file.type)) {
+      setDocErrors((prev) => ({ ...prev, [kind]: t("fileTypeNotAllowed") }))
+      return
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setDocErrors((prev) => ({ ...prev, [kind]: t("docTooLarge") }))
+      return
+    }
+    setDocErrors((prev) => {
+      if (!(kind in prev)) return prev
+      const next = { ...prev }
+      delete next[kind]
+      return next
+    })
+    setUploadingDocKind(kind)
     try {
       const fd = new FormData()
-      fd.append("file", docFile)
-      fd.append("kind", docKind)
+      fd.append("file", file)
+      fd.append("kind", kind)
       const res = await authFetch(`${BASE_URL}/mentors/documents/`, { method: "POST", body: fd })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         const first = Object.values(err)[0]
-        throw new Error(Array.isArray(first) ? first[0] : err.detail || String(first || t("docUploadErrorGeneric")))
+        const raw = Array.isArray(first) ? String(first[0]) : String(err.detail || first || t("docUploadErrorGeneric"))
+        throw new Error(translateFileUploadErrorMessage(raw, t))
       }
-      const doc: OnboardingDocument = await res.json()
+      const doc: MentorDocument = await res.json()
       setDocuments((prev) => [doc, ...prev])
-      setDocFile(null)
-      if (docInputRef.current) docInputRef.current.value = ""
     } catch (e) {
-      setDocError(e instanceof Error ? e.message : t("docUploadErrorGeneric"))
+      setDocErrors((prev) => ({ ...prev, [kind]: e instanceof Error ? e.message : t("docUploadErrorGeneric") }))
     } finally {
-      setUploadingDoc(false)
+      setUploadingDocKind(null)
     }
   }
 
+  const handleDocFileChosen = (kind: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files?.[0]
+    e.target.value = ""
+    if (!chosen) return
+    uploadDocument(kind, chosen)
+  }
+
+  const handleDocDrop = (kind: string, e: React.DragEvent) => {
+    e.preventDefault()
+    const dropped = e.dataTransfer.files[0]
+    if (!dropped) return
+    uploadDocument(kind, dropped)
+  }
+
   const handleDeleteDocument = async (id: number) => {
+    setDeletingDocId(id)
     try {
       const res = await authFetch(`${BASE_URL}/mentors/documents/${id}/`, { method: "DELETE" })
       if (res.ok) {
         setDocuments((prev) => prev.filter((d) => d.id !== id))
       } else {
-        setDocError(t("docDeleteError"))
+        setDocErrors((prev) => ({ ...prev, _delete: t("docDeleteError") }))
       }
     } catch {
-      setDocError(t("docDeleteError"))
+      setDocErrors((prev) => ({ ...prev, _delete: t("docDeleteError") }))
+    } finally {
+      setDeletingDocId(null)
     }
   }
 
@@ -548,12 +585,8 @@ export default function MentorOnboarding() {
             // target field's tab may not even be mounted yet.
             const firstKey = FIELD_ERROR_PRIORITY.find((k) => k in parsed)
             if (firstKey) {
-              // diploma_document and enrollment_document share one upload
-              // widget in the UI, so both errors render under the same
-              // data-field element.
-              const scrollTarget = firstKey === "enrollment_document" ? "diploma_document" : firstKey
               setTimeout(() => {
-                document.querySelector(`[data-field="${scrollTarget}"]`)
+                document.querySelector(`[data-field="${firstKey}"]`)
                   ?.scrollIntoView({ behavior: "smooth", block: "center" })
               }, 50)
             }
@@ -1052,90 +1085,126 @@ export default function MentorOnboarding() {
               )}
 
               {/* ── ДОКУМЕНТЫ ── */}
-              <div data-field="diploma_document" className="mt-6 pt-6 border-t border-gray-100">
+              <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-base font-bold text-gray-900">{t("documentsTitle")}</h3>
                 <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{t("documentsMulti")}</span>
               </div>
               <p className="text-gray-400 text-sm mb-4">
-                {t("documentsSubtitle")} <span className="text-red-400">*</span>
+                {t("documentsSubtitle")}
               </p>
 
-              <div className="border border-gray-200 rounded-2xl p-4 mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("documentTypeLabel")}</label>
-                <select
-                  value={docKind}
-                  onChange={(e) => setDocKind(e.target.value)}
-                  className={`${inputClass} mb-3`}
-                >
-                  {DOCUMENT_KIND_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                {DOCUMENT_KIND_OPTIONS.map((opt) => {
+                  const kindDocs = documents.filter((d) => d.kind === opt.value)
+                  const required = REQUIRED_DOCUMENT_KINDS.has(opt.value)
+                  const isUploading = uploadingDocKind === opt.value
+                  // Another kind's upload is in flight — only one can run
+                  // at a time (see the single-flight guard in
+                  // uploadDocument), so this slot should read as disabled
+                  // rather than silently no-op if clicked.
+                  const blockedByOtherUpload = uploadingDocKind !== null && !isUploading
+                  const slotError = docErrors[opt.value]
+                  // diploma/enrollment_document field errors come from
+                  // apps.mentors.models.MentorProfile.submission_errors()
+                  // and are keyed "<kind>_document" except diploma itself.
+                  const fieldKey = opt.value === "diploma" ? "diploma_document"
+                    : opt.value === "enrollment_certificate" ? "enrollment_document"
+                    : null
+                  const requirementError = fieldKey ? fieldError(fieldKey) : undefined
 
-                <div
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setDocFile(f) }}
-                  onClick={() => docInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 transition-colors mb-3"
-                >
-                  <Icon name="upload_file" size={32} className="text-gray-300 mx-auto mb-2" />
-                  {docFile ? (
-                    <p className="text-sm text-gray-700 font-medium">{docFile.name} ({formatDocSize(docFile.size)})</p>
-                  ) : (
-                    <>
-                      <p className="text-sm text-gray-500">{t("dropHint")}</p>
-                      <p className="text-xs text-gray-400 mt-1">{t("fileFormats")}</p>
-                    </>
-                  )}
-                </div>
-                <input
-                  ref={docInputRef}
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png"
-                  className="hidden"
-                  onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
-                />
-                {docError && <p className="text-xs text-red-500 mb-2">{docError}</p>}
-                <button
-                  onClick={handleUploadDocument}
-                  disabled={!docFile || uploadingDoc}
-                  className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                >
-                  {uploadingDoc ? t("uploading") : documents.length > 0 ? t("uploadAnother") : t("uploadDocument")}
-                </button>
-                {fieldError("diploma_document") && (
-                  <p className="text-xs text-red-600 mt-2">{fieldError("diploma_document")}</p>
-                )}
-                {fieldError("enrollment_document") && (
-                  <p className="text-xs text-red-600 mt-1">{fieldError("enrollment_document")}</p>
-                )}
-              </div>
-
-              {documents.length > 0 && (
-                <div className="space-y-2">
-                  {documents.map((doc) => {
-                    const kindLabel = DOCUMENT_KIND_OPTIONS.find((o) => o.value === doc.kind)?.label ?? doc.kind
-                    return (
-                      <div key={doc.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                        <Icon name="description" size={20} className="text-gray-400 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{doc.original_filename}</p>
-                          <p className="text-xs text-gray-400">{kindLabel} · {formatDocSize(doc.size_bytes)}</p>
-                        </div>
-                        {doc.status !== "approved" && (
-                          <button
-                            onClick={() => handleDeleteDocument(doc.id)}
-                            className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
-                            aria-label={t("deleteAria")}
-                          >
-                            <Icon name="delete" size={18} />
-                          </button>
-                        )}
+                  return (
+                    <div key={opt.value} data-field={fieldKey ?? undefined} className="border border-gray-200 rounded-xl p-3">
+                      <div className="flex items-center gap-1 mb-2">
+                        <p className="text-sm font-medium text-gray-700">{opt.label}</p>
+                        {required && <span className="text-red-400 text-sm leading-none">*</span>}
                       </div>
-                    )
-                  })}
-                </div>
+
+                      {kindDocs.length > 0 && (
+                        <div className="space-y-2 mb-2">
+                          {kindDocs.map((doc) => {
+                            const badge = DOC_STATUS_BADGE[doc.status] || DOC_STATUS_BADGE.pending
+                            return (
+                              <div key={doc.id} className="flex items-start gap-2.5 bg-gray-50 rounded-lg px-3 py-2">
+                                <Icon name="description" size={18} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-xs font-medium text-gray-900 truncate">{doc.original_filename}</p>
+                                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.className}`}>
+                                      {badge.label}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-400">{formatFileSize(doc.size_bytes)}</p>
+                                  {doc.status === "rejected" && doc.review_note && (
+                                    <div className="mt-1.5 bg-red-50 border border-red-100 rounded-lg px-2 py-1.5">
+                                      <p className="text-[11px] text-red-600">
+                                        <span className="font-medium">{tMentorDocs("rejectionReason")}</span> {doc.review_note}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                                {doc.status !== "approved" && (
+                                  <button
+                                    onClick={() => handleDeleteDocument(doc.id)}
+                                    disabled={deletingDocId === doc.id}
+                                    className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0 disabled:opacity-50"
+                                    aria-label={t("deleteAria")}
+                                  >
+                                    <Icon name="delete" size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {kindDocs.length === 0 ? (
+                        <div
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => handleDocDrop(opt.value, e)}
+                          onClick={() => docInputRefs.current[opt.value]?.click()}
+                          className={`border-2 border-dashed border-gray-200 rounded-lg py-2.5 px-3 text-center transition-colors ${
+                            blockedByOtherUpload ? "opacity-50 pointer-events-none" : "cursor-pointer hover:border-gray-400"
+                          }`}
+                        >
+                          {isUploading ? (
+                            <p className="text-xs text-gray-400">{t("uploading")}</p>
+                          ) : (
+                            <>
+                              <p className="text-xs text-gray-500">{t("dropHint")}</p>
+                              <p className="text-[10px] text-gray-400 mt-0.5">{t("fileFormats")}</p>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => docInputRefs.current[opt.value]?.click()}
+                          disabled={uploadingDocKind !== null}
+                          className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
+                        >
+                          {isUploading ? t("uploading") : `+ ${t("uploadAnother")}`}
+                        </button>
+                      )}
+                      <input
+                        ref={(el) => { docInputRefs.current[opt.value] = el }}
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png"
+                        className="hidden"
+                        onChange={(e) => handleDocFileChosen(opt.value, e)}
+                      />
+
+                      {slotError && <p className="text-xs text-red-500 mt-1.5">{slotError}</p>}
+                      {requirementError && (
+                        <p className="text-xs text-red-600 mt-1.5">{requirementError}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {docErrors._delete && (
+                <p className="text-xs text-red-500 mt-2">{docErrors._delete}</p>
               )}
               </div>
             </div>
