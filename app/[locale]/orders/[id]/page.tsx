@@ -3,18 +3,17 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, markChatRead, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
-import { fetchChatMessages, fetchConversation, connectChat, closeConversation, sendChatMessage, type ChatConnection } from "@/lib/chat"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
-import { Order, Mentor, ChatMessage, OrderDocument, OrderDocumentComment, MentorService, SupportTask } from "@/types"
+import { Order, Mentor, OrderDocument, OrderDocumentComment, MentorService, SupportTask } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
 import DatePicker from "@/components/DatePicker"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
-import { Linkified } from "@/components/Linkified"
+import ChatPanel from "@/components/ChatPanel"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
 const STATUS_KEY: Record<string, string> = {
@@ -104,13 +103,10 @@ export default function OrderPage({ params }: Props) {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [chatHistoryLoadError, setChatHistoryLoadError] = useState(false)
-  const [newMessage, setNewMessage] = useState("")
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
-  const [sending, setSending] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [wsConnected, setWsConnected] = useState(false)
+  // Mirrored out of ChatPanel — only needed for the Mini App's
+  // collapsed CTA row preview (dot + last-message text) below.
+  const [chatConnected, setChatConnected] = useState(false)
+  const [chatPreview, setChatPreview] = useState<string | null>(null)
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState("")
   const [respondingToIntroCall, setRespondingToIntroCall] = useState(false)
@@ -128,10 +124,6 @@ export default function OrderPage({ params }: Props) {
   const [disputeReason, setDisputeReason] = useState("")
   const [disputing, setDisputing] = useState(false)
   const [disputeError, setDisputeError] = useState("")
-  const [chatClosed, setChatClosed] = useState(false)
-  const [closingChat, setClosingChat] = useState(false)
-  const [closeError, setCloseError] = useState("")
-  const [chatSendError, setChatSendError] = useState("")
   const [supportServices, setSupportServices] = useState<MentorService[]>([])
   const [supportServicesLoadError, setSupportServicesLoadError] = useState(false)
   const [invoiceFormOpen, setInvoiceFormOpen] = useState(false)
@@ -141,6 +133,9 @@ export default function OrderPage({ params }: Props) {
   const [sendingInvoice, setSendingInvoice] = useState(false)
   const [invoiceError, setInvoiceError] = useState("")
   const [invoiceSent, setInvoiceSent] = useState(false)
+  // Bumped after a support invoice is sent, so ChatPanel refetches —
+  // the backend's system message for it isn't pushed over the websocket.
+  const [invoiceChatRefetchSignal, setInvoiceChatRefetchSignal] = useState(0)
   const [disputeWindowMs, setDisputeWindowMs] = useState<number | null>(null)
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
   const [docsLoadError, setDocsLoadError] = useState(false)
@@ -163,8 +158,6 @@ export default function OrderPage({ params }: Props) {
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [receiptError, setReceiptError] = useState("")
   const receiptInputRef = useRef<HTMLInputElement>(null)
-  const chatRef = useRef<HTMLDivElement>(null)
-  const wsRef = useRef<ChatConnection | null>(null)
   // In Mini App we hide the chat panel behind a CTA so the order
   // page is the first thing the user sees; tapping the CTA opens
   // the chat as a fullscreen overlay over the whole Mini App.
@@ -296,99 +289,6 @@ export default function OrderPage({ params }: Props) {
       .catch(() => router.replace("/orders"))
       .finally(() => setLoading(false))
   }, [id, router])
-
-  // Open WebSocket + load history once we have a conversation_id
-  useEffect(() => {
-    if (!order?.conversation_id) return
-
-    let cancelled = false
-
-    fetchChatMessages(order.conversation_id)
-      .then((history) => {
-        if (!cancelled) setMessages(history)
-      })
-      .catch(() => {
-        // Chat still tries to open (WS-only, no history) — but the user
-        // must be able to tell "empty history" from "history failed to load".
-        if (!cancelled) setChatHistoryLoadError(true)
-      })
-
-    // Mark conversation as read when opening
-    markChatRead(order.conversation_id).catch(() => {})
-
-    // Honest source of truth: ask the backend whether the conversation is closed.
-    fetchConversation(order.conversation_id)
-      .then((conv) => {
-        if (!cancelled) setChatClosed(!conv.is_active)
-      })
-      .catch(() => {
-        // If we can't load it, assume open and let WS error handler correct us.
-        if (!cancelled) setChatClosed(false)
-      })
-
-    const conn = connectChat(order.conversation_id, {
-      onOpen: () => setWsConnected(true),
-      onClose: () => setWsConnected(false),
-      onError: () => setWsConnected(false),
-      onServerError: (err) => {
-        if (err.toLowerCase().includes("closed")) setChatClosed(true)
-      },
-      onMessage: (msg) => {
-        setMessages((prev) => {
-          // De-dupe in case the message also came back via REST refetch
-          if (prev.some((m) => m.id === msg.id)) return prev
-          return [...prev, msg]
-        })
-      },
-    })
-    wsRef.current = conn
-
-    return () => {
-      cancelled = true
-      conn.close()
-      wsRef.current = null
-      setWsConnected(false)
-    }
-  }, [order?.conversation_id])
-
-  // Pin scroll to the bottom on every change to the messages list,
-  // including the very first hydration. Three reasons this needs more
-  // care than `scrollTop = scrollHeight`:
-  //   1. canChat starts false until the order's conversation_id is
-  //      known, so chatRef can be null on the render that first
-  //      populates `messages`. Re-run when canChat flips so the
-  //      pin happens once the container actually mounts.
-  //   2. Reading `scrollHeight` synchronously inside a layout-effect-
-  //      style callback can return a stale value before the browser
-  //      has finished laying out freshly mounted message rows. rAF
-  //      defers the assignment past that paint.
-  //   3. The order page hosts other heavy children that lay out after
-  //      the chat column (sidebar fetches, attachments, etc.). A
-  //      second rAF nests past their reflows so the final position
-  //      survives.
-  // canChat is computed below from order.conversation_id; mirror the
-  // condition here so the dep array is stable and the effect doesn't
-  // bind to an undeclared identifier (canChat sits later in the body).
-  const _hasChat = order?.conversation_id != null
-  useEffect(() => {
-    if (!_hasChat || !chatRef.current) return
-    const id1 = requestAnimationFrame(() => {
-      const id2 = requestAnimationFrame(() => {
-        if (chatRef.current) {
-          chatRef.current.scrollTop = chatRef.current.scrollHeight
-        }
-      })
-      ;(chatRef.current as HTMLDivElement & { _rAF2?: number })._rAF2 = id2
-    })
-    return () => {
-      cancelAnimationFrame(id1)
-      const node = chatRef.current as
-        (HTMLDivElement & { _rAF2?: number }) | null
-      if (node?._rAF2 !== undefined) {
-        cancelAnimationFrame(node._rAF2)
-      }
-    }
-  }, [messages, _hasChat, chatExpanded])
 
   const handleComplete = async () => {
     if (!order) return
@@ -562,87 +462,6 @@ export default function OrderPage({ params }: Props) {
     }
   }
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const text = newMessage.trim()
-    const hasFiles = attachedFiles.length > 0
-    if (!text && !hasFiles) return
-    if (!order?.conversation_id) return
-
-    // If files attached — send via HTTP POST (WS doesn't support binary)
-    // Otherwise use WS for instant delivery
-    if (hasFiles) {
-      setSending(true)
-      setChatSendError("")
-      try {
-        await sendChatMessage(order.conversation_id, text, attachedFiles)
-        // WS will broadcast the message back — don't append manually
-        setNewMessage("")
-        setAttachedFiles([])
-      } catch (err: unknown) {
-        // keep message/files so user can retry
-        setChatSendError(
-          err instanceof Error && err.message
-            ? translateFileUploadErrorMessage(err.message, t)
-            : t("chatSendError"),
-        )
-      } finally {
-        setSending(false)
-      }
-    } else {
-      if (!wsRef.current) return
-      const ok = wsRef.current.send(text)
-      if (ok) setNewMessage("")
-    }
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    // Max 3 files, 10MB each, PDF/JPEG/PNG only — matches
-    // apps.chat.models.ATTACHMENT_MAX_MB/ATTACHMENT_ALLOWED_TYPES.
-    let rejected: "type" | "size" | null = null
-    const valid = files.filter((f) => {
-      if (!["application/pdf", "image/jpeg", "image/png"].includes(f.type)) {
-        rejected ??= "type"
-        return false
-      }
-      if (f.size > 10 * 1024 * 1024) {
-        rejected ??= "size"
-        return false
-      }
-      return true
-    })
-    if (rejected === "type") {
-      setChatSendError(t("fileTypeNotAllowed"))
-    } else if (rejected === "size") {
-      setChatSendError(t("chatFileTooLarge"))
-    } else {
-      setChatSendError("")
-    }
-    setAttachedFiles((prev) => [...prev, ...valid].slice(0, 3))
-    // Reset input so same file can be re-selected
-    if (fileInputRef.current) fileInputRef.current.value = ""
-  }
-
-  const removeFile = (index: number) => {
-    setAttachedFiles((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const handleCloseChat = async () => {
-    if (!order?.conversation_id) return
-    if (!confirm(t("confirmCloseChat"))) return
-    setClosingChat(true)
-    setCloseError("")
-    try {
-      await closeConversation(order.conversation_id)
-      setChatClosed(true)
-    } catch (e: unknown) {
-      setCloseError(e instanceof Error && e.message ? e.message : t("errorCloseChat"))
-    } finally {
-      setClosingChat(false)
-    }
-  }
-
   const handleSendInvoice = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!order || invoiceServiceId === null) return
@@ -654,19 +473,14 @@ export default function OrderPage({ params }: Props) {
       setInvoiceFormOpen(false)
       // The chat message the backend posts isn't pushed over the
       // websocket (only the live "send message" view broadcasts) —
-      // refetch so the mentor sees it appear without a manual reload.
-      if (order.conversation_id) {
-        fetchChatMessages(order.conversation_id).then(setMessages).catch(() => {})
-      }
+      // bump the signal so ChatPanel refetches and the mentor sees it
+      // appear without a manual reload.
+      setInvoiceChatRefetchSignal((n) => n + 1)
     } catch (e: unknown) {
       setInvoiceError(e instanceof Error ? e.message : t("errorInvoice"))
     } finally {
       setSendingInvoice(false)
     }
-  }
-
-  const formatTime = (iso: string) => {
-    return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
   }
 
   const formatDate = (iso: string) => {
@@ -986,52 +800,6 @@ export default function OrderPage({ params }: Props) {
                 )}
               </div>
             )}
-
-            {/* Mentor: close chat */}
-            {role === "mentor" && canChat && !chatClosed && (
-              <div className="bg-white border border-gray-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">{t("closeChatTitle")}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  {t("closeChatBody")}
-                </p>
-                {closeError && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
-                    <p className="text-xs font-semibold text-amber-800 mb-1 flex items-center gap-1.5">
-                      <Icon name="warning" size={14} className="text-amber-600" />
-                      {t("closeChatErrorTitle")}
-                    </p>
-                    <p className="text-xs text-amber-700 leading-relaxed">
-                      {closeError.toLowerCase().includes("active")
-                        ? t("closeChatErrorActive")
-                        : closeError}
-                    </p>
-                  </div>
-                )}
-                <button
-                  onClick={handleCloseChat}
-                  disabled={closingChat}
-                  className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-50"
-                >
-                  {closingChat ? t("closingChat") : t("closeChatCta")}
-                </button>
-              </div>
-            )}
-
-            {/* Both: chat closed banner */}
-            {chatClosed && (
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
-                <h3 className="font-semibold text-gray-700 mb-1 text-sm inline-flex items-center gap-1.5">
-                  <Icon name="lock" size={16} />
-                  {t("chatClosedTitle")}
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  {role === "mentor"
-                    ? t("chatClosedBodyMentor")
-                    : t("chatClosedBodyStudent")}
-                </p>
-              </div>
-            )}
-
 
             {/* Student: in progress notice */}
             {role !== "mentor" && order.order_status === "in_progress" && (
@@ -1652,21 +1420,14 @@ export default function OrderPage({ params }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-gray-900">{t("chatTitle")}</p>
-                    {wsConnected && !chatClosed && (
+                    {chatConnected && (
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                     )}
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-0.5">
-                    {(() => {
-                      if (!canChat) return t("chatPreviewLocked")
-                      if (chatClosed) return t("chatPreviewClosed")
-                      if (messages.length === 0) return t("chatPreviewStart")
-                      const last = messages[messages.length - 1]
-                      const text = last.text?.trim() ?? ""
-                      if (text) return text
-                      if (last.attachments?.length) return t("chatPreviewAttachment")
-                      return "—"
-                    })()}
+                    {!canChat
+                      ? t("chatPreviewLocked")
+                      : chatPreview ?? t("chatPreviewStart")}
                   </p>
                 </div>
                 <Icon name="arrow_forward_ios" size={16} className="text-gray-300 flex-shrink-0" />
@@ -1679,370 +1440,155 @@ export default function OrderPage({ params }: Props) {
                 // page rather than sitting in it.
                 ? "fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]"
                 : isInTelegram
-                  // Collapsed in Mini App — DOM still mounted (so the
-                  // chatRef + WS state stick around between toggles)
-                  // but visually hidden behind the CTA above.
+                  // Collapsed in Mini App — DOM still mounted (so
+                  // ChatPanel's WS connection sticks around between
+                  // toggles) but visually hidden behind the CTA above.
                   ? "hidden"
                   : "bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]"
             }>
-              {/* Chat header */}
-              <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-50 flex-shrink-0 flex items-center gap-3">
-                {isInTelegram && chatExpanded && (
-                  <button
-                    type="button"
-                    onClick={() => setChatExpanded(false)}
-                    className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
-                    aria-label={t("closeChatAria")}
-                  >
-                    <Icon name="arrow_back" size={22} />
-                  </button>
-                )}
-                <div className="flex-1 min-w-0">
-                  <h2 className="font-semibold text-gray-900">{t("messagesTitle")}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {!canChat
-                      ? t("messagesSubtitleLocked")
-                      : chatClosed
-                        ? t("messagesSubtitleClosed")
-                        : t("messagesSubtitleOpen")}
-                  </p>
-                </div>
-                {canChat && (
-                  <span className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-full ${
-                    chatClosed
-                      ? "bg-gray-100 text-gray-500"
-                      : wsConnected
-                        ? "bg-green-50 text-green-600"
-                        : "bg-gray-100 text-gray-400"
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${
-                      chatClosed ? "bg-gray-400" : wsConnected ? "bg-green-500" : "bg-gray-400"
-                    }`} />
-                    {chatClosed ? t("statusClosed") : wsConnected ? t("statusOnline") : t("statusConnecting")}
-                  </span>
-                )}
-              </div>
-
-              {/* Mentor: send a support-engagement invoice — lives right
-                  under the chat header (not on the main order page) so
-                  it's reachable from inside the fullscreen Mini App chat
-                  overlay too, not just the collapsed sidebar view. */}
-              {role === "mentor" && canChat && !chatClosed && (supportServices.length > 0 || supportServicesLoadError) && (
-                <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
-                  {supportServicesLoadError ? (
-                    <div>
-                      <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
+              {canChat && order.conversation_id ? (
+                <ChatPanel
+                  conversationId={order.conversation_id}
+                  currentUserId={currentUserId}
+                  onConnectedChange={setChatConnected}
+                  onPreviewChange={setChatPreview}
+                  refetchTrigger={invoiceChatRefetchSignal}
+                  leadingHeaderAction={isInTelegram && chatExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setChatExpanded(false)}
+                      className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
+                      aria-label={t("collapseChatAria")}
+                    >
+                      <Icon name="arrow_back" size={22} />
+                    </button>
+                  )}
+                  headerAction={role === "mentor" && (supportServices.length > 0 || supportServicesLoadError) && (
+                    <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
+                      {supportServicesLoadError ? (
+                        <div>
+                          <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSupportServicesLoadError(false)
+                              fetchMentorServices()
+                                .then((services) =>
+                                  setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
+                                )
+                                .catch(() => setSupportServicesLoadError(true))
+                            }}
+                            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                          >
+                            {t("retry")}
+                          </button>
+                        </div>
+                      ) : (
+                      <>
+                      {invoiceSent && !invoiceFormOpen && (
+                        <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1">
+                          {t("invoiceSent")}
+                        </p>
+                      )}
+                      {!invoiceFormOpen ? (
+                        <button
+                          onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false) }}
+                          className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                        >
+                          {t("sendInvoiceCta")}
+                        </button>
+                      ) : (
+                        <form onSubmit={handleSendInvoice} className="space-y-2">
+                          <select
+                            value={invoiceServiceId ?? ""}
+                            onChange={(e) => setInvoiceServiceId(Number(e.target.value))}
+                            required
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                          >
+                            <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
+                            {supportServices.map((s) => (
+                              <option key={s.id} value={s.id}>{s.title}</option>
+                            ))}
+                          </select>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              value={invoicePrice}
+                              onChange={(e) => setInvoicePrice(e.target.value)}
+                              required
+                              type="number"
+                              min="0"
+                              step="1000"
+                              placeholder={t("invoicePricePlaceholder")}
+                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                            />
+                            <input
+                              value={invoiceMonths}
+                              onChange={(e) => setInvoiceMonths(e.target.value)}
+                              required
+                              type="number"
+                              min="1"
+                              max="36"
+                              placeholder={t("invoiceMonthsPlaceholder")}
+                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                            />
+                          </div>
+                          {invoiceError && (
+                            <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              disabled={sendingInvoice || invoiceServiceId === null}
+                              className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                            >
+                              {sendingInvoice ? t("sending") : t("send")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setInvoiceFormOpen(false)}
+                              className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                            >
+                              {t("cancel")}
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                      </>
+                      )}
+                    </div>
+                  )}
+                />
+              ) : (
+                <>
+                  {/* Chat header (locked) */}
+                  <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-50 flex-shrink-0 flex items-center gap-3">
+                    {isInTelegram && chatExpanded && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setSupportServicesLoadError(false)
-                          fetchMentorServices()
-                            .then((services) =>
-                              setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
-                            )
-                            .catch(() => setSupportServicesLoadError(true))
-                        }}
-                        className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                        onClick={() => setChatExpanded(false)}
+                        className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
+                        aria-label={t("collapseChatAria")}
                       >
-                        {t("retry")}
+                        <Icon name="arrow_back" size={22} />
                       </button>
-                    </div>
-                  ) : (
-                  <>
-                  {invoiceSent && !invoiceFormOpen && (
-                    <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1">
-                      {t("invoiceSent")}
-                    </p>
-                  )}
-                  {!invoiceFormOpen ? (
-                    <button
-                      onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false) }}
-                      className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                    >
-                      {t("sendInvoiceCta")}
-                    </button>
-                  ) : (
-                    <form onSubmit={handleSendInvoice} className="space-y-2">
-                      <select
-                        value={invoiceServiceId ?? ""}
-                        onChange={(e) => setInvoiceServiceId(Number(e.target.value))}
-                        required
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                      >
-                        <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
-                        {supportServices.map((s) => (
-                          <option key={s.id} value={s.id}>{s.title}</option>
-                        ))}
-                      </select>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          value={invoicePrice}
-                          onChange={(e) => setInvoicePrice(e.target.value)}
-                          required
-                          type="number"
-                          min="0"
-                          step="1000"
-                          placeholder={t("invoicePricePlaceholder")}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                        />
-                        <input
-                          value={invoiceMonths}
-                          onChange={(e) => setInvoiceMonths(e.target.value)}
-                          required
-                          type="number"
-                          min="1"
-                          max="36"
-                          placeholder={t("invoiceMonthsPlaceholder")}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                        />
-                      </div>
-                      {invoiceError && (
-                        <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          type="submit"
-                          disabled={sendingInvoice || invoiceServiceId === null}
-                          className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                        >
-                          {sendingInvoice ? t("sending") : t("send")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInvoiceFormOpen(false)}
-                          className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                        >
-                          {t("cancel")}
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                  </>
-                  )}
-                </div>
-              )}
-
-              {/* Messages */}
-              {canChat ? (
-                <>
-                  <div ref={chatRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                    {chatHistoryLoadError ? (
-                      <div className="text-center py-8">
-                        <p className="text-red-600 text-sm mb-2">{t("chatHistoryError")}</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!order?.conversation_id) return
-                            setChatHistoryLoadError(false)
-                            fetchChatMessages(order.conversation_id)
-                              .then(setMessages)
-                              .catch(() => setChatHistoryLoadError(true))
-                          }}
-                          className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                        >
-                          {t("retry")}
-                        </button>
-                      </div>
-                    ) : messages.length === 0 && (
-                      <div className="text-center py-8">
-                        <p className="text-gray-400 text-sm">{t("startConversation")}</p>
-                      </div>
                     )}
-                    {messages.map((msg) => {
-                      const isSystem = msg.is_system === true || msg.sender === null
-                      const isOwn = !isSystem && currentUserId !== null && msg.sender === currentUserId
-
-                      if (isSystem) {
-                        return (
-                          <div key={msg.id} className="flex justify-center my-2">
-                            <div className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 max-w-[85%]">
-                              <p className="text-xs text-gray-600 text-center leading-relaxed whitespace-pre-wrap break-words">
-                                <Linkified text={msg.text} />
-                              </p>
-                              <p className="text-[10px] text-gray-400 text-center mt-1">{formatTime(msg.created_at)}</p>
-                            </div>
-                          </div>
-                        )
-                      }
-
-                      const hasAttachments = msg.attachments && msg.attachments.length > 0
-
-                      return (
-                        <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                          <div className={`max-w-[75%] ${isOwn ? "items-end" : "items-start"} flex flex-col gap-1`}>
-                            {msg.text && (
-                              <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                                isOwn
-                                  ? "bg-indigo-600 text-white rounded-br-sm"
-                                  : "bg-gray-100 text-gray-800 rounded-bl-sm"
-                              }`}>
-                                <Linkified text={msg.text} />
-                              </div>
-                            )}
-                            {hasAttachments && (
-                              <div className="flex flex-col gap-1.5 mt-0.5">
-                                {msg.attachments!.map((att) => {
-                                  const isImage = att.content_type.startsWith("image/")
-                                  const sizeLabel = att.size_bytes < 1024 * 1024
-                                    ? `${Math.round(att.size_bytes / 1024)} KB`
-                                    : `${(att.size_bytes / (1024 * 1024)).toFixed(1)} MB`
-
-                                  if (isImage) {
-                                    return (
-                                      <a
-                                        key={att.id}
-                                        href={att.download_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors max-w-[240px]"
-                                      >
-                                        <img
-                                          src={att.download_url}
-                                          alt={att.original_filename}
-                                          className="w-full max-h-[200px] object-cover"
-                                          loading="lazy"
-                                        />
-                                        <div className="px-2.5 py-1.5 bg-white flex items-center gap-1.5">
-                                          <Icon name="image" size={12} className="text-gray-400" />
-                                          <span className="text-xs text-gray-500 truncate">{att.original_filename}</span>
-                                          <span className="text-[10px] text-gray-300 ml-auto flex-shrink-0">{sizeLabel}</span>
-                                        </div>
-                                      </a>
-                                    )
-                                  }
-
-                                  return (
-                                    <a
-                                      key={att.id}
-                                      href={att.download_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors ${
-                                        isOwn
-                                          ? "border-indigo-400/30 bg-indigo-500/20 hover:bg-indigo-500/30"
-                                          : "border-gray-200 bg-white hover:border-gray-300"
-                                      }`}
-                                    >
-                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                        isOwn ? "bg-white/20" : "bg-red-50"
-                                      }`}>
-                                        <Icon name="description" size={16} className={isOwn ? "text-white" : "text-red-500"} />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className={`text-xs font-medium truncate ${isOwn ? "text-white" : "text-gray-900"}`}>
-                                          {att.original_filename}
-                                        </p>
-                                        <p className={`text-[10px] ${isOwn ? "text-indigo-200" : "text-gray-400"}`}>
-                                          PDF · {sizeLabel}
-                                        </p>
-                                      </div>
-                                      <Icon name="download" size={16} className={isOwn ? "text-white/60" : "text-gray-400"} />
-                                    </a>
-                                  )
-                                })}
-                              </div>
-                            )}
-                            <span className="text-xs text-gray-300 px-1">{formatTime(msg.created_at)}</span>
-                          </div>
-                        </div>
-                      )
-                    })}
+                    <div className="flex-1 min-w-0">
+                      <h2 className="font-semibold text-gray-900">{t("messagesTitle")}</h2>
+                      <p className="text-xs text-gray-400 mt-0.5">{t("messagesSubtitleLocked")}</p>
+                    </div>
                   </div>
-
-                  {/* Input or closed banner */}
-                  {chatClosed ? (
-                    <div className="px-4 py-5 border-t border-gray-50 flex-shrink-0 bg-gray-50/60">
-                      <p className="text-center text-sm text-gray-500 font-medium inline-flex items-center gap-1.5 justify-center w-full">
-                        <Icon name="lock" size={16} />
-                        {t("chatClosedTitle")}
-                      </p>
-                      <p className="text-center text-xs text-gray-400 mt-1 leading-relaxed">
-                        {role === "mentor"
-                          ? t("chatClosedReopenMentor")
-                          : t("chatClosedReopenStudent")}
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center px-8">
+                      <div className="mb-4 flex justify-center">
+                        <Icon name="lock" size={48} className="text-gray-300" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-2">{t("chatLockedTitle")}</h3>
+                      <p className="text-sm text-gray-400 leading-relaxed">
+                        {t("chatLockedBody")}
                       </p>
                     </div>
-                  ) : (
-                    <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0">
-                      {chatSendError && (
-                        <p className="text-xs text-red-600 mb-2">{chatSendError}</p>
-                      )}
-                      {/* Attached files preview */}
-                      {attachedFiles.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {attachedFiles.map((f, i) => (
-                            <div key={i} className="flex items-center gap-1.5 bg-gray-100 rounded-lg px-2.5 py-1.5 text-xs text-gray-600">
-                              <Icon name={f.type === "application/pdf" ? "description" : "image"} size={14} className="text-gray-400" />
-                              <span className="max-w-[120px] truncate">{f.name}</span>
-                              <button
-                                type="button"
-                                onClick={() => removeFile(i)}
-                                className="text-gray-400 hover:text-red-500 transition-colors ml-0.5"
-                              >
-                                <Icon name="close" size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <form onSubmit={handleSend} className="flex gap-2">
-                        {/* Hidden file input */}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="application/pdf,image/jpeg,image/png"
-                          multiple
-                          onChange={handleFileSelect}
-                          className="hidden"
-                        />
-                        {/* Attach button */}
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={!wsConnected || attachedFiles.length >= 3}
-                          className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
-                          title={t("attachTitle")}
-                        >
-                          <Icon name="attach_file" size={20} />
-                        </button>
-                        <input
-                          type="text"
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder={t("messagePlaceholder")}
-                          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                          disabled={!wsConnected || sending}
-                        />
-                        <button
-                          type="submit"
-                          disabled={!wsConnected || sending || (!newMessage.trim() && attachedFiles.length === 0)}
-                          className="bg-gray-900 text-white px-4 py-2.5 rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-40 flex-shrink-0"
-                        >
-                          {sending ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Icon name="send" size={20} />
-                          )}
-                        </button>
-                      </form>
-                      <p className="text-xs text-gray-300 mt-2 text-center">
-                        {t("noContactsWarning")}
-                      </p>
-                    </div>
-                  )}
+                  </div>
                 </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center px-8">
-                    <div className="mb-4 flex justify-center">
-                      <Icon name="lock" size={48} className="text-gray-300" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">{t("chatLockedTitle")}</h3>
-                    <p className="text-sm text-gray-400 leading-relaxed">
-                      {t("chatLockedBody")}
-                    </p>
-                  </div>
-                </div>
               )}
             </div>
           </div>

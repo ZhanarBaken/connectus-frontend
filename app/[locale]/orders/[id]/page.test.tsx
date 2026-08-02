@@ -32,7 +32,7 @@ import {
   fetchStudentProfile,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/api"
-import { fetchChatMessages, fetchConversation, connectChat, closeConversation } from "@/lib/chat"
+import { fetchChatMessages, connectChat } from "@/lib/chat"
 import { fetchMentorReviews, hasReviewForOrder } from "@/lib/reviews"
 import type { Order, Mentor, MentorService, ChatMessage, StudentProfile } from "@/types"
 import type { ChatConnection } from "@/lib/chat"
@@ -151,14 +151,6 @@ function setupCommonMocks() {
   vi.mocked(fetchSupportTasks).mockResolvedValue([])
   vi.mocked(markChatRead).mockResolvedValue(undefined)
   vi.mocked(fetchChatMessages).mockResolvedValue([])
-  vi.mocked(fetchConversation).mockResolvedValue({
-    id: 1,
-    mentor: 3,
-    student: 7,
-    created_at: "2026-07-01T10:00:00Z",
-    closed_at: null,
-    is_active: true,
-  })
   vi.mocked(connectChat).mockImplementation(
     () => ({ send: vi.fn(() => true), close: vi.fn() }) as ChatConnection,
   )
@@ -1089,68 +1081,6 @@ describe("OrderPage — chat websocket wiring", () => {
 
     act(() => handlers!.onClose?.(1000))
     expect(await screen.findByText("Подключение...")).toBeInTheDocument()
-  })
-
-  it("sets chatClosed when onServerError reports the chat is closed", async () => {
-    let handlers: Parameters<typeof connectChat>[1] | undefined
-    vi.mocked(connectChat).mockImplementation((_id, h) => {
-      handlers = h
-      return { send: vi.fn(() => true), close: vi.fn() }
-    })
-
-    await renderOrderPage("42")
-
-    await waitFor(() => expect(handlers).toBeDefined())
-
-    act(() => handlers!.onServerError?.("This conversation is closed"))
-
-    expect(await screen.findByText(
-      "Ментор закрыл чат. Чтобы продолжить общение и заказать услуги, закажи новую консультацию на странице ментора.",
-    )).toBeInTheDocument()
-  })
-
-  it("does not set chatClosed for unrelated server errors", async () => {
-    let handlers: Parameters<typeof connectChat>[1] | undefined
-    vi.mocked(connectChat).mockImplementation((_id, h) => {
-      handlers = h
-      return { send: vi.fn(() => true), close: vi.fn() }
-    })
-
-    await renderOrderPage("42")
-
-    await waitFor(() => expect(handlers).toBeDefined())
-
-    act(() => handlers!.onServerError?.("Message too long"))
-
-    expect(screen.queryByText(
-      "Ментор закрыл чат. Чтобы продолжить общение и заказать услуги, закажи новую консультацию на странице ментора.",
-    )).not.toBeInTheDocument()
-  })
-})
-
-describe("OrderPage — mentor: close chat", () => {
-  beforeEach(() => {
-    localStorage.setItem("access_token", "fake-token")
-    localStorage.setItem("role", "mentor")
-    vi.mocked(fetchOrders).mockResolvedValue([])
-    vi.mocked(fetchMentorServices).mockResolvedValue([])
-    vi.mocked(fetchOrder).mockResolvedValue(
-      makeOrder({ order_status: "in_progress", conversation_id: 88 }),
-    )
-  })
-
-  it("closes the chat after confirming", async () => {
-    vi.mocked(closeConversation).mockResolvedValue({ closed_at: "2026-07-02T10:00:00Z" })
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true)
-
-    await renderOrderPage("42")
-
-    const button = await screen.findByRole("button", { name: "Закрыть чат с абитуриентом" })
-    fireEvent.click(button)
-
-    await waitFor(() => expect(closeConversation).toHaveBeenCalledWith(88))
-    expect((await screen.findAllByText("Чат закрыт")).length).toBeGreaterThan(0)
-    confirmSpy.mockRestore()
   })
 })
 

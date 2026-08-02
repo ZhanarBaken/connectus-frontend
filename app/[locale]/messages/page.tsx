@@ -3,41 +3,16 @@
 import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
+import { clearAuth } from "@/lib/api"
+import { fetchMyConversations, type ConversationListItem } from "@/lib/chat"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
-import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
-const STATUS_KEY: Record<string, string> = {
-  draft: "draft",
-  pending_payment: "pendingPayment",
-  paid: "paid",
-  in_progress: "inProgress",
-  completed: "completed",
-  disputed: "disputed",
-  payout_pending: "payoutPending",
-  paid_out: "paidOut",
-  cancelled: "cancelled",
-}
-
-const STATUS_STYLE: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-500",
-  pending_payment: "bg-yellow-50 text-yellow-700",
-  paid: "bg-blue-50 text-blue-700",
-  in_progress: "bg-indigo-50 text-indigo-700",
-  completed: "bg-green-50 text-green-700",
-  disputed: "bg-red-50 text-red-700",
-  payout_pending: "bg-gray-100 text-gray-500",
-  paid_out: "bg-green-50 text-green-700",
-  cancelled: "bg-gray-100 text-gray-400",
-}
-
 export default function MessagesPage() {
   const t = useTranslations("Messages")
-  const tStatus = useTranslations("OrderStatus")
   const locale = useLocale()
   const router = useRouter()
   useStudentOnboardingGate()
@@ -48,28 +23,8 @@ export default function MessagesPage() {
     }
   }, [webApp])
   const [role, setRole] = useState<string | null>(null)
-  const [conversations, setConversations] = useState<Order[]>([])
-  const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
-  const [mentorPhotos, setMentorPhotos] = useState<Record<number, string | null>>({})
-  const [mentorNamesLoadError, setMentorNamesLoadError] = useState(false)
+  const [conversations, setConversations] = useState<ConversationListItem[]>([])
   const [loading, setLoading] = useState(true)
-
-  const loadMentorNames = async () => {
-    setMentorNamesLoadError(false)
-    try {
-      const mentors = await fetchMentors()
-      const nameMap: Record<number, string> = {}
-      const photoMap: Record<number, string | null> = {}
-      for (const m of mentors) {
-        nameMap[m.id] = m.full_name
-        photoMap[m.id] = m.profile_photo
-      }
-      setMentorNames(nameMap)
-      setMentorPhotos(photoMap)
-    } catch {
-      setMentorNamesLoadError(true)
-    }
-  }
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -77,26 +32,8 @@ export default function MessagesPage() {
     const r = localStorage.getItem("role")
     setRole(r)
 
-    fetchOrders()
-      .then((orders) => {
-        // Show only orders that already have a chat conversation.
-        // The backend creates one when a mentor accepts a free consultation.
-        const withChat = orders
-          .filter((o) => o.conversation_id !== null)
-          .sort((a, b) => b.created_at.localeCompare(a.created_at))
-        // De-dupe by conversation_id (multiple orders can share one conversation)
-        const seen = new Set<number>()
-        const unique: Order[] = []
-        for (const o of withChat) {
-          if (o.conversation_id === null) continue
-          if (seen.has(o.conversation_id)) continue
-          seen.add(o.conversation_id)
-          unique.push(o)
-        }
-        setConversations(unique)
-
-        if (r !== "mentor") loadMentorNames()
-      })
+    fetchMyConversations()
+      .then(setConversations)
       .catch(() => {
         clearAuth()
         router.replace("/auth/login")
@@ -127,15 +64,6 @@ export default function MessagesPage() {
           </p>
         </div>
 
-        {role !== "mentor" && mentorNamesLoadError && (
-          <p className="text-xs text-red-600 mb-4">
-            {t("mentorNamesLoadError")}{" "}
-            <button type="button" onClick={loadMentorNames} className="font-semibold underline hover:no-underline">
-              {t("retry")}
-            </button>
-          </p>
-        )}
-
         {conversations.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <div className="mb-4 flex justify-center">
@@ -158,35 +86,30 @@ export default function MessagesPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            {conversations.map((order, i) => {
-              const counterpartName = role === "mentor"
-                ? (order.student_info?.full_name?.trim().split(/\s+/)[0] || t("applicantDefault"))
-                : (mentorNames[order.mentor] || t("mentorDefault"))
-              const counterpartPhoto = role === "mentor"
-                ? (order.student_info?.profile_photo ?? null)
-                : (mentorPhotos[order.mentor] ?? null)
-              const dateLabel = new Date(order.created_at).toLocaleDateString(locale, {
-                day: "numeric",
-                month: "short",
-              })
-
-              const statusLabel = STATUS_KEY[order.order_status] ? tStatus(STATUS_KEY[order.order_status]) : order.order_status
-              const statusStyle = STATUS_STYLE[order.order_status] || "bg-gray-100 text-gray-500"
+            {conversations.map((c, i) => {
+              const counterpartName = c.other_party_name ||
+                (role === "mentor" ? t("applicantDefault") : t("mentorDefault"))
+              const dateLabel = c.last_message_at
+                ? new Date(c.last_message_at).toLocaleDateString(locale, { day: "numeric", month: "short" })
+                : ""
+              // Orders still exist for chats that started from one — send
+              // those to the order page (with the Mini App deep-link param
+              // it already understands). Direct student→mentor chats with
+              // no order have nowhere else to go but the standalone page.
+              const href = c.order_id !== null
+                ? (isInTelegram ? `/orders/${c.order_id}?chat=open` : `/orders/${c.order_id}`)
+                : `/messages/${c.id}`
 
               return (
                 <Link
-                  key={order.conversation_id ?? order.id}
-                  // Inside the Mini App, the order page hides the chat behind a CTA
-                  // by default — but from the inbox the user clearly wants the chat,
-                  // so reuse the existing `?chat=open` deep-link param that TG
-                  // notifications already use to land straight in the fullscreen chat.
-                  href={isInTelegram ? `/orders/${order.id}?chat=open` : `/orders/${order.id}`}
+                  key={c.id}
+                  href={href}
                   className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors ${
                     i < conversations.length - 1 ? "border-b border-gray-50" : ""
                   }`}
                 >
                   <Avatar
-                    src={counterpartPhoto}
+                    src={c.other_party_photo}
                     name={counterpartName}
                     className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500"
                     letterClassName="text-white font-bold"
@@ -195,14 +118,17 @@ export default function MessagesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2">
                       <h3 className="font-semibold text-gray-900 truncate">{counterpartName}</h3>
-                      <span className="text-xs text-gray-400 flex-shrink-0">{dateLabel}</span>
+                      {dateLabel && <span className="text-xs text-gray-400 flex-shrink-0">{dateLabel}</span>}
                     </div>
-                    <p className="text-xs text-indigo-600 truncate mt-0.5">{order.service_title}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${statusStyle}`}>
-                        {statusLabel}
-                      </span>
-                      <span className="text-xs text-gray-400 truncate">{t("openChat")}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-gray-400 truncate flex-1">
+                        {c.last_message_text || t("noMessagesYet")}
+                      </p>
+                      {c.unread_count > 0 && (
+                        <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-600 text-white text-[10px] font-semibold flex items-center justify-center">
+                          {c.unread_count}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </Link>

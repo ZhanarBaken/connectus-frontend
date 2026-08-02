@@ -20,6 +20,8 @@ export interface Conversation {
   created_at: string
   closed_at: string | null
   is_active: boolean
+  other_party_name: string
+  other_party_photo: string | null
 }
 
 export async function fetchConversation(conversationId: number): Promise<Conversation> {
@@ -30,16 +32,39 @@ export async function fetchConversation(conversationId: number): Promise<Convers
   return res.json()
 }
 
-export async function closeConversation(conversationId: number): Promise<{ closed_at: string }> {
-  const res = await authFetch(`${API_BASE}/chat/${conversationId}/close/`, {
+export interface ConversationListItem {
+  id: number
+  other_party_name: string
+  other_party_photo: string | null
+  last_message_text: string
+  last_message_at: string | null
+  unread_count: number
+  order_id: number | null
+}
+
+/** The caller's own conversations (mentor or student side), most-recently-active first. */
+export async function fetchMyConversations(): Promise<ConversationListItem[]> {
+  const res = await authFetch(`${API_BASE}/chat/`)
+  if (!res.ok) {
+    throw new Error("Не удалось загрузить список чатов")
+  }
+  return res.json()
+}
+
+/**
+ * Student-only: start (or resume) a direct conversation with a mentor,
+ * no prior order required. Idempotent — repeat calls with the same
+ * mentor return the same conversation.
+ */
+export async function startConversation(mentorId: number): Promise<Conversation> {
+  const res = await authFetch(`${API_BASE}/chat/`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mentor: mentorId }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    // Empty fallback on purpose — forward backend detail when given,
-    // otherwise let the caller show its own translated message instead
-    // of a hardcoded one.
-    throw new Error(err.detail || "")
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to start conversation")
   }
   return res.json()
 }

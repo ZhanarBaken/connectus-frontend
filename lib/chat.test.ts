@@ -15,7 +15,7 @@ vi.mock("./api", async (importOriginal) => {
   }
 })
 
-import { closeConversation, connectChat, fetchChatMessages, sendChatMessage } from "./chat"
+import { connectChat, fetchChatMessages, fetchMyConversations, sendChatMessage, startConversation } from "./chat"
 
 // Mirrors the non-exported `WS_RECONNECT_MAX_ATTEMPTS` constant in
 // lib/chat.ts (verified against source — kept in sync manually since
@@ -159,22 +159,50 @@ describe("sendChatMessage", () => {
   })
 })
 
-// ─── closeConversation ───────────────────────────────────────────────────────
+// ─── startConversation ───────────────────────────────────────────────────────
 
-describe("closeConversation", () => {
-  it("returns the parsed response on success", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ closed_at: "2026-01-01T00:00:00Z" }))
-    await expect(closeConversation(1)).resolves.toEqual({ closed_at: "2026-01-01T00:00:00Z" })
+describe("startConversation", () => {
+  it("returns the parsed conversation on success", async () => {
+    const conversation = {
+      id: 1, mentor: 3, student: 7, created_at: "2026-01-01T00:00:00Z",
+      closed_at: null, is_active: true, other_party_name: "Mentor Name", other_party_photo: null,
+    }
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(conversation, { status: 201 }))
+    await expect(startConversation(3)).resolves.toEqual(conversation)
   })
 
   it("uses err.detail when the request fails", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Already closed" }, { status: 400 }))
-    await expect(closeConversation(1)).rejects.toThrow("Already closed")
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Mentor not found" }, { status: 400 }))
+    await expect(startConversation(3)).rejects.toThrow("Mentor not found")
   })
 
-  it("throws with an empty message when there is no detail — callers must supply their own translated fallback", async () => {
+  it("digs into a field-keyed error when there is no detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ mentor: ["Invalid pk \"3\" - object does not exist."] }, { status: 400 }),
+    )
+    await expect(startConversation(3)).rejects.toThrow("Invalid pk \"3\" - object does not exist.")
+  })
+
+  it("falls back to a default message when there is no detail or field error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 400 }))
-    await expect(closeConversation(1)).rejects.toThrow("")
+    await expect(startConversation(3)).rejects.toThrow("Failed to start conversation")
+  })
+})
+
+// ─── fetchMyConversations ────────────────────────────────────────────────────
+
+describe("fetchMyConversations", () => {
+  it("returns the parsed conversation list on success", async () => {
+    const list = [
+      { id: 1, other_party_name: "A", other_party_photo: null, last_message_text: "hi", last_message_at: "2026-01-01T00:00:00Z", unread_count: 2, order_id: 42 },
+    ]
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(list))
+    await expect(fetchMyConversations()).resolves.toEqual(list)
+  })
+
+  it("throws on a non-ok status", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 500 }))
+    await expect(fetchMyConversations()).rejects.toThrow("Не удалось загрузить список чатов")
   })
 })
 
