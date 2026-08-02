@@ -93,7 +93,7 @@ export default function LandingSections({ categories, mentors }: Props) {
             {/* Connector line */}
             <div className="hidden md:block absolute top-8 left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] h-px bg-gradient-to-r from-gray-200 via-indigo-200 to-gray-200" />
 
-            <div className="grid md:grid-cols-3 gap-12 md:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
               {steps.map((step, i) => (
                 <ScrollReveal
                   key={step.number}
@@ -219,7 +219,7 @@ export default function LandingSections({ categories, mentors }: Props) {
             </p>
           </ScrollReveal>
 
-          <div className="grid sm:grid-cols-2 gap-px bg-gray-800 rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-800 rounded-2xl overflow-hidden">
             {[
               {
                 icon: "verified",
@@ -461,7 +461,7 @@ export default function LandingSections({ categories, mentors }: Props) {
       {/* ─── Footer ────────────────────────────────────────────────── */}
       <footer className="bg-gray-950 text-gray-400 py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="grid sm:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-10 mb-12">
             <div className="sm:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <Logo size={28} className="text-white" />

@@ -727,7 +727,7 @@ export default function OrderPage({ params }: Props) {
           <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-6 transition-colors group [-webkit-tap-highlight-color:transparent]" />
         )}
 
-        <div className="grid lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Order info — bumped below the chat on mobile/Mini App so
               the conversation is the first thing on screen; reverts to
               the natural left-sidebar layout on lg+. */}

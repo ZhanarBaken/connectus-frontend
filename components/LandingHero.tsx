@@ -40,7 +40,7 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
       <FloatingOrb color="rgba(139, 92, 246, 0.05)" size={350} offsetX={800} offsetY={50} speed={0.06} className="hidden lg:block" />
 
       <div className="relative max-w-6xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Left — text */}
           <div>
             <ScrollReveal variant="fade-up" duration={800}>

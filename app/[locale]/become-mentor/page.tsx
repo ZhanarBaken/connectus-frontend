@@ -188,7 +188,7 @@ export default function BecomeMentorPage() {
             </p>
           </ScrollReveal>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {STEPS.map((step, i) => (
               <ScrollReveal key={step.title} variant="flip-up" delay={i * 150} duration={800}>
                 <div className="relative bg-white rounded-xl p-6 border border-gray-100 h-full">
@@ -226,7 +226,7 @@ export default function BecomeMentorPage() {
             </p>
           </ScrollReveal>
 
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {SERVICES.map((item, i) => (
               <ScrollReveal
                 key={item.label}

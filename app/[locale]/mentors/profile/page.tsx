@@ -337,7 +337,7 @@ export default function MentorProfilePage() {
           {/* Basic info */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">{t("basicInfoTitle")}</h2>
-            <div className="grid sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div data-field="full_name">
                 <Field label={t("fullNameLabel")} required error={fieldErrors.full_name}>
                   <input value={fullName} onChange={(e) => setFullName(e.target.value)}
