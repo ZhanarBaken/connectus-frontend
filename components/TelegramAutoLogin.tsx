@@ -21,14 +21,30 @@ import type { Role } from "@/types"
 // Telegram exposes whatever string the bot put after `?startapp=` in
 // `initDataUnsafe.start_param`. We use it as a tiny routing key —
 // e.g. server-side notification builds `order_<id>` so a tap on the
-// TG message lands on the right order screen post-login, or
-// `chat_<id>` for a direct chat message notification with no order
-// behind it (see apps.chat.notifications on the backend). Returning
+// TG message lands on the right order screen post-login, `chat_<id>`
+// for a direct chat message notification with no order behind it (a
+// student recipient — /messages/[id] is student-only now), or
+// `client_<student_id>` for the same no-order case when the recipient
+// is a mentor (see apps.chat.notifications on the backend). Returning
 // null when the value isn't recognised keeps the auto-login flow
 // from accidentally redirecting to an attacker-shaped path.
 function resolveStartParamTarget(raw: string | null | undefined): string | null {
   if (!raw) return null
-  const match = /^(order|chat)_(\d+)(?:_(ru|en|kk))?$/.exec(raw)
+
+  // Email-verification link tapped from outside Telegram entirely (the
+  // phone's mail app) — see apps.users.emails.send_verification_email
+  // and EmailSetView on the backend. Checked first since the token is
+  // an opaque secrets.token_urlsafe(32) string, not a numeric id like
+  // the other kinds below; its length (always exactly 43 chars) is what
+  // lets an optional trailing locale tag be split off unambiguously.
+  const verifyMatch = /^verify_([A-Za-z0-9_-]{43})(?:_(ru|en|kk))?$/.exec(raw)
+  if (verifyMatch) {
+    const [, token, taggedLocale] = verifyMatch
+    const prefix = taggedLocale && taggedLocale !== "ru" ? `/${taggedLocale}` : ""
+    return `${prefix}/auth/verify-email?token=${token}`
+  }
+
+  const match = /^(order|chat|client)_(\d+)(?:_(ru|en|kk))?$/.exec(raw)
   if (!match) return null
   const [, kind, id, taggedLocale] = match
   // "ru" is the default (unprefixed) locale — only en/kk get a
@@ -38,6 +54,9 @@ function resolveStartParamTarget(raw: string | null | undefined): string | null 
     // ?chat=open tells the order page to open the chat overlay
     // straight away on mount (the param is read inside that page).
     return `${prefix}/orders/${id}?chat=open`
+  }
+  if (kind === "client") {
+    return `${prefix}/mentor/clients/${id}`
   }
   return `${prefix}/messages/${id}`
 }

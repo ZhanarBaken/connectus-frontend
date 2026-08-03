@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import SupportChatActions from "./SupportChatActions"
 
@@ -172,6 +173,36 @@ describe("SupportChatActions — task attachment", () => {
       }),
     )
   })
+
+  it("lets the mentor add a task with a deadline picked from the calendar", async () => {
+    // Regression: the deadline field used to be a native <input
+    // type="date">, whose browser-owned popup could render clipped
+    // off-screen inside a narrow layout (reported in the Telegram Mini
+    // App). Now it's a DatePicker — this exercises the actual click →
+    // open calendar → pick day → submit flow end to end.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date("2026-07-15T12:00:00"))
+    vi.mocked(createSupportTask).mockResolvedValue(makeTask({ deadline: "2026-07-20" }))
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<SupportChatActions studentId={7} engagementId={5} />)
+
+    await user.click(await screen.findByText("Добавить задачу"))
+    fireEvent.change(screen.getByPlaceholderText("Новая задача"), {
+      target: { value: "Загрузи эссе на проверку" },
+    })
+    await user.click(screen.getByRole("button", { name: "Дедлайн" }))
+    const dayButtons = screen.getAllByRole("button", { name: "20" })
+    await user.click(dayButtons.find((b) => !b.hasAttribute("disabled"))!)
+    fireEvent.click(screen.getByRole("button", { name: "Добавить" }))
+
+    await waitFor(() =>
+      expect(createSupportTask).toHaveBeenCalledWith(5, {
+        title: "Загрузи эссе на проверку", deadline: "2026-07-20", documentId: undefined, file: undefined,
+      }),
+    )
+    vi.useRealTimers()
+  })
 })
 
 describe("SupportChatActions — invoice (regression, unrelated to attachments)", () => {
@@ -201,5 +232,81 @@ describe("SupportChatActions — invoice (regression, unrelated to attachments)"
     fireEvent.click(screen.getByRole("button", { name: "Отправить" }))
 
     await waitFor(() => expect(createSupportInvoice).toHaveBeenCalledWith(10, 7, "25000", 1))
+  })
+
+  it("closes the invoice form when the task form is opened, and vice versa", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([{
+      id: 10, title: "Сопровождение", description: "", price: "500000", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: false, intro_call_enabled: true, is_active: true,
+    }])
+
+    render(<SupportChatActions studentId={7} engagementId={5} />)
+
+    fireEvent.click(await screen.findByText("Отправить заявку"))
+    expect(await screen.findByRole("combobox")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("Добавить задачу"))
+    expect(screen.getByPlaceholderText("Новая задача")).toBeInTheDocument()
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("Отправить заявку"))
+    expect(await screen.findByRole("combobox")).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText("Новая задача")).not.toBeInTheDocument()
+  })
+
+  it("shows the translated error message when createSupportInvoice fails", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([{
+      id: 10, title: "Сопровождение", description: "", price: "500000", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: false, intro_call_enabled: true, is_active: true,
+    }])
+    vi.mocked(createSupportInvoice).mockRejectedValue(
+      new Error("There is already a live engagement for this service"),
+    )
+
+    render(<SupportChatActions studentId={7} engagementId={null} />)
+
+    fireEvent.click(await screen.findByText("Отправить заявку"))
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "10" } })
+    fireEvent.change(screen.getByPlaceholderText("Цена, ₸"), { target: { value: "50000" } })
+    fireEvent.change(screen.getByPlaceholderText("Срок, мес"), { target: { value: "6" } })
+    fireEvent.click(screen.getByRole("button", { name: "Отправить" }))
+
+    expect(await screen.findByText(
+      "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
+    )).toBeInTheDocument()
+  })
+
+  it("shows the client charge and mentor payout after a successful invoice send", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([{
+      id: 10, title: "Сопровождение", description: "", price: "500000", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: false, intro_call_enabled: true, is_active: true,
+    }])
+    vi.mocked(createSupportInvoice).mockResolvedValue({
+      id: 1, student: 7, mentor: 3, mentor_service: 10, service_title: "Сопровождение",
+      payout_category: "support", subtotal: "31250.00", total_price: "31250.00",
+      platform_fee: "6250", mentor_payout_amount: "25000.00", payment_status: "unpaid",
+      order_status: "pending_payment", payment_instructions: null, conversation_id: 55,
+      support_engagement: 5, installment_number: 1, engagement_duration_months: 6,
+      engagement_status: "awaiting_payment", scheduled_at: null, due_at: null, completed_at: null,
+      created_at: "2026-07-01T10:00:00Z", updated_at: "2026-07-01T10:00:00Z",
+    } as unknown as import("@/types").Order)
+
+    render(<SupportChatActions studentId={7} engagementId={null} />)
+
+    fireEvent.click(await screen.findByText("Отправить заявку"))
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "10" } })
+    fireEvent.change(screen.getByPlaceholderText("Цена, ₸"), { target: { value: "25000" } })
+    fireEvent.change(screen.getByPlaceholderText("Срок, мес"), { target: { value: "1" } })
+    fireEvent.click(screen.getByRole("button", { name: "Отправить" }))
+
+    expect(await screen.findByText(
+      "Клиент оплатит 31 250 ₸, вы получите 25 000 ₸.",
+    )).toBeInTheDocument()
   })
 })

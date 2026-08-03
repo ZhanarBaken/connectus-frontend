@@ -167,6 +167,46 @@ describe("ChatPanel — onPreviewChange", () => {
   })
 })
 
+describe("ChatPanel — support_task messages with a related_task document", () => {
+  it("renders the attached document as a downloadable preview card", async () => {
+    const msg: ChatMessage = {
+      id: 1, sender: 2, sender_email: "mentor@x.com", text: "📋 Новая задача: Загрузи эссе",
+      created_at: "2026-07-01T10:00:00Z", kind: "support_task",
+      related_task: {
+        id: 5, title: "Загрузи эссе", deadline: "2026-08-01",
+        document: {
+          id: 9, kind: "general", status: "pending", original_filename: "essay.pdf",
+          content_type: "application/pdf", size_bytes: 2048, description: "",
+          download_url: "/media/essay.pdf", uploaded_by: 2, uploaded_by_email: "mentor@x.com",
+          uploaded_at: "2026-07-01T10:00:00Z",
+        },
+      },
+    }
+    vi.mocked(fetchChatMessages).mockResolvedValue([msg])
+    vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
+
+    render(<ChatPanel conversationId={1} currentUserId={1} />)
+
+    const link = await screen.findByText("essay.pdf")
+    expect(link.closest("a")).toHaveAttribute("href", "/media/essay.pdf")
+  })
+
+  it("does not render a preview card when the task has no document", async () => {
+    const msg: ChatMessage = {
+      id: 1, sender: 2, sender_email: "mentor@x.com", text: "📋 Новая задача: Позвони в приёмную",
+      created_at: "2026-07-01T10:00:00Z", kind: "support_task",
+      related_task: { id: 5, title: "Позвони в приёмную", deadline: null, document: null },
+    }
+    vi.mocked(fetchChatMessages).mockResolvedValue([msg])
+    vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
+
+    render(<ChatPanel conversationId={1} currentUserId={1} />)
+
+    await screen.findByText("📋 Новая задача: Позвони в приёмную")
+    expect(screen.queryByRole("link", { name: /pdf/i })).not.toBeInTheDocument()
+  })
+})
+
 describe("ChatPanel — onAttachmentSent", () => {
   it("fires after a file attachment is successfully sent", async () => {
     let handlers: Parameters<typeof connectChat>[1] | undefined

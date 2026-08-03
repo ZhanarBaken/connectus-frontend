@@ -91,7 +91,7 @@ export default function Header() {
     { href: "/mentors/profile", label: t("Nav.profile"), icon: "person" },
     { href: "/mentors/schedule", label: t("Nav.schedule"), icon: "calendar_month" },
     { href: "/mentors/services", label: t("Nav.services"), icon: "description" },
-    { href: "/orders", label: t("Nav.clients"), icon: "people", matchPrefixes: ["/orders"], badge: chatUnread || undefined },
+    { href: "/mentor/clients", label: t("Nav.clients"), icon: "people", matchPrefixes: ["/mentor/clients", "/orders"], badge: chatUnread || undefined },
     { href: "/settings", label: t("Nav.settings"), icon: "settings" },
   ]
 

@@ -2,71 +2,22 @@
 
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { useRouter } from "@/i18n/navigation"
-import { authFetch, fetchMentorClients, type MentorClient, type MentorClients } from "@/lib/api"
-import { startConversationWithClient } from "@/lib/chat"
+import { Link, useRouter } from "@/i18n/navigation"
+import { fetchMentorClients, type MentorClient, type MentorClients } from "@/lib/api"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
-import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { Avatar } from "@/components/Avatar"
 import BackButton from "@/components/BackButton"
-import ChatOverlay from "@/components/ChatOverlay"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
-import SupportChatActions from "@/components/SupportChatActions"
 
 type Tab = "active" | "inactive"
 
-interface ActiveChat {
-  conversationId: number
-  name: string
-  photo: string | null
-  studentId: number
-  engagementId: number | null
-}
-
-function ClientRow({
-  client, isInTelegram, onOpenChat,
-}: {
-  client: MentorClient
-  isInTelegram: boolean
-  onOpenChat: (chat: ActiveChat) => void
-}) {
-  const t = useTranslations("Dashboard.MentorClients")
-  const router = useRouter()
-  const [startingChat, setStartingChat] = useState(false)
-  const [chatError, setChatError] = useState("")
-
-  const handleChat = async () => {
-    let conversationId = client.conversation_id
-    if (conversationId === null) {
-      setStartingChat(true)
-      setChatError("")
-      try {
-        conversationId = (await startConversationWithClient(client.id)).id
-      } catch {
-        setChatError(t("chatWithClientError"))
-        setStartingChat(false)
-        return
-      }
-      setStartingChat(false)
-    }
-    // In the Telegram Mini App, open the same fullscreen in-page overlay
-    // the order page uses — no separate route, matches the rest of the
-    // Mini App's chat UX. Outside Telegram, the standalone /messages/[id]
-    // dialog page (already used by the mentor-profile "message" button)
-    // is the right fit — a full page is normal there.
-    if (isInTelegram) {
-      onOpenChat({
-        conversationId, name: client.full_name, photo: client.profile_photo,
-        studentId: client.id, engagementId: client.engagement_id,
-      })
-    } else {
-      router.push(`/messages/${conversationId}`)
-    }
-  }
-
+function ClientRow({ client }: { client: MentorClient }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4">
+    <Link
+      href={`/mentor/clients/${client.id}`}
+      className="block bg-white rounded-2xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
+    >
       <div className="flex items-center gap-3">
         <Avatar
           src={client.profile_photo}
@@ -80,40 +31,20 @@ function ClientRow({
             {[client.current_school_or_university, client.city].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleChat}
-          disabled={startingChat}
-          aria-label={t("chatWithClient")}
-          className="flex-shrink-0 w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
-        >
-          {startingChat ? (
-            <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-          ) : (
-            <Icon name="chat" size={18} />
-          )}
-        </button>
+        <Icon name="arrow_forward_ios" size={16} className="text-gray-300 flex-shrink-0" />
       </div>
-      {chatError && (
-        <p className="text-xs text-red-600 mt-2">{chatError}</p>
-      )}
-    </div>
+    </Link>
   )
 }
 
 export default function MentorClientsPage() {
   const t = useTranslations("Dashboard.MentorClients")
-  const tCommon = useTranslations("Common")
   const router = useRouter()
   useMentorOnboardingGate()
-  const { isInTelegram, webApp } = useTelegramWebApp()
   const [data, setData] = useState<MentorClients | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [tab, setTab] = useState<Tab>("active")
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
-  const [activeChat, setActiveChat] = useState<ActiveChat | null>(null)
-  const [chatRefetchSignal, setChatRefetchSignal] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -125,10 +56,6 @@ export default function MentorClientsPage() {
       .then(setData)
       .catch((e) => setError(e instanceof Error && e.message ? e.message : t("errorLoading")))
       .finally(() => setLoading(false))
-    authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/auth/me/`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((me) => { if (me) setCurrentUserId(me.id) })
-      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
@@ -194,36 +121,11 @@ export default function MentorClientsPage() {
         ) : (
           <div className="space-y-3">
             {list.map((client) => (
-              <ClientRow
-                key={client.id}
-                client={client}
-                isInTelegram={isInTelegram}
-                onOpenChat={setActiveChat}
-              />
+              <ClientRow key={client.id} client={client} />
             ))}
           </div>
         )}
       </div>
-
-      {activeChat && (
-        <ChatOverlay
-          conversationId={activeChat.conversationId}
-          currentUserId={currentUserId}
-          name={activeChat.name}
-          photo={activeChat.photo}
-          onClose={() => setActiveChat(null)}
-          onCloseAriaLabel={tCommon("back")}
-          refetchTrigger={chatRefetchSignal}
-          webApp={webApp}
-          headerAction={(
-            <SupportChatActions
-              studentId={activeChat.studentId}
-              engagementId={activeChat.engagementId}
-              onActionPosted={() => setChatRefetchSignal((n) => n + 1)}
-            />
-          )}
-        />
-      )}
     </div>
   )
 }

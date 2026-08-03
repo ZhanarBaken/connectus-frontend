@@ -268,14 +268,23 @@ export interface ChatAttachment {
   download_url: string
 }
 
+export interface ChatRelatedTask {
+  id: number
+  title: string
+  deadline: string | null
+  document: OrderDocument | null
+}
+
 export interface ChatMessage {
   id: number
   sender: number | null
   sender_email: string | null
   is_system?: boolean
+  kind?: "text" | "support_invoice" | "support_task"
   text: string
   created_at: string
   attachments?: ChatAttachment[]
+  related_task?: ChatRelatedTask | null
 }
 
 // ─── CRM admin types ──────────────────────────────────────────────────────────

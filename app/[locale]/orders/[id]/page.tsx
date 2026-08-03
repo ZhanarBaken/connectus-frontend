@@ -3,19 +3,18 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, fetchEngagementDocuments, fetchEngagementSchedule, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, endSupportEngagement, fetchSupportTasks, updateSupportTask, deleteSupportTask, fetchEngagementSchedule, confirmIntroCall, declineIntroCall } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
-import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
-import { Order, Mentor, OrderDocument, OrderDocumentComment, MentorService, SupportTask, EngagementScheduleEntry } from "@/types"
+import { Order, Mentor, OrderDocument, OrderDocumentComment, SupportTask, EngagementScheduleEntry } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
-import DatePicker from "@/components/DatePicker"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 import ChatPanel from "@/components/ChatPanel"
 import ChatOverlay from "@/components/ChatOverlay"
+import SupportChatActions from "@/components/SupportChatActions"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
 const STATUS_KEY: Record<string, string> = {
@@ -41,13 +40,6 @@ const STATUS_STYLE: Record<string, string> = {
   not_yet_due: "bg-gray-50 text-gray-400 border-gray-200",
 }
 
-// A forced session-expiry redirect (lib/api.ts:refreshAccessToken) tears
-// down all React state before the mentor can submit this form — stash the
-// in-progress fields here so they survive the round trip through login.
-export function invoiceDraftKey(orderId: string): string {
-  return `invoice_draft_${orderId}`
-}
-
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -61,7 +53,6 @@ export default function OrderPage({ params }: Props) {
   useStudentOnboardingGate()
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
-  const [studentOrders, setStudentOrders] = useState<Order[]>([]) // mentor: all orders with this student
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -88,18 +79,10 @@ export default function OrderPage({ params }: Props) {
   const [disputeReason, setDisputeReason] = useState("")
   const [disputing, setDisputing] = useState(false)
   const [disputeError, setDisputeError] = useState("")
-  const [supportServices, setSupportServices] = useState<MentorService[]>([])
-  const [supportServicesLoadError, setSupportServicesLoadError] = useState(false)
-  const [invoiceFormOpen, setInvoiceFormOpen] = useState(false)
-  const [invoiceServiceId, setInvoiceServiceId] = useState<number | null>(null)
-  const [invoicePrice, setInvoicePrice] = useState("")
-  const [invoiceMonths, setInvoiceMonths] = useState("")
-  const [sendingInvoice, setSendingInvoice] = useState(false)
-  const [invoiceError, setInvoiceError] = useState("")
-  const [invoiceSent, setInvoiceSent] = useState(false)
-  const [lastInvoiceOrder, setLastInvoiceOrder] = useState<Order | null>(null)
-  // Bumped after a support invoice is sent, so ChatPanel refetches —
-  // the backend's system message for it isn't pushed over the websocket.
+  // Bumped after a support invoice/task is posted (or a task's deadline
+  // changes) via SupportChatActions, so ChatPanel refetches — those
+  // system messages aren't pushed over the websocket with their rich
+  // fields (only the live "send message" view broadcasts those).
   const [invoiceChatRefetchSignal, setInvoiceChatRefetchSignal] = useState(0)
   const [disputeWindowMs, setDisputeWindowMs] = useState<number | null>(null)
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
@@ -115,16 +98,10 @@ export default function OrderPage({ params }: Props) {
   const [tasksLoadError, setTasksLoadError] = useState(false)
   const [schedule, setSchedule] = useState<EngagementScheduleEntry[]>([])
   const [scheduleLoadError, setScheduleLoadError] = useState(false)
-  const [newTaskTitle, setNewTaskTitle] = useState("")
-  const [newTaskDeadline, setNewTaskDeadline] = useState("")
-  const [taskFormOpen, setTaskFormOpen] = useState(false)
-  const [creatingTask, setCreatingTask] = useState(false)
+  // Errors from marking a task done/deleting it in the sidebar list below
+  // — creating a task now happens entirely inside SupportChatActions,
+  // with its own separate error surface next to that form.
   const [taskError, setTaskError] = useState("")
-  const [engagementDocuments, setEngagementDocuments] = useState<OrderDocument[]>([])
-  const [engagementDocumentsLoadError, setEngagementDocumentsLoadError] = useState(false)
-  const [taskAttachPickerOpen, setTaskAttachPickerOpen] = useState(false)
-  const [taskSelectedDocument, setTaskSelectedDocument] = useState<OrderDocument | null>(null)
-  const [newTaskFile, setNewTaskFile] = useState<File | null>(null)
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [receiptError, setReceiptError] = useState("")
@@ -165,37 +142,6 @@ export default function OrderPage({ params }: Props) {
       .catch(() => {})
   }, [])
 
-  // Restore an invoice-form draft left behind by a forced session-expiry
-  // redirect (see the save effect below) — one-shot, consumed immediately.
-  useEffect(() => {
-    const raw = sessionStorage.getItem(invoiceDraftKey(id))
-    if (!raw) return
-    sessionStorage.removeItem(invoiceDraftKey(id))
-    try {
-      const draft = JSON.parse(raw)
-      setInvoiceServiceId(draft.invoiceServiceId ?? null)
-      setInvoicePrice(draft.invoicePrice ?? "")
-      setInvoiceMonths(draft.invoiceMonths ?? "")
-      setInvoiceFormOpen(true)
-    } catch {
-      // corrupt draft — nothing to restore
-    }
-  }, [id])
-
-  // lib/api.ts fires this right before it wipes tokens and hard-redirects
-  // to /auth/login on a failed token refresh — save the in-progress
-  // invoice form so it isn't just silently lost.
-  useEffect(() => {
-    const handleSessionExpired = () => {
-      if (!invoiceFormOpen) return
-      sessionStorage.setItem(invoiceDraftKey(id), JSON.stringify({
-        invoiceServiceId, invoicePrice, invoiceMonths,
-      }))
-    }
-    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
-  }, [id, invoiceFormOpen, invoiceServiceId, invoicePrice, invoiceMonths])
-
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     const r = localStorage.getItem("role")
@@ -212,21 +158,6 @@ export default function OrderPage({ params }: Props) {
             setMentor(m)
           } catch {
             // ignore — fallback name will be used
-          }
-        } else {
-          // Mentor: load all orders to show service history with this student
-          try {
-            const all = await fetchOrders()
-            setStudentOrders(all.filter((o) => o.student === found.student))
-          } catch {
-            // ignore
-          }
-          // Mentor: own support services, for the "send invoice" form
-          try {
-            const services = await fetchMentorServices()
-            setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active))
-          } catch {
-            setSupportServicesLoadError(true)
           }
         }
         // Resolve current user id (used to flag own messages)
@@ -246,9 +177,6 @@ export default function OrderPage({ params }: Props) {
         fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
         if (found.support_engagement !== null) {
           fetchSupportTasks(found.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
-          fetchEngagementDocuments(found.support_engagement)
-            .then(setEngagementDocuments)
-            .catch(() => setEngagementDocumentsLoadError(true))
           fetchEngagementSchedule(found.support_engagement)
             .then(setSchedule)
             .catch(() => setScheduleLoadError(true))
@@ -338,10 +266,11 @@ export default function OrderPage({ params }: Props) {
     e.preventDefault()
     if (!order?.support_engagement) return
     const reason = endEngagementReason.trim()
-    if (!reason) {
-      setEndEngagementError(t("errorEndEngagementReasonRequired"))
-      return
-    }
+    // No client-side reason requirement any more — the backend only
+    // demands one for an early stop. Ending right around the final,
+    // already-paid month's finish needs no reason at all; if the
+    // backend does require one here, it 400s with a message we surface
+    // below via endEngagementError.
     setEndingEngagement(true)
     setEndEngagementError("")
     try {
@@ -354,43 +283,6 @@ export default function OrderPage({ params }: Props) {
       setEndEngagementError(err instanceof Error ? err.message : t("errorEndEngagement"))
     } finally {
       setEndingEngagement(false)
-    }
-  }
-
-  const clearTaskAttachment = () => {
-    setTaskSelectedDocument(null)
-    setNewTaskFile(null)
-  }
-
-  const handleCreateTask = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!order?.support_engagement) return
-    const title = newTaskTitle.trim()
-    if (!title) return
-    setCreatingTask(true)
-    setTaskError("")
-    try {
-      const task = await createSupportTask(order.support_engagement, {
-        title,
-        deadline: newTaskDeadline || null,
-        documentId: taskSelectedDocument?.id,
-        file: newTaskFile ?? undefined,
-      })
-      setTasks((prev) => [...prev, task])
-      // Only a fresh upload adds a new entry — an existing pick was
-      // already in the list.
-      if (newTaskFile && task.document) {
-        setEngagementDocuments((prev) => [task.document!, ...prev])
-      }
-      setNewTaskTitle("")
-      setNewTaskDeadline("")
-      clearTaskAttachment()
-      setTaskAttachPickerOpen(false)
-      setTaskFormOpen(false)
-    } catch (err: unknown) {
-      setTaskError(err instanceof Error ? err.message : t("taskCreateError"))
-    } finally {
-      setCreatingTask(false)
     }
   }
 
@@ -442,28 +334,6 @@ export default function OrderPage({ params }: Props) {
       setDisputeError(err instanceof Error ? err.message : t("errorDispute"))
     } finally {
       setDisputing(false)
-    }
-  }
-
-  const handleSendInvoice = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!order || invoiceServiceId === null) return
-    setSendingInvoice(true)
-    setInvoiceError("")
-    try {
-      const created = await createSupportInvoice(invoiceServiceId, order.student, invoicePrice, Number(invoiceMonths))
-      setLastInvoiceOrder(created)
-      setInvoiceSent(true)
-      setInvoiceFormOpen(false)
-      // The chat message the backend posts isn't pushed over the
-      // websocket (only the live "send message" view broadcasts) —
-      // bump the signal so ChatPanel refetches and the mentor sees it
-      // appear without a manual reload.
-      setInvoiceChatRefetchSignal((n) => n + 1)
-    } catch (e: unknown) {
-      setInvoiceError(e instanceof Error ? e.message : t("errorInvoice"))
-    } finally {
-      setSendingInvoice(false)
     }
   }
 
@@ -525,229 +395,19 @@ export default function OrderPage({ params }: Props) {
 
   // Hoisted so it can be passed to both the Mini App overlay and the
   // desktop inline chat card without duplicating this block — same
-  // content, same handlers/state, just two different chat containers.
-  const chatHeaderAction = (
-    <>
-      {role === "mentor" && (supportServices.length > 0 || supportServicesLoadError) && (
-      <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
-        {supportServicesLoadError ? (
-          <div>
-            <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setSupportServicesLoadError(false)
-                fetchMentorServices()
-                  .then((services) =>
-                    setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
-                  )
-                  .catch(() => setSupportServicesLoadError(true))
-              }}
-              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-            >
-              {t("retry")}
-            </button>
-          </div>
-        ) : (
-        <>
-        {invoiceSent && !invoiceFormOpen && (
-          <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1 space-y-1">
-            <p>{t("invoiceSent")}</p>
-            {lastInvoiceOrder && (
-              <p className="text-emerald-800">
-                {t("invoiceSentAmounts", {
-                  clientCharge: Number(lastInvoiceOrder.total_price).toLocaleString("ru-RU"),
-                  mentorPayout: Number(lastInvoiceOrder.mentor_payout_amount).toLocaleString("ru-RU"),
-                })}
-              </p>
-            )}
-          </div>
-        )}
-        {!invoiceFormOpen ? (
-          <button
-            onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false); setLastInvoiceOrder(null); setTaskFormOpen(false) }}
-            className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-          >
-            {t("sendInvoiceCta")}
-          </button>
-        ) : (
-          <form onSubmit={handleSendInvoice} className="space-y-2">
-            <select
-              value={invoiceServiceId ?? ""}
-              onChange={(e) => setInvoiceServiceId(Number(e.target.value))}
-              required
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-            >
-              <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
-              {supportServices.map((s) => (
-                <option key={s.id} value={s.id}>{s.title}</option>
-              ))}
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={invoicePrice}
-                onChange={(e) => setInvoicePrice(e.target.value)}
-                required
-                type="number"
-                min="0"
-                step="1000"
-                placeholder={t("invoicePricePlaceholder")}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-              />
-              <input
-                value={invoiceMonths}
-                onChange={(e) => setInvoiceMonths(e.target.value)}
-                required
-                type="number"
-                min="1"
-                max="36"
-                placeholder={t("invoiceMonthsPlaceholder")}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-              />
-            </div>
-            {invoiceError && (
-              <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={sendingInvoice || invoiceServiceId === null}
-                className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-              >
-                {sendingInvoice ? t("sending") : t("send")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setInvoiceFormOpen(false)}
-                className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-              >
-                {t("cancel")}
-              </button>
-            </div>
-          </form>
-        )}
-        </>
-        )}
-      </div>
-      )}
-      {/* Lives inside ChatPanel, so it only renders when
-          canChat is true (see the parent `canChat &&` guard
-          around <ChatPanel> below) — safe for a support
-          order specifically: create_support_invoice on the
-          backend refuses to create the engagement's first
-          order at all unless an open Conversation already
-          exists for this mentor/student pair, and the
-          conversation_id the API returns isn't filtered by
-          closed_at, so it stays non-null for every later
-          installment too. */}
-      {role === "mentor" && order.support_engagement !== null && (
-      <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
-        {!taskFormOpen ? (
-          <button
-            onClick={() => { setTaskFormOpen(true); setInvoiceFormOpen(false) }}
-            className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-          >
-            {t("taskAddCta")}
-          </button>
-        ) : (
-          <form onSubmit={handleCreateTask} className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder={t("taskTitlePlaceholder")}
-                maxLength={200}
-                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-              />
-              <DatePicker
-                value={newTaskDeadline}
-                onChange={setNewTaskDeadline}
-                placeholder={t("taskDeadlinePlaceholder")}
-                ariaLabel={t("taskDeadlinePlaceholder")}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-              />
-            </div>
-            {taskSelectedDocument || newTaskFile ? (
-              <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                <Icon name="attach_file" size={14} className="text-gray-400 flex-shrink-0" />
-                <span className="flex-1 min-w-0 truncate">
-                  {taskSelectedDocument?.original_filename ?? newTaskFile?.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={clearTaskAttachment}
-                  className="text-gray-400 hover:text-red-500 flex-shrink-0"
-                  aria-label={t("taskAttachRemove")}
-                >
-                  <Icon name="close" size={14} />
-                </button>
-              </div>
-            ) : taskAttachPickerOpen ? (
-              <div className="flex flex-col gap-1.5 border border-gray-200 rounded-xl px-3 py-2">
-                {engagementDocumentsLoadError && (
-                  <p className="text-xs text-red-600">{t("taskAttachExistingLoadError")}</p>
-                )}
-                {engagementDocuments.length > 0 && (
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const doc = engagementDocuments.find((d) => d.id === Number(e.target.value))
-                      if (doc) { setTaskSelectedDocument(doc); setTaskAttachPickerOpen(false) }
-                    }}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                  >
-                    <option value="" disabled>{t("taskAttachExisting")}</option>
-                    {engagementDocuments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.original_filename}</option>
-                    ))}
-                  </select>
-                )}
-                <label className="text-xs text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer">
-                  {t("taskAttachNew")}
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) { setNewTaskFile(file); setTaskAttachPickerOpen(false) }
-                    }}
-                  />
-                </label>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setTaskAttachPickerOpen(true)}
-                className="self-start text-xs text-gray-500 hover:text-indigo-600 font-medium inline-flex items-center gap-1"
-              >
-                <Icon name="attach_file" size={14} />
-                {t("taskAttachFile")}
-              </button>
-            )}
-            {taskError && <p className="text-xs text-red-600">{taskError}</p>}
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={creatingTask || !newTaskTitle.trim()}
-                className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-              >
-                {creatingTask ? t("taskCreating") : t("taskAdd")}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setTaskFormOpen(false); setTaskError(""); clearTaskAttachment(); setTaskAttachPickerOpen(false) }}
-                className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-              >
-                {t("cancel")}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-      )}
-    </>
-  )
+  // component every other mentor-facing chat surface uses.
+  const chatHeaderAction = role === "mentor" && order ? (
+    <SupportChatActions
+      studentId={order.student}
+      engagementId={order.support_engagement}
+      onActionPosted={() => {
+        setInvoiceChatRefetchSignal((n) => n + 1)
+        if (order.support_engagement !== null) {
+          fetchSupportTasks(order.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
+        }
+      }}
+    />
+  ) : null
 
   return (
     <div className={`bg-[#fafafa] ${isInTelegram ? "min-h-[100dvh]" : "min-h-screen"}`}>
@@ -884,32 +544,19 @@ export default function OrderPage({ params }: Props) {
             )}
 
 
-            {/* Mentor: service history with this student */}
-            {role === "mentor" && studentOrders.length > 1 && (
-              <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            {/* Mentor: full client window — tasks, documents and service
+                history with this student, all in one place. */}
+            {role === "mentor" && (
+              <Link
+                href={`/mentor/clients/${order.student}`}
+                className="flex items-center justify-between gap-2 bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 transition-colors"
+              >
+                <span className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                   <Icon name="history" size={16} className="text-gray-500" />
                   {t("historyTitle")}
-                </h3>
-                <div className="space-y-2">
-                  {studentOrders.map((o) => (
-                    <Link
-                      key={o.id}
-                      href={`/orders/${o.id}`}
-                      className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-xs transition-colors ${
-                        o.id === order.id
-                          ? "bg-indigo-50 text-indigo-700 font-medium"
-                          : "hover:bg-gray-50 text-gray-600"
-                      }`}
-                    >
-                      <span className="truncate flex-1">{o.service_title}</span>
-                      <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full ${STATUS_STYLE[o.order_status] || "bg-gray-100 text-gray-500"}`}>
-                        {STATUS_KEY[o.order_status] ? tStatus(STATUS_KEY[o.order_status]) : o.order_status}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+                </span>
+                <Icon name="arrow_forward_ios" size={14} className="text-gray-300 flex-shrink-0" />
+              </Link>
             )}
 
             {/* Mentor: confirm/decline a student-booked intro-call slot —
@@ -1230,10 +877,9 @@ export default function OrderPage({ params }: Props) {
                   <p className="text-xs text-red-600 mb-2">{t("tasksLoadError")}</p>
                 )}
 
-                {/* Mark-done/delete errors — creation errors show inline
-                    in the chat's "add task" form instead, next to where
-                    that action actually happens. */}
-                {taskError && !taskFormOpen && (
+                {/* Mark-done/delete errors — creating a task has its own
+                    separate error surface inside SupportChatActions. */}
+                {taskError && (
                   <p className="text-xs text-red-600 mb-2">{taskError}</p>
                 )}
 

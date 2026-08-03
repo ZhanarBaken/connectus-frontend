@@ -377,6 +377,62 @@ export default function ChatPanel({
                     })}
                   </div>
                 )}
+                {/* A task's attached document — same preview treatment as
+                    a plain chat attachment (image thumbnail, or a file
+                    chip otherwise), just sourced from related_task
+                    instead of msg.attachments. */}
+                {msg.kind === "support_task" && msg.related_task?.document && (() => {
+                  const doc = msg.related_task.document
+                  const isImage = doc.content_type.startsWith("image/")
+                  const sizeLabel = doc.size_bytes < 1024 * 1024
+                    ? `${Math.round(doc.size_bytes / 1024)} KB`
+                    : `${(doc.size_bytes / (1024 * 1024)).toFixed(1)} MB`
+                  return isImage ? (
+                    <a
+                      href={doc.download_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors max-w-[240px] mt-0.5"
+                    >
+                      <img
+                        src={doc.download_url}
+                        alt={doc.original_filename}
+                        className="w-full max-h-[200px] object-cover"
+                        loading="lazy"
+                      />
+                      <div className="px-2.5 py-1.5 bg-white flex items-center gap-1.5">
+                        <Icon name="image" size={12} className="text-gray-400" />
+                        <span className="text-xs text-gray-500 truncate">{doc.original_filename}</span>
+                      </div>
+                    </a>
+                  ) : (
+                    <a
+                      href={doc.download_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors mt-0.5 ${
+                        isOwn
+                          ? "border-indigo-400/30 bg-indigo-500/20 hover:bg-indigo-500/30"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isOwn ? "bg-white/20" : "bg-red-50"
+                      }`}>
+                        <Icon name="description" size={16} className={isOwn ? "text-white" : "text-red-500"} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium truncate ${isOwn ? "text-white" : "text-gray-900"}`}>
+                          {doc.original_filename}
+                        </p>
+                        <p className={`text-[10px] ${isOwn ? "text-indigo-200" : "text-gray-400"}`}>
+                          {sizeLabel}
+                        </p>
+                      </div>
+                      <Icon name="download" size={16} className={isOwn ? "text-white/60" : "text-gray-400"} />
+                    </a>
+                  )
+                })()}
                 <span className="text-xs text-gray-300 px-1">{formatTime(msg.created_at)}</span>
               </div>
             </div>

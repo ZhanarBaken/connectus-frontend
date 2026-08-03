@@ -554,6 +554,12 @@
       "errorLoading": "Loading error",
       "errorGeneric": "Couldn't load the client list"
     },
+    "MentorClientWindow": {
+      "noEngagementHint": "No active engagement right now — showing history.",
+      "changeDeadlineAria": "Change deadline",
+      "documentsEmpty": "No documents yet",
+      "ordersEmpty": "No orders yet"
+    },
     "MentorGuide": {
       "title": "Mentor guide",
       "subtitle": "4 things worth knowing before applicants start reaching out.",
@@ -574,12 +580,8 @@
       },
       "s3": {
         "title": "How much you earn, and how",
-        "block1title": "Intro call → 50%",
-        "block1desc": "The platform takes a 50% fee. Set it at <strong>5,000 ₸</strong> and you'll get <strong>2,500 ₸</strong>. Set it at 0 ₸ and the fee is 0 too — you get nothing, but neither does the platform.",
-        "block2title": "Other services → 75%",
-        "block2desc": "The platform takes a 25% fee. Set your own service at <strong>20,000 ₸</strong> and you'll get <strong>15,000 ₸</strong>.",
-        "block3title": "Important: your share is based on the LISTED price",
-        "block3desc": "If a student qualifies for the \"−50% new-user\" promo, <strong>the platform covers the discount out of its own fee</strong> — not out of your earnings. You still get your full 50% of the price you set.",
+        "block1title": "You get 100% of your price",
+        "block1desc": "The platform's commission (<strong>30%</strong>) is added <strong>on top</strong> — nothing is deducted from the price you set. Set your service at <strong>20,000 ₸</strong> and you get all <strong>20,000 ₸</strong>; the student pays <strong>26,000 ₸</strong> including the commission.",
         "block4title": "⚠️ Fill in your payout details",
         "block4desc": "The payment gateway isn't integrated yet — we transfer money manually (Kaspi / bank) after an order is completed. Without payout details on your profile, the platform doesn't know <strong>where</strong> to send the money, and it'll sit stuck in \"To be paid\". Fill in the <strong>\"Payout details\"</strong> field on your profile page if you haven't already.",
         "cta": "Fill in payout details"
@@ -587,7 +589,7 @@
       "s4": {
         "title": "Other services — your next step in selling",
         "p1": "After the intro call, applicants see your other services — essay review, admissions support, visa help, and so on. <strong>What you offer and for how much is entirely up to you.</strong>",
-        "p2": "Prices range from 0 to 1,000,000 ₸, duration from 5 to 480 minutes. The platform takes a <strong>25% fee</strong>.",
+        "p2": "Prices range from 0 to 1,000,000 ₸, duration from 5 to 480 minutes. The platform takes a <strong>30% fee</strong>.",
         "p3": "Add them in the same place — <strong>\"My services\"</strong>, the <em>\"+ Add\"</em> button.",
         "cta": "Add a service"
       }
@@ -669,10 +671,9 @@
       "endEngagementTitle": "End this engagement with this student",
       "endEngagementBody": "The service stays active for every other student — only this engagement ends.",
       "endEngagementCta": "End engagement",
-      "endEngagementReasonPlaceholder": "Reason — the student will see it",
+      "endEngagementReasonPlaceholder": "Reason — not needed if the engagement simply ran its course; the student will see it if you add one",
       "endingEngagement": "Ending...",
       "endEngagementConfirm": "Confirm",
-      "errorEndEngagementReasonRequired": "Please give a reason — it will be sent to the student.",
       "errorEndEngagement": "Failed to end the engagement",
       "tasksTitle": "Tasks",
       "tasksEmpty": "No tasks yet",

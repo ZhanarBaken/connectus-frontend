@@ -108,6 +108,12 @@ describe("TelegramAutoLogin", () => {
       const { container } = render(<TelegramAutoLogin />)
       expect(container).toBeEmptyDOMElement()
     })
+
+    it("does not treat a verify token of the wrong length as a valid deep link", () => {
+      setDeepLink("verify_" + "a".repeat(42))
+      const { container } = render(<TelegramAutoLogin />)
+      expect(container).toBeEmptyDOMElement()
+    })
   })
 
   describe("outside Telegram (no-op path)", () => {
@@ -328,6 +334,111 @@ describe("TelegramAutoLogin", () => {
       await waitFor(() => {
         expect(push).toHaveBeenCalledWith("/en/messages/88")
       })
+    })
+  })
+
+  describe("deep-link auto-login (start_param=client_<student_id>, mentor recipient of a no-order chat)", () => {
+    it("auto-fires login and navigates to the mentor client window on success", async () => {
+      setDeepLink("client_88")
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "mentor" }))
+
+      render(<TelegramAutoLogin />)
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith("/mentor/clients/88")
+      })
+    })
+
+    it("routes to a locale-prefixed client path when the deep link is tagged with a non-default locale", async () => {
+      setDeepLink("client_88_en")
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "mentor" }))
+
+      render(<TelegramAutoLogin />)
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith("/en/mentor/clients/88")
+      })
+    })
+  })
+
+  describe("deep-link auto-login (start_param=verify_<token>, email verification tapped outside Telegram)", () => {
+    const TOKEN = "a".repeat(43)
+
+    it("auto-fires login and navigates to the verify-email page on success", async () => {
+      setDeepLink(`verify_${TOKEN}`)
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "student" }))
+
+      render(<TelegramAutoLogin />)
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith(`/auth/verify-email?token=${TOKEN}`)
+      })
+    })
+
+    it("routes to a locale-prefixed verify-email path when the deep link is tagged with a non-default locale", async () => {
+      setDeepLink(`verify_${TOKEN}_en`)
+      vi.mocked(useTelegramWebApp).mockReturnValue({
+        webApp: null,
+        isInTelegram: true,
+        initData: "raw-init-data",
+      })
+      vi.mocked(telegramMiniAppLogin).mockResolvedValue({
+        ok: true,
+        access: "AT",
+        refresh: "RT",
+        user_id: 1,
+        created: false,
+      })
+      vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "student" }))
+
+      render(<TelegramAutoLogin />)
+
+      await waitFor(() => {
+        expect(push).toHaveBeenCalledWith(`/en/auth/verify-email?token=${TOKEN}`)
+      })
+    })
+
+    it("skips the checking overlay when a token is already cached, even with the deep link present", () => {
+      setDeepLink(`verify_${TOKEN}`)
+      localStorage.setItem("access_token", "cached")
+      const { container } = render(<TelegramAutoLogin />)
+      expect(container).toBeEmptyDOMElement()
     })
   })
 

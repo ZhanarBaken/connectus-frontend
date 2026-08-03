@@ -303,12 +303,52 @@ export async function fetchMentorClients(): Promise<MentorClients> {
   return res.json()
 }
 
+// Single-client version of fetchMentorClients — same shape, backs the
+// unified client-window page so it can deep-link straight in instead of
+// depending on the list page's in-memory state.
+export async function fetchMentorClient(studentId: number): Promise<MentorClient> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/${studentId}/`)
+  if (!res.ok) throw new Error()
+  return res.json()
+}
+
+// Every task this mentor has ever set for this student, across every
+// engagement (not just the current live one) — unlike fetchSupportTasks,
+// which is scoped to one engagement.
+export async function fetchMentorClientTasks(
+  studentId: number,
+): Promise<import("@/types").SupportTask[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/${studentId}/tasks/`)
+  if (!res.ok) throw new Error("Не удалось загрузить задачи")
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export type MentorClientDocument = import("@/types").OrderDocument & {
+  order_id: number
+  engagement_id: number | null
+}
+
+// Every document this mentor and student have ever exchanged, across
+// every order — unlike fetchOrderDocuments (one order) or
+// fetchEngagementDocuments (one engagement), this crosses engagement
+// boundaries too, so history from a finished engagement isn't lost.
+export async function fetchMentorClientDocuments(
+  studentId: number,
+): Promise<MentorClientDocument[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/${studentId}/documents/`)
+  if (!res.ok) throw new Error("Не удалось загрузить документы")
+  const data = await res.json()
+  return data.results ?? data
+}
+
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
-export async function fetchOrders(): Promise<Order[]> {
+export async function fetchOrders(opts?: { studentId?: number }): Promise<Order[]> {
   if (USE_MOCKS) return MOCK_ORDERS
 
-  const res = await authFetch(`${BASE_URL}/orders/`)
+  const qs = opts?.studentId ? `?student=${opts.studentId}` : ""
+  const res = await authFetch(`${BASE_URL}/orders/${qs}`)
   if (!res.ok) throw new Error("Failed to fetch orders")
   const data = await res.json()
   return data.results
@@ -1202,11 +1242,15 @@ export async function googleUnlink(): Promise<void> {
 
 // ─── Email management ───────────────────────────────────────────────────────
 
-export async function setEmail(email: string): Promise<void> {
+export async function setEmail(email: string, inTelegramMiniApp = false): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/email/set/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    // A Telegram-linked user can be adding this email from either the
+    // Mini App or the plain website (e.g. logged in via the Telegram
+    // login widget) — this flag tells the backend which one so the
+    // verification email links back to the right place.
+    body: JSON.stringify({ email, in_mini_app: inTelegramMiniApp }),
   })
   if (res.status === 429) {
     throw await readCooldown(res, "Не удалось установить email")
