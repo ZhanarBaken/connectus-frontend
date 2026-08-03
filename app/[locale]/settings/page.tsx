@@ -300,7 +300,7 @@ export default function SettingsPage() {
         await changeEmail(emailInput.trim())
         setSuccess(t("emailChangeSuccess"))
       } else {
-        await setEmail(emailInput.trim())
+        await setEmail(emailInput.trim(), isInTelegram)
         setSuccess(t("emailSetSuccess"))
       }
       await loadMe()

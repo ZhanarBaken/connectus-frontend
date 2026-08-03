@@ -139,7 +139,7 @@ describe("MentorIdentityPage", () => {
     await user.click(screen.getByRole("button", { name: "Сохранить и отправить письмо" }))
 
     expect(await screen.findByText(/Письмо отправлено на mentor@example\.com/)).toBeInTheDocument()
-    expect(api.setEmail).toHaveBeenCalledWith("mentor@example.com")
+    expect(api.setEmail).toHaveBeenCalledWith("mentor@example.com", false)
   })
 
   it("shows an amber notice when the email is already taken by another account", async () => {

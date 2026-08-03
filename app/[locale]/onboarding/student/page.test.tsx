@@ -135,7 +135,7 @@ describe("StudentOnboarding", () => {
     await user.click(screen.getByRole("button", { name: "Отправить письмо для подтверждения" }))
 
     expect(await screen.findByText("Проверь почту")).toBeInTheDocument()
-    expect(api.setEmail).toHaveBeenCalledWith("student@example.com")
+    expect(api.setEmail).toHaveBeenCalledWith("student@example.com", false)
   })
 
   it("shows an amber notice when the email is already taken", async () => {

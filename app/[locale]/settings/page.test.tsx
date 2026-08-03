@@ -348,7 +348,7 @@ describe("SettingsPage", () => {
       await user.type(input, "new@example.com")
       await user.click(screen.getByRole("button", { name: "Сохранить" }))
 
-      expect(setEmail).toHaveBeenCalledWith("new@example.com")
+      expect(setEmail).toHaveBeenCalledWith("new@example.com", false)
       expect(changeEmail).not.toHaveBeenCalled()
       expect(await screen.findByText("Ссылка для подтверждения отправлена")).toBeInTheDocument()
     })

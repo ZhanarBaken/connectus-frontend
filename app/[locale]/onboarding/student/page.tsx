@@ -13,6 +13,7 @@ import {
   setEmail,
 } from "@/lib/api"
 import { usePatchWithFieldErrors } from "@/lib/usePatchWithFieldErrors"
+import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { inputClass, selectClass } from "@/lib/formStyles"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import Icon from "@/components/Icon"
@@ -40,6 +41,7 @@ function dateYearsAgo(years: number): string {
 export default function StudentOnboarding() {
   const t = useTranslations("Onboarding.Student")
   const router = useRouter()
+  const { isInTelegram } = useTelegramWebApp()
   const [emailStage, setEmailStage] = useState<EmailStage>("loading")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -158,7 +160,7 @@ export default function StudentOnboarding() {
     setSaving(true)
     setError("")
     try {
-      await setEmail(email.trim())
+      await setEmail(email.trim(), isInTelegram)
       setEmailTaken(false)
       setVerifyEmail(email.trim())
       setEmailStage("verify")

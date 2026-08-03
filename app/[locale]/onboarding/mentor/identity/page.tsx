@@ -123,7 +123,7 @@ export default function MentorIdentityPage() {
     setSavingEmail(true)
     setEmailError("")
     try {
-      await setEmailApi(emailInput.trim())
+      await setEmailApi(emailInput.trim(), isInTelegram)
       setEmailTaken(false)
       setEmailJustSent(true)
       await reload()
