@@ -1,22 +1,21 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { useRouter } from "@/i18n/navigation"
 import MentorClientsPage from "./page"
 import type { MentorProfile } from "@/types"
 
-vi.mock("@/lib/api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api")
-  return {
-    ...actual,
-    fetchMentorClients: vi.fn(),
-    fetchMentorProfile: vi.fn(),
-  }
-})
-
-import { fetchMentorClients, fetchMentorProfile, type MentorClient, type MentorClients } from "@/lib/api"
-import { startConversationWithClient } from "@/lib/chat"
-
+vi.mock("@/lib/api")
 vi.mock("@/lib/chat")
+
+import {
+  authFetch, fetchMentorClients, fetchMentorProfile, markChatRead,
+  type MentorClient, type MentorClients,
+} from "@/lib/api"
+import { connectChat, fetchChatMessages, startConversationWithClient } from "@/lib/chat"
+
+function okJson(body: unknown): Response {
+  return { ok: true, json: async () => body } as Response
+}
 
 function makeClient(overrides: Partial<MentorClient> = {}): MentorClient {
   return {
@@ -94,6 +93,14 @@ describe("MentorClientsPage", () => {
     localStorage.clear()
     vi.clearAllMocks()
     vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+    vi.mocked(authFetch).mockResolvedValue(okJson({ id: 1, email: "mentor@test.com" }))
+    vi.mocked(markChatRead).mockResolvedValue(undefined)
+    vi.mocked(fetchChatMessages).mockResolvedValue([])
+    vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
+  })
+
+  afterEach(() => {
+    window.Telegram = undefined
   })
 
   it("redirects to login when there is no access token", async () => {
@@ -209,6 +216,89 @@ describe("MentorClientsPage", () => {
       expect(await screen.findByText("Не удалось открыть чат")).toBeInTheDocument()
       expect(push).not.toHaveBeenCalled()
       expect(button).not.toBeDisabled()
+    })
+
+    describe("inside the Telegram Mini App", () => {
+      beforeEach(() => {
+        window.Telegram = {
+          WebApp: { initData: "raw-init-data", ready: vi.fn() } as unknown as TelegramWebApp,
+        }
+      })
+
+      it("opens the fullscreen chat overlay instead of navigating, when a conversation already exists", async () => {
+        const { push } = mockRouter()
+        vi.mocked(fetchMentorClients).mockResolvedValue(
+          makeClients({ active: [makeClient({ conversation_id: 77 })] }),
+        )
+        render(<MentorClientsPage />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Написать в чат" }))
+
+        expect(await screen.findByRole("heading", { name: "Асель Смагулова" })).toBeInTheDocument()
+        expect(push).not.toHaveBeenCalled()
+        expect(startConversationWithClient).not.toHaveBeenCalled()
+      })
+
+      it("starts a new conversation and opens the overlay when none exists yet", async () => {
+        const { push } = mockRouter()
+        vi.mocked(fetchMentorClients).mockResolvedValue(
+          makeClients({ active: [makeClient({ id: 9, conversation_id: null })] }),
+        )
+        vi.mocked(startConversationWithClient).mockResolvedValue({
+          id: 88, mentor: 1, student: 9, created_at: "2026-01-01T00:00:00Z",
+          closed_at: null, is_active: true, other_party_name: "Асель Смагулова", other_party_photo: null,
+        })
+        render(<MentorClientsPage />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Написать в чат" }))
+
+        await waitFor(() => expect(startConversationWithClient).toHaveBeenCalledWith(9))
+        expect(await screen.findByRole("heading", { name: "Асель Смагулова" })).toBeInTheDocument()
+        expect(push).not.toHaveBeenCalled()
+      })
+
+      it("shows the client's name in the overlay header and closes it on back", async () => {
+        vi.mocked(fetchMentorClients).mockResolvedValue(
+          makeClients({ active: [makeClient({ conversation_id: 77, full_name: "Данияр Сериков" })] }),
+        )
+        render(<MentorClientsPage />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Написать в чат" }))
+
+        expect(await screen.findByRole("heading", { name: "Данияр Сериков" })).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole("button", { name: "Назад" }))
+
+        await waitFor(() =>
+          expect(screen.queryByRole("heading", { name: "Данияр Сериков" })).not.toBeInTheDocument(),
+        )
+      })
+
+      it("shows the second client's chat after closing the first, not a stale mix of both", async () => {
+        vi.mocked(fetchMentorClients).mockResolvedValue(
+          makeClients({
+            active: [
+              makeClient({ id: 1, conversation_id: 77, full_name: "Данияр Сериков" }),
+              makeClient({ id: 2, conversation_id: 78, full_name: "Аружан Есенова" }),
+            ],
+          }),
+        )
+        render(<MentorClientsPage />)
+
+        const buttons = await screen.findAllByRole("button", { name: "Написать в чат" })
+        fireEvent.click(buttons[0])
+        expect(await screen.findByRole("heading", { name: "Данияр Сериков" })).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole("button", { name: "Назад" }))
+        await waitFor(() =>
+          expect(screen.queryByRole("heading", { name: "Данияр Сериков" })).not.toBeInTheDocument(),
+        )
+
+        const buttonsAgain = await screen.findAllByRole("button", { name: "Написать в чат" })
+        fireEvent.click(buttonsAgain[1])
+        expect(await screen.findByRole("heading", { name: "Аружан Есенова" })).toBeInTheDocument()
+        expect(screen.queryByRole("heading", { name: "Данияр Сериков" })).not.toBeInTheDocument()
+      })
     })
 
     it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {
