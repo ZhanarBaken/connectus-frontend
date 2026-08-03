@@ -69,14 +69,6 @@ export default function MentorGuidePage() {
             <p className="font-semibold text-gray-900 text-sm">{t("s3.block1title")}</p>
             <p className="text-xs text-gray-600 mt-1">{t.rich("s3.block1desc", richTags)}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="font-semibold text-gray-900 text-sm">{t("s3.block2title")}</p>
-            <p className="text-xs text-gray-600 mt-1">{t.rich("s3.block2desc", richTags)}</p>
-          </div>
-          <div className="border border-emerald-100 bg-emerald-50/40 rounded-xl p-4">
-            <p className="font-semibold text-emerald-900 text-sm">{t("s3.block3title")}</p>
-            <p className="text-xs text-emerald-800 mt-1">{t.rich("s3.block3desc", richTags)}</p>
-          </div>
           <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
             <p className="font-semibold text-amber-900 text-sm inline-flex items-center gap-1.5">
               {t("s3.block4title")}

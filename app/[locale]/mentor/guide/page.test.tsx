@@ -48,8 +48,7 @@ describe("MentorGuidePage", () => {
   it("renders the commission breakdown figures", () => {
     render(<MentorGuidePage />)
 
-    expect(screen.getByText(/Первичная консультация → 50 %/)).toBeInTheDocument()
-    expect(screen.getByText(/Прочие услуги → 75 %/)).toBeInTheDocument()
+    expect(screen.getByText(/Ты получаешь 100% своей цены/)).toBeInTheDocument()
   })
 
   it("renders a CTA link for every section pointing at the right page", () => {
