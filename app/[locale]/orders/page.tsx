@@ -11,6 +11,7 @@ import BackButton from "@/components/BackButton"
 import ChatPanel from "@/components/ChatPanel"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
+import SupportChatActions from "@/components/SupportChatActions"
 
 const STATUS_STYLE: Record<Order["order_status"], string> = {
   draft: "bg-gray-50 text-gray-500",
@@ -48,6 +49,8 @@ interface ActiveChat {
   conversationId: number
   name: string
   photo: string | null
+  studentId: number
+  engagementId: number | null
 }
 
 export default function OrdersPage() {
@@ -65,6 +68,7 @@ export default function OrdersPage() {
   const [expandedClient, setExpandedClient] = useState<number | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [activeChat, setActiveChat] = useState<ActiveChat | null>(null)
+  const [chatRefetchSignal, setChatRefetchSignal] = useState(0)
 
   // Mini App opens at half-height by default — expand once the overlay
   // is up, same as the order page and /messages/[id].
@@ -201,6 +205,13 @@ export default function OrdersPage() {
               const isExpanded = expandedClient === client.studentId
               // Find an order with a chat conversation to link to
               const chatOrder = client.orders.find((o) => o.conversation_id !== null)
+              // support_engagement stays non-null on an order even after
+              // its engagement ends — a client can have several past
+              // engagements. Only an active/paused one should back "Add a
+              // task", same liveness check used for the dunning tag above.
+              const engagementOrder = client.orders.find(
+                (o) => o.engagement_status === "active" || o.engagement_status === "paused",
+              )
               return (
                 <div key={client.studentId} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                   {/* Client header — clickable to expand */}
@@ -245,6 +256,8 @@ export default function OrdersPage() {
                           conversationId: chatOrder.conversation_id!,
                           name: client.studentName,
                           photo: client.studentPhoto,
+                          studentId: client.studentId,
+                          engagementId: engagementOrder?.support_engagement ?? null,
                         })}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors flex-shrink-0"
                       >
@@ -346,6 +359,7 @@ export default function OrdersPage() {
           <ChatPanel
             conversationId={activeChat.conversationId}
             currentUserId={currentUserId}
+            refetchTrigger={chatRefetchSignal}
             leadingHeaderAction={(
               <button
                 type="button"
@@ -366,6 +380,13 @@ export default function OrdersPage() {
                 />
                 <h1 className="font-semibold text-gray-900 truncate">{activeChat.name}</h1>
               </div>
+            )}
+            headerAction={(
+              <SupportChatActions
+                studentId={activeChat.studentId}
+                engagementId={activeChat.engagementId}
+                onActionPosted={() => setChatRefetchSignal((n) => n + 1)}
+              />
             )}
           />
         </div>

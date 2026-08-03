@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { act, render, screen, waitFor, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useRouter } from "@/i18n/navigation"
-import OrderPage, { invoiceDraftKey, translateInvoiceErrorMessage } from "./page"
+import OrderPage, { invoiceDraftKey } from "./page"
+import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
 import {
   fetchOrder,
   fetchMentor,

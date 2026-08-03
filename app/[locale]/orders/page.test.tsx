@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import OrdersPage from "./page"
-import { authFetch, fetchOrders, fetchMentors, fetchStudentProfile, markChatRead } from "@/lib/api"
+import {
+  authFetch, fetchOrders, fetchMentors, fetchMentorServices, fetchStudentProfile, markChatRead,
+} from "@/lib/api"
 import { connectChat, fetchChatMessages } from "@/lib/chat"
-import type { Order, MentorCard, StudentProfile } from "@/types"
+import type { Order, MentorCard, MentorService, StudentProfile } from "@/types"
 
 vi.mock("@/lib/api")
 vi.mock("@/lib/chat")
@@ -56,6 +58,28 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
   }
 }
 
+function makeService(overrides: Partial<MentorService> = {}): MentorService {
+  return {
+    id: 10,
+    title: "Сопровождение — поступление в 3 вуза",
+    description: "",
+    price: "500000",
+    currency: "KZT",
+    duration_minutes: 60,
+    payout_category: "support",
+    grade_min: null,
+    grade_max: null,
+    meetings_min: 4,
+    meetings_max: 8,
+    duration_months_min: 6,
+    duration_months_max: 12,
+    is_price_negotiable: false,
+    intro_call_enabled: true,
+    is_active: true,
+    ...overrides,
+  }
+}
+
 function makeMentorCard(overrides: Partial<MentorCard> = {}): MentorCard {
   return {
     id: 3,
@@ -83,6 +107,7 @@ beforeEach(() => {
   vi.mocked(markChatRead).mockResolvedValue(undefined)
   vi.mocked(fetchChatMessages).mockResolvedValue([])
   vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
+  vi.mocked(fetchMentorServices).mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -280,6 +305,54 @@ describe("OrdersPage — mentor view", () => {
       await screen.findByRole("button", { name: /Аружан/ })
       expect(screen.queryByRole("button", { name: /Чат/ })).not.toBeInTheDocument()
       expect(screen.queryByRole("link", { name: /Чат/ })).not.toBeInTheDocument()
+    })
+
+    it("shows the send-invoice and add-task controls in the chat overlay, same as the order page", async () => {
+      vi.mocked(fetchMentorServices).mockResolvedValue([makeService()])
+      vi.mocked(fetchOrders).mockResolvedValue([
+        makeOrder({ id: 1, student: 7, conversation_id: 55, support_engagement: 9, engagement_status: "active" }),
+      ])
+
+      render(<OrdersPage />)
+
+      fireEvent.click(await screen.findByRole("button", { name: /Чат/ }))
+
+      expect(await screen.findByText("Отправить заявку")).toBeInTheDocument()
+      expect(screen.getByText("Добавить задачу")).toBeInTheDocument()
+    })
+
+    it("hides add-task when the client has no support engagement yet", async () => {
+      vi.mocked(fetchMentorServices).mockResolvedValue([makeService()])
+      vi.mocked(fetchOrders).mockResolvedValue([
+        makeOrder({ id: 1, student: 7, conversation_id: 55, support_engagement: null }),
+      ])
+
+      render(<OrdersPage />)
+
+      fireEvent.click(await screen.findByRole("button", { name: /Чат/ }))
+
+      expect(await screen.findByText("Отправить заявку")).toBeInTheDocument()
+      expect(screen.queryByText("Добавить задачу")).not.toBeInTheDocument()
+    })
+
+    it("hides add-task when the client's only engagement has already ended, even though support_engagement is still set on that old order", async () => {
+      // support_engagement stays non-null forever on an order — it's the
+      // engagement's own status that says whether it's still live. A
+      // client can have a past, cancelled engagement and no current one.
+      vi.mocked(fetchMentorServices).mockResolvedValue([makeService()])
+      vi.mocked(fetchOrders).mockResolvedValue([
+        makeOrder({
+          id: 1, student: 7, conversation_id: 55,
+          support_engagement: 3, engagement_status: "cancelled",
+        }),
+      ])
+
+      render(<OrdersPage />)
+
+      fireEvent.click(await screen.findByRole("button", { name: /Чат/ }))
+
+      expect(await screen.findByText("Отправить заявку")).toBeInTheDocument()
+      expect(screen.queryByText("Добавить задачу")).not.toBeInTheDocument()
     })
   })
 })
