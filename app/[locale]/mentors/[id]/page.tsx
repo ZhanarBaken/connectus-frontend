@@ -411,7 +411,7 @@ export default function MentorPage({ params }: Props) {
                     )}
                   </div>
                   <h2 className="text-2xl font-bold mb-2">{consultationService.title || t("consultationTitleDefault")}</h2>
-                  <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line">
+                  <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line break-words">
                     {consultationService.description ||
                       t("consultationDescriptionDefault")}
                   </p>
@@ -524,7 +524,7 @@ export default function MentorPage({ params }: Props) {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-900">{service.title}</h3>
                           {service.description && (
-                            <p className="text-sm mt-1 text-gray-500">{service.description}</p>
+                            <p className="text-sm mt-1 text-gray-500 break-words">{service.description}</p>
                           )}
                           <div className="flex items-center gap-3 mt-2 flex-wrap text-xs text-gray-400">
                             {service.meetings_min !== null && (
@@ -643,7 +643,7 @@ export default function MentorPage({ params }: Props) {
                               {service.title}
                             </h3>
                             {service.description && (
-                              <p className="text-sm mt-1 text-gray-500">
+                              <p className="text-sm mt-1 text-gray-500 break-words">
                                 {service.description}
                               </p>
                             )}
