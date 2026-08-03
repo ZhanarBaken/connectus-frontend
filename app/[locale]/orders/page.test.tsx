@@ -2,10 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import OrdersPage from "./page"
-import { fetchOrders, fetchMentors, fetchStudentProfile } from "@/lib/api"
+import { authFetch, fetchOrders, fetchMentors, fetchStudentProfile, markChatRead } from "@/lib/api"
+import { connectChat, fetchChatMessages } from "@/lib/chat"
 import type { Order, MentorCard, StudentProfile } from "@/types"
 
 vi.mock("@/lib/api")
+vi.mock("@/lib/chat")
+
+function okJson(body: unknown): Response {
+  return { ok: true, json: async () => body } as Response
+}
 
 function mockRouter() {
   const replace = vi.fn()
@@ -73,6 +79,10 @@ function makeMentorCard(overrides: Partial<MentorCard> = {}): MentorCard {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  vi.mocked(authFetch).mockResolvedValue(okJson({ id: 1, email: "mentor@test.com" }))
+  vi.mocked(markChatRead).mockResolvedValue(undefined)
+  vi.mocked(fetchChatMessages).mockResolvedValue([])
+  vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
 })
 
 afterEach(() => {
@@ -221,17 +231,55 @@ describe("OrdersPage — mentor view", () => {
     expect(chatLink).toHaveAttribute("href", "/orders/1")
   })
 
-  it("appends ?chat=open to the Chat link inside the Telegram Mini App", async () => {
-    window.Telegram = {
-      WebApp: { initData: "raw-init-data", ready: vi.fn() } as unknown as TelegramWebApp,
-    }
-    vi.mocked(fetchOrders).mockResolvedValue([
-      makeOrder({ id: 1, student: 7, conversation_id: 55 }),
-    ])
+  describe("inside the Telegram Mini App", () => {
+    beforeEach(() => {
+      window.Telegram = {
+        WebApp: { initData: "raw-init-data", ready: vi.fn() } as unknown as TelegramWebApp,
+      }
+    })
 
-    render(<OrdersPage />)
+    it("opens the chat as a fullscreen overlay instead of navigating, when tapping Chat", async () => {
+      vi.mocked(fetchOrders).mockResolvedValue([
+        makeOrder({ id: 1, student: 7, conversation_id: 55 }),
+      ])
 
-    const chatLink = await screen.findByRole("link", { name: /Чат/ })
-    expect(chatLink).toHaveAttribute("href", "/orders/1?chat=open")
+      render(<OrdersPage />)
+
+      // A button now, not a link — no navigation away from this page.
+      expect(screen.queryByRole("link", { name: /Чат/ })).not.toBeInTheDocument()
+      fireEvent.click(await screen.findByRole("button", { name: /Чат/ }))
+
+      expect(await screen.findByRole("heading", { name: "Аружан", level: 1 })).toBeInTheDocument()
+    })
+
+    it("closes the overlay on back and returns to the client list", async () => {
+      vi.mocked(fetchOrders).mockResolvedValue([
+        makeOrder({ id: 1, student: 7, conversation_id: 55 }),
+      ])
+
+      render(<OrdersPage />)
+
+      fireEvent.click(await screen.findByRole("button", { name: /Чат/ }))
+      expect(await screen.findByRole("heading", { name: "Аружан", level: 1 })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole("button", { name: "Назад" }))
+
+      await waitFor(() =>
+        expect(screen.queryByRole("heading", { name: "Аружан", level: 1 })).not.toBeInTheDocument(),
+      )
+      expect(screen.getByRole("button", { name: /Чат/ })).toBeInTheDocument()
+    })
+
+    it("does not show a Chat control for a client with no conversation yet", async () => {
+      vi.mocked(fetchOrders).mockResolvedValue([
+        makeOrder({ id: 1, student: 7, conversation_id: null }),
+      ])
+
+      render(<OrdersPage />)
+
+      await screen.findByRole("button", { name: /Аружан/ })
+      expect(screen.queryByRole("button", { name: /Чат/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole("link", { name: /Чат/ })).not.toBeInTheDocument()
+    })
   })
 })

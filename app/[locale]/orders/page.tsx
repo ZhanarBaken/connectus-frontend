@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
-import { fetchOrders, fetchMentors } from "@/lib/api"
+import { authFetch, fetchOrders, fetchMentors } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
+import ChatPanel from "@/components/ChatPanel"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 
@@ -43,18 +44,43 @@ interface ClientGroup {
   activeCount: number
 }
 
+interface ActiveChat {
+  conversationId: number
+  name: string
+  photo: string | null
+}
+
 export default function OrdersPage() {
   const t = useTranslations("Orders.List")
+  const tCommon = useTranslations("Common")
   const tStatus = useTranslations("OrderStatus")
   const locale = useLocale()
   useStudentOnboardingGate()
-  const { isInTelegram } = useTelegramWebApp()
+  const { isInTelegram, webApp } = useTelegramWebApp()
   const [orders, setOrders] = useState<Order[]>([])
   const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
   const [mentorNamesLoadError, setMentorNamesLoadError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<string | null>(null)
   const [expandedClient, setExpandedClient] = useState<number | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [activeChat, setActiveChat] = useState<ActiveChat | null>(null)
+
+  // Mini App opens at half-height by default — expand once the overlay
+  // is up, same as the order page and /messages/[id].
+  useEffect(() => {
+    if (!activeChat || !webApp) return
+    try { webApp.expand() } catch { /* older clients */ }
+  }, [activeChat, webApp])
+
+  // Lock the body scroll while the fullscreen chat overlay is up so a
+  // swipe doesn't drag the list underneath it.
+  useEffect(() => {
+    if (!activeChat) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.body.style.overflow = previous }
+  }, [activeChat])
 
   // Small extra tag alongside the status pill for a support installment
   // that's overdue or paused — null when neither applies.
@@ -93,6 +119,10 @@ export default function OrdersPage() {
         if (r !== "mentor") await loadMentorNames()
       })
       .finally(() => setLoading(false))
+    authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/auth/me/`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me) => { if (me) setCurrentUserId(me.id) })
+      .catch(() => {})
   }, [])
 
   // Group orders by student for mentor view
@@ -205,20 +235,31 @@ export default function OrdersPage() {
                         className="text-gray-400 flex-shrink-0"
                       />
                     </button>
-                    {chatOrder && (
+                    {chatOrder && (isInTelegram ? (
+                      // Inside the Mini App, open the fullscreen chat
+                      // overlay right here — no navigation, no order-page
+                      // flash before the overlay kicks in.
+                      <button
+                        type="button"
+                        onClick={() => setActiveChat({
+                          conversationId: chatOrder.conversation_id!,
+                          name: client.studentName,
+                          photo: client.studentPhoto,
+                        })}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors flex-shrink-0"
+                      >
+                        <Icon name="chat" size={16} />
+                        {t("chat")}
+                      </button>
+                    ) : (
                       <Link
-                        // Inside the Mini App the order page hides the chat
-                        // behind a CTA by default — but tapping "Chat" here
-                        // clearly means "open the chat", so deep-link straight
-                        // into the fullscreen overlay (same param the /messages
-                        // inbox and TG notifications already use).
-                        href={isInTelegram ? `/orders/${chatOrder.id}?chat=open` : `/orders/${chatOrder.id}`}
+                        href={`/orders/${chatOrder.id}`}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors flex-shrink-0"
                       >
                         <Icon name="chat" size={16} />
                         {t("chat")}
                       </Link>
-                    )}
+                    ))}
                   </div>
 
                   {/* Orders list — expandable */}
@@ -296,6 +337,39 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Fullscreen in-page chat overlay for the Mini App — same pattern
+          as the order page's chatExpanded overlay, so tapping "Chat" here
+          opens straight to chat, not the order page first. */}
+      {activeChat && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]">
+          <ChatPanel
+            conversationId={activeChat.conversationId}
+            currentUserId={currentUserId}
+            leadingHeaderAction={(
+              <button
+                type="button"
+                onClick={() => setActiveChat(null)}
+                className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
+                aria-label={tCommon("back")}
+              >
+                <Icon name="arrow_back" size={22} />
+              </button>
+            )}
+            titleOverride={(
+              <div className="flex-1 min-w-0 flex items-center gap-2.5">
+                <Avatar
+                  src={activeChat.photo}
+                  name={activeChat.name}
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex-shrink-0"
+                  letterClassName="text-white font-bold text-xs"
+                />
+                <h1 className="font-semibold text-gray-900 truncate">{activeChat.name}</h1>
+              </div>
+            )}
+          />
+        </div>
+      )}
     </div>
   )
 }
