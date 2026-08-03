@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { createSupportInvoice, createSupportTask, fetchMentorServices } from "@/lib/api"
+import {
+  createSupportInvoice, createSupportTask, fetchEngagementDocuments, fetchMentorServices,
+} from "@/lib/api"
 import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
-import { MentorService, Order } from "@/types"
+import { MentorService, Order, OrderDocument } from "@/types"
 import DatePicker from "@/components/DatePicker"
+import Icon from "@/components/Icon"
 
 interface Props {
   studentId: number
@@ -42,6 +45,11 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
   const [newTaskDeadline, setNewTaskDeadline] = useState("")
   const [creatingTask, setCreatingTask] = useState(false)
   const [taskError, setTaskError] = useState("")
+  const [existingDocuments, setExistingDocuments] = useState<OrderDocument[]>([])
+  const [existingDocumentsLoadError, setExistingDocumentsLoadError] = useState(false)
+  const [attachPickerOpen, setAttachPickerOpen] = useState(false)
+  const [selectedDocument, setSelectedDocument] = useState<OrderDocument | null>(null)
+  const [newTaskFile, setNewTaskFile] = useState<File | null>(null)
 
   const loadServices = () => {
     setSupportServicesLoadError(false)
@@ -53,6 +61,13 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
   useEffect(() => {
     loadServices()
   }, [])
+
+  useEffect(() => {
+    if (engagementId === null) return
+    fetchEngagementDocuments(engagementId)
+      .then(setExistingDocuments)
+      .catch(() => setExistingDocumentsLoadError(true))
+  }, [engagementId])
 
   const handleSendInvoice = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,6 +87,11 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
     }
   }
 
+  const clearAttachment = () => {
+    setSelectedDocument(null)
+    setNewTaskFile(null)
+  }
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault()
     if (engagementId === null) return
@@ -80,9 +100,20 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
     setCreatingTask(true)
     setTaskError("")
     try {
-      await createSupportTask(engagementId, { title, deadline: newTaskDeadline || null })
+      const created = await createSupportTask(engagementId, {
+        title,
+        deadline: newTaskDeadline || null,
+        documentId: selectedDocument?.id,
+        file: newTaskFile ?? undefined,
+      })
+      // Only a fresh upload adds a new entry — an existing pick was
+      // already in the list.
+      if (newTaskFile && created.document) {
+        setExistingDocuments((prev) => [created.document!, ...prev])
+      }
       setNewTaskTitle("")
       setNewTaskDeadline("")
+      clearAttachment()
       setTaskFormOpen(false)
       onActionPosted?.()
     } catch (err: unknown) {
@@ -217,6 +248,63 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
                   className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                 />
               </div>
+              {selectedDocument || newTaskFile ? (
+                <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                  <Icon name="attach_file" size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="flex-1 min-w-0 truncate">
+                    {selectedDocument?.original_filename ?? newTaskFile?.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAttachment}
+                    className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                    aria-label={t("taskAttachRemove")}
+                  >
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+              ) : attachPickerOpen ? (
+                <div className="flex flex-col gap-1.5 border border-gray-200 rounded-xl px-3 py-2">
+                  {existingDocumentsLoadError && (
+                    <p className="text-xs text-red-600">{t("taskAttachExistingLoadError")}</p>
+                  )}
+                  {existingDocuments.length > 0 && (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const doc = existingDocuments.find((d) => d.id === Number(e.target.value))
+                        if (doc) { setSelectedDocument(doc); setAttachPickerOpen(false) }
+                      }}
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    >
+                      <option value="" disabled>{t("taskAttachExisting")}</option>
+                      {existingDocuments.map((d) => (
+                        <option key={d.id} value={d.id}>{d.original_filename}</option>
+                      ))}
+                    </select>
+                  )}
+                  <label className="text-xs text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer">
+                    {t("taskAttachNew")}
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) { setNewTaskFile(file); setAttachPickerOpen(false) }
+                      }}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAttachPickerOpen(true)}
+                  className="self-start text-xs text-gray-500 hover:text-indigo-600 font-medium inline-flex items-center gap-1"
+                >
+                  <Icon name="attach_file" size={14} />
+                  {t("taskAttachFile")}
+                </button>
+              )}
               {taskError && <p className="text-xs text-red-600">{taskError}</p>}
               <div className="flex gap-2">
                 <button
@@ -228,7 +316,7 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setTaskFormOpen(false); setTaskError("") }}
+                  onClick={() => { setTaskFormOpen(false); setTaskError(""); clearAttachment(); setAttachPickerOpen(false) }}
                   className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
                 >
                   {t("cancel")}

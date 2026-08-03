@@ -8,7 +8,8 @@ vi.mock("@/lib/api")
 vi.mock("@/lib/chat")
 
 import {
-  authFetch, fetchMentorClients, fetchMentorProfile, fetchMentorServices, markChatRead,
+  authFetch, fetchMentorClients, fetchMentorProfile, fetchMentorServices, fetchEngagementDocuments,
+  markChatRead,
   type MentorClient, type MentorClients,
 } from "@/lib/api"
 import { connectChat, fetchChatMessages, startConversationWithClient } from "@/lib/chat"
@@ -121,6 +122,7 @@ describe("MentorClientsPage", () => {
     vi.mocked(fetchChatMessages).mockResolvedValue([])
     vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
     vi.mocked(fetchMentorServices).mockResolvedValue([])
+    vi.mocked(fetchEngagementDocuments).mockResolvedValue([])
   })
 
   afterEach(() => {

@@ -410,18 +410,55 @@ export async function fetchSupportTasks(
 
 export async function createSupportTask(
   engagementId: number,
-  data: { title: string; description?: string; deadline?: string | null },
+  data: {
+    title: string
+    description?: string
+    deadline?: string | null
+    // At most one of these — an existing document to attach, or a new
+    // file to upload and attach in the same request.
+    documentId?: number
+    file?: File
+  },
 ): Promise<import("@/types").SupportTask> {
-  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
+  const { documentId, file, ...rest } = data
+  let res: Response
+  if (file) {
+    const formData = new FormData()
+    formData.append("title", rest.title)
+    if (rest.description) formData.append("description", rest.description)
+    if (rest.deadline) formData.append("deadline", rest.deadline)
+    formData.append("file", file)
+    res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`, {
+      method: "POST",
+      body: formData,
+    })
+  } else {
+    res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...rest, document_id: documentId }),
+    })
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.title?.[0] || err.deadline?.[0] || err.detail || "Не удалось создать задачу")
+    throw new Error(
+      err.title?.[0] || err.deadline?.[0] || err.file?.[0] || err.document_id?.[0]
+      || err.detail || "Не удалось создать задачу",
+    )
   }
   return res.json()
+}
+
+export async function fetchEngagementDocuments(
+  engagementId: number,
+): Promise<import("@/types").OrderDocument[]> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/documents/`)
+  // Throws (unlike fetchOrderDocuments/fetchSupportTasks above) so the
+  // attach-file picker can tell "genuinely no documents yet" apart from
+  // "failed to load" instead of silently showing an empty list either way.
+  if (!res.ok) throw new Error("Не удалось загрузить список файлов")
+  const data = await res.json()
+  return data.results ?? data
 }
 
 export async function updateSupportTask(

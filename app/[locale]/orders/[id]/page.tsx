@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, fetchEngagementDocuments, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
 import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
@@ -116,6 +116,11 @@ export default function OrderPage({ params }: Props) {
   const [taskFormOpen, setTaskFormOpen] = useState(false)
   const [creatingTask, setCreatingTask] = useState(false)
   const [taskError, setTaskError] = useState("")
+  const [engagementDocuments, setEngagementDocuments] = useState<OrderDocument[]>([])
+  const [engagementDocumentsLoadError, setEngagementDocumentsLoadError] = useState(false)
+  const [taskAttachPickerOpen, setTaskAttachPickerOpen] = useState(false)
+  const [taskSelectedDocument, setTaskSelectedDocument] = useState<OrderDocument | null>(null)
+  const [newTaskFile, setNewTaskFile] = useState<File | null>(null)
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [receiptError, setReceiptError] = useState("")
@@ -237,6 +242,9 @@ export default function OrderPage({ params }: Props) {
         fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
         if (found.support_engagement !== null) {
           fetchSupportTasks(found.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
+          fetchEngagementDocuments(found.support_engagement)
+            .then(setEngagementDocuments)
+            .catch(() => setEngagementDocumentsLoadError(true))
         }
       })
       .catch(() => router.replace("/orders"))
@@ -342,6 +350,11 @@ export default function OrderPage({ params }: Props) {
     }
   }
 
+  const clearTaskAttachment = () => {
+    setTaskSelectedDocument(null)
+    setNewTaskFile(null)
+  }
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!order?.support_engagement) return
@@ -353,10 +366,19 @@ export default function OrderPage({ params }: Props) {
       const task = await createSupportTask(order.support_engagement, {
         title,
         deadline: newTaskDeadline || null,
+        documentId: taskSelectedDocument?.id,
+        file: newTaskFile ?? undefined,
       })
       setTasks((prev) => [...prev, task])
+      // Only a fresh upload adds a new entry — an existing pick was
+      // already in the list.
+      if (newTaskFile && task.document) {
+        setEngagementDocuments((prev) => [task.document!, ...prev])
+      }
       setNewTaskTitle("")
       setNewTaskDeadline("")
+      clearTaskAttachment()
+      setTaskAttachPickerOpen(false)
       setTaskFormOpen(false)
     } catch (err: unknown) {
       setTaskError(err instanceof Error ? err.message : t("taskCreateError"))
@@ -639,6 +661,63 @@ export default function OrderPage({ params }: Props) {
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
               />
             </div>
+            {taskSelectedDocument || newTaskFile ? (
+              <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                <Icon name="attach_file" size={14} className="text-gray-400 flex-shrink-0" />
+                <span className="flex-1 min-w-0 truncate">
+                  {taskSelectedDocument?.original_filename ?? newTaskFile?.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={clearTaskAttachment}
+                  className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                  aria-label={t("taskAttachRemove")}
+                >
+                  <Icon name="close" size={14} />
+                </button>
+              </div>
+            ) : taskAttachPickerOpen ? (
+              <div className="flex flex-col gap-1.5 border border-gray-200 rounded-xl px-3 py-2">
+                {engagementDocumentsLoadError && (
+                  <p className="text-xs text-red-600">{t("taskAttachExistingLoadError")}</p>
+                )}
+                {engagementDocuments.length > 0 && (
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const doc = engagementDocuments.find((d) => d.id === Number(e.target.value))
+                      if (doc) { setTaskSelectedDocument(doc); setTaskAttachPickerOpen(false) }
+                    }}
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  >
+                    <option value="" disabled>{t("taskAttachExisting")}</option>
+                    {engagementDocuments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.original_filename}</option>
+                    ))}
+                  </select>
+                )}
+                <label className="text-xs text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer">
+                  {t("taskAttachNew")}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) { setNewTaskFile(file); setTaskAttachPickerOpen(false) }
+                    }}
+                  />
+                </label>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setTaskAttachPickerOpen(true)}
+                className="self-start text-xs text-gray-500 hover:text-indigo-600 font-medium inline-flex items-center gap-1"
+              >
+                <Icon name="attach_file" size={14} />
+                {t("taskAttachFile")}
+              </button>
+            )}
             {taskError && <p className="text-xs text-red-600">{taskError}</p>}
             <div className="flex gap-2">
               <button
@@ -650,7 +729,7 @@ export default function OrderPage({ params }: Props) {
               </button>
               <button
                 type="button"
-                onClick={() => { setTaskFormOpen(false); setTaskError("") }}
+                onClick={() => { setTaskFormOpen(false); setTaskError(""); clearTaskAttachment(); setTaskAttachPickerOpen(false) }}
                 className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
               >
                 {t("cancel")}
@@ -1176,6 +1255,17 @@ export default function OrderPage({ params }: Props) {
                             <p className="text-[10px] text-gray-400 mt-0.5">
                               {t("taskDeadlineLabel", { date: task.deadline })}
                             </p>
+                          )}
+                          {task.document && (
+                            <a
+                              href={task.document.download_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-indigo-600 hover:text-indigo-700"
+                            >
+                              <Icon name="attach_file" size={12} />
+                              {task.document.original_filename}
+                            </a>
                           )}
                         </div>
                         {role === "mentor" && (

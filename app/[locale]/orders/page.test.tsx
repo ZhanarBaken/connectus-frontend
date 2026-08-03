@@ -3,7 +3,8 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import OrdersPage from "./page"
 import {
-  authFetch, fetchOrders, fetchMentors, fetchMentorServices, fetchStudentProfile, markChatRead,
+  authFetch, fetchOrders, fetchMentors, fetchMentorServices, fetchEngagementDocuments, fetchStudentProfile,
+  markChatRead,
 } from "@/lib/api"
 import { connectChat, fetchChatMessages } from "@/lib/chat"
 import type { Order, MentorCard, MentorService, StudentProfile } from "@/types"
@@ -108,6 +109,7 @@ beforeEach(() => {
   vi.mocked(fetchChatMessages).mockResolvedValue([])
   vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
   vi.mocked(fetchMentorServices).mockResolvedValue([])
+  vi.mocked(fetchEngagementDocuments).mockResolvedValue([])
 })
 
 afterEach(() => {

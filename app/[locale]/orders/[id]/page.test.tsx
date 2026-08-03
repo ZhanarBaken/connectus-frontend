@@ -28,6 +28,7 @@ import {
   createSupportTask,
   updateSupportTask,
   deleteSupportTask,
+  fetchEngagementDocuments,
   confirmIntroCall,
   declineIntroCall,
   fetchStudentProfile,
@@ -150,6 +151,7 @@ function setupCommonMocks() {
   vi.mocked(authFetch).mockResolvedValue(okJson({ id: 1, email: "mentor@test.com" }))
   vi.mocked(fetchOrderDocuments).mockResolvedValue([])
   vi.mocked(fetchSupportTasks).mockResolvedValue([])
+  vi.mocked(fetchEngagementDocuments).mockResolvedValue([])
   vi.mocked(markChatRead).mockResolvedValue(undefined)
   vi.mocked(fetchChatMessages).mockResolvedValue([])
   vi.mocked(connectChat).mockImplementation(
@@ -833,6 +835,7 @@ describe("OrderPage — support tasks", () => {
       completed_at: null,
       created_at: "2026-07-01T10:00:00Z",
       updated_at: "2026-07-01T10:00:00Z",
+      document: null,
       ...overrides,
     }
   }
@@ -896,6 +899,67 @@ describe("OrderPage — support tasks", () => {
       expect(createSupportTask).toHaveBeenCalledWith(5, { title: "Загрузи эссе на проверку", deadline: null }),
     )
     expect(await screen.findByText("Загрузи эссе на проверку")).toBeInTheDocument()
+  })
+
+  it("lets the mentor attach an already-uploaded document when creating a task", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    const doc = {
+      id: 42, kind: "general" as const, status: "pending" as const, original_filename: "transcript.pdf",
+      content_type: "application/pdf", size_bytes: 100, description: "",
+      download_url: "https://example.com/transcript.pdf", uploaded_by: 7,
+      uploaded_by_email: "student@test.com", uploaded_at: "2026-07-01T10:00:00Z",
+    }
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([])
+    vi.mocked(fetchEngagementDocuments).mockResolvedValue([doc])
+    vi.mocked(createSupportTask).mockResolvedValue(makeTask({ document: doc }))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Добавить задачу"))
+    fireEvent.change(screen.getByPlaceholderText("Новая задача"), { target: { value: "Проверь транскрипт" } })
+    fireEvent.click(screen.getByText("Прикрепить файл"))
+    await waitFor(() => expect(screen.getByText("transcript.pdf")).toBeInTheDocument())
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "42" } })
+    fireEvent.click(screen.getByRole("button", { name: "Добавить" }))
+
+    await waitFor(() =>
+      expect(createSupportTask).toHaveBeenCalledWith(5, {
+        title: "Проверь транскрипт", deadline: null, documentId: 42, file: undefined,
+      }),
+    )
+  })
+
+  it("shows the task's attached document as a link once created", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    const doc = {
+      id: 42, kind: "general" as const, status: "pending" as const, original_filename: "essay.pdf",
+      content_type: "application/pdf", size_bytes: 100, description: "",
+      download_url: "https://example.com/essay.pdf", uploaded_by: 3,
+      uploaded_by_email: "mentor@test.com", uploaded_at: "2026-07-01T10:00:00Z",
+    }
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask({ document: doc })])
+
+    await renderOrderPage("42")
+
+    const link = await screen.findByRole("link", { name: /essay\.pdf/ })
+    expect(link).toHaveAttribute("href", "https://example.com/essay.pdf")
   })
 
   it("closes the invoice form when the task form is opened, and vice versa", async () => {

@@ -312,6 +312,7 @@ export interface SupportTask {
   completed_at: string | null
   created_at: string
   updated_at: string
+  document: OrderDocument | null
 }
 
 export interface SupportRequest {
