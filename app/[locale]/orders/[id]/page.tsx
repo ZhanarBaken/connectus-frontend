@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, fetchEngagementDocuments, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchOrders, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, fetchMentorServices, createSupportInvoice, endSupportEngagement, fetchSupportTasks, createSupportTask, updateSupportTask, deleteSupportTask, fetchEngagementDocuments, fetchEngagementSchedule, confirmIntroCall, declineIntroCall, SESSION_EXPIRED_EVENT } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
 import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
-import { Order, Mentor, OrderDocument, OrderDocumentComment, MentorService, SupportTask } from "@/types"
+import { Order, Mentor, OrderDocument, OrderDocumentComment, MentorService, SupportTask, EngagementScheduleEntry } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
@@ -28,6 +28,7 @@ const STATUS_KEY: Record<string, string> = {
   payout_pending: "payoutPending",
   paid_out: "paidOut",
   cancelled: "cancelled",
+  not_yet_due: "notYetDue",
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -37,6 +38,7 @@ const STATUS_STYLE: Record<string, string> = {
   completed: "bg-green-50 text-green-700 border-green-200",
   disputed: "bg-red-50 text-red-700 border-red-200",
   cancelled: "bg-gray-50 text-gray-500 border-gray-200",
+  not_yet_due: "bg-gray-50 text-gray-400 border-gray-200",
 }
 
 // A forced session-expiry redirect (lib/api.ts:refreshAccessToken) tears
@@ -111,6 +113,8 @@ export default function OrderPage({ params }: Props) {
   const [postingCommentDocId, setPostingCommentDocId] = useState<number | null>(null)
   const [tasks, setTasks] = useState<SupportTask[]>([])
   const [tasksLoadError, setTasksLoadError] = useState(false)
+  const [schedule, setSchedule] = useState<EngagementScheduleEntry[]>([])
+  const [scheduleLoadError, setScheduleLoadError] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskDeadline, setNewTaskDeadline] = useState("")
   const [taskFormOpen, setTaskFormOpen] = useState(false)
@@ -245,6 +249,9 @@ export default function OrderPage({ params }: Props) {
           fetchEngagementDocuments(found.support_engagement)
             .then(setEngagementDocuments)
             .catch(() => setEngagementDocumentsLoadError(true))
+          fetchEngagementSchedule(found.support_engagement)
+            .then(setSchedule)
+            .catch(() => setScheduleLoadError(true))
         }
       })
       .catch(() => router.replace("/orders"))
@@ -1284,6 +1291,45 @@ export default function OrderPage({ params }: Props) {
 
                 {tasks.length === 0 && !tasksLoadError && (
                   <p className="text-xs text-gray-400">{t("tasksEmpty")}</p>
+                )}
+              </div>
+            )}
+
+            {/* Support-engagement payment schedule — the full month-by-
+                month breakdown, visible to mentor and student alike, not
+                just what's currently due. */}
+            {order.support_engagement !== null && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 mb-3">
+                  <Icon name="calendar_month" size={16} className="text-gray-400" />
+                  {t("scheduleTitle")}
+                </h3>
+
+                {scheduleLoadError && (
+                  <p className="text-xs text-red-600 mb-2">{t("scheduleLoadError")}</p>
+                )}
+
+                {schedule.length > 0 && (
+                  <div className="space-y-2">
+                    {schedule.map((entry) => (
+                      <div
+                        key={entry.installment_number}
+                        className="flex items-center justify-between gap-2 text-xs"
+                      >
+                        <span className="text-gray-600">
+                          {t("scheduleMonthLabel", { number: entry.installment_number, total: schedule.length })}
+                        </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="font-medium text-gray-900">
+                            {Number(entry.amount).toLocaleString("ru-RU")} ₸
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded-full border ${STATUS_STYLE[entry.status] || "bg-gray-50 text-gray-500 border-gray-200"}`}>
+                            {STATUS_KEY[entry.status] ? tStatus(STATUS_KEY[entry.status]) : entry.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}

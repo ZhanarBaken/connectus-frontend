@@ -29,6 +29,7 @@ import {
   updateSupportTask,
   deleteSupportTask,
   fetchEngagementDocuments,
+  fetchEngagementSchedule,
   confirmIntroCall,
   declineIntroCall,
   fetchStudentProfile,
@@ -152,6 +153,7 @@ function setupCommonMocks() {
   vi.mocked(fetchOrderDocuments).mockResolvedValue([])
   vi.mocked(fetchSupportTasks).mockResolvedValue([])
   vi.mocked(fetchEngagementDocuments).mockResolvedValue([])
+  vi.mocked(fetchEngagementSchedule).mockResolvedValue([])
   vi.mocked(markChatRead).mockResolvedValue(undefined)
   vi.mocked(fetchChatMessages).mockResolvedValue([])
   vi.mocked(connectChat).mockImplementation(
@@ -1145,6 +1147,82 @@ describe("OrderPage — support tasks", () => {
 
     fireEvent.click(screen.getByLabelText("Загрузи эссе на проверку"))
     expect(updateSupportTask).not.toHaveBeenCalled()
+  })
+})
+
+describe("OrderPage — payment schedule", () => {
+  it("does not show a payment schedule card for a non-support order", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder())
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByText("График оплат")).not.toBeInTheDocument()
+  })
+
+  it("shows every month's amount and status for the mentor", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchEngagementSchedule).mockResolvedValue([
+      { installment_number: 1, amount: "175000.00", status: "in_progress", order_id: 101, due_at: null },
+      { installment_number: 2, amount: "100000.00", status: "not_yet_due", order_id: null, due_at: null },
+    ])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("График оплат")).toBeInTheDocument()
+    expect(screen.getByText("Месяц 1/2")).toBeInTheDocument()
+    expect(screen.getByText("175 000 ₸")).toBeInTheDocument()
+    expect(screen.getByText("В работе")).toBeInTheDocument()
+    expect(screen.getByText("Месяц 2/2")).toBeInTheDocument()
+    expect(screen.getByText("100 000 ₸")).toBeInTheDocument()
+    expect(screen.getByText("Ещё не наступил")).toBeInTheDocument()
+  })
+
+  it("shows the same schedule to the student", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(fetchEngagementSchedule).mockResolvedValue([
+      { installment_number: 1, amount: "175000.00", status: "in_progress", order_id: 101, due_at: null },
+    ])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("График оплат")).toBeInTheDocument()
+    expect(screen.getByText("175 000 ₸")).toBeInTheDocument()
+  })
+
+  it("shows an error message when the schedule fails to load", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrders).mockResolvedValue([])
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchEngagementSchedule).mockRejectedValue(new Error("network"))
+
+    await renderOrderPage("42")
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось загрузить график оплат")).toBeInTheDocument()
+    })
   })
 })
 

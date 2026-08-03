@@ -469,7 +469,8 @@
     "disputed": "Спор",
     "cancelled": "Отменён",
     "payoutPending": "Ожидает выплаты",
-    "paidOut": "Выплачен"
+    "paidOut": "Выплачен",
+    "notYetDue": "Ещё не наступил"
   },
   "Dashboard": {
     "Mentor": {
@@ -675,6 +676,9 @@
       "errorEndEngagement": "Не удалось завершить сопровождение",
       "tasksTitle": "Задачи",
       "tasksEmpty": "Пока нет задач",
+      "scheduleTitle": "График оплат",
+      "scheduleLoadError": "Не удалось загрузить график оплат",
+      "scheduleMonthLabel": "Месяц {number}/{total}",
       "taskDeadlineLabel": "до {date}",
       "taskTitlePlaceholder": "Новая задача",
       "taskDeadlinePlaceholder": "Дедлайн",

@@ -469,7 +469,8 @@
     "disputed": "Disputed",
     "cancelled": "Cancelled",
     "payoutPending": "Payout pending",
-    "paidOut": "Paid out"
+    "paidOut": "Paid out",
+    "notYetDue": "Not yet due"
   },
   "Dashboard": {
     "Mentor": {
@@ -675,6 +676,9 @@
       "errorEndEngagement": "Failed to end the engagement",
       "tasksTitle": "Tasks",
       "tasksEmpty": "No tasks yet",
+      "scheduleTitle": "Payment schedule",
+      "scheduleLoadError": "Couldn't load the payment schedule",
+      "scheduleMonthLabel": "Month {number}/{total}",
       "taskDeadlineLabel": "due {date}",
       "taskTitlePlaceholder": "New task",
       "taskDeadlinePlaceholder": "Deadline",

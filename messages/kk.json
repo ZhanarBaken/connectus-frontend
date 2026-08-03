@@ -469,7 +469,8 @@
     "disputed": "Дау",
     "cancelled": "Бас тартылды",
     "payoutPending": "Төлем күтілуде",
-    "paidOut": "Төленді"
+    "paidOut": "Төленді",
+    "notYetDue": "Әлі жетпеді"
   },
   "Dashboard": {
     "Mentor": {
@@ -675,6 +676,9 @@
       "errorEndEngagement": "Қолдауды аяқтау мүмкін болмады",
       "tasksTitle": "Тапсырмалар",
       "tasksEmpty": "Әзірге тапсырма жоқ",
+      "scheduleTitle": "Төлем кестесі",
+      "scheduleLoadError": "Төлем кестесін жүктеу мүмкін болмады",
+      "scheduleMonthLabel": "{number}/{total}-ай",
       "taskDeadlineLabel": "{date} дейін",
       "taskTitlePlaceholder": "Жаңа тапсырма",
       "taskDeadlinePlaceholder": "Мерзімі",

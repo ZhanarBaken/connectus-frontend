@@ -461,6 +461,16 @@ export async function fetchEngagementDocuments(
   return data.results ?? data
 }
 
+export async function fetchEngagementSchedule(
+  engagementId: number,
+): Promise<import("@/types").EngagementScheduleEntry[]> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/schedule/`)
+  if (!res.ok) throw new Error("Не удалось загрузить график оплат")
+  // Unlike fetchEngagementDocuments/fetchSupportTasks, this endpoint
+  // returns a plain list (not a paginated DRF response) — no `.results` unwrap.
+  return res.json()
+}
+
 export async function updateSupportTask(
   engagementId: number,
   taskId: number,

@@ -302,6 +302,17 @@ export interface SupportEngagement {
   created_at: string
 }
 
+export interface EngagementScheduleEntry {
+  installment_number: number
+  amount: string
+  // Real order_status values once an Order row exists for the month,
+  // or "not_yet_due" while it's still ahead of when
+  // generate_due_support_installments would create it.
+  status: string
+  order_id: number | null
+  due_at: string | null
+}
+
 export interface SupportTask {
   id: number
   engagement: number
