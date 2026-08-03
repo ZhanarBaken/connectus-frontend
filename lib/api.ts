@@ -287,6 +287,7 @@ export interface MentorClient {
   current_school_or_university: string
   city: string
   profile_photo: string | null
+  conversation_id: number | null
 }
 
 export interface MentorClients {

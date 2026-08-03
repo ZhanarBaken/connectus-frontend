@@ -69,6 +69,25 @@ export async function startConversation(mentorId: number): Promise<Conversation>
   return res.json()
 }
 
+/**
+ * Mentor-only: start (or resume) a direct conversation with a student
+ * who's an actual client (has had an order/engagement with this
+ * mentor) — backs the "Clients" list's chat button when it has no
+ * conversation_id yet. Idempotent, same as startConversation above.
+ */
+export async function startConversationWithClient(studentId: number): Promise<Conversation> {
+  const res = await authFetch(`${API_BASE}/chat/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student: studentId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to start conversation")
+  }
+  return res.json()
+}
+
 function deriveWsBase(): string {
   // Convert HTTP API base → WS origin (drop /api/v1 suffix)
   const u = new URL(API_BASE)

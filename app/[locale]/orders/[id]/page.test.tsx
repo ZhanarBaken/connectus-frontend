@@ -498,17 +498,6 @@ describe("OrderPage — mentor: complete order", () => {
     expect(screen.queryByText("Завершить услугу")).not.toBeInTheDocument()
   })
 
-  it("tells the mentor the installment completes automatically instead of showing a complete button", async () => {
-    const order = makeOrder({
-      order_status: "in_progress", payout_category: "support",
-      support_engagement: 5, installment_number: 1,
-    })
-    vi.mocked(fetchOrder).mockResolvedValue(order)
-
-    await renderOrderPage("42")
-
-    expect(await screen.findByText("Этап завершится автоматически")).toBeInTheDocument()
-  })
 })
 
 describe("OrderPage — review form gating", () => {

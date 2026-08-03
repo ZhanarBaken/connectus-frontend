@@ -13,7 +13,22 @@ vi.mock("@/lib/api", async () => {
   }
 })
 
-import { fetchMentorClients, fetchMentorProfile, type MentorClients } from "@/lib/api"
+import { fetchMentorClients, fetchMentorProfile, type MentorClient, type MentorClients } from "@/lib/api"
+import { startConversationWithClient } from "@/lib/chat"
+
+vi.mock("@/lib/chat")
+
+function makeClient(overrides: Partial<MentorClient> = {}): MentorClient {
+  return {
+    id: 1,
+    full_name: "Асель Смагулова",
+    current_school_or_university: "NIS",
+    city: "Алматы",
+    profile_photo: null,
+    conversation_id: null,
+    ...overrides,
+  }
+}
 
 function makeMentorProfile(overrides: Partial<MentorProfile> = {}): MentorProfile {
   return {
@@ -62,15 +77,16 @@ function makeClients(overrides: Partial<MentorClients> = {}): MentorClients {
 
 function mockRouter() {
   const replace = vi.fn()
+  const push = vi.fn()
   vi.mocked(useRouter).mockReturnValue({
-    push: vi.fn(),
+    push,
     replace,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
     prefetch: vi.fn(),
   } as unknown as ReturnType<typeof useRouter>)
-  return { replace }
+  return { replace, push }
 }
 
 describe("MentorClientsPage", () => {
@@ -111,9 +127,7 @@ describe("MentorClientsPage", () => {
     it("lists active clients with school and city", async () => {
       vi.mocked(fetchMentorClients).mockResolvedValue(
         makeClients({
-          active: [
-            { id: 1, full_name: "Асель Смагулова", current_school_or_university: "NIS", city: "Алматы", profile_photo: null },
-          ],
+          active: [makeClient()],
         }),
       )
       render(<MentorClientsPage />)
@@ -124,9 +138,7 @@ describe("MentorClientsPage", () => {
     it("switches to the inactive tab and shows its clients", async () => {
       vi.mocked(fetchMentorClients).mockResolvedValue(
         makeClients({
-          inactive: [
-            { id: 2, full_name: "Даурен Ахметов", current_school_or_university: "", city: "", profile_photo: null },
-          ],
+          inactive: [makeClient({ id: 2, full_name: "Даурен Ахметов", current_school_or_university: "", city: "" })],
         }),
       )
       render(<MentorClientsPage />)
@@ -140,17 +152,63 @@ describe("MentorClientsPage", () => {
       vi.mocked(fetchMentorClients).mockResolvedValue(
         makeClients({
           active: [
-            { id: 1, full_name: "A", current_school_or_university: "", city: "", profile_photo: null },
-            { id: 2, full_name: "B", current_school_or_university: "", city: "", profile_photo: null },
+            makeClient({ id: 1, full_name: "A", current_school_or_university: "", city: "" }),
+            makeClient({ id: 2, full_name: "B", current_school_or_university: "", city: "" }),
           ],
           inactive: [
-            { id: 3, full_name: "C", current_school_or_university: "", city: "", profile_photo: null },
+            makeClient({ id: 3, full_name: "C", current_school_or_university: "", city: "" }),
           ],
         }),
       )
       render(<MentorClientsPage />)
       expect(await screen.findByText(/Активные · 2/)).toBeInTheDocument()
       expect(screen.getByText(/Неактивные · 1/)).toBeInTheDocument()
+    })
+
+    it("navigates straight to the existing conversation when one is already known", async () => {
+      const { push } = mockRouter()
+      vi.mocked(fetchMentorClients).mockResolvedValue(
+        makeClients({ active: [makeClient({ conversation_id: 77 })] }),
+      )
+      render(<MentorClientsPage />)
+
+      fireEvent.click(await screen.findByRole("button", { name: "Написать в чат" }))
+
+      expect(push).toHaveBeenCalledWith("/messages/77")
+      expect(startConversationWithClient).not.toHaveBeenCalled()
+    })
+
+    it("starts a new conversation and navigates to it when none exists yet", async () => {
+      const { push } = mockRouter()
+      vi.mocked(fetchMentorClients).mockResolvedValue(
+        makeClients({ active: [makeClient({ id: 9, conversation_id: null })] }),
+      )
+      vi.mocked(startConversationWithClient).mockResolvedValue({
+        id: 88, mentor: 1, student: 9, created_at: "2026-01-01T00:00:00Z",
+        closed_at: null, is_active: true, other_party_name: "Асель Смагулова", other_party_photo: null,
+      })
+      render(<MentorClientsPage />)
+
+      fireEvent.click(await screen.findByRole("button", { name: "Написать в чат" }))
+
+      await waitFor(() => expect(startConversationWithClient).toHaveBeenCalledWith(9))
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/messages/88"))
+    })
+
+    it("shows an error and re-enables the button when starting the conversation fails", async () => {
+      const { push } = mockRouter()
+      vi.mocked(fetchMentorClients).mockResolvedValue(
+        makeClients({ active: [makeClient({ id: 9, conversation_id: null })] }),
+      )
+      vi.mocked(startConversationWithClient).mockRejectedValue(new Error("network error"))
+      render(<MentorClientsPage />)
+
+      const button = await screen.findByRole("button", { name: "Написать в чат" })
+      fireEvent.click(button)
+
+      expect(await screen.findByText("Не удалось открыть чат")).toBeInTheDocument()
+      expect(push).not.toHaveBeenCalled()
+      expect(button).not.toBeDisabled()
     })
 
     it("redirects a not-yet-submitted mentor to the onboarding wizard (useMentorOnboardingGate)", async () => {

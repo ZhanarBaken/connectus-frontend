@@ -765,69 +765,6 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Mentor: support installments have no manual complete step —
-                explain how payout for this one actually happens, so the
-                missing button doesn't read as the feature vanishing. */}
-            {role === "mentor" && order.order_status === "in_progress" && isSupport && (
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
-                <h3 className="font-semibold text-gray-900 mb-1 text-sm">
-                  {t("supportAutoCompleteTitle")}
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  {t("supportAutoCompleteBody")}
-                </p>
-              </div>
-            )}
-
-            {/* Mentor: end this one engagement with this one student — the
-                service itself, and every other student's engagement under
-                it, stays untouched. Only offered while there's actually
-                something to end. */}
-            {role === "mentor" && order.support_engagement !== null
-              && (order.engagement_status === "active" || order.engagement_status === "paused") && (
-              <div className="bg-white border border-red-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">{t("endEngagementTitle")}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-4">{t("endEngagementBody")}</p>
-                {!endEngagementFormOpen ? (
-                  <button
-                    onClick={() => setEndEngagementFormOpen(true)}
-                    className="w-full border border-red-200 text-red-700 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
-                  >
-                    {t("endEngagementCta")}
-                  </button>
-                ) : (
-                  <form onSubmit={handleEndEngagement} className="space-y-3">
-                    <textarea
-                      value={endEngagementReason}
-                      onChange={(e) => setEndEngagementReason(e.target.value)}
-                      placeholder={t("endEngagementReasonPlaceholder")}
-                      rows={3}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 transition-all resize-none"
-                    />
-                    {endEngagementError && (
-                      <p className="text-xs text-red-600">{endEngagementError}</p>
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={endingEngagement}
-                        className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
-                      >
-                        {endingEngagement ? t("endingEngagement") : t("endEngagementConfirm")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEndEngagementFormOpen(false); setEndEngagementError(""); setEndEngagementReason("") }}
-                        className="border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                      >
-                        {t("cancel")}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            )}
-
             {/* Student: in progress notice */}
             {role !== "mentor" && order.order_status === "in_progress" && (
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
@@ -1369,6 +1306,56 @@ export default function OrderPage({ params }: Props) {
                 <p className="text-xs text-gray-400 text-center py-2">
                   {t("filesUploadViaChatHint")}
                 </p>
+              </div>
+            )}
+
+            {/* Mentor: end this one engagement with this one student — the
+                service itself, and every other student's engagement under
+                it, stays untouched. Only offered while there's actually
+                something to end. Placed last — destructive/low-priority
+                relative to the rest of the order's status/action cards. */}
+            {role === "mentor" && order.support_engagement !== null
+              && (order.engagement_status === "active" || order.engagement_status === "paused") && (
+              <div className="bg-white border border-red-100 rounded-2xl p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">{t("endEngagementTitle")}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">{t("endEngagementBody")}</p>
+                {!endEngagementFormOpen ? (
+                  <button
+                    onClick={() => setEndEngagementFormOpen(true)}
+                    className="w-full border border-red-200 text-red-700 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+                  >
+                    {t("endEngagementCta")}
+                  </button>
+                ) : (
+                  <form onSubmit={handleEndEngagement} className="space-y-3">
+                    <textarea
+                      value={endEngagementReason}
+                      onChange={(e) => setEndEngagementReason(e.target.value)}
+                      placeholder={t("endEngagementReasonPlaceholder")}
+                      rows={3}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 transition-all resize-none"
+                    />
+                    {endEngagementError && (
+                      <p className="text-xs text-red-600">{endEngagementError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={endingEngagement}
+                        className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {endingEngagement ? t("endingEngagement") : t("endEngagementConfirm")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEndEngagementFormOpen(false); setEndEngagementError(""); setEndEngagementReason("") }}
+                        className="border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+                      >
+                        {t("cancel")}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             )}
 

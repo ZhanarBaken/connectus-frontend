@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { fetchMentorClients, type MentorClient, type MentorClients } from "@/lib/api"
+import { startConversationWithClient } from "@/lib/chat"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { Avatar } from "@/components/Avatar"
 import BackButton from "@/components/BackButton"
@@ -13,20 +14,61 @@ import MentorStatusBanner from "@/components/MentorStatusBanner"
 type Tab = "active" | "inactive"
 
 function ClientRow({ client }: { client: MentorClient }) {
+  const t = useTranslations("Dashboard.MentorClients")
+  const router = useRouter()
+  const [startingChat, setStartingChat] = useState(false)
+  const [chatError, setChatError] = useState("")
+
+  const handleChat = async () => {
+    // Jump straight to the plain dialog page — no order/service context,
+    // just the conversation with this client.
+    if (client.conversation_id !== null) {
+      router.push(`/messages/${client.conversation_id}`)
+      return
+    }
+    setStartingChat(true)
+    setChatError("")
+    try {
+      const conversation = await startConversationWithClient(client.id)
+      router.push(`/messages/${conversation.id}`)
+    } catch {
+      setChatError(t("chatWithClientError"))
+      setStartingChat(false)
+    }
+  }
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-3">
-      <Avatar
-        src={client.profile_photo}
-        name={client.full_name}
-        className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500"
-        letterClassName="text-white font-bold"
-      />
-      <div className="min-w-0">
-        <p className="font-semibold text-gray-900 truncate">{client.full_name}</p>
-        <p className="text-xs text-gray-400 truncate">
-          {[client.current_school_or_university, client.city].filter(Boolean).join(" · ")}
-        </p>
+    <div className="bg-white rounded-2xl border border-gray-200 p-4">
+      <div className="flex items-center gap-3">
+        <Avatar
+          src={client.profile_photo}
+          name={client.full_name}
+          className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500"
+          letterClassName="text-white font-bold"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-gray-900 truncate">{client.full_name}</p>
+          <p className="text-xs text-gray-400 truncate">
+            {[client.current_school_or_university, client.city].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleChat}
+          disabled={startingChat}
+          aria-label={t("chatWithClient")}
+          className="flex-shrink-0 w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
+        >
+          {startingChat ? (
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+          ) : (
+            <Icon name="chat" size={18} />
+          )}
+        </button>
       </div>
+      {chatError && (
+        <p className="text-xs text-red-600 mt-2">{chatError}</p>
+      )}
     </div>
   )
 }
