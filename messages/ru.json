@@ -557,6 +557,7 @@
     "MentorClientWindow": {
       "noEngagementHint": "Сейчас нет активного сопровождения — показана история.",
       "changeDeadlineAria": "Изменить дедлайн",
+      "setDeadline": "Дедлайн",
       "documentsEmpty": "Пока нет документов",
       "ordersEmpty": "Пока не было заказов"
     },

@@ -235,24 +235,22 @@ export default function MentorClientWindowPage({ params }: Props) {
                                 className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg"
                               />
                             </div>
+                          ) : editable ? (
+                            <button
+                              type="button"
+                              onClick={() => setEditingDeadlineTaskId(task.id)}
+                              aria-label={tWindow("changeDeadlineAria")}
+                              className="mt-1 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                            >
+                              <Icon name="event" size={14} />
+                              {task.deadline ? t("taskDeadlineLabel", { date: task.deadline }) : tWindow("setDeadline")}
+                            </button>
                           ) : (
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              {task.deadline && (
-                                <p className="text-[10px] text-gray-400">
-                                  {t("taskDeadlineLabel", { date: task.deadline })}
-                                </p>
-                              )}
-                              {editable && (
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingDeadlineTaskId(task.id)}
-                                  aria-label={tWindow("changeDeadlineAria")}
-                                  className="text-gray-300 hover:text-indigo-600 transition-colors"
-                                >
-                                  <Icon name="event" size={12} />
-                                </button>
-                              )}
-                            </div>
+                            task.deadline && (
+                              <p className="text-[10px] text-gray-400 mt-0.5">
+                                {t("taskDeadlineLabel", { date: task.deadline })}
+                              </p>
+                            )
                           )}
                           {task.document && (
                             <a

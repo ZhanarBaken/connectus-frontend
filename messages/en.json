@@ -557,6 +557,7 @@
     "MentorClientWindow": {
       "noEngagementHint": "No active engagement right now — showing history.",
       "changeDeadlineAria": "Change deadline",
+      "setDeadline": "Deadline",
       "documentsEmpty": "No documents yet",
       "ordersEmpty": "No orders yet"
     },

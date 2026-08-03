@@ -557,6 +557,7 @@
     "MentorClientWindow": {
       "noEngagementHint": "Қазір белсенді қолдау жоқ — тарих көрсетілуде.",
       "changeDeadlineAria": "Дедлайнды өзгерту",
+      "setDeadline": "Дедлайн",
       "documentsEmpty": "Әзірге құжаттар жоқ",
       "ordersEmpty": "Әзірге тапсырыстар жоқ"
     },
