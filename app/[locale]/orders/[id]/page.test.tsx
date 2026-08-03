@@ -1355,3 +1355,57 @@ describe("OrderPage — mentor: end a support engagement", () => {
     await waitFor(() => expect(fetchOrder).toHaveBeenCalledTimes(2))
   })
 })
+
+describe("OrderPage — chat overlay inside the Telegram Mini App", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ order_status: "in_progress", conversation_id: 77 }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
+    window.Telegram = {
+      WebApp: { initData: "raw-init-data", ready: vi.fn(), expand: vi.fn() } as unknown as TelegramWebApp,
+    }
+  })
+
+  afterEach(() => {
+    window.Telegram = undefined
+  })
+
+  it("starts collapsed behind the CTA row, and expanding it shows the fullscreen overlay", async () => {
+    const { container } = await renderOrderPage("42")
+
+    const cta = await screen.findByRole("button", { name: /Чат/ })
+    const overlay = container.querySelector('[data-testid="chat-overlay"]')
+    expect(overlay).toHaveClass("hidden")
+
+    fireEvent.click(cta)
+
+    // The CTA row itself unmounts once expanded (it's conditionally
+    // rendered, unlike the overlay/ChatPanel which stays mounted).
+    await waitFor(() => expect(screen.queryByRole("button", { name: /Чат/ })).not.toBeInTheDocument())
+    expect(overlay).not.toHaveClass("hidden")
+    expect(overlay).toHaveClass("fixed", "inset-0")
+  })
+
+  it("keeps the same chat connection alive across collapse/expand — ChatPanel never remounts", async () => {
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByRole("button", { name: /Чат/ }))
+    await waitFor(() => expect(connectChat).toHaveBeenCalledTimes(1))
+
+    // Collapse back behind the CTA.
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть чат" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: /Чат/ })).toBeInTheDocument())
+
+    // If the overlay had unmounted ChatPanel on collapse, expanding again
+    // would open a second websocket connection instead of reusing the
+    // still-live one — this is exactly what keeps the collapsed CTA
+    // row's online-dot/preview updating in real time.
+    fireEvent.click(screen.getByRole("button", { name: /Чат/ }))
+    await waitFor(() => expect(screen.queryByRole("button", { name: /Чат/ })).not.toBeInTheDocument())
+    expect(connectChat).toHaveBeenCalledTimes(1)
+  })
+})

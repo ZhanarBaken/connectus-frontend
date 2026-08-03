@@ -288,6 +288,7 @@ export interface MentorClient {
   city: string
   profile_photo: string | null
   conversation_id: number | null
+  engagement_id: number | null
 }
 
 export interface MentorClients {

@@ -2,19 +2,41 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { useRouter } from "@/i18n/navigation"
 import MentorClientsPage from "./page"
-import type { MentorProfile } from "@/types"
+import type { MentorProfile, MentorService } from "@/types"
 
 vi.mock("@/lib/api")
 vi.mock("@/lib/chat")
 
 import {
-  authFetch, fetchMentorClients, fetchMentorProfile, markChatRead,
+  authFetch, fetchMentorClients, fetchMentorProfile, fetchMentorServices, markChatRead,
   type MentorClient, type MentorClients,
 } from "@/lib/api"
 import { connectChat, fetchChatMessages, startConversationWithClient } from "@/lib/chat"
 
 function okJson(body: unknown): Response {
   return { ok: true, json: async () => body } as Response
+}
+
+function makeService(overrides: Partial<MentorService> = {}): MentorService {
+  return {
+    id: 10,
+    title: "Сопровождение — поступление в 3 вуза",
+    description: "",
+    price: "500000",
+    currency: "KZT",
+    duration_minutes: 60,
+    payout_category: "support",
+    grade_min: null,
+    grade_max: null,
+    meetings_min: 4,
+    meetings_max: 8,
+    duration_months_min: 6,
+    duration_months_max: 12,
+    is_price_negotiable: false,
+    intro_call_enabled: true,
+    is_active: true,
+    ...overrides,
+  }
 }
 
 function makeClient(overrides: Partial<MentorClient> = {}): MentorClient {
@@ -25,6 +47,7 @@ function makeClient(overrides: Partial<MentorClient> = {}): MentorClient {
     city: "Алматы",
     profile_photo: null,
     conversation_id: null,
+    engagement_id: null,
     ...overrides,
   }
 }
@@ -97,6 +120,7 @@ describe("MentorClientsPage", () => {
     vi.mocked(markChatRead).mockResolvedValue(undefined)
     vi.mocked(fetchChatMessages).mockResolvedValue([])
     vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -298,6 +322,32 @@ describe("MentorClientsPage", () => {
         fireEvent.click(buttonsAgain[1])
         expect(await screen.findByRole("heading", { name: "Аружан Есенова" })).toBeInTheDocument()
         expect(screen.queryByRole("heading", { name: "Данияр Сериков" })).not.toBeInTheDocument()
+      })
+
+      it("shows the send-invoice and add-task controls in the chat overlay, same as the order page", async () => {
+        vi.mocked(fetchMentorServices).mockResolvedValue([makeService()])
+        vi.mocked(fetchMentorClients).mockResolvedValue(
+          makeClients({ active: [makeClient({ conversation_id: 77, engagement_id: 9 })] }),
+        )
+        render(<MentorClientsPage />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Написать в чат" }))
+
+        expect(await screen.findByText("Отправить заявку")).toBeInTheDocument()
+        expect(screen.getByText("Добавить задачу")).toBeInTheDocument()
+      })
+
+      it("hides add-task when the client has no live engagement", async () => {
+        vi.mocked(fetchMentorServices).mockResolvedValue([makeService()])
+        vi.mocked(fetchMentorClients).mockResolvedValue(
+          makeClients({ active: [makeClient({ conversation_id: 77, engagement_id: null })] }),
+        )
+        render(<MentorClientsPage />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Написать в чат" }))
+
+        expect(await screen.findByText("Отправить заявку")).toBeInTheDocument()
+        expect(screen.queryByText("Добавить задачу")).not.toBeInTheDocument()
       })
     })
 

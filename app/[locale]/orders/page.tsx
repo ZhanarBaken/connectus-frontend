@@ -8,7 +8,7 @@ import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { Order } from "@/types"
 import BackButton from "@/components/BackButton"
-import ChatPanel from "@/components/ChatPanel"
+import ChatOverlay from "@/components/ChatOverlay"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 import SupportChatActions from "@/components/SupportChatActions"
@@ -69,22 +69,6 @@ export default function OrdersPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [activeChat, setActiveChat] = useState<ActiveChat | null>(null)
   const [chatRefetchSignal, setChatRefetchSignal] = useState(0)
-
-  // Mini App opens at half-height by default — expand once the overlay
-  // is up, same as the order page and /messages/[id].
-  useEffect(() => {
-    if (!activeChat || !webApp) return
-    try { webApp.expand() } catch { /* older clients */ }
-  }, [activeChat, webApp])
-
-  // Lock the body scroll while the fullscreen chat overlay is up so a
-  // swipe doesn't drag the list underneath it.
-  useEffect(() => {
-    if (!activeChat) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => { document.body.style.overflow = previous }
-  }, [activeChat])
 
   // Small extra tag alongside the status pill for a support installment
   // that's overdue or paused — null when neither applies.
@@ -207,10 +191,12 @@ export default function OrdersPage() {
               const chatOrder = client.orders.find((o) => o.conversation_id !== null)
               // support_engagement stays non-null on an order even after
               // its engagement ends — a client can have several past
-              // engagements. Only an active/paused one should back "Add a
-              // task", same liveness check used for the dunning tag above.
+              // engagements. Only a live one (matches the backend's own
+              // _LIVE_ENGAGEMENT_STATUSES) should back "Add a task".
               const engagementOrder = client.orders.find(
-                (o) => o.engagement_status === "active" || o.engagement_status === "paused",
+                (o) => o.engagement_status === "awaiting_payment"
+                  || o.engagement_status === "active"
+                  || o.engagement_status === "paused",
               )
               return (
                 <div key={client.studentId} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -351,45 +337,24 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* Fullscreen in-page chat overlay for the Mini App — same pattern
-          as the order page's chatExpanded overlay, so tapping "Chat" here
-          opens straight to chat, not the order page first. */}
       {activeChat && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]">
-          <ChatPanel
-            conversationId={activeChat.conversationId}
-            currentUserId={currentUserId}
-            refetchTrigger={chatRefetchSignal}
-            leadingHeaderAction={(
-              <button
-                type="button"
-                onClick={() => setActiveChat(null)}
-                className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
-                aria-label={tCommon("back")}
-              >
-                <Icon name="arrow_back" size={22} />
-              </button>
-            )}
-            titleOverride={(
-              <div className="flex-1 min-w-0 flex items-center gap-2.5">
-                <Avatar
-                  src={activeChat.photo}
-                  name={activeChat.name}
-                  className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex-shrink-0"
-                  letterClassName="text-white font-bold text-xs"
-                />
-                <h1 className="font-semibold text-gray-900 truncate">{activeChat.name}</h1>
-              </div>
-            )}
-            headerAction={(
-              <SupportChatActions
-                studentId={activeChat.studentId}
-                engagementId={activeChat.engagementId}
-                onActionPosted={() => setChatRefetchSignal((n) => n + 1)}
-              />
-            )}
-          />
-        </div>
+        <ChatOverlay
+          conversationId={activeChat.conversationId}
+          currentUserId={currentUserId}
+          name={activeChat.name}
+          photo={activeChat.photo}
+          onClose={() => setActiveChat(null)}
+          onCloseAriaLabel={tCommon("back")}
+          refetchTrigger={chatRefetchSignal}
+          webApp={webApp}
+          headerAction={(
+            <SupportChatActions
+              studentId={activeChat.studentId}
+              engagementId={activeChat.engagementId}
+              onActionPosted={() => setChatRefetchSignal((n) => n + 1)}
+            />
+          )}
+        />
       )}
     </div>
   )

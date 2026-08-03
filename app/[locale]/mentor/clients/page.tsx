@@ -9,9 +9,10 @@ import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { Avatar } from "@/components/Avatar"
 import BackButton from "@/components/BackButton"
-import ChatPanel from "@/components/ChatPanel"
+import ChatOverlay from "@/components/ChatOverlay"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
+import SupportChatActions from "@/components/SupportChatActions"
 
 type Tab = "active" | "inactive"
 
@@ -19,6 +20,8 @@ interface ActiveChat {
   conversationId: number
   name: string
   photo: string | null
+  studentId: number
+  engagementId: number | null
 }
 
 function ClientRow({
@@ -53,7 +56,10 @@ function ClientRow({
     // dialog page (already used by the mentor-profile "message" button)
     // is the right fit — a full page is normal there.
     if (isInTelegram) {
-      onOpenChat({ conversationId, name: client.full_name, photo: client.profile_photo })
+      onOpenChat({
+        conversationId, name: client.full_name, photo: client.profile_photo,
+        studentId: client.id, engagementId: client.engagement_id,
+      })
     } else {
       router.push(`/messages/${conversationId}`)
     }
@@ -107,23 +113,7 @@ export default function MentorClientsPage() {
   const [tab, setTab] = useState<Tab>("active")
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [activeChat, setActiveChat] = useState<ActiveChat | null>(null)
-
-  // Mini App opens at half-height by default — expand once the overlay
-  // is up, same as the order page and the standalone /messages/[id] page.
-  useEffect(() => {
-    if (!activeChat || !webApp) return
-    try { webApp.expand() } catch { /* older clients */ }
-  }, [activeChat, webApp])
-
-  // Lock the body scroll while the fullscreen chat overlay is up so a
-  // swipe doesn't drag the client list underneath it — same as the
-  // order page's chatExpanded overlay.
-  useEffect(() => {
-    if (!activeChat) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => { document.body.style.overflow = previous }
-  }, [activeChat])
+  const [chatRefetchSignal, setChatRefetchSignal] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -215,37 +205,24 @@ export default function MentorClientsPage() {
         )}
       </div>
 
-      {/* Fullscreen in-page chat overlay for the Mini App — same pattern
-          as the order page's chatExpanded overlay, so opening a chat from
-          the Clients list feels the same everywhere in the Mini App. */}
       {activeChat && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]">
-          <ChatPanel
-            conversationId={activeChat.conversationId}
-            currentUserId={currentUserId}
-            leadingHeaderAction={(
-              <button
-                type="button"
-                onClick={() => setActiveChat(null)}
-                className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
-                aria-label={tCommon("back")}
-              >
-                <Icon name="arrow_back" size={22} />
-              </button>
-            )}
-            titleOverride={(
-              <div className="flex-1 min-w-0 flex items-center gap-2.5">
-                <Avatar
-                  src={activeChat.photo}
-                  name={activeChat.name}
-                  className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex-shrink-0"
-                  letterClassName="text-white font-bold text-xs"
-                />
-                <h1 className="font-semibold text-gray-900 truncate">{activeChat.name}</h1>
-              </div>
-            )}
-          />
-        </div>
+        <ChatOverlay
+          conversationId={activeChat.conversationId}
+          currentUserId={currentUserId}
+          name={activeChat.name}
+          photo={activeChat.photo}
+          onClose={() => setActiveChat(null)}
+          onCloseAriaLabel={tCommon("back")}
+          refetchTrigger={chatRefetchSignal}
+          webApp={webApp}
+          headerAction={(
+            <SupportChatActions
+              studentId={activeChat.studentId}
+              engagementId={activeChat.engagementId}
+              onActionPosted={() => setChatRefetchSignal((n) => n + 1)}
+            />
+          )}
+        />
       )}
     </div>
   )

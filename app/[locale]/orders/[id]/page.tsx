@@ -15,6 +15,7 @@ import DatePicker from "@/components/DatePicker"
 import Icon from "@/components/Icon"
 import { Avatar } from "@/components/Avatar"
 import ChatPanel from "@/components/ChatPanel"
+import ChatOverlay from "@/components/ChatOverlay"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
 const STATUS_KEY: Record<string, string> = {
@@ -131,15 +132,6 @@ export default function OrderPage({ params }: Props) {
     if (typeof window === "undefined") return false
     return new URLSearchParams(window.location.search).get("chat") === "open"
   })
-
-  // Lock the body scroll while the fullscreen chat overlay is up so
-  // a swipe doesn't drag the order page underneath it.
-  useEffect(() => {
-    if (!chatExpanded) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => { document.body.style.overflow = previous }
-  }, [chatExpanded])
 
   // Telegram Mini App detection — drives a denser layout (no internal
   // back button, less outer padding, chat first on the screen and
@@ -501,6 +493,175 @@ export default function OrderPage({ params }: Props) {
     const minutes = Math.max(1, Math.floor(ms / (1000 * 60)))
     return t("minutesShort", { minutes: String(minutes) })
   }
+
+  // Hoisted so it can be passed to both the Mini App overlay and the
+  // desktop inline chat card without duplicating this block — same
+  // content, same handlers/state, just two different chat containers.
+  const chatHeaderAction = (
+    <>
+      {role === "mentor" && (supportServices.length > 0 || supportServicesLoadError) && (
+      <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
+        {supportServicesLoadError ? (
+          <div>
+            <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSupportServicesLoadError(false)
+                fetchMentorServices()
+                  .then((services) =>
+                    setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
+                  )
+                  .catch(() => setSupportServicesLoadError(true))
+              }}
+              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              {t("retry")}
+            </button>
+          </div>
+        ) : (
+        <>
+        {invoiceSent && !invoiceFormOpen && (
+          <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1 space-y-1">
+            <p>{t("invoiceSent")}</p>
+            {lastInvoiceOrder && (
+              <p className="text-emerald-800">
+                {t("invoiceSentAmounts", {
+                  clientCharge: Number(lastInvoiceOrder.total_price).toLocaleString("ru-RU"),
+                  mentorPayout: Number(lastInvoiceOrder.mentor_payout_amount).toLocaleString("ru-RU"),
+                })}
+              </p>
+            )}
+          </div>
+        )}
+        {!invoiceFormOpen ? (
+          <button
+            onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false); setLastInvoiceOrder(null); setTaskFormOpen(false) }}
+            className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+          >
+            {t("sendInvoiceCta")}
+          </button>
+        ) : (
+          <form onSubmit={handleSendInvoice} className="space-y-2">
+            <select
+              value={invoiceServiceId ?? ""}
+              onChange={(e) => setInvoiceServiceId(Number(e.target.value))}
+              required
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+            >
+              <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
+              {supportServices.map((s) => (
+                <option key={s.id} value={s.id}>{s.title}</option>
+              ))}
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={invoicePrice}
+                onChange={(e) => setInvoicePrice(e.target.value)}
+                required
+                type="number"
+                min="0"
+                step="1000"
+                placeholder={t("invoicePricePlaceholder")}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+              />
+              <input
+                value={invoiceMonths}
+                onChange={(e) => setInvoiceMonths(e.target.value)}
+                required
+                type="number"
+                min="1"
+                max="36"
+                placeholder={t("invoiceMonthsPlaceholder")}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+              />
+            </div>
+            {invoiceError && (
+              <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={sendingInvoice || invoiceServiceId === null}
+                className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {sendingInvoice ? t("sending") : t("send")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setInvoiceFormOpen(false)}
+                className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+              >
+                {t("cancel")}
+              </button>
+            </div>
+          </form>
+        )}
+        </>
+        )}
+      </div>
+      )}
+      {/* Lives inside ChatPanel, so it only renders when
+          canChat is true (see the parent `canChat &&` guard
+          around <ChatPanel> below) — safe for a support
+          order specifically: create_support_invoice on the
+          backend refuses to create the engagement's first
+          order at all unless an open Conversation already
+          exists for this mentor/student pair, and the
+          conversation_id the API returns isn't filtered by
+          closed_at, so it stays non-null for every later
+          installment too. */}
+      {role === "mentor" && order.support_engagement !== null && (
+      <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
+        {!taskFormOpen ? (
+          <button
+            onClick={() => { setTaskFormOpen(true); setInvoiceFormOpen(false) }}
+            className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+          >
+            {t("taskAddCta")}
+          </button>
+        ) : (
+          <form onSubmit={handleCreateTask} className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder={t("taskTitlePlaceholder")}
+                maxLength={200}
+                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+              />
+              <DatePicker
+                value={newTaskDeadline}
+                onChange={setNewTaskDeadline}
+                placeholder={t("taskDeadlinePlaceholder")}
+                ariaLabel={t("taskDeadlinePlaceholder")}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+              />
+            </div>
+            {taskError && <p className="text-xs text-red-600">{taskError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={creatingTask || !newTaskTitle.trim()}
+                className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {creatingTask ? t("taskCreating") : t("taskAdd")}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setTaskFormOpen(false); setTaskError("") }}
+                className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+              >
+                {t("cancel")}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+      )}
+    </>
+  )
 
   return (
     <div className={`bg-[#fafafa] ${isInTelegram ? "min-h-[100dvh]" : "min-h-screen"}`}>
@@ -1351,30 +1512,49 @@ export default function OrderPage({ params }: Props) {
                 <Icon name="arrow_forward_ios" size={16} className="text-gray-300 flex-shrink-0" />
               </button>
             )}
-            <div className={
-              isInTelegram && chatExpanded
-                // Fullscreen overlay on top of the entire Mini App.
-                // No rounding / border so it visually replaces the
-                // page rather than sitting in it.
-                ? "fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]"
-                : isInTelegram
-                  // Collapsed in Mini App — DOM still mounted (so
-                  // ChatPanel's WS connection sticks around between
-                  // toggles) but visually hidden behind the CTA above.
-                  ? "hidden"
-                  : "bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]"
-            }>
-              {canChat && order.conversation_id ? (
-                <ChatPanel
+            {canChat && order.conversation_id ? (
+              isInTelegram ? (
+                <ChatOverlay
                   conversationId={order.conversation_id}
                   currentUserId={currentUserId}
+                  onClose={() => setChatExpanded(false)}
+                  onCloseAriaLabel={t("collapseChatAria")}
+                  hidden={!chatExpanded}
                   onOtherPartyOnlineChange={setOtherPartyOnline}
                   onPreviewChange={setChatPreview}
                   refetchTrigger={invoiceChatRefetchSignal}
                   onAttachmentSent={() => {
                     fetchOrderDocuments(order.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
                   }}
-                  leadingHeaderAction={isInTelegram && chatExpanded && (
+                  webApp={webApp}
+                  headerAction={chatHeaderAction}
+                />
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]">
+                  <ChatPanel
+                    conversationId={order.conversation_id}
+                    currentUserId={currentUserId}
+                    onOtherPartyOnlineChange={setOtherPartyOnline}
+                    onPreviewChange={setChatPreview}
+                    refetchTrigger={invoiceChatRefetchSignal}
+                    onAttachmentSent={() => {
+                      fetchOrderDocuments(order.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
+                    }}
+                    headerAction={chatHeaderAction}
+                  />
+                </div>
+              )
+            ) : (
+              <div className={
+                isInTelegram && chatExpanded
+                  ? "fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]"
+                  : isInTelegram
+                    ? "hidden"
+                    : "bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]"
+              }>
+                {/* Chat header (locked) */}
+                <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-50 flex-shrink-0 flex items-center gap-3">
+                  {isInTelegram && chatExpanded && (
                     <button
                       type="button"
                       onClick={() => setChatExpanded(false)}
@@ -1384,203 +1564,24 @@ export default function OrderPage({ params }: Props) {
                       <Icon name="arrow_back" size={22} />
                     </button>
                   )}
-                  headerAction={<>
-                    {role === "mentor" && (supportServices.length > 0 || supportServicesLoadError) && (
-                    <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
-                      {supportServicesLoadError ? (
-                        <div>
-                          <p className="text-xs text-red-600 mb-2">{t("servicesLoadError")}</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSupportServicesLoadError(false)
-                              fetchMentorServices()
-                                .then((services) =>
-                                  setSupportServices(services.filter((s) => s.payout_category === "support" && s.is_active)),
-                                )
-                                .catch(() => setSupportServicesLoadError(true))
-                            }}
-                            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                          >
-                            {t("retry")}
-                          </button>
-                        </div>
-                      ) : (
-                      <>
-                      {invoiceSent && !invoiceFormOpen && (
-                        <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-1 space-y-1">
-                          <p>{t("invoiceSent")}</p>
-                          {lastInvoiceOrder && (
-                            <p className="text-emerald-800">
-                              {t("invoiceSentAmounts", {
-                                clientCharge: Number(lastInvoiceOrder.total_price).toLocaleString("ru-RU"),
-                                mentorPayout: Number(lastInvoiceOrder.mentor_payout_amount).toLocaleString("ru-RU"),
-                              })}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {!invoiceFormOpen ? (
-                        <button
-                          onClick={() => { setInvoiceFormOpen(true); setInvoiceSent(false); setLastInvoiceOrder(null); setTaskFormOpen(false) }}
-                          className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                        >
-                          {t("sendInvoiceCta")}
-                        </button>
-                      ) : (
-                        <form onSubmit={handleSendInvoice} className="space-y-2">
-                          <select
-                            value={invoiceServiceId ?? ""}
-                            onChange={(e) => setInvoiceServiceId(Number(e.target.value))}
-                            required
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                          >
-                            <option value="" disabled>{t("invoiceServicePlaceholder")}</option>
-                            {supportServices.map((s) => (
-                              <option key={s.id} value={s.id}>{s.title}</option>
-                            ))}
-                          </select>
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              value={invoicePrice}
-                              onChange={(e) => setInvoicePrice(e.target.value)}
-                              required
-                              type="number"
-                              min="0"
-                              step="1000"
-                              placeholder={t("invoicePricePlaceholder")}
-                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                            />
-                            <input
-                              value={invoiceMonths}
-                              onChange={(e) => setInvoiceMonths(e.target.value)}
-                              required
-                              type="number"
-                              min="1"
-                              max="36"
-                              placeholder={t("invoiceMonthsPlaceholder")}
-                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                            />
-                          </div>
-                          {invoiceError && (
-                            <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
-                          )}
-                          <div className="flex gap-2">
-                            <button
-                              type="submit"
-                              disabled={sendingInvoice || invoiceServiceId === null}
-                              className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                            >
-                              {sendingInvoice ? t("sending") : t("send")}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setInvoiceFormOpen(false)}
-                              className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                            >
-                              {t("cancel")}
-                            </button>
-                          </div>
-                        </form>
-                      )}
-                      </>
-                      )}
-                    </div>
-                    )}
-                    {/* Lives inside ChatPanel, so it only renders when
-                        canChat is true (see the parent `canChat &&` guard
-                        around <ChatPanel> below) — safe for a support
-                        order specifically: create_support_invoice on the
-                        backend refuses to create the engagement's first
-                        order at all unless an open Conversation already
-                        exists for this mentor/student pair, and the
-                        conversation_id the API returns isn't filtered by
-                        closed_at, so it stays non-null for every later
-                        installment too. */}
-                    {role === "mentor" && order.support_engagement !== null && (
-                    <div className="px-4 py-3 sm:px-6 border-b border-gray-50 flex-shrink-0">
-                      {!taskFormOpen ? (
-                        <button
-                          onClick={() => { setTaskFormOpen(true); setInvoiceFormOpen(false) }}
-                          className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                        >
-                          {t("taskAddCta")}
-                        </button>
-                      ) : (
-                        <form onSubmit={handleCreateTask} className="flex flex-col gap-2">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={newTaskTitle}
-                              onChange={(e) => setNewTaskTitle(e.target.value)}
-                              placeholder={t("taskTitlePlaceholder")}
-                              maxLength={200}
-                              className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                            />
-                            <DatePicker
-                              value={newTaskDeadline}
-                              onChange={setNewTaskDeadline}
-                              placeholder={t("taskDeadlinePlaceholder")}
-                              ariaLabel={t("taskDeadlinePlaceholder")}
-                              className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-left whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                            />
-                          </div>
-                          {taskError && <p className="text-xs text-red-600">{taskError}</p>}
-                          <div className="flex gap-2">
-                            <button
-                              type="submit"
-                              disabled={creatingTask || !newTaskTitle.trim()}
-                              className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                            >
-                              {creatingTask ? t("taskCreating") : t("taskAdd")}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setTaskFormOpen(false); setTaskError("") }}
-                              className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
-                            >
-                              {t("cancel")}
-                            </button>
-                          </div>
-                        </form>
-                      )}
-                    </div>
-                    )}
-                  </>}
-                />
-              ) : (
-                <>
-                  {/* Chat header (locked) */}
-                  <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-50 flex-shrink-0 flex items-center gap-3">
-                    {isInTelegram && chatExpanded && (
-                      <button
-                        type="button"
-                        onClick={() => setChatExpanded(false)}
-                        className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0 [-webkit-tap-highlight-color:transparent]"
-                        aria-label={t("collapseChatAria")}
-                      >
-                        <Icon name="arrow_back" size={22} />
-                      </button>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h2 className="font-semibold text-gray-900">{t("messagesTitle")}</h2>
-                      <p className="text-xs text-gray-400 mt-0.5">{t("messagesSubtitleLocked")}</p>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold text-gray-900">{t("messagesTitle")}</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">{t("messagesSubtitleLocked")}</p>
                   </div>
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center px-8">
-                      <div className="mb-4 flex justify-center">
-                        <Icon name="lock" size={48} className="text-gray-300" />
-                      </div>
-                      <h3 className="font-semibold text-gray-900 mb-2">{t("chatLockedTitle")}</h3>
-                      <p className="text-sm text-gray-400 leading-relaxed">
-                        {t("chatLockedBody")}
-                      </p>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center px-8">
+                    <div className="mb-4 flex justify-center">
+                      <Icon name="lock" size={48} className="text-gray-300" />
                     </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">{t("chatLockedTitle")}</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      {t("chatLockedBody")}
+                    </p>
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
