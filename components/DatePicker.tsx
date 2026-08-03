@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useLocale, useTranslations } from "next-intl"
-import { formatDateISO, getMonthGrid } from "@/lib/schedule"
+import { formatDateISO, formatMonthYearLabel, formatShortDateLabel, getMonthGrid } from "@/lib/schedule"
 import Icon from "./Icon"
 
 interface Props {
@@ -62,8 +62,7 @@ export default function DatePicker({ value, onChange, min, max, placeholder, ari
   const [visibleMonth, setVisibleMonth] = useState(initial.getMonth())
 
   const monthGrid = getMonthGrid(visibleYear, visibleMonth)
-  const monthLabel = new Date(visibleYear, visibleMonth, 1)
-    .toLocaleDateString(locale, { month: "long", year: "numeric" })
+  const monthLabel = formatMonthYearLabel(visibleYear, visibleMonth, locale, t.raw("monthsLong"))
 
   const goToMonth = (delta: number) => {
     const d = new Date(visibleYear, visibleMonth + delta, 1)
@@ -147,7 +146,7 @@ export default function DatePicker({ value, onChange, min, max, placeholder, ari
   }, [open])
 
   const displayLabel = value
-    ? new Date(value + "T00:00:00").toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
+    ? formatShortDateLabel(new Date(value + "T00:00:00"), locale, t.raw("monthsShort"))
     : null
 
   return (

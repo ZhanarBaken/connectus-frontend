@@ -155,3 +155,34 @@ export function isoWeekday(date: Date): number {
   const jsDay = date.getDay()
   return jsDay === 0 ? 6 : jsDay - 1
 }
+
+// Browsers' Intl.DateTimeFormat doesn't reliably format Kazakh month/
+// weekday names — instead of "тамыз" it can fall back to a raw token
+// like "M08". Kazakh months also don't decline by grammatical case the
+// way Russian's do, so a flat translated array is a safe stand-in —
+// used only for 'kk', where Intl is unreliable. ru/en keep going
+// through Intl unchanged, since it already handles them correctly
+// (including Russian's day+month genitive declension, which a static
+// array can't replicate without separately tracking both cases).
+export function formatMonthYearLabel(
+  year: number, month: number, locale: string, monthsLong: string[],
+): string {
+  if (locale === 'kk') return `${monthsLong[month]} ${year}`
+  return new Date(year, month, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+}
+
+export function formatFullDateLabel(
+  date: Date, locale: string, weekdaysLong: string[], monthsLong: string[],
+): string {
+  if (locale === 'kk') {
+    return `${weekdaysLong[isoWeekday(date)]}, ${date.getDate()} ${monthsLong[date.getMonth()]}`
+  }
+  return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+export function formatShortDateLabel(
+  date: Date, locale: string, monthsShort: string[],
+): string {
+  if (locale === 'kk') return `${date.getDate()} ${monthsShort[date.getMonth()]} ${date.getFullYear()}`
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+}

@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from "next-intl"
 import { fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/api"
 import {
   formatDateISO,
+  formatFullDateLabel,
+  formatMonthYearLabel,
   getMonthGrid,
 } from "@/lib/schedule"
 import Icon from "./Icon"
@@ -113,10 +115,10 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
 
   const today = formatDateISO(new Date())
 
-  const monthLabel = useMemo(() => {
-    const d = new Date(visibleMonth.year, visibleMonth.month, 1)
-    return d.toLocaleDateString(locale, { month: "long", year: "numeric" })
-  }, [visibleMonth, locale])
+  const monthLabel = useMemo(
+    () => formatMonthYearLabel(visibleMonth.year, visibleMonth.month, locale, t.raw("monthsLong")),
+    [visibleMonth, locale, t],
+  )
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -224,11 +226,9 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
       {selectedDate && (
         <div className="px-5 py-4 border-t border-gray-100">
           <p className="text-xs font-medium text-gray-500 mb-3">
-            {new Date(selectedDate + "T00:00:00").toLocaleDateString(locale, {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
+            {formatFullDateLabel(
+              new Date(selectedDate + "T00:00:00"), locale, t.raw("weekdaysLong"), t.raw("monthsLong"),
+            )}
           </p>
 
           {slotsLoading ? (
