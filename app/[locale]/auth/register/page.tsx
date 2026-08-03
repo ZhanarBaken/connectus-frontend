@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import {
@@ -47,10 +48,15 @@ type PendingAuth = "email" | "google" | "telegram" | null
 
 type Role = "student" | "mentor"
 
-export default function RegisterPage() {
+function RegisterForm() {
   const t = useTranslations("Auth.Register")
   const locale = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // A CTA that already knows the visitor's role (e.g. "Стать ментором")
+  // links here with ?role=mentor so they skip the picker entirely.
+  const roleParam = searchParams.get("role")
+  const skipRolePicker = roleParam === "mentor" || roleParam === "student"
   const ROLES = [
     {
       value: "student" as Role,
@@ -65,8 +71,8 @@ export default function RegisterPage() {
       desc: t("roleMentorDesc"),
     },
   ]
-  const [step, setStep] = useState<1 | 2>(1)
-  const [role, setRole] = useState<Role>("student")
+  const [step, setStep] = useState<1 | 2>(skipRolePicker ? 2 : 1)
+  const [role, setRole] = useState<Role>(roleParam === "mentor" ? "mentor" : "student")
   const [country, setCountry] = useState("KZ")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -655,5 +661,13 @@ export default function RegisterPage() {
         onCancel={handleConsentCancel}
       />
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   )
 }

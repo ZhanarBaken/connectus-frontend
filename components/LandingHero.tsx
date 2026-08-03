@@ -68,7 +68,7 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                   </Link>
                 </MagneticButton>
                 <Link
-                  href="/become-mentor"
+                  href="/auth/register?role=mentor"
                   className="text-sm text-gray-500 hover:text-gray-900 transition-colors underline-offset-4 hover:underline self-start sm:self-auto"
                 >
                   {t("ctaBecome")}

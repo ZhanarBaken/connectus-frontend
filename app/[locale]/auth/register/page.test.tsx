@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { useSearchParams } from "next/navigation"
 import { useRouter } from "@/i18n/navigation"
 import * as api from "@/lib/api"
 import RegisterPage from "./page"
@@ -59,6 +60,16 @@ describe("RegisterPage", () => {
       refresh: vi.fn(),
       prefetch: vi.fn(),
     } as unknown as ReturnType<typeof useRouter>)
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
+  })
+
+  it("skips the role picker and preselects mentor when linked with ?role=mentor", () => {
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams("role=mentor") as ReturnType<typeof useSearchParams>,
+    )
+    render(<RegisterPage />)
+    expect(screen.getByText("Создай аккаунт")).toBeInTheDocument()
+    expect(screen.getByText("ментор")).toBeInTheDocument()
   })
 
   it("redirects an already-authenticated user to their dashboard", () => {

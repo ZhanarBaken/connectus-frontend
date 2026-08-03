@@ -42,7 +42,7 @@ describe("LandingHero", () => {
     )
     expect(screen.getByRole("link", { name: /Хочу стать ментором/ })).toHaveAttribute(
       "href",
-      "/become-mentor",
+      "/auth/register?role=mentor",
     )
   })
 

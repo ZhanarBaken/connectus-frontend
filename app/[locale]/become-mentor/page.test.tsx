@@ -25,7 +25,7 @@ describe("BecomeMentorPage", () => {
     const ctas = screen.getAllByRole("link", { name: /Стать ментором/ })
     expect(ctas.length).toBeGreaterThan(0)
     for (const cta of ctas) {
-      expect(cta).toHaveAttribute("href", "/auth/register")
+      expect(cta).toHaveAttribute("href", "/auth/register?role=mentor")
     }
   })
 

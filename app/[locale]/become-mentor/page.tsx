@@ -90,7 +90,7 @@ export default function BecomeMentorPage() {
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <MagneticButton strength={0.15}>
                 <Link
-                  href="/auth/register"
+                  href="/auth/register?role=mentor"
                   className="group bg-white text-gray-900 px-8 py-4 rounded-xl text-[15px] font-bold hover:bg-gray-100 transition-colors inline-flex items-center gap-2"
                 >
                   {t("hero.cta")}
@@ -281,7 +281,7 @@ export default function BecomeMentorPage() {
           <ScrollReveal variant="fade-up" delay={300}>
             <MagneticButton strength={0.2} className="inline-block">
               <Link
-                href="/auth/register"
+                href="/auth/register?role=mentor"
                 className="inline-flex items-center gap-2 bg-gray-900 text-white px-10 py-4 rounded-xl text-[15px] font-bold hover:bg-gray-800 transition-colors"
               >
                 {t("finalCta.cta")}
