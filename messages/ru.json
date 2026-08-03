@@ -848,6 +848,7 @@
       "notAcceptingRequests": "Ментор сейчас не принимает запросы",
       "supportTitle": "Сопровождение",
       "supportSubtitle": "Долгосрочная программа — цена и сроки обсуждаются с ментором в чате",
+      "introCallExplainer": "Intro-call нужен, чтобы ментор оценил объём работы и понял, подходите ли вы друг другу, — до начала платного сопровождения",
       "meetingsRange": "{min}–{max} встреч",
       "monthsRange": "{min}–{max} мес",
       "negotiablePrice": "Договорная",
