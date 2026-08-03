@@ -107,6 +107,9 @@ async function readCooldown(res: Response, fallbackMessage: string): Promise<Coo
 
 export interface PublicSettings {
   dispute_window_hours: number
+  // Longer, separately configured window for support-category orders —
+  // see Order.is_disputable on the backend.
+  support_dispute_window_hours: number
   support_url: string
   terms_text: string
   platform_rules_text: string

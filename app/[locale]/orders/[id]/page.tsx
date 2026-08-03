@@ -85,6 +85,11 @@ export default function OrderPage({ params }: Props) {
   // fields (only the live "send message" view broadcasts those).
   const [invoiceChatRefetchSignal, setInvoiceChatRefetchSignal] = useState(0)
   const [disputeWindowMs, setDisputeWindowMs] = useState<number | null>(null)
+  // Support-category orders get a longer, separately configured window
+  // (see Order.is_disputable on the backend) — kept apart from the
+  // general disputeWindowMs above so the right one can be picked per
+  // order's payout_category.
+  const [supportDisputeWindowMs, setSupportDisputeWindowMs] = useState<number | null>(null)
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
   const [docsLoadError, setDocsLoadError] = useState(false)
   const [docActionError, setDocActionError] = useState("")
@@ -137,6 +142,9 @@ export default function OrderPage({ params }: Props) {
       .then((data) => {
         if (data?.dispute_window_hours != null) {
           setDisputeWindowMs(data.dispute_window_hours * 60 * 60 * 1000)
+        }
+        if (data?.support_dispute_window_hours != null) {
+          setSupportDisputeWindowMs(data.support_dispute_window_hours * 60 * 60 * 1000)
         }
       })
       .catch(() => {})
@@ -371,11 +379,15 @@ export default function OrderPage({ params }: Props) {
   const isSupport = order.payout_category === "support"
 
   // Student can open a dispute only during the window after completion.
-  // disputeWindowMs is loaded from /api/v1/settings/public/ — null means still loading.
-  // Dispute window calculation
+  // disputeWindowMs/supportDisputeWindowMs are loaded from
+  // /api/v1/settings/public/ — null means still loading. Support orders
+  // get the longer, separately configured window (see
+  // Order.is_disputable on the backend) — same field either way just
+  // picked per payout_category, not a different formula.
+  const effectiveDisputeWindowMs = isSupport ? supportDisputeWindowMs : disputeWindowMs
   const disputeTimeRemainingMs =
-    disputeWindowMs !== null && order.order_status === "completed" && order.completed_at !== null
-      ? disputeWindowMs - (Date.now() - new Date(order.completed_at).getTime())
+    effectiveDisputeWindowMs !== null && order.order_status === "completed" && order.completed_at !== null
+      ? effectiveDisputeWindowMs - (Date.now() - new Date(order.completed_at).getTime())
       : null
   const disputeWindowOpen = disputeTimeRemainingMs !== null && disputeTimeRemainingMs > 0
 

@@ -15,6 +15,7 @@ import { fetchPublicSettings, type PublicSettings } from "@/lib/api"
 function makeSettings(overrides: Partial<PublicSettings> = {}): PublicSettings {
   return {
     dispute_window_hours: 48,
+    support_dispute_window_hours: 168,
     support_url: "https://t.me/connectus_app_bot",
     terms_text: "",
     platform_rules_text: "",

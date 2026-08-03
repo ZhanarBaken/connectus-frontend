@@ -385,6 +385,32 @@ describe("OrderPage — student view", () => {
     })
   })
 
+  it("uses the longer support-specific dispute window for a completed support order", async () => {
+    // Regression: the countdown used to be computed only from the
+    // general dispute_window_hours, ignoring support_dispute_window_hours
+    // entirely — a just-completed support order would show a ~24h-ish
+    // remaining time instead of the correct ~week-long one.
+    const order = makeOrder({
+      order_status: "completed",
+      payout_category: "support",
+      completed_at: new Date().toISOString(),
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ dispute_window_hours: 24, support_dispute_window_hours: 168 }),
+      } as Response),
+    )
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Завершено")
+    await waitFor(() => expect(screen.getAllByText("дн.", { exact: false }).length).toBeGreaterThan(0))
+  })
+
   it("opens a dispute on a completed non-consultation order", async () => {
     const order = makeOrder({
       order_status: "completed",

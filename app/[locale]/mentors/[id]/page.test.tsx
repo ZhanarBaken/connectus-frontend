@@ -101,6 +101,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
 function makePublicSettings(overrides: Partial<PublicSettings> = {}): PublicSettings {
   return {
     dispute_window_hours: 48,
+    support_dispute_window_hours: 168,
     support_url: "",
     terms_text: "",
     platform_rules_text: "",
