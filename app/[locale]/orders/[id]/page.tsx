@@ -1375,7 +1375,7 @@ export default function OrderPage({ params }: Props) {
                   headerAction={chatHeaderAction}
                 />
               ) : (
-                <div className="bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]">
+                <div className="bg-white rounded-2xl border border-gray-200 flex flex-col h-[640px]">
                   <ChatPanel
                     conversationId={order.conversation_id}
                     currentUserId={currentUserId}
@@ -1395,7 +1395,7 @@ export default function OrderPage({ params }: Props) {
                   ? "fixed inset-0 z-50 bg-white flex flex-col h-[100dvh]"
                   : isInTelegram
                     ? "hidden"
-                    : "bg-white rounded-2xl border border-gray-200 flex flex-col h-[540px]"
+                    : "bg-white rounded-2xl border border-gray-200 flex flex-col h-[640px]"
               }>
                 {/* Chat header (locked) */}
                 <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-50 flex-shrink-0 flex items-center gap-3">
