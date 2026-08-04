@@ -16,7 +16,6 @@ import MentorStatusBanner from "@/components/MentorStatusBanner"
 export default function MentorDashboard() {
   const t = useTranslations("Dashboard.Mentor")
   const tStatus = useTranslations("OrderStatus")
-  const tExpertise = useTranslations("Landing.Expertise")
   const locale = useLocale()
   const router = useRouter()
   useMentorOnboardingGate()
@@ -495,20 +494,6 @@ export default function MentorDashboard() {
                 ))}
               </div>
             </div>
-
-            {/* Expertise */}
-            {profile.expertise_areas?.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t("specializations")}</h2>
-                <div className="flex flex-wrap gap-2">
-                  {profile.expertise_areas.map((e) => (
-                    <span key={e.area} className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-medium">
-                      {tExpertise.has(e.area) ? tExpertise(e.area) : e.area}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
