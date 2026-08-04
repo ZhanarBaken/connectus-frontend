@@ -2,7 +2,7 @@
 // Switch USE_MOCKS to false when backend is ready
 
 import { MOCK_MENTORS, getMockMentor, getMockServices, MOCK_ORDERS, MOCK_STUDENT_PROFILE } from "./mocks"
-import { AdminConversation, AdminDispute, AdminMentorProfile, Dispute, Mentor, MentorCard, MentorProfile, Order, SiteSettings, StudentProfile } from "@/types"
+import { AdminConversation, AdminDispute, AdminMentorProfile, Dispute, Mentor, MentorCard, MentorProfile, Order, OrderStatus, PayoutCategory, SiteSettings, StudentProfile } from "@/types"
 import { localeFromPathname, withLocalePrefix } from "./i18n/pathname"
 
 const USE_MOCKS = false
@@ -1438,6 +1438,25 @@ export async function saveMyMentorSchedule(payload: {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || firstErrorMessage(err) || "Failed to save schedule")
+  }
+  return res.json()
+}
+
+export interface MentorUpcomingBooking {
+  order_id: number
+  scheduled_at: string
+  service_title: string
+  student_id: number
+  student_name: string
+  order_status: OrderStatus
+  payout_category: PayoutCategory
+}
+
+export async function fetchMentorUpcomingBookings(): Promise<MentorUpcomingBooking[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/upcoming-bookings/`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to load upcoming bookings")
   }
   return res.json()
 }

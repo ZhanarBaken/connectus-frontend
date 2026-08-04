@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import MentorSchedulePage from "./page"
-import { fetchMyMentorSchedule, saveMyMentorSchedule, fetchMentorProfile } from "@/lib/api"
+import { fetchMyMentorSchedule, saveMyMentorSchedule, fetchMentorProfile, fetchMentorUpcomingBookings } from "@/lib/api"
 import type { MentorSchedule } from "@/lib/schedule"
 import type { MentorProfile } from "@/types"
 
@@ -21,6 +21,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   vi.mocked(fetchMentorProfile).mockRejectedValue(new Error("403"))
+  vi.mocked(fetchMentorUpcomingBookings).mockResolvedValue([])
 })
 
 describe("MentorSchedulePage — auth gate", () => {
@@ -145,5 +146,48 @@ describe("MentorSchedulePage — mentor view", () => {
     fireEvent.click(saveButton)
 
     expect(await screen.findByText("Пересекающиеся окна")).toBeInTheDocument()
+  })
+})
+
+describe("MentorSchedulePage — upcoming bookings", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMyMentorSchedule).mockResolvedValue(makeSchedule())
+  })
+
+  it("shows the empty state when nobody is booked", async () => {
+    vi.mocked(fetchMentorUpcomingBookings).mockResolvedValue([])
+
+    render(<MentorSchedulePage />)
+
+    expect(await screen.findByText("Пока никто не записан")).toBeInTheDocument()
+  })
+
+  it("lists an upcoming booking with student name, service and time", async () => {
+    vi.mocked(fetchMentorUpcomingBookings).mockResolvedValue([{
+      order_id: 42,
+      scheduled_at: "2026-08-10T06:00:00Z",
+      service_title: "Полное сопровождение поступления в США",
+      student_id: 51,
+      student_name: "Тестовый Клиент",
+      order_status: "draft",
+      payout_category: "support",
+    }])
+
+    render(<MentorSchedulePage />)
+
+    expect(await screen.findByText("Тестовый Клиент")).toBeInTheDocument()
+    expect(screen.getByText("Полное сопровождение поступления в США")).toBeInTheDocument()
+    const link = screen.getByRole("link", { name: /Тестовый Клиент/ })
+    expect(link).toHaveAttribute("href", "/orders/42")
+  })
+
+  it("shows an error message when the bookings fail to load", async () => {
+    vi.mocked(fetchMentorUpcomingBookings).mockRejectedValue(new Error("network error"))
+
+    render(<MentorSchedulePage />)
+
+    expect(await screen.findByText("Не удалось загрузить список записей")).toBeInTheDocument()
   })
 })

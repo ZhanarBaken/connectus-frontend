@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
-import { useRouter } from "@/i18n/navigation"
-import { fetchMyMentorSchedule, saveMyMentorSchedule } from "@/lib/api"
+import { useTranslations, useLocale } from "next-intl"
+import { Link, useRouter } from "@/i18n/navigation"
+import { fetchMentorUpcomingBookings, fetchMyMentorSchedule, saveMyMentorSchedule, type MentorUpcomingBooking } from "@/lib/api"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { translateScheduleErrorMessage } from "@/lib/scheduleErrors"
 import {
@@ -30,6 +30,7 @@ for (let h = 0; h < 24; h++) {
 
 export default function MentorSchedulePage() {
   const t = useTranslations("Mentors.Schedule")
+  const locale = useLocale()
   const router = useRouter()
   useMentorOnboardingGate()
   const DAY_LABELS_FULL = [
@@ -44,6 +45,10 @@ export default function MentorSchedulePage() {
   const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>(emptyWeekSchedule())
   const [blockedDates, setBlockedDates] = useState<ScheduleBlock[]>([])
   const [timezone, setTimezone] = useState("")
+
+  const [upcomingBookings, setUpcomingBookings] = useState<MentorUpcomingBooking[]>([])
+  const [bookingsLoading, setBookingsLoading] = useState(true)
+  const [bookingsError, setBookingsError] = useState("")
 
   // Blocked date form
   const [newBlockedDate, setNewBlockedDate] = useState("")
@@ -67,6 +72,11 @@ export default function MentorSchedulePage() {
         setError(err instanceof Error ? translateScheduleErrorMessage(err.message, t) : t("loadError")),
       )
       .finally(() => setLoading(false))
+
+    fetchMentorUpcomingBookings()
+      .then(setUpcomingBookings)
+      .catch(() => setBookingsError(t("bookingsLoadError")))
+      .finally(() => setBookingsLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
@@ -179,6 +189,41 @@ export default function MentorSchedulePage() {
         {timezone && (
           <p className="text-xs text-gray-400 mb-8">{t("timezoneLabel", { timezone })}</p>
         )}
+
+        {/* ── Upcoming bookings — who's actually booked into the
+            availability below, without opening each client. ────── */}
+        <div className="mb-10">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">{t("upcomingBookingsTitle")}</h2>
+          {bookingsLoading ? (
+            <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+          ) : bookingsError ? (
+            <p className="text-sm text-red-600">{bookingsError}</p>
+          ) : upcomingBookings.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+              <p className="text-sm text-gray-500">{t("noBookings")}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {upcomingBookings.map((b) => (
+                <Link
+                  key={b.order_id}
+                  href={`/orders/${b.order_id}`}
+                  className="flex items-center justify-between gap-3 bg-white rounded-xl border border-gray-200 px-4 py-3 hover:border-indigo-300 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{b.student_name}</p>
+                    <p className="text-xs text-gray-400 truncate">{b.service_title}</p>
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 flex-shrink-0">
+                    {new Date(b.scheduled_at).toLocaleString(locale, {
+                      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* ── Alerts ─────────────────────────────────────── */}
         {error && (
