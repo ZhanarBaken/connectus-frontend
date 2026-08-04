@@ -618,6 +618,26 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
     expect(await screen.findByText("Заявка на интро-звонок")).toBeInTheDocument()
   })
 
+  it("shows the booked slot's date and time inside the confirm/decline panel itself", async () => {
+    // Regression: the slot used to be visible only on a separate card
+    // further down the page — a mentor confirming/declining right here
+    // had no way to see which time they were actually responding to.
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+      scheduled_at: "2026-08-10T06:00:00Z",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Заявка на интро-звонок")
+    // "Время" / the slot date also appear on the general order-details
+    // card further down the page — assert at least one instance is
+    // inside the intro-call panel itself, not that it's the only one.
+    expect(screen.getAllByText("Время").length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/10 августа/).length).toBeGreaterThan(0)
+  })
+
   it("does not show the panel for a regular draft order", async () => {
     const order = makeOrder({
       order_status: "draft", payout_category: "primary_consultation", support_engagement: null,
