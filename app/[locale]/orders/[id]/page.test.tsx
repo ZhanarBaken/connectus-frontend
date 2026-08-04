@@ -631,10 +631,10 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
     await renderOrderPage("42")
 
     await screen.findByText("Заявка на интро-звонок")
-    // "Время" / the slot date also appear on the general order-details
-    // card further down the page — assert at least one instance is
-    // inside the intro-call panel itself, not that it's the only one.
-    expect(screen.getAllByText("Время").length).toBeGreaterThan(0)
+    // "Время звонка" / the slot date also appear on the general order-
+    // details card further down the page — assert at least one instance
+    // is inside the intro-call panel itself, not that it's the only one.
+    expect(screen.getAllByText("Время звонка").length).toBeGreaterThan(0)
     expect(screen.getAllByText(/10 августа/).length).toBeGreaterThan(0)
   })
 

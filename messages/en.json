@@ -643,7 +643,7 @@
       "amount": "Amount",
       "mentorPayout": "Mentor payout",
       "date": "Created",
-      "scheduledAt": "Time",
+      "scheduledAt": "Call time",
       "reschedule": "Reschedule",
       "rescheduling": "Rescheduling...",
       "rescheduleModalTitle": "Pick a new time",

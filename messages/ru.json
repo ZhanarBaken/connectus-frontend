@@ -643,7 +643,7 @@
       "amount": "Сумма",
       "mentorPayout": "Выплата ментору",
       "date": "Создан",
-      "scheduledAt": "Время",
+      "scheduledAt": "Время звонка",
       "reschedule": "Перенести",
       "rescheduling": "Переносим...",
       "rescheduleModalTitle": "Выбери новое время",
