@@ -463,8 +463,8 @@ export default function LandingSections({ categories, mentors }: Props) {
       {/* ─── Footer ────────────────────────────────────────────────── */}
       <footer className="bg-gray-950 text-gray-400 py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
-            <div className="sm:col-span-1">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap justify-between gap-10 mb-12">
+            <div className="sm:w-[45%] lg:w-auto">
               <div className="flex items-center gap-2 mb-4">
                 <Logo size={28} className="text-white" />
                 <span className="text-white font-bold text-lg">Connectus</span>
@@ -473,7 +473,7 @@ export default function LandingSections({ categories, mentors }: Props) {
                 {t("Landing.Footer.tagline")}
               </p>
             </div>
-            <div>
+            <div className="sm:w-[45%] lg:w-auto">
               <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.students")}</h4>
               <ul className="space-y-3 text-sm">
                 <li><Link href="/mentors" className="hover:text-white transition-colors">{t("Nav.findMentor")}</Link></li>
@@ -481,14 +481,14 @@ export default function LandingSections({ categories, mentors }: Props) {
                 <li><Link href="/#categories" className="hover:text-white transition-colors">{t("Nav.categories")}</Link></li>
               </ul>
             </div>
-            <div>
+            <div className="sm:w-[45%] lg:w-auto">
               <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.mentors")}</h4>
               <ul className="space-y-3 text-sm">
                 <li><Link href="/become-mentor" className="hover:text-white transition-colors">{t("Nav.becomeMentor")}</Link></li>
                 <li><Link href="/mentor/dashboard" className="hover:text-white transition-colors">{t("Landing.Footer.mentorDashboard")}</Link></li>
               </ul>
             </div>
-            <div>
+            <div className="sm:w-[45%] lg:w-auto">
               <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.support")}</h4>
               <ul className="space-y-3 text-sm">
                 <li>
@@ -524,7 +524,7 @@ export default function LandingSections({ categories, mentors }: Props) {
                 </li>
               </ul>
             </div>
-            <div>
+            <div className="sm:w-[45%] lg:w-auto">
               <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.aboutUs")}</h4>
               <ul className="space-y-3 text-sm">
                 <li>
