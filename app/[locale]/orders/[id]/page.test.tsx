@@ -30,6 +30,7 @@ import {
   confirmIntroCall,
   declineIntroCall,
   fetchStudentProfile,
+  fetchMentorClient,
 } from "@/lib/api"
 import { fetchChatMessages, connectChat, sendChatMessage } from "@/lib/chat"
 import { fetchMentorReviews, hasReviewForOrder } from "@/lib/reviews"
@@ -135,6 +136,10 @@ function setupCommonMocks() {
   )
   vi.mocked(fetchMentorReviews).mockResolvedValue([])
   vi.mocked(hasReviewForOrder).mockResolvedValue(false)
+  vi.mocked(fetchMentorClient).mockResolvedValue({
+    id: 7, full_name: "Аружан Есенова", current_school_or_university: "", city: "",
+    profile_photo: null, conversation_id: null, engagement_id: null,
+  })
   // useStudentOnboardingGate's own fetch — default to "complete" so it
   // doesn't fire an unrelated redirect in tests that don't care about it.
   vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: true } as StudentProfile)
@@ -956,6 +961,13 @@ describe("OrderPage — support tasks", () => {
     })
     vi.mocked(fetchOrder).mockResolvedValue(order)
     vi.mocked(fetchSupportTasks).mockResolvedValue([])
+    // The chat header's "add task" button is keyed off the pair's
+    // current live engagement (same source as /mentor/clients/[id]),
+    // not this order's own support_engagement — see liveEngagementId.
+    vi.mocked(fetchMentorClient).mockResolvedValue({
+      id: order.student, full_name: "Аружан Есенова", current_school_or_university: "", city: "",
+      profile_photo: null, conversation_id: 55, engagement_id: 5,
+    })
 
     await renderOrderPage("42")
 
@@ -964,6 +976,31 @@ describe("OrderPage — support tasks", () => {
     // No creation UI in the sidebar any more — only the chat's toggle button.
     expect(screen.queryByPlaceholderText("Новая задача")).not.toBeInTheDocument()
     expect(screen.getByText("Добавить задачу")).toBeInTheDocument()
+  })
+
+  it("shows 'add task' in the chat header when the pair has a live engagement, even if THIS order has none (single-source-of-truth with /mentor/clients/[id])", async () => {
+    // Regression: a cancelled/old order (e.g. a past intro call) has
+    // support_engagement=null, but the mentor-student pair may have
+    // since started a real, live engagement — the chat header action
+    // must reflect that, matching what /mentor/clients/[id] shows for
+    // the same pair, not go stale/blank because of which order page
+    // happens to be open.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: null, payout_category: "support",
+      order_status: "cancelled", conversation_id: 55,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentorClient).mockResolvedValue({
+      id: order.student, full_name: "Аружан Есенова", current_school_or_university: "", city: "",
+      profile_photo: null, conversation_id: 55, engagement_id: 9,
+    })
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Добавить задачу")).toBeInTheDocument()
   })
 
   it("shows the task's attached document as a link once created", async () => {

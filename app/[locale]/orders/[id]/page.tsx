@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, endSupportEngagement, fetchSupportTasks, updateSupportTask, deleteSupportTask, fetchEngagementSchedule, confirmIntroCall, declineIntroCall } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchMentorClient, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, endSupportEngagement, fetchSupportTasks, updateSupportTask, deleteSupportTask, fetchEngagementSchedule, confirmIntroCall, declineIntroCall } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
 import { Order, Mentor, OrderDocument, OrderDocumentComment, SupportTask, EngagementScheduleEntry } from "@/types"
@@ -93,6 +93,14 @@ export default function OrderPage({ params }: Props) {
   // How long a mentor has to confirm/decline a booked intro-call slot
   // before it auto-declines — see apps.orders.tasks.auto_decline_stale_intro_calls_task.
   const [introCallResponseDeadlineMs, setIntroCallResponseDeadlineMs] = useState<number | null>(null)
+  // The mentor-student PAIR's current live engagement — not this order's
+  // own `support_engagement` FK, which can point at an old/ended
+  // engagement (or be null for an intro call) even when the pair has
+  // since started a new one. The chat header action lives in the shared
+  // conversation, not this specific order, so it must agree with what
+  // /mentor/clients/[id] shows for the same pair — same source
+  // (fetchMentorClient) as that page uses.
+  const [liveEngagementId, setLiveEngagementId] = useState<number | null>(null)
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
   const [docsLoadError, setDocsLoadError] = useState(false)
   const [docActionError, setDocActionError] = useState("")
@@ -186,6 +194,11 @@ export default function OrderPage({ params }: Props) {
           }
         } catch {
           // ignore
+        }
+        if (r === "mentor") {
+          fetchMentorClient(found.student)
+            .then((c) => setLiveEngagementId(c.engagement_id))
+            .catch(() => {})
         }
         // Load order documents
         fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
@@ -427,7 +440,7 @@ export default function OrderPage({ params }: Props) {
   const chatHeaderAction = role === "mentor" && order ? (
     <SupportChatActions
       studentId={order.student}
-      engagementId={order.support_engagement}
+      engagementId={liveEngagementId}
       onActionPosted={() => {
         setInvoiceChatRefetchSignal((n) => n + 1)
         if (order.support_engagement !== null) {
