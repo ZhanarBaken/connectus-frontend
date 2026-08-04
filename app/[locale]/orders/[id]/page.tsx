@@ -452,7 +452,7 @@ export default function OrderPage({ params }: Props) {
 
   return (
     <div className={`bg-[#fafafa] ${isInTelegram ? "min-h-[100dvh]" : "min-h-screen"}`}>
-      <div className={`max-w-4xl mx-auto ${isInTelegram ? "px-3 py-2" : "px-4 py-8"}`}>
+      <div className={`max-w-6xl mx-auto ${isInTelegram ? "px-3 py-2" : "px-4 py-8"}`}>
         {/* TG Mini App injects its own back button via Telegram.WebApp,
             and the in-page padding is squeezed — hide our duplicate. */}
         {!isInTelegram && (
