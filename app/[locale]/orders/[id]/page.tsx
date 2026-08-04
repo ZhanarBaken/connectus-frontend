@@ -383,6 +383,16 @@ export default function OrderPage({ params }: Props) {
     order.payout_category === "consultation" ||
     order.payout_category === "primary_consultation"
   const isSupport = order.payout_category === "support"
+  // A free 15-minute intro call, not the paid support engagement itself
+  // — same three-field test as the backend's _is_intro_call_order. The
+  // service_title shown above is the mentor's SUPPORT service name (e.g.
+  // "Полное сопровождение поступления в США"), which reads as if the
+  // whole engagement were free unless this order is called out as just
+  // the intro step.
+  const isSupportIntroCall =
+    order.payout_category === "support" &&
+    order.support_engagement === null &&
+    order.installment_number === null
 
   // Student can open a dispute only during the window after completion.
   // disputeWindowMs/supportDisputeWindowMs are loaded from
@@ -445,9 +455,16 @@ export default function OrderPage({ params }: Props) {
               <h1 className="text-lg font-bold text-gray-900 mb-1">{order.service_title}</h1>
               <p className="text-sm text-gray-400 mb-4">{t("orderNumber", { id: String(order.id) })}</p>
 
-              <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border mb-4 ${STATUS_STYLE[order.order_status] || "bg-gray-50 text-gray-500 border-gray-200"}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                {STATUS_KEY[order.order_status] ? tStatus(STATUS_KEY[order.order_status]) : order.order_status}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border ${STATUS_STYLE[order.order_status] || "bg-gray-50 text-gray-500 border-gray-200"}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  {STATUS_KEY[order.order_status] ? tStatus(STATUS_KEY[order.order_status]) : order.order_status}
+                </div>
+                {isSupportIntroCall && (
+                  <div className="inline-flex items-center text-xs font-medium px-3 py-1.5 rounded-full border bg-indigo-50 text-indigo-600 border-indigo-100">
+                    {t("introCallBadge")}
+                  </div>
+                )}
               </div>
 
               {/* engagement_status is shared by every order tied to that
@@ -476,9 +493,13 @@ export default function OrderPage({ params }: Props) {
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">{t("amount")}</span>
-                  <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
+                  {isSupportIntroCall ? (
+                    <span className="text-xs font-medium text-gray-500">{t("freeAmount")}</span>
+                  ) : (
+                    <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
+                  )}
                 </div>
-                {role === "mentor" && !isFreeIntro && (
+                {role === "mentor" && !isFreeIntro && !isSupportIntroCall && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">{t("mentorPayout")}</span>
                     <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>

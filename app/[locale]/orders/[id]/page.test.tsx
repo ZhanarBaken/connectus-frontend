@@ -638,6 +638,26 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
     expect(screen.getAllByText(/10 августа/).length).toBeGreaterThan(0)
   })
 
+  it("marks a free intro-call order as free instead of showing 0 ₸ against the SUPPORT service's own title", async () => {
+    // Regression: the card's title is the mentor's paid SUPPORT service
+    // name (e.g. "Полное сопровождение поступления в США") — showing
+    // "Сумма 0 ₸" next to it with no other context reads as if the whole
+    // engagement were free, not just this one intro-call order.
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+      installment_number: null, total_price: "0.00", mentor_payout_amount: "0.00",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Заявка на интро-звонок")
+    expect(screen.getByText("Бесплатный интро-звонок")).toBeInTheDocument()
+    expect(screen.getByText("Бесплатно")).toBeInTheDocument()
+    expect(screen.queryByText("0 ₸")).not.toBeInTheDocument()
+    expect(screen.queryByText("Выплата ментору")).not.toBeInTheDocument()
+  })
+
   it("does not show the panel for a regular draft order", async () => {
     const order = makeOrder({
       order_status: "draft", payout_category: "primary_consultation", support_engagement: null,

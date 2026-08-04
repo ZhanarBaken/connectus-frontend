@@ -659,6 +659,8 @@
       "introCallRequestTitle": "Заявка на интро-звонок",
       "introCallRequestBody": "Студент забронировал слот — подтверди или отклони, чтобы студент знал, ждать ли звонка.",
       "introCallDeadlineHint": "Ответь до {date} — иначе заявка отклонится автоматически.",
+      "introCallBadge": "Бесплатный интро-звонок",
+      "freeAmount": "Бесплатно",
       "introCallConfirmCta": "Подтвердить",
       "introCallDeclineCta": "Отклонить",
       "introCallConfirmError": "Не удалось подтвердить интро-звонок",

@@ -659,6 +659,8 @@
       "introCallRequestTitle": "Интро-қоңырауға өтінім",
       "introCallRequestBody": "Студент слот брондады — растаңыз немесе қабылдамаңыз, студент қоңырауды күту керек пе білсін.",
       "introCallDeadlineHint": "{date} дейін жауап беріңіз — әйтпесе өтінім автоматты түрде қабылданбайды.",
+      "introCallBadge": "Тегін интро-қоңырау",
+      "freeAmount": "Тегін",
       "introCallConfirmCta": "Растау",
       "introCallDeclineCta": "Қабылдамау",
       "introCallConfirmError": "Интро-қоңырауды растау мүмкін болмады",
