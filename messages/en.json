@@ -148,7 +148,7 @@
       "subtitle": "Become a Connectus mentor. Share your experience and help the next generation of applicants walk the same path.",
       "feat1": "You set your own prices and schedule",
       "feat2": "Sign up in 5 minutes",
-      "feat3": "Verified within 48 hours",
+      "feat3": "Verified within 24 hours",
       "feat4": "Secure payouts through the platform",
       "cta": "Learn more",
       "note": "Free · No subscriptions",
@@ -384,7 +384,7 @@
       "s2title": "Add services",
       "s2desc": "Consultations, essay review, help with documents — choose what you offer",
       "s3title": "Get verified",
-      "s3desc": "We verify your profile within 48 hours and publish it on the platform",
+      "s3desc": "We verify your profile within 24 hours and publish it on the platform",
       "s4title": "Accept requests",
       "s4desc": "Applicants find you, pay for the service, and you get to work"
     },
@@ -454,7 +454,7 @@
     "finalCta": {
       "title1": "Ready to",
       "title2": "help?",
-      "subtitle": "Sign up in 2 minutes. Verified within 48 hours. Your first order is coming soon.",
+      "subtitle": "Sign up in 2 minutes. Verified within 24 hours. Your first order is coming soon.",
       "cta": "Become a mentor",
       "haveAccount": "Already have an account?",
       "loginLink": "Log in"
@@ -1234,7 +1234,7 @@
       "expertiseMissing": "Expertise — choose a track and upload a document",
       "footerNote": "Changes save automatically · You can come back later",
       "successTitle": "Profile submitted for review",
-      "successBody": "We'll review it within 48 hours and publish it on the platform. Track the status in your dashboard.",
+      "successBody": "We'll review it within 24 hours and publish it on the platform. Track the status in your dashboard.",
       "goToDashboard": "Go to dashboard →",
       "unknownSubmitError": "Unknown error while submitting"
     },
