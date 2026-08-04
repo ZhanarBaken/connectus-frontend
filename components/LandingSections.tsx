@@ -13,12 +13,14 @@ import TiltCard from "./TiltCard"
 import FaqList from "./FaqList"
 import LandingMentors from "./LandingMentors"
 import {
+  INSTAGRAM_URL,
   SUPPORT_EMAIL,
   SUPPORT_EMAIL_HREF,
   SUPPORT_TELEGRAM_URL,
   SUPPORT_TELEGRAM_USERNAME,
   SUPPORT_WHATSAPP_DISPLAY,
   SUPPORT_WHATSAPP_URL,
+  TIKTOK_URL,
 } from "@/lib/contacts"
 
 interface Category {
@@ -518,6 +520,28 @@ export default function LandingSections({ categories, mentors }: Props) {
                   >
                     <Icon name="send" size={16} className="text-gray-500" />
                     Telegram {SUPPORT_TELEGRAM_USERNAME}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={TIKTOK_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 hover:text-white transition-colors"
+                  >
+                    <Icon name="music_note" size={16} className="text-gray-500" />
+                    TikTok
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={INSTAGRAM_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 hover:text-white transition-colors"
+                  >
+                    <Icon name="photo_camera" size={16} className="text-gray-500" />
+                    Instagram
                   </a>
                 </li>
               </ul>
