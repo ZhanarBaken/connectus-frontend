@@ -463,7 +463,7 @@ export default function LandingSections({ categories, mentors }: Props) {
       {/* ─── Footer ────────────────────────────────────────────────── */}
       <footer className="bg-gray-950 text-gray-400 py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
             <div className="sm:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <Logo size={28} className="text-white" />
@@ -522,6 +522,11 @@ export default function LandingSections({ categories, mentors }: Props) {
                     Telegram {SUPPORT_TELEGRAM_USERNAME}
                   </a>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4 text-sm">{t("Landing.Footer.aboutUs")}</h4>
+              <ul className="space-y-3 text-sm">
                 <li>
                   <a
                     href={TIKTOK_URL}
