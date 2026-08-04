@@ -110,6 +110,9 @@ export interface PublicSettings {
   // Longer, separately configured window for support-category orders —
   // see Order.is_disputable on the backend.
   support_dispute_window_hours: number
+  // Hours a mentor has to confirm/decline a booked intro-call slot
+  // before it auto-declines — see apps.orders.tasks.auto_decline_stale_intro_calls_task.
+  support_intro_call_response_deadline_hours: number
   support_url: string
   terms_text: string
   platform_rules_text: string

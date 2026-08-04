@@ -658,6 +658,7 @@
       "historyTitle": "History with this client",
       "introCallRequestTitle": "Intro-call request",
       "introCallRequestBody": "A student booked a slot — confirm or decline so they know whether to expect the call.",
+      "introCallDeadlineHint": "Respond by {date} — otherwise the request auto-declines.",
       "introCallConfirmCta": "Confirm",
       "introCallDeclineCta": "Decline",
       "introCallConfirmError": "Failed to confirm the intro call",

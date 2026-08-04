@@ -90,6 +90,9 @@ export default function OrderPage({ params }: Props) {
   // general disputeWindowMs above so the right one can be picked per
   // order's payout_category.
   const [supportDisputeWindowMs, setSupportDisputeWindowMs] = useState<number | null>(null)
+  // How long a mentor has to confirm/decline a booked intro-call slot
+  // before it auto-declines — see apps.orders.tasks.auto_decline_stale_intro_calls_task.
+  const [introCallResponseDeadlineMs, setIntroCallResponseDeadlineMs] = useState<number | null>(null)
   const [orderDocs, setOrderDocs] = useState<OrderDocument[]>([])
   const [docsLoadError, setDocsLoadError] = useState(false)
   const [docActionError, setDocActionError] = useState("")
@@ -145,6 +148,9 @@ export default function OrderPage({ params }: Props) {
         }
         if (data?.support_dispute_window_hours != null) {
           setSupportDisputeWindowMs(data.support_dispute_window_hours * 60 * 60 * 1000)
+        }
+        if (data?.support_intro_call_response_deadline_hours != null) {
+          setIntroCallResponseDeadlineMs(data.support_intro_call_response_deadline_hours * 60 * 60 * 1000)
         }
       })
       .catch(() => {})
@@ -578,6 +584,17 @@ export default function OrderPage({ params }: Props) {
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">{t("introCallRequestTitle")}</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">{t("introCallRequestBody")}</p>
+                {introCallResponseDeadlineMs != null && (
+                  <p className="text-xs font-medium text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-4">
+                    {t("introCallDeadlineHint", {
+                      date: new Date(
+                        new Date(order.created_at).getTime() + introCallResponseDeadlineMs,
+                      ).toLocaleString(locale, {
+                        day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+                      }),
+                    })}
+                  </p>
+                )}
                 {introCallError && (
                   <p className="text-xs text-red-600 mb-3">{introCallError}</p>
                 )}

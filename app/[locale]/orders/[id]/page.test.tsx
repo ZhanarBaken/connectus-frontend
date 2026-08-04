@@ -642,6 +642,40 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
     expect(screen.queryByText("Заявка на интро-звонок")).not.toBeInTheDocument()
   })
 
+  it("shows a response-deadline hint computed from created_at + the configured window", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+      created_at: "2026-07-01T10:00:00Z",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ support_intro_call_response_deadline_hours: 24 }),
+      } as Response),
+    )
+
+    await renderOrderPage("42")
+
+    // created_at + 24h = 2026-07-02T10:00 UTC → shown in local time.
+    expect(await screen.findByText(/Ответь до/)).toBeInTheDocument()
+  })
+
+  it("does not show the deadline hint before the settings fetch resolves", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    // setupCommonMocks() default: fetch resolves { ok: false } — settings
+    // never populate, introCallResponseDeadlineMs stays null.
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Заявка на интро-звонок")
+    expect(screen.queryByText(/Ответь до/)).not.toBeInTheDocument()
+  })
+
   it("confirms the intro call", async () => {
     const order = makeOrder({
       order_status: "draft", payout_category: "support", support_engagement: null,
