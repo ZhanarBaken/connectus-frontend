@@ -656,8 +656,6 @@
       "applicantDefault": "Applicant",
       "chatOnly": "Communication is only in chat",
       "historyTitle": "History with this client",
-      "introCallRequestTitle": "Intro-call request",
-      "introCallRequestBody": "A student booked a slot — confirm or decline so they know whether to expect the call.",
       "introCallDeadlineHint": "Respond by {date} — otherwise the request auto-declines.",
       "introCallBadge": "Free intro call",
       "freeAmount": "Free",

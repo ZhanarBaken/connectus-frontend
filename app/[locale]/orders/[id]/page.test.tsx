@@ -615,7 +615,8 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
 
     await renderOrderPage("42")
 
-    expect(await screen.findByText("Заявка на интро-звонок")).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: "Подтвердить" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Отклонить" })).toBeInTheDocument()
   })
 
   it("shows the booked slot's date and time inside the confirm/decline panel itself", async () => {
@@ -630,12 +631,9 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
 
     await renderOrderPage("42")
 
-    await screen.findByText("Заявка на интро-звонок")
-    // "Время звонка" / the slot date also appear on the general order-
-    // details card further down the page — assert at least one instance
-    // is inside the intro-call panel itself, not that it's the only one.
-    expect(screen.getAllByText("Время звонка").length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/10 августа/).length).toBeGreaterThan(0)
+    await screen.findByRole("button", { name: "Подтвердить" })
+    expect(screen.getByText("Время звонка")).toBeInTheDocument()
+    expect(screen.getByText(/10 августа/)).toBeInTheDocument()
   })
 
   it("marks a free intro-call order as free instead of showing 0 ₸ against the SUPPORT service's own title", async () => {
@@ -651,7 +649,7 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
 
     await renderOrderPage("42")
 
-    await screen.findByText("Заявка на интро-звонок")
+    await screen.findByRole("button", { name: "Подтвердить" })
     expect(screen.getByText("Бесплатный интро-звонок")).toBeInTheDocument()
     expect(screen.getByText("Бесплатно")).toBeInTheDocument()
     expect(screen.queryByText("0 ₸")).not.toBeInTheDocument()
@@ -668,7 +666,7 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
     await renderOrderPage("42")
 
     await screen.findByText("Первичная консультация")
-    expect(screen.queryByText("Заявка на интро-звонок")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Подтвердить" })).not.toBeInTheDocument()
   })
 
   it("does not show the panel once support_engagement is set (a real engagement session, not an intro call)", async () => {
@@ -679,7 +677,8 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
 
     await renderOrderPage("42")
 
-    expect(screen.queryByText("Заявка на интро-звонок")).not.toBeInTheDocument()
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Подтвердить" })).not.toBeInTheDocument()
   })
 
   it("shows a response-deadline hint computed from created_at + the configured window", async () => {
@@ -712,7 +711,7 @@ describe("OrderPage — mentor: intro-call confirmation", () => {
 
     await renderOrderPage("42")
 
-    await screen.findByText("Заявка на интро-звонок")
+    await screen.findByRole("button", { name: "Подтвердить" })
     expect(screen.queryByText(/Ответь до/)).not.toBeInTheDocument()
   })
 

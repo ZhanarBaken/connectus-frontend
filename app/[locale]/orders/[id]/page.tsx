@@ -533,6 +533,45 @@ export default function OrderPage({ params }: Props) {
               {rescheduleError && !rescheduleModalOpen && (
                 <p className="text-xs text-red-600 mt-2">{rescheduleError}</p>
               )}
+
+              {/* Mentor: confirm/decline a student-booked intro-call slot,
+                  right here on the same card as the slot time above it —
+                  the booking is provisional until answered here. */}
+              {role === "mentor" && order.order_status === "draft"
+                && order.payout_category === "support" && order.support_engagement === null && (
+                <div className="pt-4 mt-4 border-t border-gray-50">
+                  {introCallResponseDeadlineMs != null && (
+                    <p className="text-xs font-medium text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-3">
+                      {t("introCallDeadlineHint", {
+                        date: new Date(
+                          new Date(order.created_at).getTime() + introCallResponseDeadlineMs,
+                        ).toLocaleString(locale, {
+                          day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+                        }),
+                      })}
+                    </p>
+                  )}
+                  {introCallError && (
+                    <p className="text-xs text-red-600 mb-3">{introCallError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleConfirmIntroCall}
+                      disabled={respondingToIntroCall}
+                      className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      {t("introCallConfirmCta")}
+                    </button>
+                    <button
+                      onClick={handleDeclineIntroCall}
+                      disabled={respondingToIntroCall}
+                      className="flex-1 border border-red-200 text-red-700 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      {t("introCallDeclineCta")}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Counterpart info — clickable for student to visit mentor profile */}
@@ -598,55 +637,6 @@ export default function OrderPage({ params }: Props) {
               </Link>
             )}
 
-            {/* Mentor: confirm/decline a student-booked intro-call slot —
-                the booking is provisional until answered here. */}
-            {role === "mentor" && order.order_status === "draft"
-              && order.payout_category === "support" && order.support_engagement === null && (
-              <div className="bg-white border border-indigo-100 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">{t("introCallRequestTitle")}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed mb-4">{t("introCallRequestBody")}</p>
-                {order.scheduled_at && (
-                  <div className="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-3 mb-3">
-                    <span className="text-xs font-medium text-indigo-500">{t("scheduledAt")}</span>
-                    <span className="text-sm font-bold text-gray-900">
-                      {new Date(order.scheduled_at).toLocaleString(locale, {
-                        day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                )}
-                {introCallResponseDeadlineMs != null && (
-                  <p className="text-xs font-medium text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mb-4">
-                    {t("introCallDeadlineHint", {
-                      date: new Date(
-                        new Date(order.created_at).getTime() + introCallResponseDeadlineMs,
-                      ).toLocaleString(locale, {
-                        day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
-                      }),
-                    })}
-                  </p>
-                )}
-                {introCallError && (
-                  <p className="text-xs text-red-600 mb-3">{introCallError}</p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleConfirmIntroCall}
-                    disabled={respondingToIntroCall}
-                    className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-                  >
-                    {t("introCallConfirmCta")}
-                  </button>
-                  <button
-                    onClick={handleDeclineIntroCall}
-                    disabled={respondingToIntroCall}
-                    className="flex-1 border border-red-200 text-red-700 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    {t("introCallDeclineCta")}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Mentor: complete any in_progress order — except support
                 installments, which complete automatically (paying the
