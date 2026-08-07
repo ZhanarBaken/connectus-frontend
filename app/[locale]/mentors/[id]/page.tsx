@@ -256,7 +256,7 @@ export default function MentorPage({ params }: Props) {
           <div className="lg:col-span-2 space-y-8">
 
             {/* Hero */}
-            <div className="flex items-start gap-6">
+            <div className="flex items-start gap-6 flex-wrap">
               <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
                 {mentor.profile_photo ? (
                   <img
@@ -270,7 +270,7 @@ export default function MentorPage({ params }: Props) {
                   </span>
                 )}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-[240px]">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
                   {/* Every mentor in the public catalog has been
@@ -348,22 +348,22 @@ export default function MentorPage({ params }: Props) {
                   </span>
                 </div>
               </div>
-            </div>
 
-            {/* Message mentor directly — no order needed */}
-            <div>
-              <button
-                type="button"
-                onClick={handleMessage}
-                disabled={startingChat}
-                className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                <Icon name="chat" size={18} className="text-indigo-600" />
-                {startingChat ? t("messageMentorSending") : t("messageMentorCta")}
-              </button>
-              {startChatError && (
-                <p className="text-xs text-red-600 mt-2">{startChatError}</p>
-              )}
+              {/* Message mentor directly — no order needed */}
+              <div className="flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={handleMessage}
+                  disabled={startingChat}
+                  className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <Icon name="chat" size={18} className="text-indigo-600" />
+                  {startingChat ? t("messageMentorSending") : t("messageMentorCta")}
+                </button>
+                {startChatError && (
+                  <p className="text-xs text-red-600 mt-2">{startChatError}</p>
+                )}
+              </div>
             </div>
 
             {/* Stats */}
