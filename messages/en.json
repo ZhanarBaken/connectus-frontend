@@ -850,7 +850,7 @@
       "orderConsultationFor": "Order the consultation for {price} ₸",
       "notAcceptingRequests": "The mentor isn't accepting requests right now",
       "supportTitle": "Ongoing support",
-      "supportSubtitle": "A long-term program — price and timeline are discussed with the mentor in chat",
+      "supportSubtitle": "A long-term program — price and timeline are discussed with the mentor",
       "introCallExplainer": "The intro call lets the mentor assess the scope of work and whether you're a good fit — before the paid engagement begins",
       "meetingsRange": "{min}–{max} sessions",
       "monthsRange": "{min}–{max} mo",

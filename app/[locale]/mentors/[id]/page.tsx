@@ -403,15 +403,12 @@ export default function MentorPage({ params }: Props) {
               <div key={consultationService.id} className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="relative">
-                  <div className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
-                    <Icon name="forum" size={14} className="text-white" />
-                    {fullPrice === 0 ? (
-                      <span>{t("free")}</span>
-                    ) : (
-                      <span>{fullPrice.toLocaleString("ru-RU")} ₸</span>
-                    )}
+                  <div className="flex justify-between items-start gap-4">
+                    <h2 className="text-2xl font-bold mb-2">{consultationService.title || t("consultationTitleDefault")}</h2>
+                    <div className="text-2xl font-bold flex-shrink-0">
+                      {fullPrice === 0 ? t("free") : `${fullPrice.toLocaleString("ru-RU")} ₸`}
+                    </div>
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">{consultationService.title || t("consultationTitleDefault")}</h2>
                   <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line break-words">
                     {consultationService.description ||
                       t("consultationDescriptionDefault")}
