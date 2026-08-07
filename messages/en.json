@@ -856,7 +856,6 @@
       "monthsRange": "{min}–{max} mo",
       "negotiablePrice": "Negotiable",
       "introCallFreeBadge": "Intro call {minutes} min free",
-      "writeToChat": "Message in chat",
       "bookSession": "Book a session",
       "introCallBooked": "Intro call booked",
       "bookIntroCall": "Book an intro call",

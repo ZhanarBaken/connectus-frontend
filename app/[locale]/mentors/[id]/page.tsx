@@ -562,15 +562,6 @@ export default function MentorPage({ params }: Props) {
                         </div>
                       </div>
                       <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={handleMessage}
-                          disabled={startingChat}
-                          className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
-                        >
-                          <Icon name="chat" size={16} />
-                          {t("writeToChat")}
-                        </button>
                         {hasActiveEngagement ? (
                           <button
                             onClick={() => {
@@ -607,9 +598,10 @@ export default function MentorPage({ params }: Props) {
                           <button
                             onClick={() => handleRequestSupport(service.id)}
                             disabled={requestingSupportId === service.id}
-                            className="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+                            className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
                           >
                             {requestingSupportId === service.id ? t("requesting") : t("requestSupport")}
+                            <Icon name="arrow_forward" size={16} />
                           </button>
                         )}
                       </div>

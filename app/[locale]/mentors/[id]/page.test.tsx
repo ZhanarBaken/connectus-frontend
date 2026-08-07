@@ -515,25 +515,18 @@ describe("MentorPage — message mentor directly", () => {
     expect(push).not.toHaveBeenCalled()
   })
 
-  it("also offers a 'Написать в чат' link on each support service card, regardless of any prior order", async () => {
-    const service = makeService()
+  it("does not show a per-card 'Написать в чат' button on a support service — the hero 'Написать' button already covers it", async () => {
+    // Regression: each support card used to duplicate its own
+    // write-to-chat link next to "Запросить сопровождение" — removed
+    // as redundant with the one hero-level "Написать" button.
+    const service = makeService({ intro_call_enabled: false })
     vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
     vi.mocked(fetchOrders).mockResolvedValue([])
-    vi.mocked(startConversation).mockResolvedValue({
-      id: 88, mentor: 3, student: 7, created_at: "2026-07-01T10:00:00Z",
-      closed_at: null, is_active: true, other_party_name: "Данияр Сериков", other_party_photo: null,
-    })
-    const push = vi.fn()
-    vi.mocked(useRouter).mockReturnValue({
-      push, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
-    })
 
     await renderMentorPage("3")
 
-    fireEvent.click(screen.getByRole("button", { name: "Написать в чат" }))
-
-    await waitFor(() => expect(startConversation).toHaveBeenCalledWith(3))
-    expect(push).toHaveBeenCalledWith("/messages/88")
+    await screen.findByRole("button", { name: /Запросить сопровождение/ })
+    expect(screen.queryByRole("button", { name: "Написать в чат" })).not.toBeInTheDocument()
   })
 })
 
