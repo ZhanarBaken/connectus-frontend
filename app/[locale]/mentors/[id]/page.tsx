@@ -520,26 +520,26 @@ export default function MentorPage({ params }: Props) {
                     <div key={service.id} className="border rounded-2xl p-5 border-gray-200 hover:border-gray-300 transition-all">
                       <div className="flex justify-between items-start gap-4 flex-wrap">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900">{service.title}</h3>
+                          <h3 className="text-2xl font-bold mb-2 text-gray-900">{service.title}</h3>
                           {service.description && (
-                            <p className="text-sm mt-1 text-gray-500 break-words">{service.description}</p>
+                            <p className="text-sm leading-relaxed mb-5 text-gray-500 break-words">{service.description}</p>
                           )}
-                          <div className="flex items-center gap-3 mt-2 flex-wrap text-xs text-gray-400">
+                          <div className="flex items-center gap-4 flex-wrap text-xs text-gray-400">
                             {service.meetings_min !== null && (
                               <span className="inline-flex items-center gap-1">
-                                <Icon name="event_repeat" size={12} />
+                                <Icon name="event_repeat" size={14} />
                                 {t("meetingsRange", { min: service.meetings_min, max: service.meetings_max ?? "" })}
                               </span>
                             )}
                             {service.duration_months_min !== null && (
                               <span className="inline-flex items-center gap-1">
-                                <Icon name="calendar_month" size={12} />
+                                <Icon name="calendar_month" size={14} />
                                 {t("monthsRange", { min: service.duration_months_min, max: service.duration_months_max ?? "" })}
                               </span>
                             )}
                             {(service.grade_min !== null || service.grade_max !== null) && (
                               <span className="inline-flex items-center gap-1">
-                                <Icon name="school" size={12} />
+                                <Icon name="school" size={14} />
                                 {t("gradeRange", { min: service.grade_min ?? "?", max: service.grade_max ?? "?" })}
                               </span>
                             )}
