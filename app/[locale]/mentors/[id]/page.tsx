@@ -270,27 +270,45 @@ export default function MentorPage({ params }: Props) {
                 )}
               </div>
               <div className="flex-1 min-w-[240px]">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
-                  {/* Every mentor in the public catalog has been
-                      admin-approved with documents on file, so the
-                      badge is shown unconditionally. */}
-                  <span
-                    className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full"
-                    title={t("verifiedTitle")}
-                  >
-                    <Icon name="verified" size={14} className="text-indigo-600" filled />
-                    {t("verified")}
-                  </span>
-                  {mentor.is_universal && (
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
+                    {/* Every mentor in the public catalog has been
+                        admin-approved with documents on file, so the
+                        badge is shown unconditionally. */}
                     <span
-                      className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2.5 py-1 rounded-full"
-                      title={t("universalTitle")}
+                      className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                      title={t("verifiedTitle")}
                     >
-                      <Icon name="auto_awesome" size={14} className="text-violet-600" filled />
-                      {t("universal")}
+                      <Icon name="verified" size={14} className="text-indigo-600" filled />
+                      {t("verified")}
                     </span>
-                  )}
+                    {mentor.is_universal && (
+                      <span
+                        className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                        title={t("universalTitle")}
+                      >
+                        <Icon name="auto_awesome" size={14} className="text-violet-600" filled />
+                        {t("universal")}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Message mentor directly — no order needed */}
+                  <div className="flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleMessage}
+                      disabled={startingChat}
+                      className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      <Icon name="chat" size={18} className="text-indigo-600" />
+                      {startingChat ? t("messageMentorSending") : t("messageMentorCta")}
+                    </button>
+                    {startChatError && (
+                      <p className="text-xs text-red-600 mt-2">{startChatError}</p>
+                    )}
+                  </div>
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
                   {mentor.school_or_university}
@@ -346,22 +364,6 @@ export default function MentorPage({ params }: Props) {
                     {mentor.is_accepting_bookings ? t("acceptingBookings") : t("busy")}
                   </span>
                 </div>
-              </div>
-
-              {/* Message mentor directly — no order needed */}
-              <div className="flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={handleMessage}
-                  disabled={startingChat}
-                  className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  <Icon name="chat" size={18} className="text-indigo-600" />
-                  {startingChat ? t("messageMentorSending") : t("messageMentorCta")}
-                </button>
-                {startChatError && (
-                  <p className="text-xs text-red-600 mt-2">{startChatError}</p>
-                )}
               </div>
             </div>
 
