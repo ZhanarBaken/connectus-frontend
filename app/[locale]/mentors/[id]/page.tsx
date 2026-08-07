@@ -314,30 +314,16 @@ export default function MentorPage({ params }: Props) {
                   {mentor.school_or_university}
                   {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
                 </p>
-                {/* Country chips */}
-                {(mentor.countries ?? []).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {mentor.countries.map((c) => (
-                      <span
-                        key={c.country}
-                        className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium"
-                      >
-                        {countryFlag(c.country)} {countryLabel(c.country, locale)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {(mentor.languages ?? []).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {mentor.languages.map((l) => (
-                      <span
-                        key={l.language}
-                        className="inline-flex items-center gap-1 text-xs bg-teal-50 text-teal-600 px-2.5 py-1 rounded-full font-medium"
-                      >
-                        {LANGUAGE_LABELS[l.language] ?? l.language}
-                      </span>
-                    ))}
-                  </div>
+                {/* Countries + languages — plain text, not colored chips,
+                    to keep the colored pills reserved for actual signals
+                    (verified, universal, expertise, accepting bookings). */}
+                {((mentor.countries ?? []).length > 0 || (mentor.languages ?? []).length > 0) && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {[
+                      ...mentor.countries.map((c) => `${countryFlag(c.country)} ${countryLabel(c.country, locale)}`),
+                      ...mentor.languages.map((l) => LANGUAGE_LABELS[l.language] ?? l.language),
+                    ].join(" · ")}
+                  </p>
                 )}
                 {mentor.grant_or_scholarship && (
                   <p className="text-sm text-gray-400 mt-2 inline-flex items-center gap-1.5">
