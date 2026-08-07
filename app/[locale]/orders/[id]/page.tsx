@@ -682,19 +682,17 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Student: in progress notice */}
-            {role !== "mentor" && order.order_status === "in_progress" && (
+            {/* Student: in progress notice — skipped for consultations,
+                where chat being always-open already makes this
+                redundant. */}
+            {role !== "mentor" && order.order_status === "in_progress" && !isAnyConsultation && (
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
                 <h3 className="font-semibold text-blue-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="hourglass_top" size={16} className="text-blue-600" />
-                  {isAnyConsultation ? t("inProgressTitleConsultation") : t("inProgressTitle")}
+                  {t("inProgressTitle")}
                 </h3>
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  {isAnyConsultation
-                    ? t("inProgressBodyConsultation")
-                    : isSupport
-                      ? t("inProgressBodySupport")
-                      : t("inProgressBody")}
+                  {isSupport ? t("inProgressBodySupport") : t("inProgressBody")}
                 </p>
               </div>
             )}
