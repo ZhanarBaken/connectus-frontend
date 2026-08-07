@@ -111,6 +111,13 @@ export default function MentorPage({ params }: Props) {
   const [requestSupportError, setRequestSupportError] = useState<{ serviceId: number; message: string } | null>(null)
   const [startingChat, setStartingChat] = useState(false)
   const [startChatError, setStartChatError] = useState("")
+  // A mentor viewing this page — their own profile via "Предпросмотр
+  // профиля", or any other mentor's — sees the exact same read-only
+  // view a student would, with every action disabled. Booking/messaging
+  // endpoints are student-only on the backend anyway (IsStudent,
+  // ConversationListCreateView's mentor branch expects a different
+  // payload shape) — this just avoids surfacing a confusing 400/403.
+  const [isMentorViewer, setIsMentorViewer] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -118,6 +125,7 @@ export default function MentorPage({ params }: Props) {
       router.replace(`/auth/login?next=/mentors/${id}`)
       return
     }
+    setIsMentorViewer(localStorage.getItem("role") === "mentor")
 
     fetchPublicSettings(locale)
       .then((s) => setIntroCallDurationMinutes(s.support_intro_call_duration_minutes))
@@ -254,6 +262,13 @@ export default function MentorPage({ params }: Props) {
 
           <div className="space-y-8">
 
+            {isMentorViewer && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-gray-500">
+                <Icon name="visibility" size={16} className="text-gray-400 flex-shrink-0" />
+                {t("mentorPreviewNotice")}
+              </div>
+            )}
+
             {/* Hero */}
             <div className="flex items-start gap-6 flex-wrap">
               <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
@@ -299,7 +314,7 @@ export default function MentorPage({ params }: Props) {
                     <button
                       type="button"
                       onClick={handleMessage}
-                      disabled={startingChat}
+                      disabled={startingChat || isMentorViewer}
                       className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
                     >
                       <Icon name="chat" size={18} className="text-indigo-600" />
@@ -416,59 +431,79 @@ export default function MentorPage({ params }: Props) {
                     )}
                   </div>
 
-                  {isThisOrder && consultationStatus === "in_progress" ? (
-                    <div className="flex items-center gap-3">
-                      <Link
-                        href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
-                        className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
+                  <div className={isMentorViewer ? "opacity-60" : ""}>
+                    {isThisOrder && consultationStatus === "in_progress" ? (
+                      <div className="flex items-center gap-3">
+                        {isMentorViewer ? (
+                          <span className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm inline-flex items-center gap-2 cursor-default">
+                            {t("openChat")}
+                            <Icon name="arrow_forward" size={16} />
+                          </span>
+                        ) : (
+                          <Link
+                            href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                            className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
+                          >
+                            {t("openChat")}
+                            <Icon name="arrow_forward" size={16} />
+                          </Link>
+                        )}
+                        <span className="text-xs text-indigo-200">{t("consultationActive")}</span>
+                      </div>
+                    ) : isThisOrder && consultationStatus === "pending_payment" ? (
+                      isMentorViewer ? (
+                        <span className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm inline-flex items-center gap-2 cursor-default">
+                          {t("goToPayment")}
+                          <Icon name="arrow_forward" size={16} />
+                        </span>
+                      ) : (
+                        <Link
+                          href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                          className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
+                        >
+                          {t("goToPayment")}
+                          <Icon name="arrow_forward" size={16} />
+                        </Link>
+                      )
+                    ) : blockedByOtherConsultation ? (
+                      isMentorViewer ? (
+                        <span className="text-xs text-indigo-200 cursor-default">{t("alreadyActiveConsultation")}</span>
+                      ) : (
+                        <Link
+                          href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                          className="text-xs text-indigo-200 underline hover:text-white transition-colors"
+                        >
+                          {t("alreadyActiveConsultation")}
+                        </Link>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => {
+                          track("book_consultation_clicked", {
+                            mentor_profile_id: mentor.id,
+                            mentor_service_id: consultationService.id,
+                          })
+                          // Paid consultation goes through the same slot
+                          // picker as any other paid service. The order
+                          // POST without scheduled_at is rejected by the
+                          // backend whenever the mentor has availability
+                          // configured ("A time slot is required …").
+                          setBookingService(consultationService)
+                        }}
+                        disabled={orderingServiceId === consultationService.id || !mentor.is_accepting_bookings || isMentorViewer}
+                        className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {t("openChat")}
-                        <Icon name="arrow_forward" size={16} />
-                      </Link>
-                      <span className="text-xs text-indigo-200">{t("consultationActive")}</span>
-                    </div>
-                  ) : isThisOrder && consultationStatus === "pending_payment" ? (
-                    <Link
-                      href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
-                      className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
-                    >
-                      {t("goToPayment")}
-                      <Icon name="arrow_forward" size={16} />
-                    </Link>
-                  ) : blockedByOtherConsultation ? (
-                    <Link
-                      href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
-                      className="text-xs text-indigo-200 underline hover:text-white transition-colors"
-                    >
-                      {t("alreadyActiveConsultation")}
-                    </Link>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        track("book_consultation_clicked", {
-                          mentor_profile_id: mentor.id,
-                          mentor_service_id: consultationService.id,
-                        })
-                        // Paid consultation goes through the same slot
-                        // picker as any other paid service. The order
-                        // POST without scheduled_at is rejected by the
-                        // backend whenever the mentor has availability
-                        // configured ("A time slot is required …").
-                        setBookingService(consultationService)
-                      }}
-                      disabled={orderingServiceId === consultationService.id || !mentor.is_accepting_bookings}
-                      className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {orderingServiceId === consultationService.id
-                        ? t("ordering")
-                        : fullPrice === 0
-                        ? t("orderFree")
-                        : t("orderConsultationFor", { price: fullPrice.toLocaleString("ru-RU") })}
-                    </button>
-                  )}
-                  {!mentor.is_accepting_bookings && consultationStatus === "none" && (
-                    <p className="text-xs text-indigo-200 mt-2">{t("notAcceptingRequests")}</p>
-                  )}
+                        {orderingServiceId === consultationService.id
+                          ? t("ordering")
+                          : fullPrice === 0
+                          ? t("orderFree")
+                          : t("orderConsultationFor", { price: fullPrice.toLocaleString("ru-RU") })}
+                      </button>
+                    )}
+                    {!mentor.is_accepting_bookings && consultationStatus === "none" && (
+                      <p className="text-xs text-indigo-200 mt-2">{t("notAcceptingRequests")}</p>
+                    )}
+                  </div>
                 </div>
               </div>
               )
@@ -543,14 +578,15 @@ export default function MentorPage({ params }: Props) {
                           </span>
                         )}
                       </div>
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                      <div className={`mt-3 pt-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2 ${isMentorViewer ? "opacity-60" : ""}`}>
                         {hasActiveEngagement ? (
                           <button
                             onClick={() => {
                               setBookingIsIntroCall(false)
                               setBookingService(service)
                             }}
-                            className="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors"
+                            disabled={isMentorViewer}
+                            className="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors disabled:cursor-not-allowed"
                           >
                             {t("bookSession")}
                           </button>
@@ -566,7 +602,8 @@ export default function MentorPage({ params }: Props) {
                                 setBookingIsIntroCall(true)
                                 setBookingService(service)
                               }}
-                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-colors"
+                              disabled={isMentorViewer}
+                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-colors disabled:cursor-not-allowed"
                             >
                               {t("bookIntroCall")}
                             </button>
@@ -579,7 +616,7 @@ export default function MentorPage({ params }: Props) {
                         ) : (
                           <button
                             onClick={() => handleRequestSupport(service.id)}
-                            disabled={requestingSupportId === service.id}
+                            disabled={requestingSupportId === service.id || isMentorViewer}
                             className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
                           >
                             {requestingSupportId === service.id ? t("requesting") : t("requestSupport")}
@@ -639,7 +676,7 @@ export default function MentorPage({ params }: Props) {
                             ) : (
                               <button
                                 onClick={() => setBookingService(service)}
-                                disabled={orderingServiceId === service.id}
+                                disabled={orderingServiceId === service.id || isMentorViewer}
                                 className="mt-1 text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
                               >
                                 {orderingServiceId === service.id ? t("ordering") : t("signUp")}

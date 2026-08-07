@@ -201,6 +201,43 @@ describe("MentorPage — basic rendering", () => {
   })
 })
 
+describe("MentorPage — viewed by a mentor (preview mode)", () => {
+  it("disables the message button and the support request button, and shows the preview notice", async () => {
+    // A mentor previewing their own profile, or browsing another
+    // mentor's — both hit student-only backend endpoints (IsStudent,
+    // ConversationListCreateView's mentor branch expects {student: id}
+    // not {mentor: id}), so every action must be inert rather than
+    // surface a confusing 400/403.
+    localStorage.setItem("role", "mentor")
+    const service = makeService({ intro_call_enabled: false })
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
+    vi.mocked(fetchOrders).mockResolvedValue([])
+
+    await renderMentorPage("3")
+
+    expect(await screen.findByText(/предпросмотра/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /написать/i })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /запросить сопровождение/i })).toBeDisabled()
+
+    // Belt and suspenders: even a forced click must not reach the API.
+    fireEvent.click(screen.getByRole("button", { name: /запросить сопровождение/i }))
+    expect(requestSupport).not.toHaveBeenCalled()
+  })
+
+  it("does not show the preview notice for a student viewer", async () => {
+    localStorage.setItem("role", "student")
+    vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: true } as StudentProfile)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(fetchOrders).mockResolvedValue([])
+
+    await renderMentorPage("3")
+
+    await screen.findByRole("heading", { name: "Данияр Сериков" })
+    expect(screen.queryByText(/предпросмотра/i)).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /написать/i })).toBeEnabled()
+  })
+})
+
 // ─── Regression #3: intro-call badge must not misfire for a session order
 // under a (possibly paused) support engagement ───────────────────────────
 

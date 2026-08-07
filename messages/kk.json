@@ -841,6 +841,7 @@
       "messageMentorCta": "Жазу",
       "messageMentorSending": "Чат ашылуда...",
       "messageMentorError": "Чатты ашу мүмкін болмады",
+      "mentorPreviewNotice": "Алдын ала қарау режимі — сен бұл бетті студент көретіндей көріп тұрсың. Беттегі батырмалар белсенді емес.",
       "openChat": "Чатты ашу",
       "consultationActive": "Кеңес белсенді",
       "goToPayment": "Төлемге өту",

@@ -841,6 +841,7 @@
       "messageMentorCta": "Message",
       "messageMentorSending": "Opening chat...",
       "messageMentorError": "Couldn't open the chat",
+      "mentorPreviewNotice": "Preview mode — you're seeing this page the way a student would. Buttons on this page are disabled.",
       "openChat": "Open chat",
       "consultationActive": "Consultation active",
       "goToPayment": "Go to payment",

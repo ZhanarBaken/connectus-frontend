@@ -841,6 +841,7 @@
       "messageMentorCta": "Написать",
       "messageMentorSending": "Открываем чат...",
       "messageMentorError": "Не удалось открыть чат",
+      "mentorPreviewNotice": "Режим предпросмотра — вы видите страницу так же, как студент. Кнопки на этой странице неактивны.",
       "openChat": "Открыть чат",
       "consultationActive": "Консультация активна",
       "goToPayment": "Перейти к оплате",
