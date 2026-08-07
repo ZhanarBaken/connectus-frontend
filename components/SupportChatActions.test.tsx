@@ -208,7 +208,7 @@ describe("SupportChatActions — task attachment", () => {
 describe("SupportChatActions — invoice (regression, unrelated to attachments)", () => {
   it("still sends an invoice normally", async () => {
     vi.mocked(fetchMentorServices).mockResolvedValue([{
-      id: 10, title: "Сопровождение", description: "", price: "500000", currency: "KZT",
+      id: 10, title: "Сопровождение", description: "", price: "500000", client_price: "625000", currency: "KZT",
       duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
       meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
       is_price_negotiable: false, intro_call_enabled: true, is_active: true,
@@ -236,7 +236,7 @@ describe("SupportChatActions — invoice (regression, unrelated to attachments)"
 
   it("closes the invoice form when the task form is opened, and vice versa", async () => {
     vi.mocked(fetchMentorServices).mockResolvedValue([{
-      id: 10, title: "Сопровождение", description: "", price: "500000", currency: "KZT",
+      id: 10, title: "Сопровождение", description: "", price: "500000", client_price: "625000", currency: "KZT",
       duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
       meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
       is_price_negotiable: false, intro_call_enabled: true, is_active: true,
@@ -258,7 +258,7 @@ describe("SupportChatActions — invoice (regression, unrelated to attachments)"
 
   it("shows the translated error message when createSupportInvoice fails", async () => {
     vi.mocked(fetchMentorServices).mockResolvedValue([{
-      id: 10, title: "Сопровождение", description: "", price: "500000", currency: "KZT",
+      id: 10, title: "Сопровождение", description: "", price: "500000", client_price: "625000", currency: "KZT",
       duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
       meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
       is_price_negotiable: false, intro_call_enabled: true, is_active: true,
@@ -282,7 +282,7 @@ describe("SupportChatActions — invoice (regression, unrelated to attachments)"
 
   it("shows the client charge and mentor payout after a successful invoice send", async () => {
     vi.mocked(fetchMentorServices).mockResolvedValue([{
-      id: 10, title: "Сопровождение", description: "", price: "500000", currency: "KZT",
+      id: 10, title: "Сопровождение", description: "", price: "500000", client_price: "625000", currency: "KZT",
       duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
       meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
       is_price_negotiable: false, intro_call_enabled: true, is_active: true,

@@ -145,7 +145,7 @@ describe("MentorProfilePage — loading and prefill", () => {
     )
     vi.mocked(fetchMentorServices).mockResolvedValue([
       {
-        id: 1, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+        id: 1, title: "Первичная консультация", description: "", price: "5000.00", client_price: "6250.00", currency: "KZT",
         duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
         meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
         is_price_negotiable: false, intro_call_enabled: false, is_active: true,
@@ -190,7 +190,7 @@ describe("MentorProfilePage — loading and prefill", () => {
     )
     vi.mocked(fetchMentorServices).mockResolvedValue([
       {
-        id: 1, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+        id: 1, title: "Первичная консультация", description: "", price: "5000.00", client_price: "6250.00", currency: "KZT",
         duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
         meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
         is_price_negotiable: false, intro_call_enabled: false, is_active: true,

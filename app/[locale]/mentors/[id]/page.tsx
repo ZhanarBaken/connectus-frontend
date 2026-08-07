@@ -394,7 +394,7 @@ export default function MentorPage({ params }: Props) {
                 each gets its own card, but only one active order across
                 ALL of them is allowed at a time. */}
             {consultationServices.map((consultationService) => {
-              const fullPrice = Number(consultationService.price ?? 0)
+              const fullPrice = Number(consultationService.client_price ?? 0)
               // Does the mentor-wide active order belong to THIS card, or
               // to a different consultation service of the same mentor?
               const isThisOrder = consultationOrder?.mentor_service === consultationService.id
@@ -555,9 +555,9 @@ export default function MentorPage({ params }: Props) {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <div className="text-lg font-bold text-gray-900">
-                            {service.is_price_negotiable || service.price === null
+                            {service.is_price_negotiable || service.client_price === null
                               ? t("negotiablePrice")
-                              : `${Number(service.price).toLocaleString("ru-RU")} ₸`}
+                              : `${Number(service.client_price).toLocaleString("ru-RU")} ₸`}
                           </div>
                           {service.intro_call_enabled && (
                             <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
@@ -660,7 +660,7 @@ export default function MentorPage({ params }: Props) {
                           </div>
                           <div className="text-right flex-shrink-0">
                             <div className="text-2xl font-bold text-gray-900">
-                              {Number(service.price).toLocaleString("ru-RU")} ₸
+                              {Number(service.client_price).toLocaleString("ru-RU")} ₸
                             </div>
                             {isOrdered ? (
                               <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
@@ -799,7 +799,7 @@ export default function MentorPage({ params }: Props) {
                     ? t("modalFreeDuration", { minutes: String(introCallDurationMinutes) })
                     : bookingService.payout_category === "support"
                       ? t("modalIncludedInSupport", { minutes: String(bookingService.duration_minutes) })
-                      : t("modalPriceDuration", { minutes: String(bookingService.duration_minutes), price: Number(bookingService.price).toLocaleString("ru-RU") })}
+                      : t("modalPriceDuration", { minutes: String(bookingService.duration_minutes), price: Number(bookingService.client_price).toLocaleString("ru-RU") })}
                 </p>
               </div>
               <BookingCalendar

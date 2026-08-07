@@ -283,7 +283,7 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.createMentorService).mockResolvedValue({
-      id: 20, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+      id: 20, title: "Первичная консультация", description: "", price: "5000.00", client_price: "6250.00", currency: "KZT",
       duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
       meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
       is_price_negotiable: false, intro_call_enabled: false, is_active: true,
@@ -316,7 +316,7 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.createMentorService).mockResolvedValue({
-      id: 20, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+      id: 20, title: "Первичная консультация", description: "", price: "5000.00", client_price: "6250.00", currency: "KZT",
       duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
       meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
       is_price_negotiable: false, intro_call_enabled: false, is_active: true,
@@ -357,7 +357,7 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
       {
-        id: 30, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+        id: 30, title: "Первичная консультация", description: "", price: "5000.00", client_price: "6250.00", currency: "KZT",
         duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
         meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
         is_price_negotiable: false, intro_call_enabled: false, is_active: true,
@@ -385,7 +385,7 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.createMentorService).mockResolvedValue({
-      id: 21, title: "Поступление в 3 вуза", description: "", price: "500000.00", currency: "KZT",
+      id: 21, title: "Поступление в 3 вуза", description: "", price: "500000.00", client_price: "625000.00", currency: "KZT",
       duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
       meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
       is_price_negotiable: false, intro_call_enabled: true, is_active: true,
@@ -424,7 +424,7 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.createMentorService).mockResolvedValue({
-      id: 22, title: "Поступление в 3 вуза", description: "", price: "0.00", currency: "KZT",
+      id: 22, title: "Поступление в 3 вуза", description: "", price: "0.00", client_price: "0.00", currency: "KZT",
       duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
       meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
       is_price_negotiable: true, intro_call_enabled: true, is_active: true,
@@ -461,7 +461,7 @@ describe("MentorOnboarding", () => {
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser())
     vi.mocked(api.fetchMentorProfile).mockResolvedValue(makeProfile())
     vi.mocked(api.createMentorService).mockResolvedValue({
-      id: 23, title: "Первичная консультация", description: "", price: "5000.00", currency: "KZT",
+      id: 23, title: "Первичная консультация", description: "", price: "5000.00", client_price: "6250.00", currency: "KZT",
       duration_minutes: 30, payout_category: "paid_consultation", grade_min: null, grade_max: null,
       meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null,
       is_price_negotiable: false, intro_call_enabled: false, is_active: true,
@@ -597,7 +597,7 @@ describe("MentorOnboarding", () => {
       ]),
     )
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
-      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", client_price: "12500.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
     // Client-side tabDone already considers the schedule complete (a
     // window was saved above), so this simulates a race where the
@@ -663,7 +663,7 @@ describe("MentorOnboarding", () => {
       ]),
     )
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
-      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", client_price: "12500.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
     vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
       timezone: "Asia/Almaty",
@@ -706,7 +706,7 @@ describe("MentorOnboarding", () => {
       ]),
     )
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
-      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", client_price: "12500.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
     vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
       timezone: "Asia/Almaty",
@@ -763,7 +763,7 @@ describe("MentorOnboarding", () => {
       ]),
     )
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
-      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", client_price: "12500.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
     vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
       timezone: "Asia/Almaty",
@@ -816,7 +816,7 @@ describe("MentorOnboarding", () => {
       ]),
     )
     vi.mocked(api.fetchMentorServices).mockResolvedValue([
-      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
+      { id: 10, title: "Первичная консультация", description: "", price: "10000.00", client_price: "12500.00", currency: "KZT", duration_minutes: 60, payout_category: "paid_consultation", grade_min: null, grade_max: null, meetings_min: null, meetings_max: null, duration_months_min: null, duration_months_max: null, is_price_negotiable: false, intro_call_enabled: false, is_active: true },
     ])
     vi.mocked(api.fetchMyMentorSchedule).mockResolvedValue({
       timezone: "Asia/Almaty",

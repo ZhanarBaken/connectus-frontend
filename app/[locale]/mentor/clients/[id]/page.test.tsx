@@ -110,6 +110,7 @@ function makeService(overrides: Partial<MentorService> = {}): MentorService {
     title: "Сопровождение — поступление в 3 вуза",
     description: "",
     price: "500000",
+    client_price: "500000",
     currency: "KZT",
     duration_minutes: 60,
     payout_category: "support",

@@ -38,9 +38,15 @@ export interface MentorService {
   id: number
   title: string
   description: string
-  // null when is_price_negotiable is true — backend masks the stored value,
-  // students only ever see "Договорная".
+  // The mentor's own price, unmodified — only for mentor-facing pages
+  // (their own dashboard, /mentors/services). null when
+  // is_price_negotiable is true.
   price: string | null
+  // Commission-inclusive total a STUDENT actually pays — use this on
+  // every student-facing surface (public profile, booking modal)
+  // instead of `price`, so the advertised price matches checkout.
+  // Same null-when-negotiable rule as `price`.
+  client_price: string | null
   currency: string
   duration_minutes: number
   payout_category: PayoutCategory

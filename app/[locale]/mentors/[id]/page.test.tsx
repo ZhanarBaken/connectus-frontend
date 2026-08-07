@@ -52,6 +52,7 @@ function makeService(overrides: Partial<MentorService> = {}): MentorService {
     title: "Сопровождение — поступление в вуз",
     description: "",
     price: "500000",
+    client_price: "500000",
     currency: "KZT",
     duration_minutes: 60,
     payout_category: "support",
@@ -182,6 +183,21 @@ describe("MentorPage — basic rendering", () => {
 
     expect(await screen.findByRole("heading", { name: "Данияр Сериков" })).toBeInTheDocument()
     expect(screen.getByText("MIT", { exact: false })).toBeInTheDocument()
+  })
+
+  it("shows the commission-inclusive client_price on a SUPPORT card, not the mentor's raw price", async () => {
+    // Regression: the card used to render `service.price` (what the
+    // mentor set) instead of `service.client_price` (what the student
+    // actually pays with the platform commission on top) — a student
+    // saw one number and got charged more at checkout.
+    const service = makeService({ price: "200000", client_price: "250000" })
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
+    vi.mocked(fetchOrders).mockResolvedValue([])
+
+    await renderMentorPage("3")
+
+    expect(await screen.findByText("250 000 ₸")).toBeInTheDocument()
+    expect(screen.queryByText("200 000 ₸")).not.toBeInTheDocument()
   })
 })
 
@@ -395,6 +411,7 @@ describe("MentorPage — consultation ordering", () => {
       title: "Первичная консультация",
       payout_category: "paid_consultation",
       price: "5000",
+      client_price: "5000",
     })
     vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [consultation] }))
     vi.mocked(fetchOrders).mockResolvedValue([])
