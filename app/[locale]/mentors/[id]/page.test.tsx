@@ -13,13 +13,11 @@ import {
   fetchStudentProfile,
 } from "@/lib/api"
 import { fetchMentorReviews } from "@/lib/reviews"
-import { startConversation } from "@/lib/chat"
 import type { Mentor, MentorService, Order, StudentProfile } from "@/types"
 import type { PublicSettings } from "@/lib/api"
 
 vi.mock("@/lib/api")
 vi.mock("@/lib/reviews")
-vi.mock("@/lib/chat")
 
 function makeMentor(overrides: Partial<Mentor> = {}): Mentor {
   return {
@@ -202,12 +200,11 @@ describe("MentorPage — basic rendering", () => {
 })
 
 describe("MentorPage — viewed by a mentor (preview mode)", () => {
-  it("disables the message button and the support request button, and shows the preview notice", async () => {
+  it("disables the support request button and shows the preview notice", async () => {
     // A mentor previewing their own profile, or browsing another
-    // mentor's — both hit student-only backend endpoints (IsStudent,
-    // ConversationListCreateView's mentor branch expects {student: id}
-    // not {mentor: id}), so every action must be inert rather than
-    // surface a confusing 400/403.
+    // mentor's — order/support creation is a student-only endpoint
+    // (IsStudent permission), so every action must be inert rather
+    // than surface a confusing 403.
     localStorage.setItem("role", "mentor")
     const service = makeService({ intro_call_enabled: false })
     vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
@@ -216,7 +213,6 @@ describe("MentorPage — viewed by a mentor (preview mode)", () => {
     await renderMentorPage("3")
 
     expect(await screen.findByText(/предпросмотра/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /написать/i })).toBeDisabled()
     expect(screen.getByRole("button", { name: /запросить сопровождение/i })).toBeDisabled()
 
     // Belt and suspenders: even a forced click must not reach the API.
@@ -227,14 +223,15 @@ describe("MentorPage — viewed by a mentor (preview mode)", () => {
   it("does not show the preview notice for a student viewer", async () => {
     localStorage.setItem("role", "student")
     vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: true } as StudentProfile)
-    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    const service = makeService({ intro_call_enabled: false })
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
     vi.mocked(fetchOrders).mockResolvedValue([])
 
     await renderMentorPage("3")
 
     await screen.findByRole("heading", { name: "Данияр Сериков" })
     expect(screen.queryByText(/предпросмотра/i)).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /написать/i })).toBeEnabled()
+    expect(screen.getByRole("button", { name: /запросить сопровождение/i })).toBeEnabled()
   })
 })
 
@@ -510,60 +507,6 @@ describe("MentorPage — reviews", () => {
     await renderMentorPage("3")
 
     expect(await screen.findByText("“Отличный ментор!”")).toBeInTheDocument()
-  })
-})
-
-describe("MentorPage — message mentor directly", () => {
-  it("starts a conversation and navigates to it when the hero 'Написать' button is clicked", async () => {
-    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
-    vi.mocked(fetchOrders).mockResolvedValue([])
-    vi.mocked(startConversation).mockResolvedValue({
-      id: 88, mentor: 3, student: 7, created_at: "2026-07-01T10:00:00Z",
-      closed_at: null, is_active: true, other_party_name: "Данияр Сериков", other_party_photo: null,
-    })
-    const push = vi.fn()
-    vi.mocked(useRouter).mockReturnValue({
-      push, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
-    })
-
-    await renderMentorPage("3")
-
-    fireEvent.click(screen.getByRole("button", { name: "Написать" }))
-
-    await waitFor(() => expect(startConversation).toHaveBeenCalledWith(3))
-    expect(push).toHaveBeenCalledWith("/messages/88")
-  })
-
-  it("shows an error and does not navigate when starting the conversation fails", async () => {
-    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
-    vi.mocked(fetchOrders).mockResolvedValue([])
-    vi.mocked(startConversation).mockRejectedValue(new Error("Something went wrong"))
-    const push = vi.fn()
-    vi.mocked(useRouter).mockReturnValue({
-      push, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
-    })
-
-    await renderMentorPage("3")
-
-    fireEvent.click(screen.getByRole("button", { name: "Написать" }))
-
-    await waitFor(() => expect(startConversation).toHaveBeenCalled())
-    expect(await screen.findByText("Something went wrong")).toBeInTheDocument()
-    expect(push).not.toHaveBeenCalled()
-  })
-
-  it("does not show a per-card 'Написать в чат' button on a support service — the hero 'Написать' button already covers it", async () => {
-    // Regression: each support card used to duplicate its own
-    // write-to-chat link next to "Запросить сопровождение" — removed
-    // as redundant with the one hero-level "Написать" button.
-    const service = makeService({ intro_call_enabled: false })
-    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
-    vi.mocked(fetchOrders).mockResolvedValue([])
-
-    await renderMentorPage("3")
-
-    await screen.findByRole("button", { name: /Запросить сопровождение/ })
-    expect(screen.queryByRole("button", { name: "Написать в чат" })).not.toBeInTheDocument()
   })
 })
 

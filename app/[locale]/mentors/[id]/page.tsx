@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
 import { fetchMentor, createOrder, requestSupport, fetchOrders, fetchPublicSettings } from "@/lib/api"
-import { startConversation } from "@/lib/chat"
 import { track } from "@/lib/analytics"
 import { fetchMentorReviews, type Review } from "@/lib/reviews"
 import { countryFlag, countryLabel } from "@/lib/countries"
@@ -109,14 +108,11 @@ export default function MentorPage({ params }: Props) {
   const [requestingSupportId, setRequestingSupportId] = useState<number | null>(null)
   const [supportRequestSentIds, setSupportRequestSentIds] = useState<Set<number>>(new Set())
   const [requestSupportError, setRequestSupportError] = useState<{ serviceId: number; message: string } | null>(null)
-  const [startingChat, setStartingChat] = useState(false)
-  const [startChatError, setStartChatError] = useState("")
   // A mentor viewing this page — their own profile via "Предпросмотр
   // профиля", or any other mentor's — sees the exact same read-only
-  // view a student would, with every action disabled. Booking/messaging
-  // endpoints are student-only on the backend anyway (IsStudent,
-  // ConversationListCreateView's mentor branch expects a different
-  // payload shape) — this just avoids surfacing a confusing 400/403.
+  // view a student would, with every action disabled. The order/support
+  // endpoints are student-only on the backend (IsStudent permission) —
+  // this just avoids surfacing a confusing 403.
   const [isMentorViewer, setIsMentorViewer] = useState(false)
 
   useEffect(() => {
@@ -173,19 +169,6 @@ export default function MentorPage({ params }: Props) {
       })
     } finally {
       setRequestingSupportId(null)
-    }
-  }
-
-  const handleMessage = async () => {
-    if (!mentor) return
-    setStartingChat(true)
-    setStartChatError("")
-    try {
-      const conversation = await startConversation(mentor.id)
-      router.push(`/messages/${conversation.id}`)
-    } catch (err: unknown) {
-      setStartChatError(err instanceof Error ? translateOrderErrorMessage(err.message, t) : t("messageMentorError"))
-      setStartingChat(false)
     }
   }
 
@@ -285,45 +268,27 @@ export default function MentorPage({ params }: Props) {
                 )}
               </div>
               <div className="flex-1 min-w-[240px]">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
-                    {/* Every mentor in the public catalog has been
-                        admin-approved with documents on file, so the
-                        badge is shown unconditionally. */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
+                  {/* Every mentor in the public catalog has been
+                      admin-approved with documents on file, so the
+                      badge is shown unconditionally. */}
+                  <span
+                    className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                    title={t("verifiedTitle")}
+                  >
+                    <Icon name="verified" size={14} className="text-indigo-600" filled />
+                    {t("verified")}
+                  </span>
+                  {mentor.is_universal && (
                     <span
-                      className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full"
-                      title={t("verifiedTitle")}
+                      className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                      title={t("universalTitle")}
                     >
-                      <Icon name="verified" size={14} className="text-indigo-600" filled />
-                      {t("verified")}
+                      <Icon name="auto_awesome" size={14} className="text-violet-600" filled />
+                      {t("universal")}
                     </span>
-                    {mentor.is_universal && (
-                      <span
-                        className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2.5 py-1 rounded-full"
-                        title={t("universalTitle")}
-                      >
-                        <Icon name="auto_awesome" size={14} className="text-violet-600" filled />
-                        {t("universal")}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Message mentor directly — no order needed */}
-                  <div className="flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={handleMessage}
-                      disabled={startingChat || isMentorViewer}
-                      className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    >
-                      <Icon name="chat" size={18} className="text-indigo-600" />
-                      {startingChat ? t("messageMentorSending") : t("messageMentorCta")}
-                    </button>
-                    {startChatError && (
-                      <p className="text-xs text-red-600 mt-2">{startChatError}</p>
-                    )}
-                  </div>
+                  )}
                 </div>
                 <p className="text-gray-500 mt-1 text-lg">
                   {mentor.school_or_university}
