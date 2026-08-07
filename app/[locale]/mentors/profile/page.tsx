@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { useRouter } from "@/i18n/navigation"
+import { Link, useRouter } from "@/i18n/navigation"
 import { fetchMentorProfile, fetchMentorServices, fetchMe, authFetch } from "@/lib/api"
 import { POPULAR_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 import { LANGUAGE_LABELS } from "@/lib/languages"
@@ -80,6 +80,7 @@ export default function MentorProfilePage() {
   const [pickedFile, setPickedFile] = useState<File | null>(null)
   const [isBanned, setIsBanned] = useState(false)
   const [banReason, setBanReason] = useState("")
+  const [profileId, setProfileId] = useState<number | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   // Extra data the real submission gate cares about but that doesn't
@@ -93,6 +94,7 @@ export default function MentorProfilePage() {
   useEffect(() => {
     fetchMentorProfile()
       .then((p: MentorProfile) => {
+        setProfileId(p.id)
         setFullName(p.full_name ?? "")
         setCountries(p.countries.map((c) => c.country))
         setSchool(p.school_or_university ?? "")
@@ -251,15 +253,26 @@ export default function MentorProfilePage() {
       <MentorStatusBanner />
       <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
           <div>
             <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium mb-2 transition-colors group [-webkit-tap-highlight-color:transparent]" />
 
             <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-indigo-600">{completionPercent}%</div>
-            <div className="text-xs text-gray-400">{t("filledLabel")}</div>
+          <div className="flex items-center gap-4">
+            {profileId !== null && (
+              <Link
+                href={`/mentors/${profileId}`}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 border border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 rounded-xl px-3 py-2 transition-colors"
+              >
+                <Icon name="visibility" size={16} />
+                {t("previewProfile")}
+              </Link>
+            )}
+            <div className="text-right">
+              <div className="text-2xl font-bold text-indigo-600">{completionPercent}%</div>
+              <div className="text-xs text-gray-400">{t("filledLabel")}</div>
+            </div>
           </div>
         </div>
 

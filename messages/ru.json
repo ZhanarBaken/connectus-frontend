@@ -939,6 +939,7 @@
       "errDuplicateCountries": "Одна и та же страна выбрана дважды.",
       "errDuplicateLanguages": "Один и тот же язык выбран дважды.",
       "pageTitle": "Редактировать профиль",
+      "previewProfile": "Предпросмотр профиля",
       "filledLabel": "заполнено",
       "bannedTitle": "Аккаунт заблокирован",
       "bannedBody": "Редактирование профиля недоступно.",

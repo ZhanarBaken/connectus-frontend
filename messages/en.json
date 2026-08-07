@@ -939,6 +939,7 @@
       "errDuplicateCountries": "The same country is selected twice.",
       "errDuplicateLanguages": "The same language is selected twice.",
       "pageTitle": "Edit profile",
+      "previewProfile": "Preview profile",
       "filledLabel": "complete",
       "bannedTitle": "Account suspended",
       "bannedBody": "Editing the profile is unavailable.",
