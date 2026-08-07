@@ -838,7 +838,6 @@
       "consultationDescriptionDefault": "Жағдайыңды жеке талдау, бағдарламаларды таңдау және келесі қадамдардың жоспары.",
       "durationMinutes": "{minutes} мин",
       "gradeRange": "{min}–{max} сынып",
-      "chatAfterPayment": "Төлемнен кейін чат",
       "messageMentorCta": "Жазу",
       "messageMentorSending": "Чат ашылуда...",
       "messageMentorError": "Чатты ашу мүмкін болмады",

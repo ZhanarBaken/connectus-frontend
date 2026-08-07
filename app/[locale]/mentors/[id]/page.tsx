@@ -430,11 +430,6 @@ export default function MentorPage({ params }: Props) {
                         </span>
                       </>
                     )}
-                    <span>·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Icon name="chat" size={14} />
-                      {t("chatAfterPayment")}
-                    </span>
                   </div>
 
                   {isThisOrder && consultationStatus === "in_progress" ? (

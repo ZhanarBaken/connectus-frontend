@@ -838,7 +838,6 @@
       "consultationDescriptionDefault": "A personalized review of your situation, choosing programs, and a step-by-step plan for what's next.",
       "durationMinutes": "{minutes} min",
       "gradeRange": "grades {min}–{max}",
-      "chatAfterPayment": "Chat after payment",
       "messageMentorCta": "Message",
       "messageMentorSending": "Opening chat...",
       "messageMentorError": "Couldn't open the chat",

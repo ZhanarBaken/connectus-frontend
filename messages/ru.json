@@ -838,7 +838,6 @@
       "consultationDescriptionDefault": "Индивидуальный разбор твоей ситуации, выбор программ и пошаговый план дальнейшей работы.",
       "durationMinutes": "{minutes} мин",
       "gradeRange": "{min}–{max} класс",
-      "chatAfterPayment": "Чат после оплаты",
       "messageMentorCta": "Написать",
       "messageMentorSending": "Открываем чат...",
       "messageMentorError": "Не удалось открыть чат",
