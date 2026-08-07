@@ -442,6 +442,23 @@ describe("MentorDashboard", () => {
       expect(screen.getByText("5 000 ₸")).toBeInTheDocument()
     })
 
+    it("shows 'Договорная' instead of 0 ₸ for a negotiable-price service", async () => {
+      // Regression: price is null when is_price_negotiable is true
+      // (backend masks the stored value) — Number(null) is 0, which
+      // used to render as a literal "0 ₸".
+      vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+      vi.mocked(fetchMentorServices).mockResolvedValue([
+        makeService({ price: null, is_price_negotiable: true }),
+      ])
+      vi.mocked(fetchOrders).mockResolvedValue([])
+
+      render(<MentorDashboard />)
+
+      expect(await screen.findByText("Первичная консультация")).toBeInTheDocument()
+      expect(screen.getByText("Договорная")).toBeInTheDocument()
+      expect(screen.queryByText("0 ₸")).not.toBeInTheDocument()
+    })
+
     it("computes total earned only from completed orders", async () => {
       vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
       vi.mocked(fetchMentorServices).mockResolvedValue([])

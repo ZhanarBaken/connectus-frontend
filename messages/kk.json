@@ -506,6 +506,7 @@
       "noReviewsBody": "Талапкерлер тапсырыстарды аяқтағаннан кейін пікірлер пайда болады",
       "andMoreReviews": "тағы {count} {count, plural, one {пікір} other {пікір}}",
       "myServices": "Менің қызметтерім",
+      "negotiablePrice": "Келісім бойынша",
       "manage": "Басқару",
       "noServices": "Қызметтер қосылмаған",
       "addService": "+ Қызмет қосу",

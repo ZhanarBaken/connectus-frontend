@@ -506,6 +506,7 @@
       "noReviewsBody": "Отзывы появятся после того как абитуриенты завершат заказы",
       "andMoreReviews": "и ещё {count} {count, plural, one {отзыв} few {отзыва} other {отзывов}}",
       "myServices": "Мои услуги",
+      "negotiablePrice": "Договорная",
       "manage": "Управлять",
       "noServices": "Услуги не добавлены",
       "addService": "+ Добавить услугу",

@@ -506,6 +506,7 @@
       "noReviewsBody": "Reviews will show up once applicants complete their orders",
       "andMoreReviews": "and {count} more {count, plural, one {review} other {reviews}}",
       "myServices": "My services",
+      "negotiablePrice": "Negotiable",
       "manage": "Manage",
       "noServices": "No services added",
       "addService": "+ Add a service",
