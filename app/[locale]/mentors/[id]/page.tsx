@@ -250,7 +250,7 @@ export default function MentorPage({ params }: Props) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
-        <div>
+        <div className="max-w-3xl mx-auto">
 
           <div className="space-y-8">
 
