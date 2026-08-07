@@ -250,10 +250,9 @@ export default function MentorPage({ params }: Props) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
-        <div className="lg:grid lg:grid-cols-3 lg:gap-10">
+        <div>
 
-          {/* ── Left column ─────────────────────────────────────── */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="space-y-8">
 
             {/* Hero */}
             <div className="flex items-start gap-6 flex-wrap">
@@ -722,44 +721,6 @@ export default function MentorPage({ params }: Props) {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* ── Right column — trust card ─────────────────────── */}
-          <div className="hidden lg:block">
-            <div className="sticky top-24">
-              <div className="border border-gray-200 rounded-2xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-4 text-sm">{t("howItWorksTitle")}</h3>
-                <div className="space-y-4 text-sm">
-                  <div className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">1</span>
-                    <p className="text-gray-600 leading-relaxed">{t("step1")}</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">2</span>
-                    <p className="text-gray-600 leading-relaxed">{t("step2")}</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">3</span>
-                    <p className="text-gray-600 leading-relaxed">{t("step3")}</p>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-gray-50 space-y-2 text-xs text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Icon name="check" size={14} className="text-indigo-600" />
-                    <span>{t("transparentPrices")}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Icon name="check" size={14} className="text-indigo-600" />
-                    <span>{t("chatOnly")}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Icon name="check" size={14} className="text-indigo-600" />
-                    <span>{t("documentsVerified")}</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
