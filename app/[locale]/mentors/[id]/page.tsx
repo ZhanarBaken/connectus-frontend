@@ -546,7 +546,7 @@ export default function MentorPage({ params }: Props) {
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <div className="text-lg font-bold text-gray-900">
+                          <div className="text-2xl font-bold text-gray-900">
                             {service.is_price_negotiable || service.client_price === null
                               ? t("negotiablePrice")
                               : `${Number(service.client_price).toLocaleString("ru-RU")} ₸`}
