@@ -56,7 +56,7 @@ describe("LandingMentors", () => {
     expect(screen.getByText("Mentor 3")).toBeInTheDocument()
   })
 
-  it("shows 'Принимает записи' for mentors accepting bookings and 'Занят' otherwise", () => {
+  it("shows 'Принимает записи' for mentors accepting bookings and 'Не принимает записи' otherwise", () => {
     render(
       <LandingMentors
         mentors={[
@@ -66,7 +66,7 @@ describe("LandingMentors", () => {
       />,
     )
     expect(screen.getByText("Принимает записи")).toBeInTheDocument()
-    expect(screen.getByText("Занят")).toBeInTheDocument()
+    expect(screen.getByText("Не принимает записи")).toBeInTheDocument()
   })
 
   it("shows the mentor's initial when there is no profile photo", () => {

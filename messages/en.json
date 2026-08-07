@@ -213,7 +213,7 @@
       "verifiedTitle": "The platform verified this mentor's documents",
       "helpsAdmission": "helps you get in",
       "acceptingBookings": "Accepting bookings",
-      "busy": "Busy",
+      "busy": "Not accepting bookings",
       "viewAllBottom": "View all mentors"
     }
   },
@@ -829,7 +829,7 @@
       "universalTitle": "This mentor helps with several tracks at once",
       "universal": "Universal",
       "acceptingBookings": "Accepting bookings",
-      "busy": "Busy",
+      "busy": "Not accepting bookings",
       "gpaLabel": "GPA",
       "examsLabel": "Exams",
       "aboutMentor": "About the mentor",
@@ -897,7 +897,7 @@
       "helpsAdmission": "helps you get in",
       "reviewCount": "{count} {count, plural, one {review} other {reviews}}",
       "noReviews": "No reviews",
-      "busy": "Busy"
+      "busy": "Not accepting bookings"
     },
     "Documents": {
       "dropHint": "Drag a file here or click to choose one",

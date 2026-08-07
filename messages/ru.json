@@ -213,7 +213,7 @@
       "verifiedTitle": "Платформа подтвердила документы ментора",
       "helpsAdmission": "помогает поступить",
       "acceptingBookings": "Принимает записи",
-      "busy": "Занят",
+      "busy": "Не принимает записи",
       "viewAllBottom": "Смотреть всех менторов"
     }
   },
@@ -829,7 +829,7 @@
       "universalTitle": "Ментор помогает сразу по нескольким направлениям",
       "universal": "Универсальный",
       "acceptingBookings": "Принимает записи",
-      "busy": "Занят",
+      "busy": "Не принимает записи",
       "gpaLabel": "GPA",
       "examsLabel": "Экзамены",
       "aboutMentor": "О менторе",
@@ -897,7 +897,7 @@
       "helpsAdmission": "помогает поступить",
       "reviewCount": "{count} {count, plural, one {отзыв} few {отзыва} other {отзывов}}",
       "noReviews": "Без отзывов",
-      "busy": "Занят"
+      "busy": "Не принимает записи"
     },
     "Documents": {
       "dropHint": "Перетащите файл сюда или нажмите для выбора",
