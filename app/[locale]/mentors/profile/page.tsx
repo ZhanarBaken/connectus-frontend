@@ -46,6 +46,7 @@ export default function MentorProfilePage() {
     "Не более 10 языков.": t("errTooManyLanguages"),
     "Дубликаты стран в запросе.": t("errDuplicateCountries"),
     "Дубликаты языков в запросе.": t("errDuplicateLanguages"),
+    "Enter a valid URL.": t("errLinkedinInvalid"),
   }
   const { fieldErrors, submitPatch } = usePatchWithFieldErrors(PATCH_ERROR_MESSAGES, t("fixRedFields"))
 
@@ -482,10 +483,15 @@ export default function MentorProfilePage() {
                   />
                 </Field>
               </div>
-              <Field label={t("linkedinLabel")} hint={t("linkedinHint")}>
-                <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)}
-                  placeholder={t("linkedinPlaceholder")} className={inputClass} />
-              </Field>
+              <div data-field="linkedin_url">
+                <Field label={t("linkedinLabel")} hint={t("linkedinHint")} error={fieldErrors.linkedin_url}>
+                  <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)}
+                    placeholder={t("linkedinPlaceholder")}
+                    className={fieldErrors.linkedin_url
+                      ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`
+                      : inputClass} />
+                </Field>
+              </div>
             </div>
           </div>
 

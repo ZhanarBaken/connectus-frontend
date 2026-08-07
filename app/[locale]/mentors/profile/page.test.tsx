@@ -337,6 +337,30 @@ describe("MentorProfilePage — editing", () => {
       screen.queryByText("Похоже на ерунду — введи номер цифрами, можно с +, пробелами и скобками."),
     ).not.toBeInTheDocument()
   })
+
+  it("highlights the LinkedIn field on an invalid-URL error, translated", async () => {
+    // Regression: the LinkedIn <Field>/<input> weren't wired to
+    // fieldErrors at all — a 400 on linkedin_url set the generic
+    // "fix the fields marked in red" banner but never actually
+    // highlighted (or showed a message under) the LinkedIn field.
+    vi.mocked(authFetch).mockImplementation(async (_url, init) => {
+      if (init?.method === "PATCH") {
+        return jsonResponse({ linkedin_url: ["Enter a valid URL."] }, false)
+      }
+      return jsonResponse([])
+    })
+
+    render(<MentorProfilePage />)
+
+    await screen.findByDisplayValue("Данияр Сериков")
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить профиль" }))
+
+    expect(
+      await screen.findByText("Введи корректную ссылку, например https://linkedin.com/in/имя."),
+    ).toBeInTheDocument()
+    expect(screen.getByText("Исправь поля, отмеченные красным")).toBeInTheDocument()
+    expect(screen.queryByText("Enter a valid URL.")).not.toBeInTheDocument()
+  })
 })
 
 describe("MentorProfilePage — banned mentor", () => {

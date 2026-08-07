@@ -939,6 +939,7 @@
       "saveErrorGeneric": "Error saving",
       "fixRedFields": "Fix the fields marked in red",
       "errPhoneInvalid": "Enter a phone number using digits — + , spaces and parentheses are fine.",
+      "errLinkedinInvalid": "Enter a valid link, e.g. https://linkedin.com/in/yourname.",
       "errPhoneNoDigits": "The number must contain digits.",
       "errCannotBeCleared": "This field can't be cleared — you can only change it.",
       "errListCannotBeEmptied": "You can't remove all of these — keep at least one.",

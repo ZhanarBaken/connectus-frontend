@@ -939,6 +939,7 @@
       "saveErrorGeneric": "Ошибка при сохранении",
       "fixRedFields": "Исправь поля, отмеченные красным",
       "errPhoneInvalid": "Введи номер телефона цифрами — можно с +, пробелами и скобками.",
+      "errLinkedinInvalid": "Введи корректную ссылку, например https://linkedin.com/in/имя.",
       "errPhoneNoDigits": "В номере должны быть цифры.",
       "errCannotBeCleared": "Это поле нельзя очистить — можно только изменить.",
       "errListCannotBeEmptied": "Нельзя убрать всё — оставь хотя бы одну запись.",
