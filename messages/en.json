@@ -706,6 +706,7 @@
       "invoiceServicePlaceholder": "Choose a support program",
       "invoicePricePlaceholder": "Price, ₸",
       "invoiceMonthsPlaceholder": "Duration, months",
+      "invoiceClientChargePreview": "The client will pay {amount} ₸ in month 1 (includes the platform fee)",
       "sending": "Sending...",
       "send": "Send",
       "cancel": "Cancel",

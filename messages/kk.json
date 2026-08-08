@@ -706,6 +706,7 @@
       "invoiceServicePlaceholder": "Қолдау бағдарламасын таңда",
       "invoicePricePlaceholder": "Баға, ₸",
       "invoiceMonthsPlaceholder": "Мерзім, ай",
+      "invoiceClientChargePreview": "Клиент бірінші ай үшін {amount} ₸ төлейді (платформа комиссиясымен)",
       "sending": "Жіберілуде...",
       "send": "Жіберу",
       "cancel": "Бас тарту",

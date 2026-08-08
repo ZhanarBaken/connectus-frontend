@@ -424,6 +424,30 @@ export async function createSupportInvoice(
   return res.json()
 }
 
+// No-side-effects preview of what the student will actually be charged
+// (mentor's asking total_price + the front-loaded platform commission) —
+// same calculation createSupportInvoice's backend counterpart uses, so
+// this can never drift from what actually gets charged. Returns null on
+// any error (invalid/incomplete input mid-typing) — caller just hides
+// the preview rather than showing an error for a still-being-typed value.
+export async function previewSupportInvoice(
+  totalPrice: string,
+  durationMonths: number,
+): Promise<{ clientCharge: string; mentorPayout: string } | null> {
+  const qs = new URLSearchParams({
+    total_price: totalPrice,
+    duration_months: String(durationMonths),
+  })
+  try {
+    const res = await authFetch(`${BASE_URL}/orders/support-invoice/preview/?${qs}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return { clientCharge: data.client_charge, mentorPayout: data.mentor_payout }
+  } catch {
+    return null
+  }
+}
+
 // Mentor ends their OWN engagement with one specific student — every
 // other student's engagement under the same service is untouched
 // (unlike deactivating the whole service).
