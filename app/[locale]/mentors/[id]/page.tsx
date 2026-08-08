@@ -567,9 +567,10 @@ export default function MentorPage({ params }: Props) {
                                 setBookingService(service)
                               }}
                               disabled={isMentorViewer}
-                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-colors disabled:cursor-not-allowed"
+                              className="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-emerald-100 transition-colors inline-flex items-center gap-2 disabled:cursor-not-allowed"
                             >
                               {t("bookIntroCall")}
+                              <Icon name="arrow_forward" size={16} />
                             </button>
                           )
                         ) : supportRequestSentIds.has(service.id) ? (
