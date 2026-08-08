@@ -201,7 +201,6 @@ export default function MentorPage({ params }: Props) {
       s.payout_category !== "support"
   )
   const supportServices = mentor.services.filter((s) => s.payout_category === "support")
-  const anySupportHasIntroCall = supportServices.some((s) => s.intro_call_enabled)
 
   // Only one active consultation (of any of the mentor's consultation
   // services) per mentor-student pair — a mentor-wide invariant, not a
@@ -478,14 +477,9 @@ export default function MentorPage({ params }: Props) {
             {supportServices.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">{t("supportTitle")}</h2>
-                <p className={`text-sm text-gray-500 ${anySupportHasIntroCall ? "mb-1" : "mb-4"}`}>
+                <p className="text-sm text-gray-500 mb-4">
                   {t("supportSubtitle")}
                 </p>
-                {anySupportHasIntroCall && (
-                  <p className="text-xs text-gray-400 mb-4">
-                    {t("introCallExplainer")}
-                  </p>
-                )}
                 <div className="space-y-3">
                   {supportServices.map((service) => {
                     const hasActiveEngagement = orders.some(
@@ -514,9 +508,14 @@ export default function MentorPage({ params }: Props) {
                               : `${Number(service.client_price).toLocaleString("ru-RU")} ₸`}
                           </div>
                           {service.intro_call_enabled && (
-                            <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
-                              {t("introCallFreeBadge", { minutes: String(introCallDurationMinutes) })}
-                            </span>
+                            <>
+                              <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
+                                {t("introCallFreeBadge", { minutes: String(introCallDurationMinutes) })}
+                              </span>
+                              <p className="text-xs text-gray-400 mt-2 text-left max-w-[180px]">
+                                {t("introCallExplainer")}
+                              </p>
+                            </>
                           )}
                         </div>
                       </div>
