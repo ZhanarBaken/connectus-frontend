@@ -218,13 +218,45 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
                       className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
                     />
                   </div>
-                  {invoicePreview && (
-                    <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-                      {t("invoiceClientChargePreview", {
-                        amount: Number(invoicePreview.clientCharge).toLocaleString("ru-RU"),
-                      })}
-                    </p>
-                  )}
+                  {invoicePreview && (() => {
+                    const months = Number(invoiceMonths)
+                    // The platform commission is only ever collected once,
+                    // front-loaded into month 1 (Order.compute_support_
+                    // installment_financials) — derived here from month-1's
+                    // own numbers, not a re-guessed rate, so this can't
+                    // drift from what the backend actually charges.
+                    const commission = Number(invoicePreview.clientCharge) - Number(invoicePreview.mentorPayout)
+                    const totalAcrossEngagement = Number(invoicePrice) + commission
+                    // Months 2+ are just that month's share of total_price
+                    // (no commission) — plain division, not business logic,
+                    // safe to compute here. Off by at most 1 ₸ for a few
+                    // early months where the remainder tenge land; shown as
+                    // "~" for that reason.
+                    const otherMonthTypical = months > 1 ? Math.floor(Number(invoicePrice) / months) : null
+                    return (
+                      <div className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 space-y-1">
+                        <p>
+                          {t("invoiceClientChargePreview", {
+                            amount: Number(invoicePreview.clientCharge).toLocaleString("ru-RU"),
+                          })}
+                        </p>
+                        {otherMonthTypical !== null && (
+                          <p>
+                            {t("invoiceOtherMonthsPreview", {
+                              amount: otherMonthTypical.toLocaleString("ru-RU"),
+                              months: months - 1,
+                            })}
+                          </p>
+                        )}
+                        <p>
+                          {t("invoiceTotalPreview", {
+                            amount: totalAcrossEngagement.toLocaleString("ru-RU"),
+                            months,
+                          })}
+                        </p>
+                      </div>
+                    )
+                  })()}
                   {invoiceError && (
                     <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
                   )}

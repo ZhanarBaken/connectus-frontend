@@ -707,6 +707,8 @@
       "invoicePricePlaceholder": "Цена, ₸",
       "invoiceMonthsPlaceholder": "Срок, мес",
       "invoiceClientChargePreview": "Клиент заплатит {amount} ₸ в первый месяц (с комиссией платформы)",
+      "invoiceOtherMonthsPreview": "~{amount} ₸/мес — остальные {months} мес.",
+      "invoiceTotalPreview": "Всего за {months} мес.: {amount} ₸",
       "sending": "Отправляем...",
       "send": "Отправить",
       "cancel": "Отмена",

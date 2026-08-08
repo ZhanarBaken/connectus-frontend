@@ -707,6 +707,8 @@
       "invoicePricePlaceholder": "Баға, ₸",
       "invoiceMonthsPlaceholder": "Мерзім, ай",
       "invoiceClientChargePreview": "Клиент бірінші ай үшін {amount} ₸ төлейді (платформа комиссиясымен)",
+      "invoiceOtherMonthsPreview": "~{amount} ₸/ай — қалған {months} ай",
+      "invoiceTotalPreview": "Барлығы {months} ай үшін: {amount} ₸",
       "sending": "Жіберілуде...",
       "send": "Жіберу",
       "cancel": "Бас тарту",
