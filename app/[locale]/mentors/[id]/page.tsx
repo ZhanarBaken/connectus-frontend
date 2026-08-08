@@ -500,7 +500,7 @@ export default function MentorPage({ params }: Props) {
                     return (
                     <div key={service.id} className="border rounded-2xl p-5 border-gray-200 hover:border-gray-300 transition-all">
                       <div className="flex justify-between items-start gap-4">
-                        <h3 className="text-2xl font-bold mb-2 text-gray-900 flex-1 min-w-0">{service.title}</h3>
+                        <h3 className="text-2xl font-bold mb-2 text-gray-900 flex-1 min-w-0 break-words">{service.title}</h3>
                         <div className="text-right flex-shrink-0">
                           <div className="text-2xl font-bold text-gray-900">
                             {service.is_price_negotiable || service.client_price === null
