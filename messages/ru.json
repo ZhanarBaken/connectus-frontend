@@ -706,7 +706,7 @@
       "invoiceServicePlaceholder": "Выбери программу сопровождения",
       "invoicePricePlaceholder": "Цена, ₸",
       "invoiceMonthsPlaceholder": "Срок, мес",
-      "invoiceClientChargePreview": "Клиент заплатит {amount} ₸ в первый месяц (с комиссией платформы)",
+      "invoiceClientChargePreview": "Клиент заплатит {amount} ₸ в первый месяц",
       "invoiceOtherMonthsPreview": "~{amount} ₸/мес — остальные {months} мес.",
       "invoiceTotalPreview": "Всего за {months} мес.: {amount} ₸",
       "sending": "Отправляем...",

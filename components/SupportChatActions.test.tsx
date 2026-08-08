@@ -334,7 +334,7 @@ describe("SupportChatActions — invoice (regression, unrelated to attachments)"
       expect(previewSupportInvoice).toHaveBeenCalledWith("600000", 6),
     )
     expect(await screen.findByText(
-      "Клиент заплатит 156 250 ₸ в первый месяц (с комиссией платформы)",
+      "Клиент заплатит 156 250 ₸ в первый месяц",
     )).toBeInTheDocument()
     // Months 2-6: just that month's share of the 600 000 ₸ the mentor
     // asked for, no commission — 600000 / 6 = 100000.
@@ -368,7 +368,7 @@ describe("SupportChatActions — invoice (regression, unrelated to attachments)"
     fireEvent.change(screen.getByPlaceholderText("Срок, мес"), { target: { value: "1" } })
 
     expect(await screen.findByText(
-      "Клиент заплатит 125 000 ₸ в первый месяц (с комиссией платформы)",
+      "Клиент заплатит 125 000 ₸ в первый месяц",
     )).toBeInTheDocument()
     expect(screen.queryByText(/остальные/)).not.toBeInTheDocument()
     expect(screen.getByText("Всего за 1 мес.: 125 000 ₸")).toBeInTheDocument()
