@@ -508,17 +508,17 @@ export default function MentorPage({ params }: Props) {
                               : `${Number(service.client_price).toLocaleString("ru-RU")} ₸`}
                           </div>
                           {service.intro_call_enabled && (
-                            <>
-                              <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
-                                {t("introCallFreeBadge", { minutes: String(introCallDurationMinutes) })}
-                              </span>
-                              <p className="text-xs text-gray-400 mt-2 text-left max-w-[180px]">
-                                {t("introCallExplainer")}
-                              </p>
-                            </>
+                            <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
+                              {t("introCallFreeBadge", { minutes: String(introCallDurationMinutes) })}
+                            </span>
                           )}
                         </div>
                       </div>
+                      {service.intro_call_enabled && (
+                        <p className="text-xs text-gray-400 mb-2">
+                          {t("introCallExplainer")}
+                        </p>
+                      )}
                       {service.description && (
                         <p className="text-sm leading-relaxed mb-5 text-gray-500 break-words">{service.description}</p>
                       )}
