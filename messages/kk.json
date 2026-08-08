@@ -507,6 +507,7 @@
       "andMoreReviews": "тағы {count} {count, plural, one {пікір} other {пікір}}",
       "myServices": "Менің қызметтерім",
       "negotiablePrice": "Келісім бойынша",
+      "clientPaysLabel": "Клиент {price} ₸ төлейді",
       "manage": "Басқару",
       "noServices": "Қызметтер қосылмаған",
       "addService": "+ Қызмет қосу",
@@ -1095,7 +1096,8 @@
       "gradeRange": "{min}–{max} сынып",
       "edit": "Өзгерту",
       "deleteAria": "Жою",
-      "negotiablePrice": "Келісім бойынша"
+      "negotiablePrice": "Келісім бойынша",
+      "clientPaysLabel": "Клиент {price} ₸ төлейді"
     }
   },
   "BookingCalendar": {

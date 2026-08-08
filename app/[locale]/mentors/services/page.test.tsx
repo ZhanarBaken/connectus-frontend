@@ -150,6 +150,39 @@ describe("MentorServicesPage — listing", () => {
 
     expect(await screen.findByText("Не удалось загрузить услуги")).toBeInTheDocument()
   })
+
+  it("shows what the client pays (with commission) alongside the mentor's own price", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([
+      makeService({ price: "15000", client_price: "18750" }),
+    ])
+
+    render(<MentorServicesPage />)
+
+    expect(await screen.findByText("15 000 ₸", { exact: false })).toBeInTheDocument()
+    expect(screen.getByText("Клиент платит 18 750 ₸")).toBeInTheDocument()
+  })
+
+  it("does not show a second price when the mentor's price already equals what the client pays", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([
+      makeService({ price: "15000", client_price: "15000" }),
+    ])
+
+    render(<MentorServicesPage />)
+
+    await screen.findByText("15 000 ₸", { exact: false })
+    expect(screen.queryByText(/Клиент платит/)).not.toBeInTheDocument()
+  })
+
+  it("does not show a second price for a negotiable service", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([
+      makeService({ is_price_negotiable: true, price: null, client_price: null }),
+    ])
+
+    render(<MentorServicesPage />)
+
+    await screen.findByText("Договорная")
+    expect(screen.queryByText(/Клиент платит/)).not.toBeInTheDocument()
+  })
 })
 
 describe("MentorServicesPage — create a consultation", () => {

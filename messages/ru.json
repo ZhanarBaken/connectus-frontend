@@ -507,6 +507,7 @@
       "andMoreReviews": "и ещё {count} {count, plural, one {отзыв} few {отзыва} other {отзывов}}",
       "myServices": "Мои услуги",
       "negotiablePrice": "Договорная",
+      "clientPaysLabel": "Клиент платит {price} ₸",
       "manage": "Управлять",
       "noServices": "Услуги не добавлены",
       "addService": "+ Добавить услугу",
@@ -1095,7 +1096,8 @@
       "gradeRange": "{min}–{max} класс",
       "edit": "Изменить",
       "deleteAria": "Удалить",
-      "negotiablePrice": "Договорная"
+      "negotiablePrice": "Договорная",
+      "clientPaysLabel": "Клиент платит {price} ₸"
     }
   },
   "BookingCalendar": {

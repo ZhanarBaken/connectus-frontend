@@ -834,6 +834,13 @@ function ServiceCard({
             <span className="text-xs text-gray-300">·</span>
             <span className="text-sm font-bold text-gray-900">{formatPrice(service)}</span>
           </div>
+          {!service.is_price_negotiable &&
+            service.client_price !== null &&
+            service.client_price !== service.price && (
+              <p className="text-xs text-gray-400 mt-1">
+                {t("clientPaysLabel", { price: Number(service.client_price).toLocaleString("ru-RU") })}
+              </p>
+            )}
         </div>
         {!isBanned && (
           <div className="flex items-center gap-1 flex-shrink-0">
