@@ -97,8 +97,17 @@ export const DAY_LABELS_FULL = [
   "Воскресенье",
 ]
 
+// Every caller builds `date` with the local-timezone constructor
+// (`new Date(year, month, day)`), meaning it represents local midnight.
+// Routing that through `toISOString()` first converts to UTC, which
+// rolls the calendar date back by one for any timezone ahead of UTC —
+// including Kazakhstan (UTC+5/+6), this platform's target market.
+// Read the local Y/M/D components directly instead.
 export function formatDateISO(date: Date): string {
-  return date.toISOString().split("T")[0]
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 export function getNextDays(count: number, startFrom?: Date): Date[] {
@@ -145,4 +154,35 @@ export function getMonthGrid(year: number, month: number): Date[] {
 export function isoWeekday(date: Date): number {
   const jsDay = date.getDay()
   return jsDay === 0 ? 6 : jsDay - 1
+}
+
+// Browsers' Intl.DateTimeFormat doesn't reliably format Kazakh month/
+// weekday names — instead of "тамыз" it can fall back to a raw token
+// like "M08". Kazakh months also don't decline by grammatical case the
+// way Russian's do, so a flat translated array is a safe stand-in —
+// used only for 'kk', where Intl is unreliable. ru/en keep going
+// through Intl unchanged, since it already handles them correctly
+// (including Russian's day+month genitive declension, which a static
+// array can't replicate without separately tracking both cases).
+export function formatMonthYearLabel(
+  year: number, month: number, locale: string, monthsLong: string[],
+): string {
+  if (locale === 'kk') return `${monthsLong[month]} ${year}`
+  return new Date(year, month, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+}
+
+export function formatFullDateLabel(
+  date: Date, locale: string, weekdaysLong: string[], monthsLong: string[],
+): string {
+  if (locale === 'kk') {
+    return `${weekdaysLong[isoWeekday(date)]}, ${date.getDate()} ${monthsLong[date.getMonth()]}`
+  }
+  return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+export function formatShortDateLabel(
+  date: Date, locale: string, monthsShort: string[],
+): string {
+  if (locale === 'kk') return `${date.getDate()} ${monthsShort[date.getMonth()]} ${date.getFullYear()}`
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
 }

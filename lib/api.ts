@@ -2,7 +2,8 @@
 // Switch USE_MOCKS to false when backend is ready
 
 import { MOCK_MENTORS, getMockMentor, getMockServices, MOCK_ORDERS, MOCK_STUDENT_PROFILE } from "./mocks"
-import { Dispute, Mentor, MentorCard, MentorProfile, Order, StudentProfile } from "@/types"
+import { AdminConversation, AdminDispute, AdminMentorProfile, Dispute, Mentor, MentorCard, MentorProfile, Order, OrderStatus, PayoutCategory, SiteSettings, StudentProfile } from "@/types"
+import { localeFromPathname, withLocalePrefix } from "./i18n/pathname"
 
 const USE_MOCKS = false
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -24,7 +25,7 @@ export class CooldownError extends Error {
 // Render N seconds as a Russian-friendly duration:
 // 47    → "47 секунд"
 // 90    → "1 минуту 30 секунд"
-// 2574  → "43 минуты"
+// 2574  → "42 минуты"
 // 7200  → "2 часа"
 export function formatCooldown(totalSeconds: number): string {
   const s = Math.max(0, Math.round(totalSeconds))
@@ -106,14 +107,25 @@ async function readCooldown(res: Response, fallbackMessage: string): Promise<Coo
 
 export interface PublicSettings {
   dispute_window_hours: number
+  // Longer, separately configured window for support-category orders —
+  // see Order.is_disputable on the backend.
+  support_dispute_window_hours: number
+  // Hours a mentor has to confirm/decline a booked intro-call slot
+  // before it auto-declines — see apps.orders.tasks.auto_decline_stale_intro_calls_task.
+  support_intro_call_response_deadline_hours: number
+  support_url: string
   terms_text: string
   platform_rules_text: string
   data_consent_text: string
   privacy_policy_text: string
+  support_intro_call_duration_minutes: number
 }
 
-export async function fetchPublicSettings(): Promise<PublicSettings> {
-  const res = await fetch(`${BASE_URL}/settings/public/`)
+export async function fetchPublicSettings(locale?: string): Promise<PublicSettings> {
+  const url = locale
+    ? `${BASE_URL}/settings/public/?locale=${locale}`
+    : `${BASE_URL}/settings/public/`
+  const res = await fetch(url)
   if (!res.ok) throw new Error("Failed to fetch public settings")
   return res.json()
 }
@@ -138,7 +150,6 @@ export async function fetchMentor(id: number): Promise<Mentor> {
       gpa: "",
       exam_results: "",
       linkedin_url: "",
-      consultation: null,
       is_public: true,
       services,
     }
@@ -238,19 +249,20 @@ export async function deleteMentorService(id: number): Promise<void> {
   const res = await authFetch(`${BASE_URL}/mentors/services/${id}/`, {
     method: "DELETE",
   })
-  if (!res.ok) throw new Error("Failed to delete service")
-}
-
-// ─── Primary consultation (the auto-created "первичная" service) ─────────────
-// Has its own endpoint because the regular /services/ ViewSet excludes
-// consultation categories — backend invariants forbid creating a second
-// consultation or deleting the one auto-created on registration. Mentor
-// can only edit price / duration / description / title.
-
-export async function fetchPrimaryConsultation(): Promise<import("@/types").MentorService> {
-  const res = await authFetch(`${BASE_URL}/mentors/me/consultation/`)
-  if (!res.ok) throw new Error("Failed to fetch primary consultation")
-  return res.json()
+  if (!res.ok) {
+    // Backend returns a plain-string 400 (e.g. "last active service" guard),
+    // not always a field-keyed error object like create/update.
+    const text = await res.text()
+    let message = text || "Failed to delete service"
+    try {
+      const err = JSON.parse(text)
+      const first = Array.isArray(err) ? err[0] : Object.values(err)[0]
+      message = Array.isArray(first) ? first[0] : String(first ?? message)
+    } catch {
+      // Not JSON — keep the raw text as the message.
+    }
+    throw new Error(message)
+  }
 }
 
 export interface MentorEarnings {
@@ -268,32 +280,81 @@ export interface MentorEarnings {
 
 export async function fetchMentorEarnings(): Promise<MentorEarnings> {
   const res = await authFetch(`${BASE_URL}/mentors/me/earnings/`)
-  if (!res.ok) throw new Error("Не удалось загрузить финансы")
+  // Empty message on purpose — this endpoint never returns a body worth
+  // forwarding on failure, so the caller always falls back to its own
+  // translated copy instead of trusting e.message.
+  if (!res.ok) throw new Error()
   return res.json()
 }
 
-export async function updatePrimaryConsultation(
-  data: Partial<import("@/types").MentorService>,
-): Promise<import("@/types").MentorService> {
-  const res = await authFetch(`${BASE_URL}/mentors/me/consultation/`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) {
-    const err = await res.json()
-    const first = Object.values(err)[0]
-    throw new Error(Array.isArray(first) ? first[0] : String(first))
-  }
+export interface MentorClient {
+  id: number
+  full_name: string
+  current_school_or_university: string
+  city: string
+  profile_photo: string | null
+  conversation_id: number | null
+  engagement_id: number | null
+}
+
+export interface MentorClients {
+  active: MentorClient[]
+  inactive: MentorClient[]
+}
+
+export async function fetchMentorClients(): Promise<MentorClients> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/`)
+  // Empty message on purpose — see fetchMentorEarnings above.
+  if (!res.ok) throw new Error()
   return res.json()
+}
+
+// Single-client version of fetchMentorClients — same shape, backs the
+// unified client-window page so it can deep-link straight in instead of
+// depending on the list page's in-memory state.
+export async function fetchMentorClient(studentId: number): Promise<MentorClient> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/${studentId}/`)
+  if (!res.ok) throw new Error()
+  return res.json()
+}
+
+// Every task this mentor has ever set for this student, across every
+// engagement (not just the current live one) — unlike fetchSupportTasks,
+// which is scoped to one engagement.
+export async function fetchMentorClientTasks(
+  studentId: number,
+): Promise<import("@/types").SupportTask[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/${studentId}/tasks/`)
+  if (!res.ok) throw new Error("Не удалось загрузить задачи")
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export type MentorClientDocument = import("@/types").OrderDocument & {
+  order_id: number
+  engagement_id: number | null
+}
+
+// Every document this mentor and student have ever exchanged, across
+// every order — unlike fetchOrderDocuments (one order) or
+// fetchEngagementDocuments (one engagement), this crosses engagement
+// boundaries too, so history from a finished engagement isn't lost.
+export async function fetchMentorClientDocuments(
+  studentId: number,
+): Promise<MentorClientDocument[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/clients/${studentId}/documents/`)
+  if (!res.ok) throw new Error("Не удалось загрузить документы")
+  const data = await res.json()
+  return data.results ?? data
 }
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
-export async function fetchOrders(): Promise<Order[]> {
+export async function fetchOrders(opts?: { studentId?: number }): Promise<Order[]> {
   if (USE_MOCKS) return MOCK_ORDERS
 
-  const res = await authFetch(`${BASE_URL}/orders/`)
+  const qs = opts?.studentId ? `?student=${opts.studentId}` : ""
+  const res = await authFetch(`${BASE_URL}/orders/${qs}`)
   if (!res.ok) throw new Error("Failed to fetch orders")
   const data = await res.json()
   return data.results
@@ -318,6 +379,171 @@ export async function createOrder(
   return res.json()
 }
 
+// Student pings a mentor about a SUPPORT service that has Intro Call
+// disabled — there's no calendar slot to book, so this just opens/
+// reopens the chat and notifies the mentor. No Order is created here;
+// the mentor follows up with an invoice (createSupportInvoice) once
+// they're ready.
+export async function requestSupport(mentorServiceId: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/services/${mentorServiceId}/request-support/`, {
+    method: "POST",
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Failed to send request")
+  }
+}
+
+// Mentor sends a "заявка" for a support engagement inside an existing
+// chat — price/duration are negotiated per student, not the catalog
+// listing. Backend creates the SupportEngagement + month-1 Order and
+// posts it as a chat message (POST /orders/support-invoice/).
+export async function createSupportInvoice(
+  mentorServiceId: number,
+  studentId: number,
+  totalPrice: string,
+  durationMonths: number,
+): Promise<import("@/types").Order> {
+  const res = await authFetch(`${BASE_URL}/orders/support-invoice/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mentor_service: mentorServiceId,
+      student: studentId,
+      total_price: totalPrice,
+      duration_months: durationMonths,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    const first = Object.values(err)[0]
+    throw new Error(
+      err.detail || (Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось отправить заявку")),
+    )
+  }
+  return res.json()
+}
+
+// Mentor ends their OWN engagement with one specific student — every
+// other student's engagement under the same service is untouched
+// (unlike deactivating the whole service).
+export async function endSupportEngagement(
+  engagementId: number,
+  reason: string,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/end/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.reason || err.detail || "Не удалось завершить сопровождение")
+  }
+  return res.json()
+}
+
+// ─── Support-engagement tasks ──────────────────────────────────────────────
+
+export async function fetchSupportTasks(
+  engagementId: number,
+): Promise<import("@/types").SupportTask[]> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function createSupportTask(
+  engagementId: number,
+  data: {
+    title: string
+    description?: string
+    deadline?: string | null
+    // At most one of these — an existing document to attach, or a new
+    // file to upload and attach in the same request.
+    documentId?: number
+    file?: File
+  },
+): Promise<import("@/types").SupportTask> {
+  const { documentId, file, ...rest } = data
+  let res: Response
+  if (file) {
+    const formData = new FormData()
+    formData.append("title", rest.title)
+    if (rest.description) formData.append("description", rest.description)
+    if (rest.deadline) formData.append("deadline", rest.deadline)
+    formData.append("file", file)
+    res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`, {
+      method: "POST",
+      body: formData,
+    })
+  } else {
+    res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...rest, document_id: documentId }),
+    })
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(
+      err.title?.[0] || err.deadline?.[0] || err.file?.[0] || err.document_id?.[0]
+      || err.detail || "Не удалось создать задачу",
+    )
+  }
+  return res.json()
+}
+
+export async function fetchEngagementDocuments(
+  engagementId: number,
+): Promise<import("@/types").OrderDocument[]> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/documents/`)
+  // Throws (unlike fetchOrderDocuments/fetchSupportTasks above) so the
+  // attach-file picker can tell "genuinely no documents yet" apart from
+  // "failed to load" instead of silently showing an empty list either way.
+  if (!res.ok) throw new Error("Не удалось загрузить список файлов")
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function fetchEngagementSchedule(
+  engagementId: number,
+): Promise<import("@/types").EngagementScheduleEntry[]> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/schedule/`)
+  if (!res.ok) throw new Error("Не удалось загрузить график оплат")
+  // Unlike fetchEngagementDocuments/fetchSupportTasks, this endpoint
+  // returns a plain list (not a paginated DRF response) — no `.results` unwrap.
+  return res.json()
+}
+
+export async function updateSupportTask(
+  engagementId: number,
+  taskId: number,
+  data: Partial<{ title: string; description: string; deadline: string | null; is_done: boolean }>,
+): Promise<import("@/types").SupportTask> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/${taskId}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.title?.[0] || err.deadline?.[0] || err.detail || "Не удалось обновить задачу")
+  }
+  return res.json()
+}
+
+export async function deleteSupportTask(engagementId: number, taskId: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/tasks/${taskId}/`, {
+    method: "DELETE",
+  })
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось удалить задачу")
+  }
+}
+
 export async function fetchOrder(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/`)
   if (!res.ok) throw new Error("Failed to fetch order")
@@ -329,6 +555,19 @@ export async function cancelOrder(id: number): Promise<Order> {
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to cancel order")
+  }
+  return res.json()
+}
+
+export async function rescheduleOrder(id: number, scheduledAt: string): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/reschedule/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scheduled_at: scheduledAt }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Failed to reschedule order")
   }
   return res.json()
 }
@@ -347,6 +586,50 @@ export async function confirmConsultation(id: number): Promise<Order> {
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err.detail || "Failed to confirm consultation")
+  }
+  return res.json()
+}
+
+export async function confirmIntroCall(id: number): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/confirm_intro_call/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось подтвердить интро-звонок")
+  }
+  return res.json()
+}
+
+export async function declineIntroCall(id: number): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/decline_intro_call/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить интро-звонок")
+  }
+  return res.json()
+}
+
+// ─── Support requests (no-intro-call flow) ─────────────────────────────────
+
+export async function fetchPendingSupportRequests(): Promise<import("@/types").SupportRequest[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/support-requests/`)
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function acceptSupportRequest(id: number): Promise<import("@/types").SupportRequest> {
+  const res = await authFetch(`${BASE_URL}/mentors/support-requests/${id}/accept/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось принять запрос")
+  }
+  return res.json()
+}
+
+export async function declineSupportRequest(id: number): Promise<import("@/types").SupportRequest> {
+  const res = await authFetch(`${BASE_URL}/mentors/support-requests/${id}/decline/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить запрос")
   }
   return res.json()
 }
@@ -387,7 +670,9 @@ export async function uploadOrderDocument(
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось загрузить документ")
+    // `err.detail` alone misses this — a `file` field validation error
+    // (size/MIME type) comes back as {"file": ["..."]}, not `detail`.
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to upload the document")
   }
   return res.json()
 }
@@ -398,8 +683,52 @@ export async function deleteOrderDocument(orderId: number, docId: number): Promi
   })
   if (!res.ok && res.status !== 204) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось удалить документ")
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to delete the document")
   }
+}
+
+export async function setDocumentStatus(
+  orderId: number,
+  docId: number,
+  status: "verified" | "needs_revision",
+): Promise<import("@/types").OrderDocument> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/${docId}/status/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось обновить статус документа")
+  }
+  return res.json()
+}
+
+export async function fetchDocumentComments(
+  orderId: number,
+  docId: number,
+): Promise<import("@/types").OrderDocumentComment[]> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/${docId}/comments/`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function postDocumentComment(
+  orderId: number,
+  docId: number,
+  text: string,
+): Promise<import("@/types").OrderDocumentComment> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/documents/${docId}/comments/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отправить комментарий")
+  }
+  return res.json()
 }
 
 // ─── Disputes ───────────────────────────────────────────────────────────────
@@ -431,24 +760,6 @@ export async function fetchStudentProfile(): Promise<StudentProfile> {
 
   const res = await authFetch(`${BASE_URL}/students/profile/me/`)
   if (!res.ok) throw new Error("Failed to fetch profile")
-  return res.json()
-}
-
-export async function updateStudentProfile(data: Partial<StudentProfile>): Promise<StudentProfile> {
-  if (USE_MOCKS) {
-    const profile = { ...MOCK_STUDENT_PROFILE, ...data }
-    if (typeof window !== "undefined") {
-      localStorage.setItem("student_profile", JSON.stringify(profile))
-    }
-    return profile
-  }
-
-  const res = await authFetch(`${BASE_URL}/students/profile/me/`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) throw new Error("Failed to update profile")
   return res.json()
 }
 
@@ -541,7 +852,13 @@ export async function confirmPasswordReset(token: string, password: string): Pro
   }
 }
 
-export async function register(email: string, password: string, role: string, agreedToTerms: boolean) {
+// country always ships (default "KZ") — this has exactly one call site,
+// the registration page, which always has a real value in state. Unlike
+// telegramStart/googleAuth below, there's no country-agnostic login path
+// reusing this function that a hardcoded default could clobber.
+export async function register(
+  email: string, password: string, role: string, agreedToTerms: boolean, country: string = "KZ",
+) {
   if (USE_MOCKS) {
     return { id: 1, email, role }
   }
@@ -549,7 +866,7 @@ export async function register(email: string, password: string, role: string, ag
   const res = await fetch(`${BASE_URL}/auth/register/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, role, agreed_to_terms: agreedToTerms }),
+    body: JSON.stringify({ email, password, role, agreed_to_terms: agreedToTerms, country }),
   })
   if (!res.ok) {
     const data = await res.json()
@@ -572,7 +889,7 @@ function getRefreshToken(): string {
   return localStorage.getItem("refresh_token") ?? ""
 }
 
-function clearAuth() {
+export function clearAuth() {
   if (typeof window === "undefined") return
   localStorage.removeItem("access_token")
   localStorage.removeItem("refresh_token")
@@ -581,6 +898,11 @@ function clearAuth() {
 
 // Single in-flight refresh promise so concurrent 401s share one refresh call.
 let refreshPromise: Promise<string> | null = null
+
+// Dispatched right before the hard redirect to /auth/login below, so any
+// page holding unsaved form state (e.g. the mentor's support-invoice form)
+// can stash a draft to sessionStorage first instead of losing it silently.
+export const SESSION_EXPIRED_EVENT = "session-expired"
 
 async function refreshAccessToken(): Promise<string> {
   if (refreshPromise) return refreshPromise
@@ -596,7 +918,17 @@ async function refreshAccessToken(): Promise<string> {
     })
     if (!res.ok) {
       clearAuth()
-      if (typeof window !== "undefined") window.location.href = "/auth/login"
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+        const next = encodeURIComponent(window.location.pathname + window.location.search)
+        // The captured `next` path already carries whatever locale
+        // prefix (or none) the user was on, so it round-trips correctly
+        // post-login on its own — only the /auth/login target itself
+        // needs the prefix computed explicitly.
+        const locale = localeFromPathname(window.location.pathname)
+        const loginPath = withLocalePrefix(locale, "/auth/login")
+        window.location.href = `${loginPath}?session_expired=1&next=${next}`
+      }
       throw new Error("Refresh failed")
     }
     const data = await res.json()
@@ -674,17 +1006,54 @@ export async function getFreshAccessToken(): Promise<string | null> {
  */
 // ─── Telegram auth ──────────────────────────────────────────────────────────
 
-export async function telegramStart(role: string): Promise<{ token: string; bot_url: string }> {
+// country is optional and only sent when truthy — the login page also
+// calls this (role="student", no country selector on that screen) for
+// its own Telegram-login-attempt flow, and omitting the key entirely
+// lets the backend's own default apply rather than this function
+// silently forcing one.
+export async function telegramStart(
+  role: string, locale: string, country?: string,
+): Promise<{ token: string; bot_url: string }> {
+  const body: Record<string, string> = { role, locale }
+  if (country) body.country = country
   const res = await fetch(`${BASE_URL}/auth/telegram/start/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || "Не удалось начать авторизацию через Telegram")
   }
   return res.json()
+}
+
+export async function setUserRole(role: "student" | "mentor"): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/me/role/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось установить роль")
+  }
+}
+
+// Keeps the backend's record of the user's site language in sync so
+// Telegram-generated links (bot deep links, Mini App notification
+// links) can be built in the right language instead of defaulting to
+// Russian. Best-effort — callers should not block navigation on it.
+export async function updateUserLocale(locale: "ru" | "en" | "kk"): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/auth/me/locale/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locale }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось сохранить язык")
+  }
 }
 
 export async function telegramLogin(token: string): Promise<{
@@ -722,11 +1091,13 @@ export async function telegramMiniAppLogin(
     if (err.detail === "role_required") {
       return { ok: false, reason: "role_required" }
     }
-    throw new Error(err.detail || "Не удалось войти через Telegram")
+    // Empty fallback on purpose — forward backend detail when given,
+    // otherwise let the caller show its own translated message.
+    throw new Error(err.detail || "")
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось войти через Telegram")
+    throw new Error(err.detail || "")
   }
   const data = await res.json()
   return { ok: true, ...data }
@@ -754,6 +1125,20 @@ export async function telegramLinkStart(): Promise<{ token: string; bot_url: str
   return res.json()
 }
 
+export class EmailTakenError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "EmailTakenError"
+  }
+}
+
+export class MergeRequiresSupportError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "MergeRequiresSupportError"
+  }
+}
+
 export async function telegramLinkFinalize(token: string): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/telegram/link/finalize/`, {
     method: "POST",
@@ -762,6 +1147,9 @@ export async function telegramLinkFinalize(token: string): Promise<void> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
+    if (res.status === 409 && err.code === "merge_requires_support") {
+      throw new MergeRequiresSupportError(err.detail || "Требуется помощь поддержки")
+    }
     throw new Error(err.detail || "Не удалось завершить привязку Telegram")
   }
 }
@@ -770,7 +1158,7 @@ export async function telegramUnlink(): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/telegram/unlink/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать Telegram")
+    throw new Error(err.detail || err.non_field_errors?.[0] || "")
   }
 }
 
@@ -779,6 +1167,9 @@ export async function telegramUnlink(): Promise<void> {
 // Carried out of googleAuth when the backend tells us the email
 // has no account yet — the login page shows a "К регистрации"
 // button alongside the message instead of a dead-end error.
+// Message is backend-detail-or-empty; callers fall back to their own
+// translated copy when empty instead of trusting whatever language the
+// backend happened to respond in.
 export class AccountNotFoundError extends Error {
   constructor(message: string) {
     super(message)
@@ -786,26 +1177,49 @@ export class AccountNotFoundError extends Error {
   }
 }
 
-export async function googleAuth(idToken: string, role?: string): Promise<{ access: string; refresh: string; created?: boolean }> {
+// Thrown for the two Google-auth failures that never carry a backend
+// detail message (pure status-code checks) — callers must catch these
+// by type and show their own translated copy, not `e.message`.
+export class GoogleEmailTakenError extends Error {
+  constructor() {
+    super("Google auth: email already registered via password")
+    this.name = "GoogleEmailTakenError"
+  }
+}
+
+export class GoogleAuthNotConfiguredError extends Error {
+  constructor() {
+    super("Google auth: not configured on server")
+    this.name = "GoogleAuthNotConfiguredError"
+  }
+}
+
+// role/country both optional and only sent when present — the login
+// page calls this with neither (existing-user login, where the backend
+// treats a missing role as "not a signup" and ignores country entirely).
+export async function googleAuth(
+  idToken: string, role?: string, country?: string,
+): Promise<{ access: string; refresh: string; created?: boolean }> {
   const body: Record<string, string> = { id_token: idToken }
   if (role) body.role = role
+  if (country) body.country = country
   const res = await fetch(`${BASE_URL}/auth/google/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
   if (res.status === 409) {
-    throw new Error("Этот email уже зарегистрирован. Подтвердите email и войдите через пароль.")
+    throw new GoogleEmailTakenError()
   }
   if (res.status === 503) {
-    throw new Error("Google авторизация не настроена на сервере")
+    throw new GoogleAuthNotConfiguredError()
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     if (err.code === "account_not_found") {
-      throw new AccountNotFoundError(err.detail || "Аккаунт не найден. Сначала зарегистрируйтесь.")
+      throw new AccountNotFoundError(err.detail || "")
     }
-    throw new Error(err.detail || "Не удалось войти через Google")
+    throw new Error(err.detail || "")
   }
   return res.json()
 }
@@ -818,7 +1232,9 @@ export async function googleLink(idToken: string): Promise<void> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось привязать Google")
+    // Empty fallback on purpose — forward backend detail when given,
+    // otherwise let the caller show its own translated message.
+    throw new Error(err.detail || "")
   }
 }
 
@@ -826,24 +1242,46 @@ export async function googleUnlink(): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/google/unlink/`, { method: "POST" })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || err.non_field_errors?.[0] || "Не удалось отвязать Google")
+    throw new Error(err.detail || err.non_field_errors?.[0] || "")
   }
 }
 
 // ─── Email management ───────────────────────────────────────────────────────
 
-export async function setEmail(email: string): Promise<void> {
+export async function setEmail(email: string, inTelegramMiniApp = false): Promise<void> {
   const res = await authFetch(`${BASE_URL}/auth/email/set/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    // A Telegram-linked user can be adding this email from either the
+    // Mini App or the plain website (e.g. logged in via the Telegram
+    // login widget) — this flag tells the backend which one so the
+    // verification email links back to the right place.
+    body: JSON.stringify({ email, in_mini_app: inTelegramMiniApp }),
   })
   if (res.status === 429) {
     throw await readCooldown(res, "Не удалось установить email")
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.email?.[0] || err.detail || "Не удалось установить email")
+    if (err.code === "email_taken_link_telegram") {
+      throw new EmailTakenError(err.email?.[0] || err.email || err.detail || "Эта почта уже привязана к другому аккаунту")
+    }
+    throw new Error(err.email?.[0] || err.email || err.detail || "Не удалось установить email")
+  }
+}
+
+export async function updateUnverifiedEmail(currentEmail: string, newEmail: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/email/update-unverified/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_email: currentEmail, new_email: newEmail }),
+  })
+  if (res.status === 429) {
+    throw await readCooldown(res, "Слишком много попыток, подождите")
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.new_email?.[0] || err.new_email || err.detail || "Не удалось изменить email")
   }
 }
 
@@ -953,11 +1391,37 @@ export async function markChatRead(conversationId: number): Promise<void> {
 
 import type { MentorSchedule, ScheduleBlock, ScheduleWindow } from "./schedule"
 
+// MentorScheduleSerializer's `weekly` field nests a ListSerializer of its
+// own (MentorAvailabilityWindowSerializer, many=True) — a validate() error
+// inside ONE of those items comes back as
+// `{"weekly": [{"non_field_errors": ["..."]}]}`, not the flat
+// `{"weekly": ["..."]}` shape a top-level field validator produces (e.g.
+// validate_weekly's overlap check). `Object.values(err)[0]` only unwraps
+// one level, so the nested case stringified to "[object Object]" instead
+// of the actual message. Walk arbitrarily deep instead.
+export function firstErrorMessage(err: unknown): string | undefined {
+  if (typeof err === "string") return err
+  if (Array.isArray(err)) {
+    for (const item of err) {
+      const found = firstErrorMessage(item)
+      if (found) return found
+    }
+    return undefined
+  }
+  if (err && typeof err === "object") {
+    for (const value of Object.values(err)) {
+      const found = firstErrorMessage(value)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
 export async function fetchMyMentorSchedule(): Promise<MentorSchedule> {
   const res = await authFetch(`${BASE_URL}/mentors/me/schedule/`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось загрузить расписание")
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to load schedule")
   }
   return res.json()
 }
@@ -973,12 +1437,26 @@ export async function saveMyMentorSchedule(payload: {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    // Bubble up the first field-level message if present (overlap, etc.).
-    const first = Object.values(err)[0]
-    throw new Error(
-      err.detail ||
-        (Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось сохранить расписание")),
-    )
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to save schedule")
+  }
+  return res.json()
+}
+
+export interface MentorUpcomingBooking {
+  order_id: number
+  scheduled_at: string
+  service_title: string
+  student_id: number
+  student_name: string
+  order_status: OrderStatus
+  payout_category: PayoutCategory
+}
+
+export async function fetchMentorUpcomingBookings(): Promise<MentorUpcomingBooking[]> {
+  const res = await authFetch(`${BASE_URL}/mentors/me/upcoming-bookings/`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to load upcoming bookings")
   }
   return res.json()
 }
@@ -1048,6 +1526,164 @@ export async function fetchMentorAvailabilityOverview(
 }
 
 // ─── Auth helpers ───────────────────────────────────────────────────────────
+
+// ─── CRM admin API ───────────────────────────────────────────────────────────
+
+export async function fetchAdminMentors(filter?: "submitted" | "banned" | "all"): Promise<AdminMentorProfile[]> {
+  const params = filter === "submitted" ? "?submitted=true" : filter === "banned" ? "?banned=true" : ""
+  const res = await authFetch(`${BASE_URL}/mentors/admin/${params}`)
+  if (!res.ok) throw new Error("Failed to fetch admin mentors")
+  return res.json()
+}
+
+export async function approveMentor(id: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/approve/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось одобрить ментора")
+  }
+}
+
+export async function rejectMentor(id: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/reject/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить ментора")
+  }
+}
+
+export async function banMentor(id: number, reason: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/ban/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось заблокировать ментора")
+  }
+}
+
+export async function unbanMentor(id: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/mentors/${id}/unban/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось разблокировать ментора")
+  }
+}
+
+export async function rejectOrderPayment(id: number, reason: string): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/reject_payment/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось отклонить платёж")
+  }
+  return res.json()
+}
+
+export async function fetchAdminDisputes(): Promise<AdminDispute[]> {
+  const res = await authFetch(`${BASE_URL}/orders/disputes/`)
+  if (!res.ok) throw new Error("Failed to fetch disputes")
+  return res.json()
+}
+
+export async function resolveDispute(id: number, resolution: "full_refund" | "payout_mentor"): Promise<AdminDispute> {
+  const res = await authFetch(`${BASE_URL}/orders/disputes/${id}/resolve/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resolution }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось разрешить спор")
+  }
+  return res.json()
+}
+
+// Admin-only support-engagement controls — e.g. while resolving a
+// dispute on a support installment. `reason` is required for cancel/
+// pause (shown to the student); resume needs none.
+export async function adminCancelSupportEngagement(
+  engagementId: number,
+  reason: string,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/admin-cancel/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.reason || err.detail || "Не удалось прекратить сопровождение")
+  }
+  return res.json()
+}
+
+export async function adminPauseSupportEngagement(
+  engagementId: number,
+  reason: string,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/admin-pause/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.reason || err.detail || "Не удалось приостановить сопровождение")
+  }
+  return res.json()
+}
+
+export async function adminResumeSupportEngagement(
+  engagementId: number,
+): Promise<import("@/types").SupportEngagement> {
+  const res = await authFetch(`${BASE_URL}/orders/support-engagements/${engagementId}/admin-resume/`, {
+    method: "POST",
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось возобновить сопровождение")
+  }
+  return res.json()
+}
+
+export async function fetchAdminConversations(): Promise<AdminConversation[]> {
+  const res = await authFetch(`${BASE_URL}/chat/admin/`)
+  if (!res.ok) throw new Error("Failed to fetch conversations")
+  return res.json()
+}
+
+export async function fetchAdminSettings(): Promise<SiteSettings> {
+  const res = await authFetch(`${BASE_URL}/settings/admin/`)
+  if (!res.ok) throw new Error("Failed to fetch settings")
+  return res.json()
+}
+
+export async function updateAdminSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
+  const res = await authFetch(`${BASE_URL}/settings/admin/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const first = Object.values(err)[0]
+    throw new Error(Array.isArray(first) ? first[0] : String(first ?? "Не удалось сохранить настройки"))
+  }
+  return res.json()
+}
+
+export async function fetchChatMessages(conversationId: number): Promise<import("@/types").ChatMessage[]> {
+  const res = await authFetch(`${BASE_URL}/chat/${conversationId}/messages/`)
+  if (!res.ok) throw new Error("Failed to fetch messages")
+  const data = await res.json()
+  return data.results ?? data
+}
 
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const buildHeaders = (token: string): HeadersInit => {

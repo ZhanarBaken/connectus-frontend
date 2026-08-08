@@ -8,7 +8,29 @@ Next.js фронтенд для платформы менторства. Сту�
 sh scripts/install-hooks.sh
 ```
 
-Активирует git-хук: прямой `git push origin main` будет заблокирован. Пуш только в `staging`, потом PR в `main`.
+Активирует git-хук: прямой `git push origin main` заблокирован.
+
+## Рабочий процесс (Git Flow)
+
+```
+feature/название  ← твоя ветка для задачи
+       ↓ PR
+    staging        ← общая ветка, проверяется в облаке
+       ↓ PR
+      main         ← стабильная версия, мержит только владелец
+```
+
+1. Создай ветку от `staging`:
+   ```bash
+   git checkout staging
+   git checkout -b feature/название
+   ```
+2. Работай, пушь в свою ветку:
+   ```bash
+   git push origin feature/название
+   ```
+3. Создай PR `feature/название → staging`
+4. После проверки в облаке — PR `staging → main`
 
 ---
 

@@ -9,7 +9,7 @@
 // SSR-safe — only call from "use client" components.
 
 import { ChatAttachment, ChatMessage } from "@/types"
-import { authFetch, getFreshAccessToken } from "./api"
+import { authFetch, firstErrorMessage, getFreshAccessToken } from "./api"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
@@ -20,6 +20,8 @@ export interface Conversation {
   created_at: string
   closed_at: string | null
   is_active: boolean
+  other_party_name: string
+  other_party_photo: string | null
 }
 
 export async function fetchConversation(conversationId: number): Promise<Conversation> {
@@ -30,13 +32,58 @@ export async function fetchConversation(conversationId: number): Promise<Convers
   return res.json()
 }
 
-export async function closeConversation(conversationId: number): Promise<{ closed_at: string }> {
-  const res = await authFetch(`${API_BASE}/chat/${conversationId}/close/`, {
+export interface ConversationListItem {
+  id: number
+  other_party_name: string
+  other_party_photo: string | null
+  last_message_text: string
+  last_message_at: string | null
+  unread_count: number
+  order_id: number | null
+}
+
+/** The caller's own conversations (mentor or student side), most-recently-active first. */
+export async function fetchMyConversations(): Promise<ConversationListItem[]> {
+  const res = await authFetch(`${API_BASE}/chat/`)
+  if (!res.ok) {
+    throw new Error("Не удалось загрузить список чатов")
+  }
+  return res.json()
+}
+
+/**
+ * Student-only: start (or resume) a direct conversation with a mentor,
+ * no prior order required. Idempotent — repeat calls with the same
+ * mentor return the same conversation.
+ */
+export async function startConversation(mentorId: number): Promise<Conversation> {
+  const res = await authFetch(`${API_BASE}/chat/`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mentor: mentorId }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось закрыть чат")
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to start conversation")
+  }
+  return res.json()
+}
+
+/**
+ * Mentor-only: start (or resume) a direct conversation with a student
+ * who's an actual client (has had an order/engagement with this
+ * mentor) — backs the "Clients" list's chat button when it has no
+ * conversation_id yet. Idempotent, same as startConversation above.
+ */
+export async function startConversationWithClient(studentId: number): Promise<Conversation> {
+  const res = await authFetch(`${API_BASE}/chat/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student: studentId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to start conversation")
   }
   return res.json()
 }
@@ -118,10 +165,23 @@ export async function sendChatMessage(
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось отправить сообщение")
+    // `err.detail` alone misses attachment validation errors (size/MIME
+    // type), which come back field-keyed (e.g. {"files": ["..."]}).
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to send the message")
   }
   return res.json()
 }
+
+// Close code 4003 means the backend checked and this user has no access
+// to the conversation — retrying with a fresh token changes nothing, so
+// it's the only code that shouldn't trigger a reconnect. Everything else
+// (a dropped connection, a server restart, even 4001 stale-token — the
+// next attempt refreshes the token first) is worth retrying.
+const WS_PERMANENT_CLOSE_CODES = [4003]
+
+const WS_RECONNECT_MAX_ATTEMPTS = 8
+const WS_RECONNECT_BASE_DELAY_MS = 1000
+const WS_RECONNECT_MAX_DELAY_MS = 15000
 
 export function connectChat(
   conversationId: number,
@@ -131,10 +191,31 @@ export function connectChat(
     onClose?: (code: number) => void
     onError?: () => void
     onServerError?: (err: string) => void
+    // Whether the OTHER participant currently has this chat open — sent
+    // once right after connecting, then again on their every
+    // connect/disconnect. Distinct from onOpen/onClose, which are about
+    // *this* socket's own connection.
+    onPresenceChange?: (online: boolean) => void
   },
 ): ChatConnection {
   let ws: WebSocket | null = null
   let closed = false
+  let reconnectAttempt = 0
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+  const scheduleReconnect = () => {
+    if (closed) return
+    if (reconnectAttempt >= WS_RECONNECT_MAX_ATTEMPTS) {
+      handlers.onError?.()
+      return
+    }
+    const delay = Math.min(
+      WS_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempt,
+      WS_RECONNECT_MAX_DELAY_MS,
+    )
+    reconnectAttempt += 1
+    reconnectTimer = setTimeout(() => { void connect() }, delay)
+  }
 
   // Refresh the access token if it's near expiry BEFORE opening the
   // socket — WS handshakes aren't covered by authFetch's 401-retry,
@@ -142,7 +223,7 @@ export function connectChat(
   // not a transparent retry. Returning the controller synchronously
   // preserves the existing API; close() handles the "ws not yet
   // created" case via the `closed` flag.
-  ;(async () => {
+  const connect = async () => {
     let token: string | null
     try {
       token = await getFreshAccessToken()
@@ -162,6 +243,7 @@ export function connectChat(
     ws = new WebSocket(url)
 
     ws.onopen = () => {
+      reconnectAttempt = 0
       handlers.onOpen?.()
     }
 
@@ -171,6 +253,10 @@ export function connectChat(
         // Backend may send {error: '...'} when the message is rejected (e.g. closed chat)
         if (data && typeof data.error === "string") {
           handlers.onServerError?.(data.error)
+          return
+        }
+        if (data && data.type === "presence") {
+          handlers.onPresenceChange?.(Boolean(data.online))
           return
         }
         const msg = data as WsMessageEvent
@@ -194,8 +280,13 @@ export function connectChat(
 
     ws.onclose = (event) => {
       handlers.onClose?.(event.code)
+      if (!closed && !WS_PERMANENT_CLOSE_CODES.includes(event.code)) {
+        scheduleReconnect()
+      }
     }
-  })()
+  }
+
+  void connect()
 
   return {
     send: (text: string) => {
@@ -205,6 +296,10 @@ export function connectChat(
     },
     close: () => {
       closed = true
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
       if (ws) {
         // Detach handlers so a delayed close event doesn't fire callbacks
         // after the component has unmounted.

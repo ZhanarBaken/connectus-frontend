@@ -1,6 +1,7 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 
 interface Props {
   /** Fallback href if there's no history (e.g. opened in new tab) */
@@ -14,8 +15,10 @@ interface Props {
  * previous page in history. If history is empty (new tab), falls
  * back to the dashboard derived from the user's role.
  */
-export default function BackButton({ fallbackHref, label = "Назад", className }: Props) {
+export default function BackButton({ fallbackHref, label, className }: Props) {
+  const t = useTranslations("Common")
   const router = useRouter()
+  const resolvedLabel = label ?? t("back")
 
   const handleClick = () => {
     if (typeof window === "undefined") return
@@ -41,7 +44,7 @@ export default function BackButton({ fallbackHref, label = "Назад", classNa
       }
     >
       <span className="transform-gpu transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
-      {label}
+      {resolvedLabel}
     </button>
   )
 }

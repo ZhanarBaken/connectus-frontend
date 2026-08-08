@@ -2,7 +2,7 @@ export type Role = "mentor" | "student"
 
 export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 
-export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone"
+export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone" | "support" | "paid_consultation"
 
 export type OrderStatus =
   | "draft"
@@ -38,10 +38,28 @@ export interface MentorService {
   id: number
   title: string
   description: string
-  price: string
+  // The mentor's own price, unmodified — only for mentor-facing pages
+  // (their own dashboard, /mentors/services). null when
+  // is_price_negotiable is true.
+  price: string | null
+  // Commission-inclusive total a STUDENT actually pays — use this on
+  // every student-facing surface (public profile, booking modal)
+  // instead of `price`, so the advertised price matches checkout.
+  // Same null-when-negotiable rule as `price`.
+  client_price: string | null
   currency: string
   duration_minutes: number
   payout_category: PayoutCategory
+  // Target audience — "useful for grades X-Y". Optional for every category.
+  grade_min: number | null
+  grade_max: number | null
+  // SUPPORT-only fields (null for every other category).
+  meetings_min: number | null
+  meetings_max: number | null
+  duration_months_min: number | null
+  duration_months_max: number | null
+  is_price_negotiable: boolean
+  intro_call_enabled: boolean
   is_active: boolean
 }
 
@@ -54,18 +72,22 @@ export interface MentorCountry {
   country: string
 }
 
+export interface MentorLanguage {
+  language: string
+}
+
 export interface MentorProfile {
   id: number
   full_name: string
   age: number
   countries: MentorCountry[]
+  languages: MentorLanguage[]
   school_or_university: string
   major: string
   grant_or_scholarship: string
   gpa: string
   exam_results: string
   detailed_bio: string
-  consultation: string
   linkedin_url: string
   university_email: string
   profile_photo: string | null
@@ -78,6 +100,7 @@ export interface MentorProfile {
   is_submitted: boolean
   is_public: boolean
   is_accepting_bookings: boolean
+  is_universal: boolean
   is_banned: boolean
   ban_reason: string
   has_documents: boolean
@@ -92,18 +115,16 @@ export interface MentorCard {
   profile_photo: string | null
   full_name: string
   countries: MentorCountry[]
+  languages: MentorLanguage[]
   school_or_university: string
   grant_or_scholarship: string
   major: string
   expertise_areas: MentorExpertise[]
   detailed_bio: string
   is_accepting_bookings: boolean
+  is_universal: boolean
   rating_avg: number | null
   rating_count: number
-  // Primary consultation price/duration. Null when the mentor hasn't
-  // got an auto-created consultation yet (legacy rows / race during signup).
-  consultation_price: string | null
-  consultation_duration_minutes: number | null
 }
 
 // Matches backend MentorProfilePublicSerializer
@@ -111,6 +132,7 @@ export interface Mentor {
   id: number
   full_name: string
   countries: MentorCountry[]
+  languages: MentorLanguage[]
   school_or_university: string
   major: string
   grant_or_scholarship: string
@@ -118,12 +140,11 @@ export interface Mentor {
   exam_results: string
   expertise_areas: MentorExpertise[]
   detailed_bio: string
-  // null when the mentor is not accepting bookings — frontend should hide the section
-  consultation: string | null
   linkedin_url: string
   profile_photo: string | null
   is_public: boolean
   is_accepting_bookings: boolean
+  is_universal: boolean
   rating_avg: number | null
   rating_count: number
   services: MentorService[]
@@ -132,11 +153,14 @@ export interface Mentor {
 export interface StudentProfile {
   id: number
   full_name: string
-  age: number
+  date_of_birth: string | null
+  age: number | null
   current_school_or_university: string
   contacts: string
-  // Pre-consultation context the mentor reads before booking. The
-  // first three are required in the form; the last four are optional.
+  // Pre-consultation context the mentor reads before booking. Together
+  // with full_name/date_of_birth above, school_grade/city/
+  // school_graduation_year are the 5 fields the onboarding form
+  // requires (see is_profile_complete below) — the rest are optional.
   school_grade: string
   city: string
   school_graduation_year: number | null
@@ -145,12 +169,10 @@ export interface StudentProfile {
   exam_results: string
   gpa: string
   profile_photo: string | null
-  is_public: boolean
-  // Welcome promo: 50% off every primary_consultation order created in
-  // the first 30 days after signup. Mentor still receives their full
-  // 50% share — platform absorbs the discount from its own commission.
-  welcome_bonus_available: boolean
-  welcome_bonus_expires_at: string | null
+  // Backend-computed (apps.students.models.StudentProfile
+  // .is_profile_complete) — single source of truth for whether the 5
+  // required onboarding fields are all filled in.
+  is_profile_complete: boolean
   created_at: string
   updated_at: string
 }
@@ -178,10 +200,8 @@ export interface Order {
   mentor_service: number
   service_title: string
   payout_category: PayoutCategory
-  // Full price of the service at order time. Equals total_price when no
-  // bonus was applied; otherwise total_price = subtotal - bonus_applied.
+  // Full price of the service at order time. Always equals total_price.
   subtotal: string
-  bonus_applied: string
   total_price: string
   platform_fee: string
   mentor_payout_amount: string
@@ -189,6 +209,25 @@ export interface Order {
   order_status: OrderStatus
   payment_instructions: PaymentInstructions | null
   conversation_id: number | null
+  // The parent SupportEngagement's id — null unless this order belongs to
+  // one. Needed to call the end/pause/resume engagement actions.
+  support_engagement: number | null
+  // Set only for a support-engagement monthly installment — null for a
+  // free intro-call, a free session booked under an active engagement,
+  // and every non-support order.
+  installment_number: number | null
+  engagement_duration_months: number | null
+  // Live status of the parent SupportEngagement — null unless this order
+  // belongs to one. "paused" means an installment went unpaid past its
+  // grace period; a replacement invoice is due immediately.
+  engagement_status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled" | null
+  // Booked session time, if any — null for a legacy chat-coordinated
+  // consultation or a free intro consultation with no time slot.
+  scheduled_at: string | null
+  // Real due date for an auto-generated installment (month 2+), sent
+  // SUPPORT_REMINDER_LEAD_DAYS before it's due — null for month 1 and
+  // every non-support order, where due = creation.
+  due_at: string | null
   completed_at: string | null
   created_at: string
   updated_at: string
@@ -207,13 +246,24 @@ export interface OrderDocument {
   // 'general' for any working file; 'payment_receipt' for student-
   // submitted proof of payment on a PENDING_PAYMENT order.
   kind: "general" | "payment_receipt"
+  status: "pending" | "verified" | "needs_revision"
   original_filename: string
   content_type: string
   size_bytes: number
   description: string
   download_url: string
+  uploaded_by: number
   uploaded_by_email: string
   uploaded_at: string
+}
+
+export interface OrderDocumentComment {
+  id: number
+  document: number
+  author: number
+  author_email: string
+  text: string
+  created_at: string
 }
 
 export interface ChatAttachment {
@@ -224,12 +274,204 @@ export interface ChatAttachment {
   download_url: string
 }
 
+export interface ChatRelatedTask {
+  id: number
+  title: string
+  deadline: string | null
+  document: OrderDocument | null
+}
+
 export interface ChatMessage {
   id: number
   sender: number | null
   sender_email: string | null
   is_system?: boolean
+  kind?: "text" | "support_invoice" | "support_task"
   text: string
   created_at: string
   attachments?: ChatAttachment[]
+  related_task?: ChatRelatedTask | null
+}
+
+// ─── CRM admin types ──────────────────────────────────────────────────────────
+
+export interface AdminMentorProfile extends MentorProfile {
+  user_email: string
+  telegram_username: string
+  telegram_id: string
+}
+
+export interface SupportEngagement {
+  id: number
+  mentor: number
+  mentor_name: string
+  student: number
+  student_name: string
+  mentor_service: number
+  service_title: string
+  total_price: string
+  duration_months: number
+  status: "awaiting_payment" | "active" | "paused" | "completed" | "cancelled"
+  next_installment_due_at: string | null
+  paused_at: string | null
+  created_at: string
+}
+
+export interface EngagementScheduleEntry {
+  installment_number: number
+  amount: string
+  // Real order_status values once an Order row exists for the month,
+  // or "not_yet_due" while it's still ahead of when
+  // generate_due_support_installments would create it.
+  status: string
+  order_id: number | null
+  due_at: string | null
+}
+
+export interface SupportTask {
+  id: number
+  engagement: number
+  title: string
+  description: string
+  deadline: string | null
+  is_done: boolean
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+  document: OrderDocument | null
+}
+
+export interface SupportRequest {
+  id: number
+  student: number
+  student_name: string
+  mentor_service: number
+  service_title: string
+  status: "pending" | "accepted" | "declined"
+  created_at: string
+  responded_at: string | null
+}
+
+export interface AdminDispute {
+  id: number
+  order: number
+  opened_by: number
+  opened_by_email: string
+  reason: string
+  opened_at: string
+  resolution: string | null
+  resolved_by: number | null
+  resolved_by_email: string | null
+  resolved_at: string | null
+  refund_amount: string | null
+  // Only set when the disputed order is a support-engagement installment.
+  support_engagement: SupportEngagement | null
+}
+
+export interface AdminConversation {
+  id: number
+  mentor: number
+  mentor_name: string
+  mentor_email: string
+  student: number
+  student_name: string
+  student_email: string
+  created_at: string
+  closed_at: string | null
+  last_message_at: string | null
+}
+
+export interface SiteSettings {
+  id: number
+  dispute_window_hours: number
+  terms_text: string
+  terms_text_en: string
+  terms_text_kk: string
+  platform_rules_text: string
+  platform_rules_text_en: string
+  platform_rules_text_kk: string
+  data_consent_text: string
+  data_consent_text_en: string
+  data_consent_text_kk: string
+  privacy_policy_text: string
+  privacy_policy_text_en: string
+  privacy_policy_text_kk: string
+  support_url: string
+  payment_account_details: string
+  whatsapp_number: string
+  consultation_complete_chat_message: string
+  // Email: verify
+  verify_email_subject: string
+  verify_email_heading: string
+  verify_email_body: string
+  // Email: password reset
+  password_reset_email_subject: string
+  password_reset_email_heading: string
+  password_reset_email_body: string
+  // Email: consultation complete (to student)
+  consultation_complete_email_subject: string
+  consultation_complete_email_heading: string
+  consultation_complete_email_body: string
+  // Email: order created (to mentor)
+  order_created_email_subject: string
+  order_created_email_heading: string
+  order_created_email_body: string
+  // Email: order completed (to student)
+  order_completed_email_subject: string
+  order_completed_email_heading: string
+  order_completed_email_body: string
+  // Email: consultation confirmed (to student)
+  consultation_confirmed_email_subject: string
+  consultation_confirmed_email_heading: string
+  consultation_confirmed_email_body: string
+  // Email: review reply (to student)
+  review_reply_email_subject: string
+  review_reply_email_heading: string
+  review_reply_email_body: string
+  // Email: new chat message
+  new_chat_message_email_subject: string
+  new_chat_message_email_heading: string
+  new_chat_message_email_body: string
+  // Email: payment events
+  payment_confirmed_email_subject: string
+  payment_confirmed_email_heading: string
+  payment_confirmed_email_body: string
+  payment_received_email_subject: string
+  payment_received_email_heading: string
+  payment_received_email_body: string
+  payment_rejected_email_subject: string
+  payment_rejected_email_heading: string
+  payment_rejected_email_body: string
+  payment_expired_student_email_subject: string
+  payment_expired_student_email_heading: string
+  payment_expired_student_email_body: string
+  payment_expired_mentor_email_subject: string
+  payment_expired_mentor_email_heading: string
+  payment_expired_mentor_email_body: string
+  mentor_profile_approved_email_subject: string
+  mentor_profile_approved_email_heading: string
+  mentor_profile_approved_email_body: string
+  mentor_profile_rejected_email_subject: string
+  mentor_profile_rejected_email_heading: string
+  mentor_profile_rejected_email_body: string
+  consultation_rescheduled_student_email_subject: string
+  consultation_rescheduled_student_email_heading: string
+  consultation_rescheduled_student_email_body: string
+  consultation_rescheduled_mentor_email_subject: string
+  consultation_rescheduled_mentor_email_heading: string
+  consultation_rescheduled_mentor_email_body: string
+  // Telegram bot messages
+  bot_payment_requisites_message: string
+  bot_payment_received_student: string
+  bot_payment_received_mentor: string
+  bot_payment_rejected_student: string
+  // In-app notification titles
+  notif_order_created_title: string
+  notif_review_new_title: string
+  notif_payment_receipt_pending_title: string
+  notif_payment_confirmed_student_title: string
+  notif_payment_received_mentor_title: string
+  notif_payment_rejected_student_title: string
+  notif_payment_expired_student_title: string
+  notif_payment_expired_mentor_title: string
 }

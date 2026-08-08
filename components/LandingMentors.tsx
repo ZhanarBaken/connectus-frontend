@@ -1,6 +1,7 @@
 "use client"
 
-import Link from "next/link"
+import { useTranslations, useLocale } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import { track } from "@/lib/analytics"
 import { countriesFlagsCompact, countryLabel } from "@/lib/countries"
@@ -8,14 +9,10 @@ import TiltCard from "./TiltCard"
 import Icon from "./Icon"
 import ScrollReveal from "./ScrollReveal"
 
-const EXPERTISE_LABELS: Record<string, string> = {
-  admission: "Поступление",
-  scholarships: "Стипендии",
-  visa: "Виза",
-  documents: "Документы",
-}
-
 export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
+  const t = useTranslations("Landing.MentorsSection")
+  const tExpertise = useTranslations("Landing.Expertise")
+  const locale = useLocale()
   return (
     <section className="py-24 px-4 bg-white">
       <div className="max-w-6xl mx-auto">
@@ -23,11 +20,11 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
           <ScrollReveal variant="fade-right">
             <div>
               <p className="text-sm font-semibold text-indigo-600 mb-2 tracking-wide uppercase">
-                Проверенные эксперты
+                {t("eyebrow")}
               </p>
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-                Наши{" "}
-                <span className="font-[var(--font-display)] italic">менторы</span>
+                {t("headingPrefix")}{" "}
+                <span className="font-[var(--font-display)] italic">{t("headingEmphasis")}</span>
               </h2>
             </div>
           </ScrollReveal>
@@ -36,7 +33,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
               href="/mentors"
               className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors"
             >
-              Все менторы
+              {t("viewAll")}
               <Icon name="arrow_forward" size={16} />
             </Link>
           </ScrollReveal>
@@ -76,7 +73,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                           <h3 className="font-semibold text-gray-900 truncate">
                             {mentor.full_name}
                           </h3>
-                          <span title="Платформа подтвердила документы ментора">
+                          <span title={t("verifiedTitle")}>
                             <Icon name="verified" size={16} filled className="text-indigo-500 flex-shrink-0" />
                           </span>
                         </div>
@@ -84,8 +81,8 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                           {mentor.school_or_university}
                         </p>
                         {(mentor.countries ?? []).length > 0 && (
-                          <p className="text-xs text-gray-400 mt-0.5 truncate" title={(mentor.countries ?? []).map((c) => countryLabel(c.country)).join(", ")}>
-                            {countriesFlagsCompact(mentor.countries)} помогает поступить
+                          <p className="text-xs text-gray-400 mt-0.5 truncate" title={(mentor.countries ?? []).map((c) => countryLabel(c.country, locale)).join(", ")}>
+                            {countriesFlagsCompact(mentor.countries)} {t("helpsAdmission")}
                           </p>
                         )}
                       </div>
@@ -98,7 +95,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {mentor.expertise_areas.slice(0, 3).map((area) => (
                         <span key={area.area} className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-medium">
-                          {EXPERTISE_LABELS[area.area] || area.area}
+                          {tExpertise.has(area.area) ? tExpertise(area.area) : area.area}
                         </span>
                       ))}
                     </div>
@@ -117,7 +114,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
                           ? "bg-emerald-50 text-emerald-600"
                           : "bg-gray-100 text-gray-400"
                       }`}>
-                        {mentor.is_accepting_bookings ? "Принимает записи" : "Занят"}
+                        {mentor.is_accepting_bookings ? t("acceptingBookings") : t("busy")}
                       </span>
                     </div>
                   </div>
@@ -133,7 +130,7 @@ export default function LandingMentors({ mentors }: { mentors: MentorCard[] }) {
               href="/mentors"
               className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
             >
-              Смотреть всех менторов
+              {t("viewAllBottom")}
               <Icon name="arrow_forward" size={16} />
             </Link>
           </div>

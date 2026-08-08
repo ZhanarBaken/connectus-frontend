@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import Icon from "./Icon"
 
 const CONTAINER_SIZE = 280
@@ -26,11 +27,13 @@ type Position = { x: number; y: number }
  *  events cover both touch and mouse on every supported browser.
  */
 export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
+  const t = useTranslations("AvatarCropperModal")
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null)
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
   const [userScale, setUserScale] = useState(MIN_USER_SCALE)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
   const dragStateRef = useRef<{ startX: number; startY: number; origin: Position } | null>(null)
   const imageRef = useRef<HTMLImageElement | null>(null)
 
@@ -45,6 +48,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
     setImageUrl(url)
     setPosition({ x: 0, y: 0 })
     setUserScale(MIN_USER_SCALE)
+    setError("")
     return () => URL.revokeObjectURL(url)
   }, [file])
 
@@ -95,12 +99,13 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
     const img = imageRef.current
     if (!img || !naturalSize) return
     setSaving(true)
+    setError("")
     try {
       const canvas = document.createElement("canvas")
       canvas.width = OUTPUT_SIZE
       canvas.height = OUTPUT_SIZE
       const ctx = canvas.getContext("2d")
-      if (!ctx) throw new Error("Canvas 2D context unavailable")
+      if (!ctx) throw new Error()
 
       // Mirror the on-screen transform onto the canvas: same translate
       // around the centre, same scale, then draw the image with its
@@ -116,8 +121,13 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, "image/jpeg", 0.92),
       )
-      if (!blob) throw new Error("Не удалось обработать изображение")
+      if (!blob) throw new Error()
       onSave(blob)
+    } catch {
+      // Previously unhandled — the modal just sat there with the button
+      // re-enabled and no feedback, so a broken crop silently looked like
+      // nothing happened.
+      setError(t("error"))
     } finally {
       setSaving(false)
     }
@@ -129,12 +139,12 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">Подгони аватарку</h3>
+          <h3 className="font-semibold text-gray-900">{t("title")}</h3>
           <button
             onClick={onClose}
             disabled={saving}
             type="button"
-            aria-label="Закрыть"
+            aria-label={t("close")}
             className="p-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
             <Icon name="close" size={20} className="text-gray-500" />
@@ -193,15 +203,19 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
                 value={userScale}
                 onChange={(e) => setUserScale(Number(e.target.value))}
                 className="flex-1 accent-indigo-500"
-                aria-label="Масштаб"
+                aria-label={t("zoomLabel")}
               />
               <Icon name="zoom_in" size={16} />
             </label>
           </div>
 
           <p className="text-xs text-gray-400 mt-3 text-center">
-            Перетаскивай фото и подкручивай масштаб ползунком
+            {t("hint")}
           </p>
+
+          {error && (
+            <p className="text-xs text-red-600 mt-3 text-center">{error}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 p-5 border-t border-gray-100 bg-gray-50">
@@ -211,7 +225,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
             type="button"
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
-            Отмена
+            {t("cancel")}
           </button>
           <button
             onClick={handleSave}
@@ -219,7 +233,7 @@ export default function AvatarCropperModal({ file, onSave, onClose }: Props) {
             type="button"
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
-            {saving ? "Сохраняем..." : "Сохранить"}
+            {saving ? t("saving") : t("save")}
           </button>
         </div>
       </div>

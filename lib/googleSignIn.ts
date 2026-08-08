@@ -16,11 +16,18 @@
 // Callers chain `.then(googleAuth)` / `.catch(setError)` and never have
 // to handle the SDK's notification API directly.
 
-const NOT_AVAILABLE_MESSAGE =
-  "Не удалось завершить вход через Google. Попробуйте ещё раз или войдите другим способом."
-
-const SDK_NOT_LOADED_MESSAGE =
-  "Google SDK не загрузился. Перезагрузите страницу."
+// Thrown instead of a plain Error so callers never accidentally surface
+// a hardcoded-language message via `e.message` — every call site is
+// expected to catch this and show its own translated copy. Both failure
+// modes (prompt silently no-op'd, SDK script never loaded) render the
+// same "couldn't sign in with Google" message everywhere today, so one
+// class covers both instead of forcing every caller to distinguish them.
+export class GoogleSignInUnavailableError extends Error {
+  constructor(reason: string) {
+    super(reason)
+    this.name = "GoogleSignInUnavailableError"
+  }
+}
 
 interface GoogleIdentitySdk {
   accounts: {
@@ -51,7 +58,7 @@ export async function promptGoogleCredential(
   timeoutMs = 90000,
 ): Promise<string> {
   if (!window.google?.accounts?.id) {
-    throw new Error(SDK_NOT_LOADED_MESSAGE)
+    throw new GoogleSignInUnavailableError("Google SDK script not loaded")
   }
 
   return new Promise<string>((resolve, reject) => {
@@ -74,7 +81,7 @@ export async function promptGoogleCredential(
     // Google's FedCM migration guide we now opt into FedCM and rely
     // entirely on the callback (success) + this timeout (failure).
     const failTimeout = setTimeout(() => {
-      settle(() => reject(new Error(NOT_AVAILABLE_MESSAGE)))
+      settle(() => reject(new GoogleSignInUnavailableError("Prompt did not resolve before timeout")))
     }, timeoutMs)
 
     window.google!.accounts.id.initialize({

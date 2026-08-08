@@ -10,7 +10,7 @@ import React from "react"
 // Trailing punctuation that's likely sentence-ending is trimmed below
 // so "see https://example.com." doesn't include the period.
 const URL_RE = /https?:\/\/[^\s<>]+/g
-const TRAILING_PUNCT_RE = /[.,;:!?)]+$/
+const TRAILING_PUNCT_CHARS = new Set([".", ",", ";", ":", "!", "?", ")"])
 
 export function Linkified({ text }: { text: string }) {
   if (!text) return null
@@ -26,15 +26,19 @@ export function Linkified({ text }: { text: string }) {
 
     // Strip trailing punctuation but keep balanced parens — Wikipedia-style
     // URLs like https://en.wikipedia.org/wiki/Foo_(bar) should stay intact.
-    const trim = url.match(TRAILING_PUNCT_RE)
-    if (trim) {
-      const stripped = url.slice(0, -trim[0].length)
-      const opens = (stripped.match(/\(/g) ?? []).length
-      const closes = (stripped.match(/\)/g) ?? []).length
-      if (opens >= closes || !trim[0].includes(")")) {
-        url = stripped
-        trailing = trim[0]
-      }
+    // Peel off one trailing char at a time (rather than the whole
+    // punctuation run at once) so a ")" that balances an earlier "("
+    // stops the strip immediately, even if further trailing punctuation
+    // (e.g. a sentence-ending period) follows it.
+    const opens = (url.match(/\(/g) ?? []).length
+    let closes = (url.match(/\)/g) ?? []).length
+    while (url.length > 0) {
+      const lastChar = url[url.length - 1]
+      if (!TRAILING_PUNCT_CHARS.has(lastChar)) break
+      if (lastChar === ")" && closes <= opens) break
+      if (lastChar === ")") closes--
+      url = url.slice(0, -1)
+      trailing = lastChar + trailing
     }
 
     if (start > lastIndex) {

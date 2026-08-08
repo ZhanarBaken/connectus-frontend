@@ -1,0 +1,1458 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { act, render, screen, waitFor, fireEvent } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { useRouter } from "@/i18n/navigation"
+import OrderPage from "./page"
+import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
+import {
+  fetchOrder,
+  fetchMentor,
+  completeOrder,
+  cancelOrder,
+  rescheduleOrder,
+  fetchMentorAvailability,
+  fetchMentorAvailabilityOverview,
+  createDispute,
+  authFetch,
+  markChatRead,
+  fetchOrderDocuments,
+  deleteOrderDocument,
+  setDocumentStatus,
+  fetchDocumentComments,
+  postDocumentComment,
+  fetchMentorServices,
+  endSupportEngagement,
+  fetchSupportTasks,
+  updateSupportTask,
+  deleteSupportTask,
+  fetchEngagementDocuments,
+  fetchEngagementSchedule,
+  confirmIntroCall,
+  declineIntroCall,
+  fetchStudentProfile,
+  fetchMentorClient,
+} from "@/lib/api"
+import { fetchChatMessages, connectChat, sendChatMessage } from "@/lib/chat"
+import { fetchMentorReviews, hasReviewForOrder } from "@/lib/reviews"
+import type { Order, Mentor, ChatMessage, StudentProfile } from "@/types"
+import type { ChatConnection } from "@/lib/chat"
+
+vi.mock("@/lib/api")
+vi.mock("@/lib/chat")
+vi.mock("@/lib/reviews")
+
+function makeOrder(overrides: Partial<Order> = {}): Order {
+  return {
+    id: 42,
+    student: 7,
+    student_info: {
+      id: 7,
+      full_name: "Аружан Есенова",
+      current_school_or_university: "NIS Almaty",
+      profile_photo: null,
+    },
+    mentor: 3,
+    mentor_service: 10,
+    service_title: "Первичная консультация",
+    payout_category: "primary_consultation",
+    subtotal: "10000.00",
+    total_price: "10000.00",
+    platform_fee: "1000.00",
+    mentor_payout_amount: "9000.00",
+    payment_status: "unpaid",
+    order_status: "pending_payment",
+    payment_instructions: null,
+    conversation_id: null,
+    support_engagement: null,
+    installment_number: null,
+    engagement_duration_months: null,
+    engagement_status: null,
+    scheduled_at: null,
+    due_at: null,
+    completed_at: null,
+    created_at: "2026-07-01T10:00:00Z",
+    updated_at: "2026-07-01T10:00:00Z",
+    ...overrides,
+  }
+}
+
+function makeMentor(overrides: Partial<Mentor> = {}): Mentor {
+  return {
+    id: 3,
+    full_name: "Данияр Сериков",
+    countries: [],
+    languages: [],
+    school_or_university: "MIT",
+    major: "CS",
+    grant_or_scholarship: "",
+    gpa: "",
+    exam_results: "",
+    expertise_areas: [],
+    detailed_bio: "",
+    linkedin_url: "",
+    profile_photo: null,
+    is_public: true,
+    is_accepting_bookings: true,
+    is_universal: false,
+    rating_avg: null,
+    rating_count: 0,
+    services: [],
+    ...overrides,
+  }
+}
+
+function okJson(data: unknown): Response {
+  return { ok: true, json: async () => data } as Response
+}
+
+// React 19's `use()` suspends on the first render and only resumes once
+// the passed promise settles. The resumption is scheduled via a
+// microtask on that exact promise — outside of an `act()` that also
+// awaits the promise itself, RTL's queries never observe the retry (the
+// component stays stuck on the Suspense boundary forever). This helper
+// centralizes the two-step act dance every test needs.
+async function renderOrderPage(id: string) {
+  const paramsPromise = Promise.resolve({ id })
+  let utils!: ReturnType<typeof render>
+  await act(async () => {
+    utils = render(<OrderPage params={paramsPromise} />)
+  })
+  await act(async () => {
+    await paramsPromise
+  })
+  return utils
+}
+
+function setupCommonMocks() {
+  vi.mocked(authFetch).mockResolvedValue(okJson({ id: 1, email: "mentor@test.com" }))
+  vi.mocked(fetchOrderDocuments).mockResolvedValue([])
+  vi.mocked(fetchSupportTasks).mockResolvedValue([])
+  vi.mocked(fetchEngagementDocuments).mockResolvedValue([])
+  vi.mocked(fetchEngagementSchedule).mockResolvedValue([])
+  vi.mocked(markChatRead).mockResolvedValue(undefined)
+  vi.mocked(fetchChatMessages).mockResolvedValue([])
+  vi.mocked(connectChat).mockImplementation(
+    () => ({ send: vi.fn(() => true), close: vi.fn() }) as ChatConnection,
+  )
+  vi.mocked(fetchMentorReviews).mockResolvedValue([])
+  vi.mocked(hasReviewForOrder).mockResolvedValue(false)
+  vi.mocked(fetchMentorClient).mockResolvedValue({
+    id: 7, full_name: "Аружан Есенова", current_school_or_university: "", city: "",
+    profile_photo: null, conversation_id: null, engagement_id: null,
+  })
+  // useStudentOnboardingGate's own fetch — default to "complete" so it
+  // doesn't fire an unrelated redirect in tests that don't care about it.
+  vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: true } as StudentProfile)
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: false } as Response),
+  )
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  localStorage.clear()
+  sessionStorage.clear()
+  setupCommonMocks()
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe("translateInvoiceErrorMessage", () => {
+  // Mirrors the exact ru copy in messages/ru.json's Orders.Detail
+  // namespace — a plain lookup is enough here since this test is about
+  // translateInvoiceErrorMessage's own substring-matching logic, not
+  // about verifying translation content (the JSON files' own validity
+  // is checked separately).
+  const t = (key: string) => ({
+    invoiceErrorLiveEngagement:
+      "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
+    invoiceErrorNoConversation:
+      "Нет открытого чата с этим студентом — заявку можно отправить только внутри существующей переписки.",
+    invoiceErrorServiceUnavailable: "Эта услуга недоступна для отправки заявки.",
+  })[key] ?? key
+
+  it("translates an existing live engagement error", () => {
+    expect(translateInvoiceErrorMessage("There is already a live engagement for this student", t))
+      .toBe(
+        "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
+      )
+  })
+
+  it("translates a no-open-conversation error", () => {
+    expect(translateInvoiceErrorMessage("No open conversation with this student", t))
+      .toBe("Нет открытого чата с этим студентом — заявку можно отправить только внутри существующей переписки.")
+  })
+
+  it("translates a service-does-not-belong-to-mentor error", () => {
+    expect(translateInvoiceErrorMessage("This service does not belong to this mentor", t))
+      .toBe("Эта услуга недоступна для отправки заявки.")
+  })
+
+  it("translates a not-a-support-category-service error", () => {
+    expect(translateInvoiceErrorMessage("Service is not a support-category service", t))
+      .toBe("Эта услуга недоступна для отправки заявки.")
+  })
+
+  it("matches case-insensitively", () => {
+    expect(translateInvoiceErrorMessage("THERE IS ALREADY A LIVE ENGAGEMENT here", t))
+      .toBe(
+        "У этого студента уже есть активное сопровождение по этой услуге — заверши или отмени его, потом можно отправить новую заявку.",
+      )
+  })
+
+  it("falls back to the raw message for unrecognized input", () => {
+    expect(translateInvoiceErrorMessage("Some completely different backend error", t))
+      .toBe("Some completely different backend error")
+  })
+})
+
+describe("OrderPage — auth gate", () => {
+  it("redirects to /auth/login when there is no access token", async () => {
+    const push = vi.fn()
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({
+      push, replace, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+    })
+
+    await renderOrderPage("42")
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/auth/login"))
+    expect(fetchOrder).not.toHaveBeenCalled()
+  })
+})
+
+describe("OrderPage — student view", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    // BookingCalendar (rendered inside the reschedule modal) always
+    // calls these on mount/date-select — give every test a safe
+    // default so an unrelated test opening the modal doesn't crash on
+    // `undefined.then(...)` from the auto-mocked module.
+    vi.mocked(fetchMentorAvailabilityOverview).mockResolvedValue({
+      timezone: "Asia/Almaty", duration_minutes: 60, dates: {},
+    })
+    vi.mocked(fetchMentorAvailability).mockResolvedValue({
+      date: "2026-08-15", timezone: "Asia/Almaty", duration_minutes: 60, slots: [],
+    })
+  })
+
+  it("renders order status, price and mentor info", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder())
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Первичная консультация")).toBeInTheDocument()
+    expect(screen.getAllByText("Ожидает оплаты").length).toBeGreaterThan(0)
+    expect(screen.getByText("10 000 ₸")).toBeInTheDocument()
+    expect(screen.getByText("Данияр Сериков")).toBeInTheDocument()
+  })
+
+  it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(), replace, back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+    })
+    vi.mocked(fetchStudentProfile).mockResolvedValue({ is_profile_complete: false } as StudentProfile)
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder())
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/student"))
+  })
+
+  it("cancels a pending order after confirming", async () => {
+    const order = makeOrder()
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(cancelOrder).mockResolvedValue({ ...order, order_status: "cancelled" })
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true)
+
+    await renderOrderPage("42")
+
+    const button = await screen.findByRole("button", { name: "Отменить заказ" })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledWith(42))
+    expect(await screen.findByText("Отменён")).toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
+
+  it("shows a reschedule button for a pending order with a scheduled time", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ scheduled_at: "2026-08-15T10:00:00+05:00" }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByRole("button", { name: "Перенести" })).toBeInTheDocument()
+  })
+
+  it("hides the reschedule button when the order has no scheduled time", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({ scheduled_at: null }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Перенести" })).not.toBeInTheDocument()
+  })
+
+  it("hides the reschedule button once the order is completed", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({
+        order_status: "completed", payout_category: "delivery",
+        scheduled_at: "2026-08-15T10:00:00+05:00", completed_at: "2026-08-15T11:00:00+05:00",
+      }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Перенести" })).not.toBeInTheDocument()
+  })
+
+  it("opens the reschedule modal on click", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ scheduled_at: "2026-08-15T10:00:00+05:00" }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    const button = await screen.findByRole("button", { name: "Перенести" })
+    fireEvent.click(button)
+
+    expect(await screen.findByText("Выбери новое время")).toBeInTheDocument()
+  })
+
+  describe("completing a reschedule via the calendar", () => {
+    const TODAY = new Date("2026-08-10T12:00:00")
+
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      vi.setSystemTime(TODAY)
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("calls rescheduleOrder and closes the modal on success", async () => {
+      // Drives the real BookingCalendar UI the same way
+      // BookingCalendar.test.tsx does — this test's job is to verify
+      // OrderPage wires it up correctly (mentorId, the ISO string it
+      // builds, the order-state update), not to re-prove the
+      // calendar's own date/slot-picking logic.
+      const order = makeOrder({ scheduled_at: "2026-08-15T10:00:00+05:00" })
+      vi.mocked(fetchOrder).mockResolvedValue(order)
+      vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+      vi.mocked(rescheduleOrder).mockResolvedValue({
+        ...order, scheduled_at: "2026-08-16T11:00:00+05:00",
+      })
+      vi.mocked(fetchMentorAvailability).mockResolvedValue({
+        date: "2026-08-16", timezone: "Asia/Almaty", duration_minutes: 60, slots: ["11:00"],
+      })
+
+      await renderOrderPage("42")
+
+      fireEvent.click(await screen.findByRole("button", { name: "Перенести" }))
+      await screen.findByText("Выбери новое время")
+
+      const dayButton = screen
+        .getAllByText("16")
+        .map((el) => el.closest("button"))
+        .find((btn): btn is HTMLButtonElement => btn !== null && !btn.hasAttribute("disabled"))
+      if (!dayButton) throw new Error("No enabled day-16 button found")
+      fireEvent.click(dayButton)
+
+      const slotButton = await screen.findByText("11:00")
+      fireEvent.click(slotButton)
+
+      const confirmText = await screen.findByText("Записаться на 11:00")
+      const confirmButton = confirmText.closest("button")
+      if (!confirmButton) throw new Error("Confirm button not found")
+      fireEvent.click(confirmButton)
+
+      await waitFor(() =>
+        expect(rescheduleOrder).toHaveBeenCalledWith(42, expect.stringContaining("11:00:00+05:00")),
+      )
+      await waitFor(() =>
+        expect(screen.queryByText("Выбери новое время")).not.toBeInTheDocument(),
+      )
+    })
+  })
+
+  it("uses the longer support-specific dispute window for a completed support order", async () => {
+    // Regression: the countdown used to be computed only from the
+    // general dispute_window_hours, ignoring support_dispute_window_hours
+    // entirely — a just-completed support order would show a ~24h-ish
+    // remaining time instead of the correct ~week-long one.
+    const order = makeOrder({
+      order_status: "completed",
+      payout_category: "support",
+      completed_at: new Date().toISOString(),
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ dispute_window_hours: 24, support_dispute_window_hours: 168 }),
+      } as Response),
+    )
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Завершено")
+    await waitFor(() => expect(screen.getAllByText("дн.", { exact: false }).length).toBeGreaterThan(0))
+  })
+
+  it("opens a dispute on a completed non-consultation order", async () => {
+    const order = makeOrder({
+      order_status: "completed",
+      payout_category: "delivery",
+      completed_at: new Date().toISOString(),
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(createDispute).mockResolvedValue({
+      id: 1, order: 42, reason: "Проблема с услугой, ментор не вышел на связь", opened_at: new Date().toISOString(), resolution: null,
+    })
+    // dispute window: 48h, well within range
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ dispute_window_hours: 48 }) } as Response),
+    )
+
+    await renderOrderPage("42")
+
+    const openButton = await screen.findByRole("button", { name: "Открыть спор" })
+    fireEvent.click(openButton)
+
+    const textarea = await screen.findByPlaceholderText("Опиши проблему подробно — минимум 20 символов")
+    fireEvent.change(textarea, { target: { value: "Проблема с услугой, ментор не вышел на связь" } })
+    fireEvent.click(screen.getByRole("button", { name: "Подать спор" }))
+
+    await waitFor(() => expect(createDispute).toHaveBeenCalledWith(
+      42, "Проблема с услугой, ментор не вышел на связь",
+    ))
+  })
+})
+
+describe("OrderPage — mentor: complete order", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  it("calls completeOrder after confirming, and reflects the updated status", async () => {
+    const order = makeOrder({ order_status: "in_progress", payout_category: "delivery" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(completeOrder).mockResolvedValue({ ...order, order_status: "completed", completed_at: "2026-07-02T10:00:00Z" })
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true)
+
+    await renderOrderPage("42")
+
+    const button = await screen.findByRole("button", { name: "✓ Услуга выполнена" })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(completeOrder).toHaveBeenCalledWith(42))
+    expect(await screen.findByText("Завершено")).toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
+
+  it("does not call completeOrder when the confirm dialog is dismissed", async () => {
+    const order = makeOrder({ order_status: "in_progress", payout_category: "delivery" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false)
+
+    await renderOrderPage("42")
+
+    const button = await screen.findByRole("button", { name: "✓ Услуга выполнена" })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalled())
+    expect(completeOrder).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it("does not render the complete button for a support installment — it completes automatically on the backend", async () => {
+    const order = makeOrder({
+      order_status: "in_progress", payout_category: "support",
+      support_engagement: 5, installment_number: 1,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Аружан")
+    expect(screen.queryByRole("button", { name: "✓ Услуга выполнена" })).not.toBeInTheDocument()
+    expect(screen.queryByText("Завершить услугу")).not.toBeInTheDocument()
+  })
+
+})
+
+describe("OrderPage — mentor: link to the unified client window", () => {
+  it("links to /mentor/clients/<student_id> for the mentor", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ order_status: "in_progress", payout_category: "delivery", student: 7 })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    const link = await screen.findByText("История с клиентом")
+    expect(link.closest("a")).toHaveAttribute("href", "/mentor/clients/7")
+  })
+
+  it("does not show the link to a student", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ order_status: "in_progress", payout_category: "delivery" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByText("История с клиентом")).not.toBeInTheDocument()
+  })
+})
+
+describe("OrderPage — review form gating", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+  })
+
+  it("shows the review form for a support order while still in_progress", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({
+      order_status: "in_progress", payout_category: "support",
+      support_engagement: 5, installment_number: 2,
+    }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Оставить отзыв ментору")).toBeInTheDocument()
+  })
+
+  it("shows the review form for a paid consultation once completed", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({
+      order_status: "completed", payout_category: "paid_consultation", completed_at: "2026-07-02T10:00:00Z",
+    }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Оставить отзыв ментору")).toBeInTheDocument()
+  })
+
+  it("never shows the review form for a free intro consultation, even once completed", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({
+      order_status: "completed", payout_category: "consultation", completed_at: "2026-07-02T10:00:00Z",
+    }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Данияр Сериков")
+    expect(screen.queryByText("Оставить отзыв ментору")).not.toBeInTheDocument()
+  })
+
+  it("does not show the review form for a non-support paid order while still in_progress", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({
+      order_status: "in_progress", payout_category: "delivery",
+    }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Данияр Сериков")
+    expect(screen.queryByText("Оставить отзыв ментору")).not.toBeInTheDocument()
+  })
+})
+
+describe("OrderPage — in-progress notice copy", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+  })
+
+  it("tells a support-engagement student they can review anytime, not just once the installment is done", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({
+      order_status: "in_progress", payout_category: "support",
+      support_engagement: 5, installment_number: 1,
+    }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText(
+      "Сопровождение активно. Ты можешь оставить отзыв в любой момент, не дожидаясь завершения этапа.",
+    )).toBeInTheDocument()
+  })
+})
+
+describe("OrderPage — mentor: intro-call confirmation", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  it("shows the confirm/decline panel for a pending intro-call request", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByRole("button", { name: "Подтвердить" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Отклонить" })).toBeInTheDocument()
+  })
+
+  it("shows the booked slot's date and time inside the confirm/decline panel itself", async () => {
+    // Regression: the slot used to be visible only on a separate card
+    // further down the page — a mentor confirming/declining right here
+    // had no way to see which time they were actually responding to.
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+      scheduled_at: "2026-08-10T06:00:00Z",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByRole("button", { name: "Подтвердить" })
+    expect(screen.getByText("Время звонка")).toBeInTheDocument()
+    expect(screen.getByText(/10 августа/)).toBeInTheDocument()
+  })
+
+  it("marks a free intro-call order as free instead of showing 0 ₸ against the SUPPORT service's own title", async () => {
+    // Regression: the card's title is the mentor's paid SUPPORT service
+    // name (e.g. "Полное сопровождение поступления в США") — showing
+    // "Сумма 0 ₸" next to it with no other context reads as if the whole
+    // engagement were free, not just this one intro-call order.
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+      installment_number: null, total_price: "0.00", mentor_payout_amount: "0.00",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByRole("button", { name: "Подтвердить" })
+    expect(screen.getByText("Бесплатный интро-звонок")).toBeInTheDocument()
+    expect(screen.getByText("Бесплатно")).toBeInTheDocument()
+    expect(screen.queryByText("0 ₸")).not.toBeInTheDocument()
+    expect(screen.queryByText("Выплата ментору")).not.toBeInTheDocument()
+  })
+
+  it("does not show the panel for a regular draft order", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "primary_consultation", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Подтвердить" })).not.toBeInTheDocument()
+  })
+
+  it("does not show the panel once support_engagement is set (a real engagement session, not an intro call)", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: 5,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Подтвердить" })).not.toBeInTheDocument()
+  })
+
+  it("shows a response-deadline hint computed from created_at + the configured window", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+      created_at: "2026-07-01T10:00:00Z",
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ support_intro_call_response_deadline_hours: 24 }),
+      } as Response),
+    )
+
+    await renderOrderPage("42")
+
+    // created_at + 24h = 2026-07-02T10:00 UTC → shown in local time.
+    expect(await screen.findByText(/Ответь до/)).toBeInTheDocument()
+  })
+
+  it("does not show the deadline hint before the settings fetch resolves", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    // setupCommonMocks() default: fetch resolves { ok: false } — settings
+    // never populate, introCallResponseDeadlineMs stays null.
+
+    await renderOrderPage("42")
+
+    await screen.findByRole("button", { name: "Подтвердить" })
+    expect(screen.queryByText(/Ответь до/)).not.toBeInTheDocument()
+  })
+
+  it("confirms the intro call", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(confirmIntroCall).mockResolvedValue({ ...order, order_status: "in_progress" })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Подтвердить"))
+
+    await waitFor(() => expect(confirmIntroCall).toHaveBeenCalledWith(42))
+    expect(await screen.findByText("В работе")).toBeInTheDocument()
+  })
+
+  it("declines the intro call", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(declineIntroCall).mockResolvedValue({ ...order, order_status: "cancelled" })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Отклонить"))
+
+    await waitFor(() => expect(declineIntroCall).toHaveBeenCalledWith(42))
+    expect(await screen.findByText("Отменён")).toBeInTheDocument()
+  })
+
+  it("shows an error message when confirming fails", async () => {
+    const order = makeOrder({
+      order_status: "draft", payout_category: "support", support_engagement: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(confirmIntroCall).mockRejectedValue(new Error("Не удалось подтвердить интро-звонок"))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Подтвердить"))
+
+    expect(await screen.findByText("Не удалось подтвердить интро-звонок")).toBeInTheDocument()
+  })
+})
+
+describe("OrderPage — document review", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  function makeDoc(overrides: Partial<import("@/types").OrderDocument> = {}): import("@/types").OrderDocument {
+    return {
+      id: 1,
+      kind: "general",
+      status: "pending",
+      original_filename: "diploma.pdf",
+      content_type: "application/pdf",
+      size_bytes: 2048,
+      description: "",
+      download_url: "https://example.com/diploma.pdf",
+      uploaded_by: 7,
+      uploaded_by_email: "student@test.com",
+      uploaded_at: "2026-07-01T10:00:00Z",
+      ...overrides,
+    }
+  }
+
+  it("shows the status badge and lets the non-uploader verify a document", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc()])
+    vi.mocked(setDocumentStatus).mockResolvedValue(makeDoc({ status: "verified" }))
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("На проверке")).toBeInTheDocument()
+    fireEvent.click(screen.getByText("Подтвердить"))
+
+    await waitFor(() => expect(setDocumentStatus).toHaveBeenCalledWith(42, 1, "verified"))
+    expect(await screen.findByText("Проверен")).toBeInTheDocument()
+  })
+
+  it("does not show review buttons to the document's own uploader", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    // authFetch (setupCommonMocks) resolves currentUserId=1 — mark that user as the uploader.
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc({ uploaded_by: 1, uploaded_by_email: "mentor@test.com" })])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("diploma.pdf")).toBeInTheDocument()
+    expect(screen.queryByText("Подтвердить")).not.toBeInTheDocument()
+  })
+
+  it("hides the status badge and review buttons for a payment receipt", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([
+      makeDoc({ kind: "payment_receipt", original_filename: "receipt.pdf" }),
+    ])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("receipt.pdf")).toBeInTheDocument()
+    expect(screen.queryByText("На проверке")).not.toBeInTheDocument()
+    expect(screen.queryByText("Подтвердить")).not.toBeInTheDocument()
+  })
+
+  it("has no upload control — files are attached via chat instead", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Файлы")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Загрузить файл/ })).not.toBeInTheDocument()
+  })
+
+  it("loads and posts comments on a document", async () => {
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc()])
+    vi.mocked(fetchDocumentComments).mockResolvedValue([
+      { id: 1, document: 1, author: 7, author_email: "student@test.com", text: "Проверьте, пожалуйста", created_at: "2026-07-01T10:00:00Z" },
+    ])
+    vi.mocked(postDocumentComment).mockResolvedValue({
+      id: 2, document: 1, author: 1, author_email: "mentor@test.com", text: "Всё хорошо", created_at: "2026-07-01T11:00:00Z",
+    })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Комментарии"))
+    expect(await screen.findByText("Проверьте, пожалуйста")).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText("Написать комментарий..."), { target: { value: "Всё хорошо" } })
+    fireEvent.click(screen.getByText("Отправить"))
+
+    await waitFor(() => expect(postDocumentComment).toHaveBeenCalledWith(42, 1, "Всё хорошо"))
+    expect(await screen.findByText("Всё хорошо")).toBeInTheDocument()
+  })
+
+  it("shows an inline error when verifying a document fails", async () => {
+    // Regression: the verify/needs-revision buttons had empty catches —
+    // a failed status change just silently re-enabled the button.
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc()])
+    vi.mocked(setDocumentStatus).mockRejectedValue(new Error("Не удалось выполнить действие с документом"))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByText("Подтвердить"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось выполнить действие с документом")).toBeInTheDocument()
+    })
+  })
+
+  it("shows an inline error when deleting a document fails", async () => {
+    // Regression: the delete-document (×) button had an empty catch.
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    // authFetch (setupCommonMocks) resolves currentUserId=1 — mark that user as the uploader
+    // so the delete button (only shown to the uploader) renders.
+    vi.mocked(fetchOrderDocuments).mockResolvedValue([makeDoc({ uploaded_by: 1, uploaded_by_email: "mentor@test.com" })])
+    vi.mocked(deleteOrderDocument).mockRejectedValue(new Error("Не удалось выполнить действие с документом"))
+
+    await renderOrderPage("42")
+
+    const docRow = (await screen.findByText("diploma.pdf")).closest(".group") as HTMLElement
+    // Row order: filename/download button, delete (×) button, comments-toggle button.
+    const buttons = docRow.querySelectorAll("button")
+    const deleteButton = buttons[1] as HTMLElement
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось выполнить действие с документом")).toBeInTheDocument()
+    })
+    expect(screen.getByText("diploma.pdf")).toBeInTheDocument()
+  })
+
+  it("shows a distinct error when loading documents fails (not the shared docs/tasks message)", async () => {
+    // Regression: docsLoadError and tasksLoadError used to share one
+    // "couldn't load documents and tasks" string — misleading when only
+    // one of the two independent fetches actually failed.
+    const order = makeOrder({ order_status: "in_progress" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchOrderDocuments).mockRejectedValue(new Error("network"))
+
+    await renderOrderPage("42")
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось загрузить документы")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Не удалось загрузить задачи")).not.toBeInTheDocument()
+  })
+})
+
+describe("OrderPage — support tasks", () => {
+  function makeTask(overrides: Partial<import("@/types").SupportTask> = {}): import("@/types").SupportTask {
+    return {
+      id: 1,
+      engagement: 5,
+      title: "Загрузи эссе на проверку",
+      description: "",
+      deadline: null,
+      is_done: false,
+      completed_at: null,
+      created_at: "2026-07-01T10:00:00Z",
+      updated_at: "2026-07-01T10:00:00Z",
+      document: null,
+      ...overrides,
+    }
+  }
+
+  it("is absent without a support engagement", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ support_engagement: null, payout_category: "delivery" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByText("Задачи")).not.toBeInTheDocument()
+  })
+
+  it("shows an empty state and offers to add a task via chat for the mentor", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([])
+    // The chat header's "add task" button is keyed off the pair's
+    // current live engagement (same source as /mentor/clients/[id]),
+    // not this order's own support_engagement — see liveEngagementId.
+    vi.mocked(fetchMentorClient).mockResolvedValue({
+      id: order.student, full_name: "Аружан Есенова", current_school_or_university: "", city: "",
+      profile_photo: null, conversation_id: 55, engagement_id: 5,
+    })
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Задачи")).toBeInTheDocument()
+    expect(screen.getByText("Пока нет задач")).toBeInTheDocument()
+    // No creation UI in the sidebar any more — only the chat's toggle button.
+    expect(screen.queryByPlaceholderText("Новая задача")).not.toBeInTheDocument()
+    expect(screen.getByText("Добавить задачу")).toBeInTheDocument()
+  })
+
+  it("shows 'add task' in the chat header when the pair has a live engagement, even if THIS order has none (single-source-of-truth with /mentor/clients/[id])", async () => {
+    // Regression: a cancelled/old order (e.g. a past intro call) has
+    // support_engagement=null, but the mentor-student pair may have
+    // since started a real, live engagement — the chat header action
+    // must reflect that, matching what /mentor/clients/[id] shows for
+    // the same pair, not go stale/blank because of which order page
+    // happens to be open.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: null, payout_category: "support",
+      order_status: "cancelled", conversation_id: 55,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentorClient).mockResolvedValue({
+      id: order.student, full_name: "Аружан Есенова", current_school_or_university: "", city: "",
+      profile_photo: null, conversation_id: 55, engagement_id: 9,
+    })
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Добавить задачу")).toBeInTheDocument()
+  })
+
+  it("shows the task's attached document as a link once created", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    const doc = {
+      id: 42, kind: "general" as const, status: "pending" as const, original_filename: "essay.pdf",
+      content_type: "application/pdf", size_bytes: 100, description: "",
+      download_url: "https://example.com/essay.pdf", uploaded_by: 3,
+      uploaded_by_email: "mentor@test.com", uploaded_at: "2026-07-01T10:00:00Z",
+    }
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask({ document: doc })])
+
+    await renderOrderPage("42")
+
+    const link = await screen.findByRole("link", { name: /essay\.pdf/ })
+    expect(link).toHaveAttribute("href", "https://example.com/essay.pdf")
+  })
+
+  it("lets the mentor mark a task done", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(updateSupportTask).mockResolvedValue(makeTask({ is_done: true, completed_at: "2026-07-02T00:00:00Z" }))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByLabelText("Загрузи эссе на проверку"))
+
+    await waitFor(() => expect(updateSupportTask).toHaveBeenCalledWith(5, 1, { is_done: true }))
+  })
+
+  it("lets the mentor delete a task", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(deleteSupportTask).mockResolvedValue(undefined)
+
+    await renderOrderPage("42")
+
+    const taskRow = (await screen.findByText("Загрузи эссе на проверку")).closest(".group") as HTMLElement
+    const deleteButton = taskRow.querySelector("button:last-child") as HTMLElement
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => expect(deleteSupportTask).toHaveBeenCalledWith(5, 1))
+    await waitFor(() => expect(screen.queryByText("Загрузи эссе на проверку")).not.toBeInTheDocument())
+  })
+
+  it("shows an inline error when marking a task done fails", async () => {
+    // Regression: handleToggleTaskDone had an empty catch — a failed
+    // toggle just silently reverted with zero feedback.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(updateSupportTask).mockRejectedValue(new Error("Не удалось обновить задачу"))
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByLabelText("Загрузи эссе на проверку"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось обновить задачу")).toBeInTheDocument()
+    })
+  })
+
+  it("shows an inline error when deleting a task fails", async () => {
+    // Regression: handleDeleteTask had an empty catch — a failed delete
+    // just silently kept the task in the list with zero feedback.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+    vi.mocked(deleteSupportTask).mockRejectedValue(new Error("Не удалось удалить задачу"))
+
+    await renderOrderPage("42")
+
+    const taskRow = (await screen.findByText("Загрузи эссе на проверку")).closest(".group") as HTMLElement
+    const deleteButton = taskRow.querySelector("button:last-child") as HTMLElement
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось удалить задачу")).toBeInTheDocument()
+    })
+    expect(screen.getByText("Загрузи эссе на проверку")).toBeInTheDocument()
+  })
+
+  it("shows an inline error instead of an empty list when loading tasks fails", async () => {
+    // Regression: fetchSupportTasks().catch(() => {}) rendered the same
+    // "no tasks yet" empty state as a genuinely empty list.
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchSupportTasks).mockRejectedValue(new Error("network"))
+
+    await renderOrderPage("42")
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось загрузить задачи")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Пока нет задач")).not.toBeInTheDocument()
+  })
+
+  it("shows the student a read-only list with no add form", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(fetchSupportTasks).mockResolvedValue([makeTask()])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Загрузи эссе на проверку")).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText("Новая задача")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText("Загрузи эссе на проверку"))
+    expect(updateSupportTask).not.toHaveBeenCalled()
+  })
+})
+
+describe("OrderPage — payment schedule", () => {
+  it("does not show a payment schedule card for a non-support order", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder())
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByText("График оплат")).not.toBeInTheDocument()
+  })
+
+  it("shows every month's amount and status for the mentor", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchEngagementSchedule).mockResolvedValue([
+      { installment_number: 1, amount: "175000.00", status: "in_progress", order_id: 101, due_at: null },
+      { installment_number: 2, amount: "100000.00", status: "not_yet_due", order_id: null, due_at: null },
+    ])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("График оплат")).toBeInTheDocument()
+    expect(screen.getByText("Месяц 1/2")).toBeInTheDocument()
+    expect(screen.getByText("175 000 ₸")).toBeInTheDocument()
+    expect(screen.getByText("В работе")).toBeInTheDocument()
+    expect(screen.getByText("Месяц 2/2")).toBeInTheDocument()
+    expect(screen.getByText("100 000 ₸")).toBeInTheDocument()
+    expect(screen.getByText("Ещё не наступил")).toBeInTheDocument()
+  })
+
+  it("shows the same schedule to the student", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ support_engagement: 5, engagement_status: "active", payout_category: "support" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(fetchEngagementSchedule).mockResolvedValue([
+      { installment_number: 1, amount: "175000.00", status: "in_progress", order_id: 101, due_at: null },
+    ])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("График оплат")).toBeInTheDocument()
+    expect(screen.getByText("175 000 ₸")).toBeInTheDocument()
+  })
+
+  it("shows an error message when the schedule fails to load", async () => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+    const order = makeOrder({
+      support_engagement: 5, engagement_status: "active", payout_category: "support",
+      conversation_id: 55,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchEngagementSchedule).mockRejectedValue(new Error("network"))
+
+    await renderOrderPage("42")
+
+    await waitFor(() => {
+      expect(screen.getByText("Не удалось загрузить график оплат")).toBeInTheDocument()
+    })
+  })
+})
+
+// ─── Regression #2: chat WebSocket wiring ───────────────────────────────────
+
+describe("OrderPage — chat websocket wiring", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ order_status: "in_progress", conversation_id: 77 }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+  })
+
+  it("appends incoming messages, de-dupes by id, and toggles the connected indicator on open/close", async () => {
+    let handlers: Parameters<typeof connectChat>[1] | undefined
+    vi.mocked(connectChat).mockImplementation((_id, h) => {
+      handlers = h
+      return { send: vi.fn(() => true), close: vi.fn() }
+    })
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Сообщения")
+    await waitFor(() => expect(handlers).toBeDefined())
+
+    act(() => handlers!.onOpen?.())
+    act(() => handlers!.onPresenceChange?.(true))
+    expect(await screen.findByText("В сети")).toBeInTheDocument()
+
+    const msg: ChatMessage = {
+      id: 1,
+      sender: 7,
+      sender_email: "student@test.com",
+      text: "Привет!",
+      created_at: "2026-07-01T12:00:00Z",
+    }
+    act(() => handlers!.onMessage(msg))
+    expect(await screen.findAllByText("Привет!")).toHaveLength(1)
+
+    // De-dupe: same id delivered again must not duplicate the bubble.
+    act(() => handlers!.onMessage({ ...msg }))
+    expect(await screen.findAllByText("Привет!")).toHaveLength(1)
+
+    act(() => handlers!.onClose?.(1000))
+    expect(await screen.findByText("Подключение...")).toBeInTheDocument()
+  })
+
+  it("refetches the Files list after a chat attachment is sent", async () => {
+    let handlers: Parameters<typeof connectChat>[1] | undefined
+    vi.mocked(connectChat).mockImplementation((_id, h) => {
+      handlers = h
+      return { send: vi.fn(() => true), close: vi.fn() }
+    })
+    vi.mocked(sendChatMessage).mockResolvedValue({
+      id: 1, sender: 7, sender_email: "student@test.com", text: "", created_at: "2026-07-01T12:00:00Z",
+    })
+
+    const { container } = await renderOrderPage("42")
+    await screen.findByText("Сообщения")
+    await waitFor(() => expect(handlers).toBeDefined())
+    act(() => handlers!.onOpen?.())
+
+    await waitFor(() => expect(fetchOrderDocuments).toHaveBeenCalledTimes(1))
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, {
+      target: { files: [new File(["x"], "doc.pdf", { type: "application/pdf" })] },
+    })
+    const form = container.querySelector("form") as HTMLFormElement
+    fireEvent.submit(form)
+
+    await waitFor(() => expect(sendChatMessage).toHaveBeenCalled())
+    // A file mirrored into the order's documents server-side (apps.chat.
+    // views.MessageListView.post) isn't pushed over the websocket — the
+    // Files sidebar must actively refetch to pick it up.
+    await waitFor(() => expect(fetchOrderDocuments).toHaveBeenCalledTimes(2))
+  })
+})
+
+describe("OrderPage — mentor: end a support engagement", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  it("shows the end-engagement button for an active engagement order", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({
+        order_status: "in_progress", payout_category: "support",
+        support_engagement: 5, engagement_status: "active",
+      }),
+    )
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByRole("button", { name: "Завершить сопровождение" })).toBeInTheDocument()
+  })
+
+  it("does not show the button when there's no engagement", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ order_status: "in_progress", payout_category: "delivery" }),
+    )
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(screen.queryByRole("button", { name: "Завершить сопровождение" })).not.toBeInTheDocument()
+  })
+
+  it("submits with an empty reason and surfaces the backend's error when one is required", async () => {
+    // The backend, not the client, decides whether a reason is required
+    // (only for an early stop — a natural end-of-month finish needs
+    // none). The client just submits whatever's in the box and surfaces
+    // whatever error comes back.
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({
+        order_status: "in_progress", payout_category: "support",
+        support_engagement: 5, engagement_status: "active",
+      }),
+    )
+    vi.mocked(endSupportEngagement).mockRejectedValue(
+      new Error("Укажи причину — она будет отправлена студенту."),
+    )
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByRole("button", { name: "Завершить сопровождение" }))
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }))
+
+    await waitFor(() => expect(endSupportEngagement).toHaveBeenCalledWith(5, ""))
+    expect(await screen.findByText("Укажи причину — она будет отправлена студенту.")).toBeInTheDocument()
+  })
+
+  it("calls endSupportEngagement with the engagement id and reason, then refetches the order", async () => {
+    const order = makeOrder({
+      order_status: "in_progress", payout_category: "support",
+      support_engagement: 5, engagement_status: "active",
+    })
+    vi.mocked(fetchOrder)
+      .mockResolvedValueOnce(order)
+      .mockResolvedValueOnce({ ...order, engagement_status: "cancelled" })
+    vi.mocked(endSupportEngagement).mockResolvedValue({
+      id: 5, mentor: 3, mentor_name: "Данияр Сериков", student: 7, student_name: "Аружан Есенова",
+      mentor_service: 10, service_title: "Сопровождение", total_price: "500000.00", duration_months: 6,
+      status: "cancelled", next_installment_due_at: null, paused_at: null,
+      created_at: "2026-07-01T10:00:00Z",
+    })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByRole("button", { name: "Завершить сопровождение" }))
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Причина — не нужна, если сопровождение просто подошло к концу; студент её увидит, если понадобится",
+      ),
+      { target: { value: "Закончили раньше срока." } },
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }))
+
+    await waitFor(() => expect(endSupportEngagement).toHaveBeenCalledWith(5, "Закончили раньше срока."))
+    await waitFor(() => expect(fetchOrder).toHaveBeenCalledTimes(2))
+  })
+
+  it("ends the engagement with no reason at all when the backend accepts it", async () => {
+    // e.g. ending right around the final, already-paid month's finish —
+    // the backend completes it without demanding a reason.
+    const order = makeOrder({
+      order_status: "in_progress", payout_category: "support",
+      support_engagement: 5, engagement_status: "active",
+    })
+    vi.mocked(fetchOrder)
+      .mockResolvedValueOnce(order)
+      .mockResolvedValueOnce({ ...order, engagement_status: "completed" })
+    vi.mocked(endSupportEngagement).mockResolvedValue({
+      id: 5, mentor: 3, mentor_name: "Данияр Сериков", student: 7, student_name: "Аружан Есенова",
+      mentor_service: 10, service_title: "Сопровождение", total_price: "500000.00", duration_months: 6,
+      status: "completed", next_installment_due_at: null, paused_at: null,
+      created_at: "2026-07-01T10:00:00Z",
+    })
+
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByRole("button", { name: "Завершить сопровождение" }))
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }))
+
+    await waitFor(() => expect(endSupportEngagement).toHaveBeenCalledWith(5, ""))
+    await waitFor(() => expect(fetchOrder).toHaveBeenCalledTimes(2))
+  })
+})
+
+describe("OrderPage — chat overlay inside the Telegram Mini App", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "student")
+    vi.mocked(fetchOrder).mockResolvedValue(
+      makeOrder({ order_status: "in_progress", conversation_id: 77 }),
+    )
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    vi.mocked(connectChat).mockImplementation(() => ({ send: vi.fn(() => true), close: vi.fn() }))
+    window.Telegram = {
+      WebApp: { initData: "raw-init-data", ready: vi.fn(), expand: vi.fn() } as unknown as TelegramWebApp,
+    }
+  })
+
+  afterEach(() => {
+    window.Telegram = undefined
+  })
+
+  it("starts collapsed behind the CTA row, and expanding it shows the fullscreen overlay", async () => {
+    const { container } = await renderOrderPage("42")
+
+    const cta = await screen.findByRole("button", { name: /Чат/ })
+    const overlay = container.querySelector('[data-testid="chat-overlay"]')
+    expect(overlay).toHaveClass("hidden")
+
+    fireEvent.click(cta)
+
+    // The CTA row itself unmounts once expanded (it's conditionally
+    // rendered, unlike the overlay/ChatPanel which stays mounted).
+    await waitFor(() => expect(screen.queryByRole("button", { name: /Чат/ })).not.toBeInTheDocument())
+    expect(overlay).not.toHaveClass("hidden")
+    expect(overlay).toHaveClass("fixed", "inset-0")
+  })
+
+  it("keeps the same chat connection alive across collapse/expand — ChatPanel never remounts", async () => {
+    await renderOrderPage("42")
+
+    fireEvent.click(await screen.findByRole("button", { name: /Чат/ }))
+    await waitFor(() => expect(connectChat).toHaveBeenCalledTimes(1))
+
+    // Collapse back behind the CTA.
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть чат" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: /Чат/ })).toBeInTheDocument())
+
+    // If the overlay had unmounted ChatPanel on collapse, expanding again
+    // would open a second websocket connection instead of reusing the
+    // still-live one — this is exactly what keeps the collapsed CTA
+    // row's online-dot/preview updating in real time.
+    fireEvent.click(screen.getByRole("button", { name: /Чат/ }))
+    await waitFor(() => expect(screen.queryByRole("button", { name: /Чат/ })).not.toBeInTheDocument())
+    expect(connectChat).toHaveBeenCalledTimes(1)
+  })
+})

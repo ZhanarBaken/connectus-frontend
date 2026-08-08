@@ -1,0 +1,772 @@
+"use client"
+
+import { useState, useEffect, use } from "react"
+import { useTranslations, useLocale } from "next-intl"
+import { useRouter, Link } from "@/i18n/navigation"
+import { fetchMentor, createOrder, requestSupport, fetchOrders, fetchPublicSettings } from "@/lib/api"
+import { track } from "@/lib/analytics"
+import { fetchMentorReviews, type Review } from "@/lib/reviews"
+import { countryFlag, countryLabel } from "@/lib/countries"
+import { LANGUAGE_LABELS } from "@/lib/languages"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
+import { Mentor, MentorService, Order } from "@/types"
+import BackButton from "@/components/BackButton"
+import BookingCalendar from "@/components/BookingCalendar"
+import Icon from "@/components/Icon"
+
+// Fallback while /settings/public/ hasn't resolved yet — overwritten by
+// the fetched value below so this page never hardcodes what's actually
+// apps.services.models.SUPPORT_INTRO_CALL_DURATION_MINUTES on the backend.
+const DEFAULT_INTRO_CALL_DURATION_MINUTES = 15
+
+// apps.orders.serializers.OrderCreateSerializer.validate() raises plain
+// English text with no locale awareness — translate the ones a student
+// can realistically hit; anything unrecognized falls back to the raw
+// text rather than showing nothing. `email_verification_required` is a
+// stable machine code (apps.orders.serializers.EmailVerificationRequired),
+// not prose — matched by exact equality, not substring.
+export function translateOrderErrorMessage(raw: string, t: (key: string) => string): string {
+  if (raw === "email_verification_required") {
+    return t("orderErrorEmailVerificationRequired")
+  }
+  const lower = raw.toLowerCase()
+  if (lower.includes("not currently active")) {
+    return t("orderErrorServiceInactive")
+  }
+  if (lower.includes("not currently available")) {
+    return t("orderErrorMentorUnavailable")
+  }
+  if (lower.includes("not currently accepting bookings")) {
+    return t("orderErrorMentorNotAcceptingBookings")
+  }
+  if (lower.includes("paused due to a missed payment")) {
+    return t("orderErrorEngagementPaused")
+  }
+  if (lower.includes("only available through a chat invoice")) {
+    return t("orderErrorSupportInviteOnly")
+  }
+  if (lower.includes("pick a session time")) {
+    return t("orderErrorPickSessionTime")
+  }
+  if (lower.includes("book a slot in the past")) {
+    return t("orderErrorSlotInPast")
+  }
+  if (lower.includes("just taken")) {
+    return t("orderErrorSlotJustTaken")
+  }
+  if (lower.includes("slot is unavailable")) {
+    return t("orderErrorSlotUnavailable")
+  }
+  if (lower.includes("already have an intro-call booked")) {
+    return t("orderErrorIntroCallAlreadyBooked")
+  }
+  if (lower.includes("already have an active consultation")) {
+    return t("orderErrorConsultationAlreadyActive")
+  }
+  if (lower.includes("booked instantly")) {
+    return t("orderErrorFreeConsultationNoTime")
+  }
+  if (lower.includes("time slot is required")) {
+    return t("orderErrorSlotRequired")
+  }
+  if (lower.includes("has intro call enabled")) {
+    return t("orderErrorIntroCallEnabledUseBooking")
+  }
+  if (lower.includes("sent a request recently")) {
+    return t("orderErrorRequestSupportCooldown")
+  }
+  if (lower.includes("no longer active")) {
+    return t("orderErrorEngagementNoLongerActive")
+  }
+  if (lower.includes("intro call is no longer available")) {
+    return t("orderErrorIntroCallNoLongerAvailable")
+  }
+  return raw
+}
+
+interface Props {
+  params: Promise<{ id: string }>
+}
+
+export default function MentorPage({ params }: Props) {
+  const { id } = use(params)
+  const t = useTranslations("Mentors.Detail")
+  const tExpertise = useTranslations("Landing.Expertise")
+  const tNav = useTranslations("Nav")
+  const locale = useLocale()
+  const router = useRouter()
+  useStudentOnboardingGate()
+  const [mentor, setMentor] = useState<Mentor | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
+  const [orderingServiceId, setOrderingServiceId] = useState<number | null>(null)
+  const [orderError, setOrderError] = useState("")
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [bookingService, setBookingService] = useState<MentorService | null>(null)
+  const [bookingIsIntroCall, setBookingIsIntroCall] = useState(false)
+  const [introCallDurationMinutes, setIntroCallDurationMinutes] = useState(DEFAULT_INTRO_CALL_DURATION_MINUTES)
+  const [requestingSupportId, setRequestingSupportId] = useState<number | null>(null)
+  const [supportRequestSentIds, setSupportRequestSentIds] = useState<Set<number>>(new Set())
+  const [requestSupportError, setRequestSupportError] = useState<{ serviceId: number; message: string } | null>(null)
+  // A mentor viewing this page — their own profile via "Предпросмотр
+  // профиля", or any other mentor's — sees the exact same read-only
+  // view a student would, with every action disabled. The order/support
+  // endpoints are student-only on the backend (IsStudent permission) —
+  // this just avoids surfacing a confusing 403.
+  const [isMentorViewer, setIsMentorViewer] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    if (!token) {
+      router.replace(`/auth/login?next=/mentors/${id}`)
+      return
+    }
+    setIsMentorViewer(localStorage.getItem("role") === "mentor")
+
+    fetchPublicSettings(locale)
+      .then((s) => setIntroCallDurationMinutes(s.support_intro_call_duration_minutes))
+      .catch(() => {})
+
+    Promise.all([fetchMentor(Number(id)), fetchOrders()])
+      .then(([m, o]) => {
+        setMentor(m)
+        setOrders(o)
+        // Intentionally fires on every navigation between mentor
+        // profiles within the same SPA session — that is the "view"
+        // semantic. Don't gate this with a useRef.
+        track("mentor_profile_viewed", { mentor_profile_id: m.id })
+        fetchMentorReviews(m.id).then(setReviews)
+      })
+      .catch(() => router.replace("/mentors"))
+      .finally(() => {
+        setLoading(false)
+        window.scrollTo(0, 0)
+      })
+  }, [id, router, locale])
+
+  const handleOrder = async (serviceId: number) => {
+    setOrderingServiceId(serviceId)
+    setOrderError("")
+    try {
+      const created = await createOrder(serviceId)
+      router.push(`/orders/${created.id}`)
+    } catch (err: unknown) {
+      setOrderError(err instanceof Error ? translateOrderErrorMessage(err.message, t) : t("orderError"))
+      setOrderingServiceId(null)
+    }
+  }
+
+  const handleRequestSupport = async (serviceId: number) => {
+    setRequestingSupportId(serviceId)
+    setRequestSupportError(null)
+    try {
+      await requestSupport(serviceId)
+      setSupportRequestSentIds((prev) => new Set(prev).add(serviceId))
+    } catch (err: unknown) {
+      setRequestSupportError({
+        serviceId,
+        message: err instanceof Error ? translateOrderErrorMessage(err.message, t) : t("requestSupportError"),
+      })
+    } finally {
+      setRequestingSupportId(null)
+    }
+  }
+
+  if (loading || !mentor) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">{t("loadingProfile")}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Split services. Mentors can list any number of paid consultations now
+  // (no more singleton) — the legacy free intro is kept on backend as an
+  // inactive artifact and is not in the public services list. "support"
+  // (long-running mentorship) is sold through chat, not this one-click flow.
+  // primary_consultation/delivery/milestone are retired (replaced by
+  // paid_consultation) — excluded defensively in case an unmigrated row
+  // is ever still active and visible here.
+  const consultationServices = mentor.services.filter(
+    (s) => s.payout_category === "paid_consultation"
+  )
+  const paidServices = mentor.services.filter(
+    (s) =>
+      s.payout_category !== "consultation" &&
+      s.payout_category !== "primary_consultation" &&
+      s.payout_category !== "paid_consultation" &&
+      s.payout_category !== "support"
+  )
+  const supportServices = mentor.services.filter((s) => s.payout_category === "support")
+  const anySupportHasIntroCall = supportServices.some((s) => s.intro_call_enabled)
+
+  // Only one active consultation (of any of the mentor's consultation
+  // services) per mentor-student pair — a mentor-wide invariant, not a
+  // per-service one, so this must be found across the whole set.
+  const consultationServiceIds = new Set(consultationServices.map((s) => s.id))
+  const consultationOrder = orders.find(
+    (o) =>
+      consultationServiceIds.has(o.mentor_service) &&
+      ["pending_payment", "in_progress"].includes(o.order_status)
+  )
+  const consultationStatus: "none" | "pending_payment" | "in_progress" =
+    !consultationOrder
+      ? "none"
+      : (consultationOrder.order_status as "pending_payment" | "in_progress")
+
+  // Track which paid services have already been ordered
+  const orderedPaidIds = new Set(
+    orders
+      .filter((o) => o.order_status !== "cancelled")
+      .map((o) => o.mentor_service)
+  )
+
+  return (
+    <div className="bg-white min-h-screen">
+      {/* Breadcrumb + back */}
+      <div className="border-b border-gray-200 bg-white px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-400 min-w-0">
+            <Link href="/" className="hover:text-indigo-600 transition-colors">{t("breadcrumbHome")}</Link>
+            <span>/</span>
+            <Link href="/mentors" className="hover:text-indigo-600 transition-colors">{tNav("mentors")}</Link>
+            <span>/</span>
+            <span className="text-gray-600 truncate">{mentor.full_name}</span>
+          </div>
+          <BackButton className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 font-medium transition-colors group [-webkit-tap-highlight-color:transparent] flex-shrink-0" />
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <div className="max-w-3xl mx-auto">
+
+          <div className="space-y-8">
+
+            {isMentorViewer && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-gray-500">
+                <Icon name="visibility" size={16} className="text-gray-400 flex-shrink-0" />
+                {t("mentorPreviewNotice")}
+              </div>
+            )}
+
+            {/* Hero */}
+            <div className="flex items-start gap-6 flex-wrap">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center flex-shrink-0">
+                {mentor.profile_photo ? (
+                  <img
+                    src={mentor.profile_photo}
+                    alt={mentor.full_name}
+                    className="w-24 h-24 rounded-2xl object-cover"
+                  />
+                ) : (
+                  <span className="text-white font-bold text-4xl">
+                    {mentor.full_name.charAt(0)}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 min-w-[240px]">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{mentor.full_name}</h1>
+                  {/* Every mentor in the public catalog has been
+                      admin-approved with documents on file, so the
+                      badge is shown unconditionally. */}
+                  <span
+                    className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                    title={t("verifiedTitle")}
+                  >
+                    <Icon name="verified" size={14} className="text-indigo-600" filled />
+                    {t("verified")}
+                  </span>
+                  {mentor.is_universal && (
+                    <span
+                      className="inline-flex items-center gap-1 bg-violet-50 text-violet-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                      title={t("universalTitle")}
+                    >
+                      <Icon name="auto_awesome" size={14} className="text-violet-600" filled />
+                      {t("universal")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-500 mt-1 text-lg">
+                  {mentor.school_or_university}
+                  {mentor.major && <span className="text-gray-400"> · {mentor.major}</span>}
+                </p>
+                {/* Countries + languages — plain text, not colored chips,
+                    to keep the colored pills reserved for actual signals
+                    (verified, universal, expertise, accepting bookings). */}
+                {((mentor.countries ?? []).length > 0 || (mentor.languages ?? []).length > 0) && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {[
+                      ...mentor.countries.map((c) => `${countryFlag(c.country)} ${countryLabel(c.country, locale)}`),
+                      ...mentor.languages.map((l) => LANGUAGE_LABELS[l.language] ?? l.language),
+                    ].join(" · ")}
+                  </p>
+                )}
+                {mentor.grant_or_scholarship && (
+                  <p className="text-sm text-gray-400 mt-2 inline-flex items-center gap-1.5">
+                    <Icon name="military_tech" size={16} />
+                    {mentor.grant_or_scholarship}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {mentor.expertise_areas.map((e) => (
+                    <span
+                      key={e.area}
+                      className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-medium"
+                    >
+                      {tExpertise.has(e.area) ? tExpertise(e.area) : e.area}
+                    </span>
+                  ))}
+                  <span
+                    className={`text-xs font-medium px-3 py-1 rounded-full ${
+                      mentor.is_accepting_bookings
+                        ? "bg-green-50 text-green-600"
+                        : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    {mentor.is_accepting_bookings ? t("acceptingBookings") : t("busy")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: t("gpaLabel"), value: mentor.gpa || "—", icon: "school" },
+                { label: t("examsLabel"), value: mentor.exam_results || "—", icon: "quiz" },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
+                  <Icon name={stat.icon} size={20} className="text-gray-300" />
+                  <div>
+                    <div className="text-xs text-gray-400">{stat.label}</div>
+                    <div className="font-semibold text-gray-900 text-sm">{stat.value}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bio */}
+            {mentor.detailed_bio && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">{t("aboutMentor")}</h2>
+                <p className="text-gray-600 leading-relaxed">{mentor.detailed_bio}</p>
+              </div>
+            )}
+
+            {/* Consultations — hero blocks. Mentors can list more than one —
+                each gets its own card, but only one active order across
+                ALL of them is allowed at a time. */}
+            {consultationServices.map((consultationService) => {
+              const fullPrice = Number(consultationService.client_price ?? 0)
+              // Does the mentor-wide active order belong to THIS card, or
+              // to a different consultation service of the same mentor?
+              const isThisOrder = consultationOrder?.mentor_service === consultationService.id
+              const blockedByOtherConsultation = consultationStatus !== "none" && !isThisOrder
+              return (
+              <div key={consultationService.id} className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 sm:p-7 text-white">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="relative">
+                  <div className="flex justify-between items-start gap-4">
+                    <h2 className="text-2xl font-bold mb-2">{consultationService.title || t("consultationTitleDefault")}</h2>
+                    <div className="text-2xl font-bold flex-shrink-0">
+                      {fullPrice === 0 ? t("free") : `${fullPrice.toLocaleString("ru-RU")} ₸`}
+                    </div>
+                  </div>
+                  <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line break-words">
+                    {consultationService.description ||
+                      t("consultationDescriptionDefault")}
+                  </p>
+                  <div className="flex items-center gap-4 mb-5 text-xs text-indigo-200">
+                    <span className="inline-flex items-center gap-1">
+                      <Icon name="schedule" size={14} />
+                      {t("durationMinutes", { minutes: String(consultationService.duration_minutes) })}
+                    </span>
+                    {(consultationService.grade_min !== null || consultationService.grade_max !== null) && (
+                      <>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="school" size={14} />
+                          {t("gradeRange", { min: consultationService.grade_min ?? "?", max: consultationService.grade_max ?? "?" })}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className={isMentorViewer ? "opacity-60" : ""}>
+                    {isThisOrder && consultationStatus === "in_progress" ? (
+                      <div className="flex items-center gap-3">
+                        {isMentorViewer ? (
+                          <span className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm inline-flex items-center gap-2 cursor-default">
+                            {t("openChat")}
+                            <Icon name="arrow_forward" size={16} />
+                          </span>
+                        ) : (
+                          <Link
+                            href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                            className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
+                          >
+                            {t("openChat")}
+                            <Icon name="arrow_forward" size={16} />
+                          </Link>
+                        )}
+                        <span className="text-xs text-indigo-200">{t("consultationActive")}</span>
+                      </div>
+                    ) : isThisOrder && consultationStatus === "pending_payment" ? (
+                      isMentorViewer ? (
+                        <span className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm inline-flex items-center gap-2 cursor-default">
+                          {t("goToPayment")}
+                          <Icon name="arrow_forward" size={16} />
+                        </span>
+                      ) : (
+                        <Link
+                          href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                          className="bg-white text-indigo-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2"
+                        >
+                          {t("goToPayment")}
+                          <Icon name="arrow_forward" size={16} />
+                        </Link>
+                      )
+                    ) : blockedByOtherConsultation ? (
+                      isMentorViewer ? (
+                        <span className="text-xs text-indigo-200 cursor-default">{t("alreadyActiveConsultation")}</span>
+                      ) : (
+                        <Link
+                          href={consultationOrder ? `/orders/${consultationOrder.id}` : "/orders"}
+                          className="text-xs text-indigo-200 underline hover:text-white transition-colors"
+                        >
+                          {t("alreadyActiveConsultation")}
+                        </Link>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => {
+                          track("book_consultation_clicked", {
+                            mentor_profile_id: mentor.id,
+                            mentor_service_id: consultationService.id,
+                          })
+                          // Paid consultation goes through the same slot
+                          // picker as any other paid service. The order
+                          // POST without scheduled_at is rejected by the
+                          // backend whenever the mentor has availability
+                          // configured ("A time slot is required …").
+                          setBookingService(consultationService)
+                        }}
+                        disabled={orderingServiceId === consultationService.id || !mentor.is_accepting_bookings || isMentorViewer}
+                        className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {orderingServiceId === consultationService.id
+                          ? t("ordering")
+                          : fullPrice === 0
+                          ? t("orderFree")
+                          : t("orderConsultationFor", { price: fullPrice.toLocaleString("ru-RU") })}
+                      </button>
+                    )}
+                    {!mentor.is_accepting_bookings && consultationStatus === "none" && (
+                      <p className="text-xs text-indigo-200 mt-2">{t("notAcceptingRequests")}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              )
+            })}
+
+            {/* Support ("сопровождение") — sold through chat, not this flow */}
+            {supportServices.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">{t("supportTitle")}</h2>
+                <p className={`text-sm text-gray-500 ${anySupportHasIntroCall ? "mb-1" : "mb-4"}`}>
+                  {t("supportSubtitle")}
+                </p>
+                {anySupportHasIntroCall && (
+                  <p className="text-xs text-gray-400 mb-4">
+                    {t("introCallExplainer")}
+                  </p>
+                )}
+                <div className="space-y-3">
+                  {supportServices.map((service) => {
+                    const hasActiveEngagement = orders.some(
+                      (o) => o.mentor_service === service.id && o.engagement_status === "active",
+                    )
+                    // A real intro-call order is never attached to a
+                    // SupportEngagement (engagement_status === null) —
+                    // unlike a free session booked under one (active or
+                    // paused), which shares the same installment_number:
+                    // null but must never be mistaken for the intro-call.
+                    const introCallOrder = !hasActiveEngagement && orders.find(
+                      (o) =>
+                        o.mentor_service === service.id &&
+                        o.installment_number === null &&
+                        o.engagement_status === null &&
+                        ["draft", "pending_payment", "in_progress"].includes(o.order_status),
+                    )
+                    return (
+                    <div key={service.id} className="border rounded-2xl p-5 border-gray-200 hover:border-gray-300 transition-all">
+                      <div className="flex justify-between items-start gap-4">
+                        <h3 className="text-2xl font-bold mb-2 text-gray-900 flex-1 min-w-0">{service.title}</h3>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-2xl font-bold text-gray-900">
+                            {service.is_price_negotiable || service.client_price === null
+                              ? t("negotiablePrice")
+                              : `${Number(service.client_price).toLocaleString("ru-RU")} ₸`}
+                          </div>
+                          {service.intro_call_enabled && (
+                            <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
+                              {t("introCallFreeBadge", { minutes: String(introCallDurationMinutes) })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {service.description && (
+                        <p className="text-sm leading-relaxed mb-5 text-gray-500 break-words">{service.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mb-5 flex-wrap text-xs text-gray-400">
+                        {service.meetings_min !== null && (
+                          <span className="inline-flex items-center gap-1">
+                            <Icon name="event_repeat" size={14} />
+                            {t("meetingsRange", { min: service.meetings_min, max: service.meetings_max ?? "" })}
+                          </span>
+                        )}
+                        {service.duration_months_min !== null && (
+                          <span className="inline-flex items-center gap-1">
+                            <Icon name="calendar_month" size={14} />
+                            {t("monthsRange", { min: service.duration_months_min, max: service.duration_months_max ?? "" })}
+                          </span>
+                        )}
+                        {(service.grade_min !== null || service.grade_max !== null) && (
+                          <span className="inline-flex items-center gap-1">
+                            <Icon name="school" size={14} />
+                            {t("gradeRange", { min: service.grade_min ?? "?", max: service.grade_max ?? "?" })}
+                          </span>
+                        )}
+                      </div>
+                      <div className={`mt-3 pt-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2 ${isMentorViewer ? "opacity-60" : ""}`}>
+                        {hasActiveEngagement ? (
+                          <button
+                            onClick={() => {
+                              setBookingIsIntroCall(false)
+                              setBookingService(service)
+                            }}
+                            disabled={isMentorViewer}
+                            className="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors disabled:cursor-not-allowed"
+                          >
+                            {t("bookSession")}
+                          </button>
+                        ) : service.intro_call_enabled ? (
+                          introCallOrder ? (
+                            <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-1">
+                              <Icon name="event_available" size={14} />
+                              {t("introCallBooked")}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setBookingIsIntroCall(true)
+                                setBookingService(service)
+                              }}
+                              disabled={isMentorViewer}
+                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-colors disabled:cursor-not-allowed"
+                            >
+                              {t("bookIntroCall")}
+                            </button>
+                          )
+                        ) : supportRequestSentIds.has(service.id) ? (
+                          <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-1">
+                            <Icon name="check_circle" size={14} />
+                            {t("requestSupportSent")}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleRequestSupport(service.id)}
+                            disabled={requestingSupportId === service.id || isMentorViewer}
+                            className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {requestingSupportId === service.id ? t("requesting") : t("requestSupport")}
+                            <Icon name="arrow_forward" size={16} />
+                          </button>
+                        )}
+                      </div>
+                      {requestSupportError?.serviceId === service.id && (
+                        <p className="text-xs text-red-500 mt-2">{requestSupportError.message}</p>
+                      )}
+                    </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Paid services */}
+            {paidServices.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">{t("paidServicesTitle")}</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  {t("paidServicesSubtitle")}
+                </p>
+                <div className="space-y-3">
+                  {paidServices.map((service) => {
+                    const isOrdered = orderedPaidIds.has(service.id)
+                    return (
+                      <div
+                        key={service.id}
+                        className="border rounded-2xl p-5 transition-all border-gray-200 hover:border-gray-300"
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900">
+                              {service.title}
+                            </h3>
+                            {service.description && (
+                              <p className="text-sm mt-1 text-gray-500 break-words">
+                                {service.description}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-400 mt-2 inline-flex items-center gap-1">
+                              <Icon name="schedule" size={12} />
+                              {t("durationMinutes", { minutes: String(service.duration_minutes) })}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-2xl font-bold text-gray-900">
+                              {Number(service.client_price).toLocaleString("ru-RU")} ₸
+                            </div>
+                            {isOrdered ? (
+                              <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
+                                <Icon name="check" size={12} />
+                                {t("ordered")}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => setBookingService(service)}
+                                disabled={orderingServiceId === service.id || isMentorViewer}
+                                className="mt-1 text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                              >
+                                {orderingServiceId === service.id ? t("ordering") : t("signUp")}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {orderError && (
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
+                {orderError}
+              </div>
+            )}
+
+            {/* Reviews */}
+            <div>
+              <div className="flex items-baseline gap-3 mb-4">
+                <h2 className="text-xl font-bold text-gray-900">{t("reviewsTitle")}</h2>
+                {(mentor.rating_count ?? 0) > 0 && (
+                  <span className="text-sm text-gray-400">
+                    {mentor.rating_avg?.toFixed(1)} ★ · {t("reviewsCount", { count: mentor.rating_count ?? 0 })}
+                  </span>
+                )}
+              </div>
+              {reviews.length === 0 ? (
+                <div className="border border-gray-200 rounded-2xl p-8 text-center">
+                  <div className="mb-2 flex justify-center">
+                    <Icon name="star" size={32} className="text-gray-300" />
+                  </div>
+                  <p className="text-sm text-gray-400">{t("noReviews")}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="border border-gray-200 rounded-2xl p-5">
+                      <div className="flex items-center gap-1 mb-2">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <span key={s} className={`text-sm ${s <= review.rating ? "text-yellow-400" : "text-gray-200"}`}>★</span>
+                        ))}
+                      </div>
+                      <p className="text-gray-600 text-sm leading-relaxed mb-3">&ldquo;{review.text}&rdquo;</p>
+                      {review.mentor_reply && (
+                        <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3">
+                          <p className="text-xs text-gray-500 font-medium mb-1">{t("mentorReply")}</p>
+                          <p className="text-sm text-gray-600">{review.mentor_reply}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+                          <span className="text-gray-500 text-xs font-bold">{review.student_full_name.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <span className="text-sm text-gray-400">{review.student_full_name}</span>
+                        <span className="text-xs text-gray-300">·</span>
+                        <span className="text-xs text-gray-300">
+                          {new Date(review.created_at).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Booking calendar modal */}
+      {bookingService && mentor && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => { setBookingService(null); setBookingIsIntroCall(false) }}
+          />
+          <div className="relative min-h-full flex items-center justify-center p-4">
+            <div className="relative w-full max-w-md my-4">
+              <div className="mb-3 bg-white rounded-xl px-4 py-3 border border-gray-200">
+                <p className="text-sm font-semibold text-gray-900">
+                  {bookingIsIntroCall ? t("introCallModalTitle", { title: bookingService.title }) : bookingService.title}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {bookingIsIntroCall
+                    ? t("modalFreeDuration", { minutes: String(introCallDurationMinutes) })
+                    : bookingService.payout_category === "support"
+                      ? t("modalIncludedInSupport", { minutes: String(bookingService.duration_minutes) })
+                      : t("modalPriceDuration", { minutes: String(bookingService.duration_minutes), price: Number(bookingService.client_price).toLocaleString("ru-RU") })}
+                </p>
+              </div>
+              <BookingCalendar
+                mentorId={mentor.id}
+                durationMinutes={bookingIsIntroCall ? introCallDurationMinutes : bookingService.duration_minutes}
+                onSelect={async (date, time) => {
+                  const serviceId = bookingService.id
+                  setBookingService(null)
+                  setBookingIsIntroCall(false)
+                  setOrderingServiceId(serviceId)
+                  setOrderError("")
+                  // Backend SCHEDULE_TIMEZONE is Asia/Almaty (+05:00, no
+                  // DST). Hardcoded so a student in another browser TZ
+                  // still books the mentor's local slot correctly.
+                  const scheduledAt = `${date}T${time}:00+05:00`
+                  try {
+                    const created = await createOrder(serviceId, scheduledAt)
+                    router.push(`/orders/${created.id}`)
+                  } catch (err: unknown) {
+                    setOrderError(err instanceof Error ? translateOrderErrorMessage(err.message, t) : t("orderError"))
+                    setOrderingServiceId(null)
+                    // The engagement may have just paused (or an intro-call
+                    // been used up) while this modal was open — refetch so
+                    // hasActiveEngagement/introCallOrder recompute and the
+                    // buttons stop offering an action that will fail again.
+                    fetchOrders().then(setOrders).catch(() => {})
+                  }
+                }}
+                onCancel={() => { setBookingService(null); setBookingIsIntroCall(false) }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

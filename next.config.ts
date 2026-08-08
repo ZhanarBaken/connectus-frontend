@@ -1,9 +1,24 @@
 import type { NextConfig } from "next"
 import { withSentryConfig } from "@sentry/nextjs"
+import createNextIntlPlugin from "next-intl/plugin"
 
-const nextConfig: NextConfig = {
-  /* config options here */
-}
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts")
+
+const nextConfig: NextConfig = withNextIntl({
+  async headers() {
+    return [
+      {
+        // Self-hosted Material Symbols font (see app/globals.css) — the
+        // filename has no content hash, so bump it on any future replace
+        // instead of overwriting in place, since clients cache this for a year.
+        source: "/fonts/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ]
+  },
+})
 
 // `withSentryConfig` wraps the build pipeline with Sentry's source-map
 // upload step. Skip the wrap entirely when no DSN is configured so:

@@ -1,6 +1,7 @@
 "use client"
 
-import Link from "next/link"
+import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import { countriesFlagsCompact } from "@/lib/countries"
 import Icon from "./Icon"
@@ -8,18 +9,18 @@ import FloatingOrb from "./FloatingOrb"
 import MagneticButton from "./MagneticButton"
 import ScrollReveal from "./ScrollReveal"
 import TiltCard from "./TiltCard"
-import { useT } from "@/lib/i18n/LocaleProvider"
 
 const EXPERTISE_KEYS: Record<string, string> = {
-  admission: "expertise.admission",
-  scholarships: "expertise.scholarships",
-  visa: "expertise.visa",
-  documents: "expertise.documents",
-  essay: "expertise.essay",
+  admission: "admission",
+  scholarships: "scholarships",
+  visa: "visa",
+  documents: "documents",
+  essay: "essay",
 }
 
 export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
-  const t = useT()
+  const t = useTranslations("Landing.Hero")
+  const tExpertise = useTranslations("Landing.Expertise")
   const previewMentors = mentors.slice(0, 3)
 
   return (
@@ -39,14 +40,14 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
       <FloatingOrb color="rgba(139, 92, 246, 0.05)" size={350} offsetX={800} offsetY={50} speed={0.06} className="hidden lg:block" />
 
       <div className="relative max-w-6xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Left — text */}
           <div>
             <ScrollReveal variant="fade-up" duration={800}>
               <h1 className="text-[clamp(2.5rem,5vw,4rem)] font-bold text-gray-900 leading-[1.08] tracking-tight mb-10">
-                {t("hero.title_1")}{" "}
+                {t("title1")}{" "}
                 <span className="font-[var(--font-display)] italic text-indigo-600">
-                  {t("hero.title_2")}
+                  {t("title2")}
                 </span>
               </h1>
             </ScrollReveal>
@@ -58,7 +59,7 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                     href="/mentors"
                     className="group bg-gray-900 text-white px-7 py-4 rounded-xl text-[15px] font-semibold hover:bg-gray-800 transition-colors inline-flex items-center gap-2"
                   >
-                    {t("hero.cta_find")}
+                    {t("ctaFind")}
                     <Icon
                       name="arrow_forward"
                       size={18}
@@ -67,10 +68,10 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                   </Link>
                 </MagneticButton>
                 <Link
-                  href="/become-mentor"
+                  href="/auth/register?role=mentor"
                   className="text-sm text-gray-500 hover:text-gray-900 transition-colors underline-offset-4 hover:underline self-start sm:self-auto"
                 >
-                  {t("hero.cta_become")}
+                  {t("ctaBecome")}
                 </Link>
               </div>
             </ScrollReveal>
@@ -115,7 +116,7 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                             </p>
                             {(mentor.countries ?? []).length > 0 && (
                               <p className="text-xs text-gray-400 mt-0.5 truncate">
-                                {countriesFlagsCompact(mentor.countries)} {t("hero.helps")}
+                                {countriesFlagsCompact(mentor.countries)} {t("helps")}
                               </p>
                             )}
                           </div>
@@ -129,7 +130,7 @@ export default function LandingHero({ mentors }: { mentors: MentorCard[] }) {
                                 key={area.area}
                                 className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-medium"
                               >
-                                {key ? t(key) : area.area}
+                                {key ? tExpertise(key) : area.area}
                               </span>
                             )
                           })}

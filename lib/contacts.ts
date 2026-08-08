@@ -17,3 +17,6 @@ export const SUPPORT_TELEGRAM_USERNAME = "@connectus_app_bot"
 export const SUPPORT_TELEGRAM_URL = "https://t.me/connectus_app_bot?start=support"
 
 export const SUPPORT_EMAIL_HREF = `mailto:${SUPPORT_EMAIL}`
+
+export const TIKTOK_URL = "https://www.tiktok.com/@connectus.kz"
+export const INSTAGRAM_URL = "https://www.instagram.com/connectus.kz"

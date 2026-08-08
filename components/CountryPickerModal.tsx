@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { ALL_COUNTRY_CODES, countryFlag, countryLabel } from "@/lib/countries"
 
 interface Props {
@@ -26,6 +27,8 @@ export default function CountryPickerModal({
   onSelect,
   onClose,
 }: Props) {
+  const t = useTranslations("CountryPickerModal")
+  const locale = useLocale()
   const [query, setQuery] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -37,10 +40,10 @@ export default function CountryPickerModal({
     const hidden = new Set(hiddenCodes.map((c) => c.toUpperCase()))
     const items = ALL_COUNTRY_CODES
       .filter((c) => !hidden.has(c))
-      .map((c) => ({ code: c, label: countryLabel(c) }))
-    items.sort((a, b) => a.label.localeCompare(b.label, "ru"))
+      .map((c) => ({ code: c, label: countryLabel(c, locale) }))
+    items.sort((a, b) => a.label.localeCompare(b.label, locale))
     return items
-  }, [hiddenCodes])
+  }, [hiddenCodes, locale])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -88,11 +91,11 @@ export default function CountryPickerModal({
       >
         <div className="px-5 pt-5 pb-3 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900">Выбери страну</h2>
+            <h2 className="text-base font-semibold text-gray-900">{t("title")}</h2>
             <button
               type="button"
               onClick={onClose}
-              aria-label="Закрыть"
+              aria-label={t("close")}
               className="text-gray-400 hover:text-gray-700 p-1"
             >
               ✕
@@ -101,7 +104,7 @@ export default function CountryPickerModal({
           <input
             ref={inputRef}
             type="search"
-            placeholder="Поиск..."
+            placeholder={t("searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
@@ -110,7 +113,7 @@ export default function CountryPickerModal({
 
         <div className="overflow-y-auto flex-1">
           {filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-10">Ничего не нашлось</p>
+            <p className="text-sm text-gray-400 text-center py-10">{t("empty")}</p>
           ) : (
             <ul>
               {filtered.map((item) => {
@@ -130,7 +133,7 @@ export default function CountryPickerModal({
                       <span className="text-xl">{countryFlag(item.code)}</span>
                       <span className="flex-1 text-sm text-gray-900">{item.label}</span>
                       {isSelected && (
-                        <span className="text-xs text-indigo-600 font-medium">Выбрано</span>
+                        <span className="text-xs text-indigo-600 font-medium">{t("selected")}</span>
                       )}
                     </button>
                   </li>

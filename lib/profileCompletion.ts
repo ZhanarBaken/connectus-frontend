@@ -6,11 +6,24 @@ import { MentorProfile } from "@/types"
 // разные (7 vs 8 полей), и одна и та же страница показывала «86 %» в
 // одном месте и «88 %» в другом.
 //
-// Это просто UX-индикатор «как ты выглядишь для студентов» — не gate
-// для submit. Гейт собирается на бэке в `MentorProfile.submission_errors()`
-// и проверяет другой набор полей (включая gpa, exam_results, documents,
-// telegram), который не нужен в виде прогресс-бара.
-export function calcProfileCompletion(p: MentorProfile): {
+// Раньше считала только часть полей и не совпадала с реальным гейтом на
+// бэке (`MentorProfile.submission_errors()`) — профиль мог показывать
+// 100%, но не проходить отправку на проверку. Теперь считает по всем
+// полям формы — и по обязательным для отправки (текстовые поля, языки,
+// документы, активная услуга, email, Telegram — тот самый набор extras
+// передаёт вызывающая страница, так как эти данные не хранятся в самом
+// MentorProfile), и по необязательным (LinkedIn, реквизиты для выплаты) —
+// это честный «сколько от всей анкеты заполнено», а не только гейт.
+export interface ProfileCompletionExtras {
+  hasActiveService: boolean
+  emailVerified: boolean
+  hasTelegram: boolean
+}
+
+export function calcProfileCompletion(
+  p: MentorProfile,
+  extras: ProfileCompletionExtras,
+): {
   filled: number
   total: number
   percent: number
@@ -23,7 +36,17 @@ export function calcProfileCompletion(p: MentorProfile): {
     Boolean(p.major?.trim()),
     Boolean(p.detailed_bio?.trim()),
     Boolean(p.grant_or_scholarship?.trim()),
+    Boolean(p.gpa?.trim()),
+    Boolean(p.exam_results?.trim()),
+    Boolean(p.phone?.trim()),
     (p.expertise_areas ?? []).length > 0,
+    (p.languages ?? []).length > 0,
+    Boolean(p.has_documents),
+    Boolean(p.linkedin_url?.trim()),
+    Boolean(p.payout_details?.trim()),
+    extras.hasActiveService,
+    extras.emailVerified,
+    extras.hasTelegram,
   ]
   const filled = checks.filter(Boolean).length
   const total = checks.length

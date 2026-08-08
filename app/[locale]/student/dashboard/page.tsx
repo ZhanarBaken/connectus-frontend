@@ -1,0 +1,244 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
+import { Link, useRouter } from "@/i18n/navigation"
+import { fetchStudentProfile, fetchOrders, fetchMentors, clearAuth } from "@/lib/api"
+import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
+import { StudentProfile, Order } from "@/types"
+import Icon from "@/components/Icon"
+import { Avatar } from "@/components/Avatar"
+
+const ORDER_STATUS_STYLES: Record<string, string> = {
+  pending_payment: "bg-yellow-50 text-yellow-700",
+  paid: "bg-blue-50 text-blue-700",
+  in_progress: "bg-indigo-50 text-indigo-700",
+  completed: "bg-green-50 text-green-700",
+  disputed: "bg-red-50 text-red-700",
+  cancelled: "bg-gray-100 text-gray-400",
+}
+
+export default function StudentDashboard() {
+  const t = useTranslations("Dashboard.Student")
+  const tStatus = useTranslations("OrderStatus")
+  const locale = useLocale()
+  const router = useRouter()
+  useStudentOnboardingGate()
+  const [profile, setProfile] = useState<StudentProfile | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [mentorNames, setMentorNames] = useState<Record<number, string>>({})
+  const [mentorNamesLoadError, setMentorNamesLoadError] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const orderStatusLabel = (status: string): string => {
+    const key: Record<string, string> = {
+      pending_payment: "pendingPayment",
+      paid: "paid",
+      in_progress: "inProgress",
+      completed: "completed",
+      disputed: "disputed",
+      cancelled: "cancelled",
+    }
+    const mapped = key[status]
+    return mapped ? tStatus(mapped) : status
+  }
+
+  const loadMentorNames = async () => {
+    setMentorNamesLoadError(false)
+    try {
+      const mentors = await fetchMentors()
+      const map: Record<number, string> = {}
+      for (const m of mentors) map[m.id] = m.full_name
+      setMentorNames(map)
+    } catch {
+      setMentorNamesLoadError(true)
+    }
+  }
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    const role = localStorage.getItem("role")
+    if (!token) { router.replace("/auth/login"); return }
+    if (role === "mentor") { router.replace("/mentor/dashboard"); return }
+
+    Promise.all([fetchStudentProfile(), fetchOrders()])
+      .then(([p, o]) => {
+        setProfile(p)
+        setOrders(o)
+        loadMentorNames()
+      })
+      .catch(() => {
+        // A stale/invalid token would otherwise send the login page
+        // straight back here (it only checks token presence), and this
+        // catch straight back to login — an infinite redirect loop the
+        // browser eventually kills as a hard navigation failure. Clearing
+        // the token here is what breaks the cycle.
+        clearAuth()
+        router.replace("/auth/login")
+      })
+      .finally(() => setLoading(false))
+  }, [router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  const activeOrders = orders.filter((o) => ["paid", "in_progress"].includes(o.order_status))
+  const pendingOrders = orders.filter((o) => o.order_status === "pending_payment")
+  const completedOrders = orders.filter((o) => o.order_status === "completed")
+
+  return (
+    <div className="min-h-screen bg-[#fafafa]">
+      <div className="max-w-6xl mx-auto px-4 py-10">
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-10">
+          <div>
+            <p className="text-sm text-gray-400 mb-1">{t("myDashboard")}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              {t("hello", { name: profile?.full_name?.split(" ")[0] || t("defaultName") })} <Icon name="waving_hand" size={28} className="text-yellow-500 align-baseline ml-1" />
+            </h1>
+            {profile?.current_school_or_university && (
+              <p className="text-gray-500 mt-1 text-sm">{profile.current_school_or_university}</p>
+            )}
+          </div>
+          <Link
+            href="/mentors"
+            className="hidden sm:inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+          >
+            {t("findMentor")}
+          </Link>
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-4 mb-10">
+          {[
+            { label: t("activeOrders"), value: activeOrders.length, color: "text-indigo-600" },
+            { label: t("pendingPayment"), value: pendingOrders.length, color: "text-yellow-600" },
+            { label: t("completed"), value: completedOrders.length, color: "text-green-600" },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+              <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Orders */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">{t("myOrders")}</h2>
+              <span className="text-sm text-gray-400">{orders.length} {t("total")}</span>
+            </div>
+
+            {mentorNamesLoadError && (
+              <p className="text-xs text-red-600 mb-3">
+                {t("mentorNamesLoadError")}{" "}
+                <button type="button" onClick={loadMentorNames} className="font-semibold underline hover:no-underline">
+                  {t("retry")}
+                </button>
+              </p>
+            )}
+
+            {orders.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 flex flex-col items-center justify-center text-center min-h-[280px]">
+                <Icon name="description" size={40} className="text-gray-300 mb-3" />
+                <h3 className="font-semibold text-gray-900 mb-1.5">{t("noOrdersTitle")}</h3>
+                <p className="text-sm text-gray-400 mb-5">{t("noOrdersBody")}</p>
+                <Link
+                  href="/mentors"
+                  className="inline-flex bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+                >
+                  {t("findMentorCta")}
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {orders.map((order) => (
+                  <Link
+                    key={order.id}
+                    href={`/orders/${order.id}`}
+                    className="block bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{order.service_title}</h3>
+                        <p className="text-sm text-gray-500 mt-0.5 truncate">{mentorNames[order.mentor] || t("mentorFallback")}</p>
+                        <p className="text-xs text-gray-300 mt-1">
+                          {new Date(order.created_at).toLocaleDateString(locale, {
+                            day: "numeric", month: "long", year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ORDER_STATUS_STYLES[order.order_status] || "bg-gray-100 text-gray-500"}`}>
+                          {orderStatusLabel(order.order_status)}
+                        </span>
+                        <span className="text-lg font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Profile card */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-900">{t("myProfile")}</h2>
+                <Link
+                  href="/students/profile"
+                  className="text-xs text-indigo-600 hover:underline font-medium"
+                >
+                  {t("edit")}
+                </Link>
+              </div>
+              <div className="flex items-center gap-3 mb-4">
+                <Avatar
+                  src={profile?.profile_photo}
+                  name={profile?.full_name}
+                  className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500"
+                  letterClassName="text-white font-bold text-lg"
+                />
+                <div className="min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm truncate">{profile?.full_name || t("noName")}</div>
+                  {profile?.current_school_or_university && (
+                    <div className="text-xs text-gray-500 truncate">{profile.current_school_or_university}</div>
+                  )}
+                  {profile?.age ? (
+                    <div className="text-xs text-gray-500">{t("yearsOld", { age: profile.age })}</div>
+                  ) : null}
+                </div>
+              </div>
+              <Link
+                href="/students/profile"
+                className="block text-center w-full border border-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+              >
+                {t("editProfile")}
+              </Link>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Mobile find mentor button */}
+        <div className="sm:hidden mt-8">
+          <Link
+            href="/mentors"
+            className="block text-center bg-gray-900 text-white px-5 py-4 rounded-2xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+          >
+            {t("findMentor")}
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
