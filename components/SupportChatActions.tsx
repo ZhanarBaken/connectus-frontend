@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import {
   createSupportInvoice, createSupportTask, fetchEngagementDocuments, fetchMentorServices,
+  previewSupportInvoice,
 } from "@/lib/api"
 import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
 import { MentorService, Order, OrderDocument } from "@/types"
@@ -39,6 +40,28 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
   const [invoiceError, setInvoiceError] = useState("")
   const [invoiceSent, setInvoiceSent] = useState(false)
   const [lastInvoiceOrder, setLastInvoiceOrder] = useState<Order | null>(null)
+  const [invoicePreview, setInvoicePreview] = useState<{ clientCharge: string; mentorPayout: string } | null>(null)
+
+  // Debounced live preview of what the student's month-1 charge will
+  // actually be (mentor's asking price + front-loaded platform
+  // commission) — shown before the mentor sends anything, not just
+  // discovered after. Cleared whenever the inputs aren't both valid yet
+  // (mid-typing, or the form isn't open) rather than showing a stale number.
+  useEffect(() => {
+    const price = Number(invoicePrice)
+    const months = Number(invoiceMonths)
+    if (!invoiceFormOpen || !invoicePrice || !invoiceMonths || price <= 0 || months <= 0) {
+      setInvoicePreview(null)
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      previewSupportInvoice(invoicePrice, months).then((result) => {
+        if (!cancelled) setInvoicePreview(result)
+      })
+    }, 400)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [invoicePrice, invoiceMonths, invoiceFormOpen])
 
   const [taskFormOpen, setTaskFormOpen] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
@@ -195,6 +218,45 @@ export default function SupportChatActions({ studentId, engagementId, onActionPo
                       className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
                     />
                   </div>
+                  {invoicePreview && (() => {
+                    const months = Number(invoiceMonths)
+                    // The platform commission is only ever collected once,
+                    // front-loaded into month 1 (Order.compute_support_
+                    // installment_financials) — derived here from month-1's
+                    // own numbers, not a re-guessed rate, so this can't
+                    // drift from what the backend actually charges.
+                    const commission = Number(invoicePreview.clientCharge) - Number(invoicePreview.mentorPayout)
+                    const totalAcrossEngagement = Number(invoicePrice) + commission
+                    // Months 2+ are just that month's share of total_price
+                    // (no commission) — plain division, not business logic,
+                    // safe to compute here. Off by at most 1 ₸ for a few
+                    // early months where the remainder tenge land; shown as
+                    // "~" for that reason.
+                    const otherMonthTypical = months > 1 ? Math.floor(Number(invoicePrice) / months) : null
+                    return (
+                      <div className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 space-y-1">
+                        <p>
+                          {t("invoiceClientChargePreview", {
+                            amount: Number(invoicePreview.clientCharge).toLocaleString("ru-RU"),
+                          })}
+                        </p>
+                        {otherMonthTypical !== null && (
+                          <p>
+                            {t("invoiceOtherMonthsPreview", {
+                              amount: otherMonthTypical.toLocaleString("ru-RU"),
+                              months: months - 1,
+                            })}
+                          </p>
+                        )}
+                        <p>
+                          {t("invoiceTotalPreview", {
+                            amount: totalAcrossEngagement.toLocaleString("ru-RU"),
+                            months,
+                          })}
+                        </p>
+                      </div>
+                    )
+                  })()}
                   {invoiceError && (
                     <p className="text-xs text-red-600">{translateInvoiceErrorMessage(invoiceError, t)}</p>
                   )}

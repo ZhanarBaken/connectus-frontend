@@ -130,7 +130,16 @@ export default function MentorPage({ params }: Props) {
     Promise.all([fetchMentor(Number(id)), fetchOrders()])
       .then(([m, o]) => {
         setMentor(m)
-        setOrders(o)
+        // Preview mode (a mentor viewing this page) must not be
+        // contaminated by the mentor's own real order history —
+        // /orders/ for a mentor returns every order across all their
+        // real students, not "orders as if I were a student here".
+        // Left as-is, button labels (bookSession/introCallBooked/
+        // requestSupportSent/goToPayment/etc.) could show a state that
+        // belongs to some unrelated real student, not what an actual
+        // new visitor would see. Preview should always show the
+        // fresh/no-history state.
+        setOrders(localStorage.getItem("role") === "mentor" ? [] : o)
         // Intentionally fires on every navigation between mentor
         // profiles within the same SPA session — that is the "view"
         // semantic. Don't gate this with a useRef.
@@ -201,7 +210,6 @@ export default function MentorPage({ params }: Props) {
       s.payout_category !== "support"
   )
   const supportServices = mentor.services.filter((s) => s.payout_category === "support")
-  const anySupportHasIntroCall = supportServices.some((s) => s.intro_call_enabled)
 
   // Only one active consultation (of any of the mentor's consultation
   // services) per mentor-student pair — a mentor-wide invariant, not a
@@ -478,14 +486,9 @@ export default function MentorPage({ params }: Props) {
             {supportServices.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">{t("supportTitle")}</h2>
-                <p className={`text-sm text-gray-500 ${anySupportHasIntroCall ? "mb-1" : "mb-4"}`}>
+                <p className="text-sm text-gray-500 mb-4">
                   {t("supportSubtitle")}
                 </p>
-                {anySupportHasIntroCall && (
-                  <p className="text-xs text-gray-400 mb-4">
-                    {t("introCallExplainer")}
-                  </p>
-                )}
                 <div className="space-y-3">
                   {supportServices.map((service) => {
                     const hasActiveEngagement = orders.some(
@@ -506,7 +509,7 @@ export default function MentorPage({ params }: Props) {
                     return (
                     <div key={service.id} className="border rounded-2xl p-5 border-gray-200 hover:border-gray-300 transition-all">
                       <div className="flex justify-between items-start gap-4">
-                        <h3 className="text-2xl font-bold mb-2 text-gray-900 flex-1 min-w-0">{service.title}</h3>
+                        <h3 className="text-2xl font-bold mb-2 text-gray-900 flex-1 min-w-0 break-words">{service.title}</h3>
                         <div className="text-right flex-shrink-0">
                           <div className="text-2xl font-bold text-gray-900">
                             {service.is_price_negotiable || service.client_price === null
@@ -520,6 +523,11 @@ export default function MentorPage({ params }: Props) {
                           )}
                         </div>
                       </div>
+                      {service.intro_call_enabled && (
+                        <p className="text-xs text-gray-400 mb-2">
+                          {t("introCallExplainer")}
+                        </p>
+                      )}
                       {service.description && (
                         <p className="text-sm leading-relaxed mb-5 text-gray-500 break-words">{service.description}</p>
                       )}
@@ -568,9 +576,10 @@ export default function MentorPage({ params }: Props) {
                                 setBookingService(service)
                               }}
                               disabled={isMentorViewer}
-                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-colors disabled:cursor-not-allowed"
+                              className="bg-emerald-50 text-emerald-700 px-5 py-3 rounded-xl font-semibold text-sm hover:bg-emerald-100 transition-colors inline-flex items-center gap-2 disabled:cursor-not-allowed"
                             >
                               {t("bookIntroCall")}
+                              <Icon name="arrow_forward" size={16} />
                             </button>
                           )
                         ) : supportRequestSentIds.has(service.id) ? (

@@ -507,6 +507,7 @@
       "andMoreReviews": "тағы {count} {count, plural, one {пікір} other {пікір}}",
       "myServices": "Менің қызметтерім",
       "negotiablePrice": "Келісім бойынша",
+      "clientPaysLabel": "Клиент {price} ₸ төлейді",
       "manage": "Басқару",
       "noServices": "Қызметтер қосылмаған",
       "addService": "+ Қызмет қосу",
@@ -705,6 +706,9 @@
       "invoiceServicePlaceholder": "Қолдау бағдарламасын таңда",
       "invoicePricePlaceholder": "Баға, ₸",
       "invoiceMonthsPlaceholder": "Мерзім, ай",
+      "invoiceClientChargePreview": "Клиент бірінші ай үшін {amount} ₸ төлейді",
+      "invoiceOtherMonthsPreview": "~{amount} ₸/ай — қалған {months} ай",
+      "invoiceTotalPreview": "Барлығы {months} ай үшін: {amount} ₸",
       "sending": "Жіберілуде...",
       "send": "Жіберу",
       "cancel": "Бас тарту",
@@ -1095,7 +1099,8 @@
       "gradeRange": "{min}–{max} сынып",
       "edit": "Өзгерту",
       "deleteAria": "Жою",
-      "negotiablePrice": "Келісім бойынша"
+      "negotiablePrice": "Келісім бойынша",
+      "clientPaysLabel": "Клиент {price} ₸ төлейді"
     }
   },
   "BookingCalendar": {

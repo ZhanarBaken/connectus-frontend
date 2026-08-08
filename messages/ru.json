@@ -507,6 +507,7 @@
       "andMoreReviews": "и ещё {count} {count, plural, one {отзыв} few {отзыва} other {отзывов}}",
       "myServices": "Мои услуги",
       "negotiablePrice": "Договорная",
+      "clientPaysLabel": "Клиент платит {price} ₸",
       "manage": "Управлять",
       "noServices": "Услуги не добавлены",
       "addService": "+ Добавить услугу",
@@ -705,6 +706,9 @@
       "invoiceServicePlaceholder": "Выбери программу сопровождения",
       "invoicePricePlaceholder": "Цена, ₸",
       "invoiceMonthsPlaceholder": "Срок, мес",
+      "invoiceClientChargePreview": "Клиент заплатит {amount} ₸ в первый месяц",
+      "invoiceOtherMonthsPreview": "~{amount} ₸/мес — остальные {months} мес.",
+      "invoiceTotalPreview": "Всего за {months} мес.: {amount} ₸",
       "sending": "Отправляем...",
       "send": "Отправить",
       "cancel": "Отмена",
@@ -1095,7 +1099,8 @@
       "gradeRange": "{min}–{max} класс",
       "edit": "Изменить",
       "deleteAria": "Удалить",
-      "negotiablePrice": "Договорная"
+      "negotiablePrice": "Договорная",
+      "clientPaysLabel": "Клиент платит {price} ₸"
     }
   },
   "BookingCalendar": {

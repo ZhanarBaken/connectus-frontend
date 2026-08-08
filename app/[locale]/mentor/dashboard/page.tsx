@@ -456,10 +456,17 @@ export default function MentorDashboard() {
                         <p className="text-sm font-medium text-gray-700 truncate">{s.title}</p>
                         <p className="text-xs text-gray-400">{s.duration_minutes} {t("minutes")}</p>
                       </div>
-                      <span className="text-sm font-bold text-gray-900 flex-shrink-0">
-                        {s.is_price_negotiable || s.price === null
-                          ? t("negotiablePrice")
-                          : `${Number(s.price).toLocaleString("ru-RU")} ₸`}
+                      <span className="text-right flex-shrink-0">
+                        <span className="text-sm font-bold text-gray-900 block">
+                          {s.is_price_negotiable || s.price === null
+                            ? t("negotiablePrice")
+                            : `${Number(s.price).toLocaleString("ru-RU")} ₸`}
+                        </span>
+                        {!s.is_price_negotiable && s.client_price !== null && s.client_price !== s.price && (
+                          <span className="text-xs text-gray-400 block">
+                            {t("clientPaysLabel", { price: Number(s.client_price).toLocaleString("ru-RU") })}
+                          </span>
+                        )}
                       </span>
                     </div>
                   ))}

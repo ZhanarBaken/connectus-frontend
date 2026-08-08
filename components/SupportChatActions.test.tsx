@@ -7,6 +7,7 @@ vi.mock("@/lib/api")
 
 import {
   createSupportInvoice, createSupportTask, fetchEngagementDocuments, fetchMentorServices,
+  previewSupportInvoice,
 } from "@/lib/api"
 import type { OrderDocument } from "@/types"
 
@@ -47,6 +48,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(fetchMentorServices).mockResolvedValue([])
   vi.mocked(fetchEngagementDocuments).mockResolvedValue([])
+  vi.mocked(previewSupportInvoice).mockResolvedValue(null)
 })
 
 describe("SupportChatActions — task attachment", () => {
@@ -308,5 +310,86 @@ describe("SupportChatActions — invoice (regression, unrelated to attachments)"
     expect(await screen.findByText(
       "Клиент оплатит 31 250 ₸, вы получите 25 000 ₸.",
     )).toBeInTheDocument()
+  })
+
+  it("shows a live preview of the client's month-1 charge before the invoice is sent", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([{
+      id: 10, title: "Сопровождение", description: "", price: "500000", client_price: "625000", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: false, intro_call_enabled: true, is_active: true,
+    }])
+    vi.mocked(previewSupportInvoice).mockResolvedValue({
+      clientCharge: "156250.00", mentorPayout: "100000.00",
+    })
+
+    render(<SupportChatActions studentId={7} engagementId={null} />)
+
+    fireEvent.click(await screen.findByText("Отправить заявку"))
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "10" } })
+    fireEvent.change(screen.getByPlaceholderText("Цена, ₸"), { target: { value: "600000" } })
+    fireEvent.change(screen.getByPlaceholderText("Срок, мес"), { target: { value: "6" } })
+
+    await waitFor(() =>
+      expect(previewSupportInvoice).toHaveBeenCalledWith("600000", 6),
+    )
+    expect(await screen.findByText(
+      "Клиент заплатит 156 250 ₸ в первый месяц",
+    )).toBeInTheDocument()
+    // Months 2-6: just that month's share of the 600 000 ₸ the mentor
+    // asked for, no commission — 600000 / 6 = 100000.
+    expect(screen.getByText("~100 000 ₸/мес — остальные 5 мес.")).toBeInTheDocument()
+    // Total the client pays over the whole engagement: the mentor's full
+    // 600 000 ₸ plus the commission collected once in month 1
+    // (156250 - 100000 = 56250) = 656 250 ₸.
+    expect(screen.getByText("Всего за 6 мес.: 656 250 ₸")).toBeInTheDocument()
+
+    // Before this, createSupportInvoice was never called — this is a
+    // pure preview, no side effects.
+    expect(createSupportInvoice).not.toHaveBeenCalled()
+  })
+
+  it("omits the other-months line for a single-month engagement", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([{
+      id: 10, title: "Сопровождение", description: "", price: "500000", client_price: "625000", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: false, intro_call_enabled: true, is_active: true,
+    }])
+    vi.mocked(previewSupportInvoice).mockResolvedValue({
+      clientCharge: "125000.00", mentorPayout: "100000.00",
+    })
+
+    render(<SupportChatActions studentId={7} engagementId={null} />)
+
+    fireEvent.click(await screen.findByText("Отправить заявку"))
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "10" } })
+    fireEvent.change(screen.getByPlaceholderText("Цена, ₸"), { target: { value: "100000" } })
+    fireEvent.change(screen.getByPlaceholderText("Срок, мес"), { target: { value: "1" } })
+
+    expect(await screen.findByText(
+      "Клиент заплатит 125 000 ₸ в первый месяц",
+    )).toBeInTheDocument()
+    expect(screen.queryByText(/остальные/)).not.toBeInTheDocument()
+    expect(screen.getByText("Всего за 1 мес.: 125 000 ₸")).toBeInTheDocument()
+  })
+
+  it("does not show a preview while the price/duration fields are incomplete", async () => {
+    vi.mocked(fetchMentorServices).mockResolvedValue([{
+      id: 10, title: "Сопровождение", description: "", price: "500000", client_price: "625000", currency: "KZT",
+      duration_minutes: 60, payout_category: "support", grade_min: null, grade_max: null,
+      meetings_min: 4, meetings_max: 8, duration_months_min: 6, duration_months_max: 12,
+      is_price_negotiable: false, intro_call_enabled: true, is_active: true,
+    }])
+
+    render(<SupportChatActions studentId={7} engagementId={null} />)
+
+    fireEvent.click(await screen.findByText("Отправить заявку"))
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "10" } })
+    fireEvent.change(screen.getByPlaceholderText("Цена, ₸"), { target: { value: "600000" } })
+    // Duration left blank on purpose.
+
+    await new Promise((r) => setTimeout(r, 500))
+    expect(previewSupportInvoice).not.toHaveBeenCalled()
   })
 })

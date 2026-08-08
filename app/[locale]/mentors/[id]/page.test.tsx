@@ -233,6 +233,26 @@ describe("MentorPage — viewed by a mentor (preview mode)", () => {
     expect(screen.queryByText(/предпросмотра/i)).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: /запросить сопровождение/i })).toBeEnabled()
   })
+
+  it("ignores the mentor's own real order history — shows the fresh state, not a real student's", async () => {
+    // /orders/ for a logged-in mentor returns every order across ALL
+    // their real students, not "orders as if I were a student here".
+    // A real student's active engagement for this exact service must
+    // not make the preview show "Забронировать сессию" (implying an
+    // active engagement) instead of the actual fresh-visitor state.
+    localStorage.setItem("role", "mentor")
+    const service = makeService({ id: 30, intro_call_enabled: false })
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
+    vi.mocked(fetchOrders).mockResolvedValue([
+      makeOrder({ mentor_service: 30, engagement_status: "active" }),
+    ])
+
+    await renderMentorPage("3")
+
+    await screen.findByText(/предпросмотра/i)
+    expect(screen.queryByRole("button", { name: /забронировать сессию/i })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /запросить сопровождение/i })).toBeDisabled()
+  })
 })
 
 // ─── Regression #3: intro-call badge must not misfire for a session order

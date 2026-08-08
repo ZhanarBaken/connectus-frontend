@@ -1244,6 +1244,11 @@ export default function MentorOnboarding() {
                     } else {
                       parts.push(s.is_price_negotiable ? tServices("negotiablePrice") : `${s.price} ₸`)
                       parts.push(`${s.duration_minutes} ${t("minutes")}`)
+                      if (!s.is_price_negotiable && s.client_price !== null && s.client_price !== s.price) {
+                        parts.push(
+                          tServices("clientPaysLabel", { price: Number(s.client_price).toLocaleString("ru-RU") }),
+                        )
+                      }
                     }
                     const summary = parts.join(" · ")
                     return (
