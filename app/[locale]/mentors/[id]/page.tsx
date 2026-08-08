@@ -130,7 +130,16 @@ export default function MentorPage({ params }: Props) {
     Promise.all([fetchMentor(Number(id)), fetchOrders()])
       .then(([m, o]) => {
         setMentor(m)
-        setOrders(o)
+        // Preview mode (a mentor viewing this page) must not be
+        // contaminated by the mentor's own real order history —
+        // /orders/ for a mentor returns every order across all their
+        // real students, not "orders as if I were a student here".
+        // Left as-is, button labels (bookSession/introCallBooked/
+        // requestSupportSent/goToPayment/etc.) could show a state that
+        // belongs to some unrelated real student, not what an actual
+        // new visitor would see. Preview should always show the
+        // fresh/no-history state.
+        setOrders(localStorage.getItem("role") === "mentor" ? [] : o)
         // Intentionally fires on every navigation between mentor
         // profiles within the same SPA session — that is the "view"
         // semantic. Don't gate this with a useRef.
