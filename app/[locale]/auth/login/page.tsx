@@ -42,7 +42,8 @@ function LoginForm() {
     const token = localStorage.getItem("access_token")
     const role = localStorage.getItem("role")
     if (!token) return
-    if (role === "mentor") router.replace("/mentor/dashboard")
+    if (role === "admin") window.location.href = "/crm"
+    else if (role === "mentor") router.replace("/mentor/dashboard")
     else router.replace("/student/dashboard")
   }, [router])
 
@@ -78,6 +79,8 @@ function LoginForm() {
         // locale-aware router would add a second prefix on top; a plain
         // navigation is the correct, unambiguous way to honor it as-is.
         window.location.href = next
+      } else if (me.role === "admin") {
+        window.location.href = "/crm"
       } else if (me.role === "mentor") {
         router.push("/mentor/dashboard")
       } else {
@@ -116,7 +119,8 @@ function LoginForm() {
       localStorage.setItem("refresh_token", data.refresh)
       const me = await fetchMe(data.access)
       localStorage.setItem("role", me.role)
-      if (me.role === "mentor") router.push("/mentor/dashboard")
+      if (me.role === "admin") window.location.href = "/crm"
+      else if (me.role === "mentor") router.push("/mentor/dashboard")
       else router.push("/student/dashboard")
     } catch (e: unknown) {
       if (e instanceof AccountNotFoundError) {
