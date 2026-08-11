@@ -1,4 +1,4 @@
-export type Role = "mentor" | "student"
+export type Role = "admin" | "mentor" | "student"
 
 export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 
