@@ -15,7 +15,10 @@ import { useRouter } from "next/navigation"
 import { telegramMiniAppLogin, fetchMe } from "@/lib/api"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import DataConsentModal from "@/components/DataConsentModal"
-import type { Role } from "@/types"
+
+// Telegram signup only ever offers these two — never "admin" — so this
+// stays narrower than the shared Role type from @/types.
+type TelegramRole = "student" | "mentor"
 
 
 // Telegram exposes whatever string the bot put after `?startapp=` in
@@ -132,9 +135,9 @@ export default function TelegramAutoLogin() {
     if (localStorage.getItem("access_token")) return "done"
     return readStartTargetFromHash() ? "checking" : "idle"
   })
-  const [submittingRole, setSubmittingRole] = useState<Role | null>(null)
+  const [submittingRole, setSubmittingRole] = useState<TelegramRole | null>(null)
   const [error, setError] = useState("")
-  const [pendingRole, setPendingRole] = useState<Role | null>(null)
+  const [pendingRole, setPendingRole] = useState<TelegramRole | null>(null)
   const [consentOpen, setConsentOpen] = useState(false)
   // Guard against re-running the initial auto-login when state updates
   // trigger a re-render mid-flight. A ref instead of state because
@@ -185,7 +188,7 @@ export default function TelegramAutoLogin() {
       window.removeEventListener(TG_AUTH_EVENT, handleTrigger)
     }
 
-    async function runLogin(role?: Role) {
+    async function runLogin(role?: TelegramRole) {
       try {
         const result = await telegramMiniAppLogin(initData, role)
         if (!result.ok && result.reason === "role_required") {
@@ -216,7 +219,7 @@ export default function TelegramAutoLogin() {
     // not re-run just because the user switched locale mid-flight.
   }, [isInTelegram, initData, router, submittingRole])
 
-  const handlePickRole = async (role: Role) => {
+  const handlePickRole = async (role: TelegramRole) => {
     setSubmittingRole(role)
     setError("")
     try {
