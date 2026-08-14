@@ -232,6 +232,38 @@ describe("RegisterPage", () => {
     })
   })
 
+  // Regression test for the bug where the whole form (Telegram button,
+  // Google button, email/password submit) stayed stuck disabled forever
+  // if `window.location.href = bot_url` didn't actually navigate away
+  // (e.g. an installed Telegram Desktop app intercepting the link
+  // without unloading the tab, or an extension silently blocking it).
+  it("shows a manual fallback link and re-enables the rest of the form after a successful telegramStart", async () => {
+    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=signup_tok123" })
+    const user = userEvent.setup()
+    render(<RegisterPage />)
+
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.click(screen.getByRole("button", { name: "Продолжить через Telegram" }))
+    await giveConsent(user)
+
+    const fallbackLink = await screen.findByRole("link", { name: "Открыть ссылку вручную" })
+    expect(fallbackLink).toHaveAttribute("href", "https://t.me/bot?start=signup_tok123")
+    expect(screen.getByRole("button", { name: "Продолжить через Google" })).not.toBeDisabled()
+  })
+
+  it("disables the Telegram button itself once a redirect is pending, so a stuck navigation can't be retried into a second, orphaning token", async () => {
+    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=signup_tok123" })
+    const user = userEvent.setup()
+    render(<RegisterPage />)
+
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.click(screen.getByRole("button", { name: "Продолжить через Telegram" }))
+    await giveConsent(user)
+    await screen.findByRole("link", { name: "Открыть ссылку вручную" })
+
+    expect(screen.getByRole("button", { name: "Продолжить через Telegram" })).toBeDisabled()
+  })
+
   it("lets the user correct a mistyped email after registering", async () => {
     vi.mocked(api.register).mockResolvedValue({ id: 1, email: "typo@example.com", role: "student" })
     vi.mocked(api.updateUnverifiedEmail).mockResolvedValue(undefined)

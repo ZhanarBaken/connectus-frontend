@@ -47,4 +47,36 @@ describe("LoginPage", () => {
       expect(api.telegramStart).toHaveBeenCalledWith("student", "ru")
     })
   })
+
+  // Regression test for the bug where the whole form (Telegram button,
+  // Google button, email/password submit) stayed stuck disabled forever
+  // if `window.location.href = bot_url` didn't actually navigate away
+  // (e.g. an installed Telegram Desktop app intercepting the link
+  // without unloading the tab, or an extension silently blocking it).
+  it("shows a manual fallback link and re-enables the rest of the form after a successful telegramStart", async () => {
+    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=login_tok123" })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.click(screen.getByRole("button", { name: "Войти через Telegram" }))
+
+    const fallbackLink = await screen.findByRole("link", { name: "Открыть ссылку вручную" })
+    expect(fallbackLink).toHaveAttribute("href", "https://t.me/bot?start=login_tok123")
+
+    // The rest of the form must not stay stuck on "Logging in..." just
+    // because the (possibly failed) redirect is still pending.
+    expect(screen.getByRole("button", { name: "Войти через Google" })).not.toBeDisabled()
+    expect(screen.getByRole("button", { name: "Войти" })).not.toBeDisabled()
+  })
+
+  it("disables the Telegram button itself once a redirect is pending, so a stuck navigation can't be retried into a second, orphaning token", async () => {
+    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=login_tok123" })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.click(screen.getByRole("button", { name: "Войти через Telegram" }))
+    await screen.findByRole("link", { name: "Открыть ссылку вручную" })
+
+    expect(screen.getByRole("button", { name: "Войти через Telegram" })).toBeDisabled()
+  })
 })

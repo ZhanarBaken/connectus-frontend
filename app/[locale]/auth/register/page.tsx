@@ -80,6 +80,12 @@ function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  // Set once telegramStart() succeeds so we can offer a manual link —
+  // on desktop, `window.location.href = bot_url` is often intercepted
+  // by an installed Telegram Desktop app, which opens the app but never
+  // actually navigates this tab away, leaving the button stuck forever
+  // with no feedback if we don't clear `loading` and give a fallback.
+  const [telegramRedirectUrl, setTelegramRedirectUrl] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
@@ -223,12 +229,15 @@ function RegisterForm() {
   const doTelegramRegister = async () => {
     setLoading(true)
     setError("")
+    setTelegramRedirectUrl(null)
     try {
       const data = await telegramStart(role, locale, country)
       localStorage.setItem("tg_signup_token", data.token)
+      setTelegramRedirectUrl(data.bot_url)
       window.location.href = data.bot_url
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : t("errorTelegramGeneric"))
+    } finally {
       setLoading(false)
     }
   }
@@ -508,7 +517,12 @@ function RegisterForm() {
                 <button
                   type="button"
                   onClick={handleTelegramRegister}
-                  disabled={loading}
+                  // Once a redirect has been issued, re-clicking would mint a
+                  // fresh backend token and orphan the one already in flight —
+                  // if the first navigation lands late, tg-callback would end
+                  // up polling for the stale one and hang again. The fallback
+                  // <a> below (not this button) is the only retry path here.
+                  disabled={loading || telegramRedirectUrl !== null}
                   className="w-full flex items-center justify-center gap-3 bg-[#2AABEE] hover:bg-[#229ED9] text-white rounded-xl py-3.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-3"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -516,6 +530,14 @@ function RegisterForm() {
                   </svg>
                   {t("telegramButton")}
                 </button>
+              )}
+              {telegramRedirectUrl && (
+                <p className="text-xs text-gray-400 text-center -mt-1.5 mb-3">
+                  {t("telegramNotOpened")}{" "}
+                  <a href={telegramRedirectUrl} className="text-indigo-600 hover:underline font-medium">
+                    {t("telegramOpenLink")}
+                  </a>
+                </p>
               )}
 
               {/* Google — secondary; hidden in Telegram WebView. */}
