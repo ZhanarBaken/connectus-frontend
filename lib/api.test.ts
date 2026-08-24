@@ -259,6 +259,18 @@ describe("clearAuth", () => {
     expect(localStorage.getItem("refresh_token")).toBeNull()
     expect(localStorage.getItem("role")).toBeNull()
   })
+
+  it("also removes the account-bound support_chat_session_id", () => {
+    // Left behind, this would let the next person on a shared/public
+    // computer silently resume this account's support-chat thread as
+    // an "anonymous" visitor — see lib/supportChat.ts.
+    localStorage.setItem("access_token", "a")
+    localStorage.setItem("support_chat_session_id", "acct-session")
+
+    clearAuth()
+
+    expect(localStorage.getItem("support_chat_session_id")).toBeNull()
+  })
 })
 
 // ─── getFreshAccessToken ─────────────────────────────────────────────────────

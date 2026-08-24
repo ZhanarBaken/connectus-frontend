@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import NextLink from "next/link"
 import { Link as LocaleLink, useRouter, usePathname } from "@/i18n/navigation"
 import { fetchChatUnread } from "@/lib/api"
+import { clearStoredSupportChatSessionId } from "@/lib/supportChat"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { TG_AUTH_EVENT } from "./TelegramAutoLogin"
 import Icon from "./Icon"
@@ -55,6 +56,10 @@ export default function Header() {
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     localStorage.removeItem("role")
+    // Account-bound support-chat session — must not be resumable by
+    // the next person on a shared/public computer once this account
+    // is logged out. See lib/supportChat.ts's sendSupportChatMessage.
+    clearStoredSupportChatSessionId()
     setRole(null)
     router.push("/")
   }

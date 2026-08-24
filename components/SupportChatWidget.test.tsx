@@ -5,6 +5,7 @@ import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import {
   clearStoredSupportChatSessionId,
   connectSupportChat,
+  fetchMySupportChatSession,
   fetchSupportChatHistory,
   getStoredSupportChatSessionId,
   sendSupportChatMessage,
@@ -21,15 +22,22 @@ function makeMessage(overrides: Partial<SupportChatMessage> = {}): SupportChatMe
   return { id: 1, sender: "staff", text: "Ответ", created_at: "2026-01-01T00:00:00Z", ...overrides }
 }
 
+async function fillNameAndStart(user: ReturnType<typeof userEvent.setup>, name = "Айгерим") {
+  await user.type(screen.getByPlaceholderText("Твоё имя"), name)
+  await user.click(screen.getByRole("button", { name: "Начать чат" }))
+}
+
 describe("SupportChatWidget", () => {
   let capturedHandlers: Handlers | null
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     capturedHandlers = null
     vi.mocked(useTelegramWebApp).mockReturnValue({ isInTelegram: false, webApp: null, initData: "" })
     vi.mocked(getStoredSupportChatSessionId).mockReturnValue(null)
     vi.mocked(fetchSupportChatHistory).mockResolvedValue([])
+    vi.mocked(fetchMySupportChatSession).mockResolvedValue(null)
     vi.mocked(connectSupportChat).mockImplementation((_sessionId, handlers) => {
       capturedHandlers = handlers
       return { close: vi.fn() }
@@ -61,10 +69,29 @@ describe("SupportChatWidget", () => {
     expect(screen.queryByPlaceholderText("Напиши сообщение...")).not.toBeInTheDocument()
   })
 
-  it("opens the panel and shows the empty state when there's no history", async () => {
+  it("opens the panel on a name gate for a brand new anonymous visitor", async () => {
     const user = userEvent.setup()
     render(<SupportChatWidget />)
     await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+    expect(screen.getByText("Как тебя зовут?")).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText("Напиши сообщение...")).not.toBeInTheDocument()
+  })
+
+  it("the 'start chat' button stays disabled until a name is typed", async () => {
+    const user = userEvent.setup()
+    render(<SupportChatWidget />)
+    await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+    expect(screen.getByRole("button", { name: "Начать чат" })).toBeDisabled()
+
+    await user.type(screen.getByPlaceholderText("Твоё имя"), "Айгерим")
+    expect(screen.getByRole("button", { name: "Начать чат" })).toBeEnabled()
+  })
+
+  it("shows the empty state after the name gate is completed", async () => {
+    const user = userEvent.setup()
+    render(<SupportChatWidget />)
+    await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+    await fillNameAndStart(user)
     expect(screen.getByText(/Напиши нам/)).toBeInTheDocument()
   })
 
@@ -86,7 +113,7 @@ describe("SupportChatWidget", () => {
     expect(screen.getByText("Привет")).toBeInTheDocument()
   })
 
-  it("sends a message, appends it, and clears the draft", async () => {
+  it("sends a message with the given name, appends it, and clears the draft", async () => {
     vi.mocked(sendSupportChatMessage).mockResolvedValue({
       session_id: "new-session",
       message: makeMessage({ id: 5, sender: "visitor", text: "Вопрос" }),
@@ -95,13 +122,14 @@ describe("SupportChatWidget", () => {
     const user = userEvent.setup()
     render(<SupportChatWidget />)
     await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+    await fillNameAndStart(user)
 
     const input = screen.getByPlaceholderText("Напиши сообщение...")
     await user.type(input, "Вопрос")
     await user.click(screen.getByRole("button", { name: "Отправить" }))
 
     await waitFor(() => expect(screen.getByText("Вопрос")).toBeInTheDocument())
-    expect(sendSupportChatMessage).toHaveBeenCalledWith("Вопрос", null)
+    expect(sendSupportChatMessage).toHaveBeenCalledWith("Вопрос", null, "Айгерим")
     expect(input).toHaveValue("")
   })
 
@@ -114,6 +142,7 @@ describe("SupportChatWidget", () => {
     const user = userEvent.setup()
     render(<SupportChatWidget />)
     await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+    await fillNameAndStart(user)
     await user.type(screen.getByPlaceholderText("Напиши сообщение..."), "Привет")
     await user.click(screen.getByRole("button", { name: "Отправить" }))
 
@@ -126,6 +155,7 @@ describe("SupportChatWidget", () => {
     const user = userEvent.setup()
     render(<SupportChatWidget />)
     await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+    await fillNameAndStart(user)
     await user.type(screen.getByPlaceholderText("Напиши сообщение..."), "Вопрос")
     await user.click(screen.getByRole("button", { name: "Отправить" }))
 
@@ -191,7 +221,54 @@ describe("SupportChatWidget", () => {
     expect(close).toHaveBeenCalledTimes(1)
     expect(clearStoredSupportChatSessionId).toHaveBeenCalledTimes(1)
     expect(screen.queryByText("Привет")).not.toBeInTheDocument()
+    // Back to the name gate — a fresh session needs a fresh name too.
+    expect(screen.getByText("Как тебя зовут?")).toBeInTheDocument()
+    expect(screen.queryByText("Не ты? Новый чат")).not.toBeInTheDocument()
+  })
+
+  it("when logged in, resumes via fetchMySupportChatSession instead of the localStorage flow", async () => {
+    localStorage.setItem("access_token", "tok")
+    vi.mocked(fetchMySupportChatSession).mockResolvedValue({
+      session_id: "account-session",
+      messages: [makeMessage({ id: 1, text: "Моё сообщение" })],
+    })
+
+    const user = userEvent.setup()
+    render(<SupportChatWidget />)
+    await waitFor(() => expect(connectSupportChat).toHaveBeenCalledWith("account-session", expect.anything()))
+    expect(getStoredSupportChatSessionId).not.toHaveBeenCalled()
+    expect(fetchSupportChatHistory).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+    expect(screen.getByText("Моё сообщение")).toBeInTheDocument()
+  })
+
+  it("when logged in with no session yet, waits for the first send instead of erroring", async () => {
+    localStorage.setItem("access_token", "tok")
+    vi.mocked(fetchMySupportChatSession).mockResolvedValue(null)
+
+    const user = userEvent.setup()
+    render(<SupportChatWidget />)
+    await waitFor(() => expect(fetchMySupportChatSession).toHaveBeenCalled())
+    expect(connectSupportChat).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
     expect(screen.getByText(/Напиши нам/)).toBeInTheDocument()
+  })
+
+  it("hides the 'start new chat' control for a logged-in visitor, even with an active session", async () => {
+    localStorage.setItem("access_token", "tok")
+    vi.mocked(fetchMySupportChatSession).mockResolvedValue({
+      session_id: "account-session",
+      messages: [makeMessage({ id: 1, text: "Привет" })],
+    })
+
+    const user = userEvent.setup()
+    render(<SupportChatWidget />)
+    await waitFor(() => expect(connectSupportChat).toHaveBeenCalled())
+    await user.click(screen.getByRole("button", { name: "Открыть чат поддержки" }))
+
+    expect(screen.getByText("Привет")).toBeInTheDocument()
     expect(screen.queryByText("Не ты? Новый чат")).not.toBeInTheDocument()
   })
 })

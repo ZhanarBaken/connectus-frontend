@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   connectSupportChat,
+  fetchMySupportChatSession,
   fetchSupportChatHistory,
   getStoredSupportChatSessionId,
   sendSupportChatMessage,
@@ -108,6 +109,107 @@ describe("sendSupportChatMessage", () => {
   it("throws on a non-ok response", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 429 }))
     await expect(sendSupportChatMessage("hi", null)).rejects.toThrow("Failed to send message")
+  })
+
+  it("includes visitor_name when given (a brand new anonymous session)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ session_id: "new-session", message: makeMessage() }, { status: 201 }),
+    )
+    await sendSupportChatMessage("hi", null, "Айгерим")
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(JSON.parse(init!.body as string)).toEqual({ visitor_name: "Айгерим", text: "hi" })
+  })
+
+  it("omits visitor_name when not given", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ session_id: "existing", message: makeMessage() }, { status: 201 }),
+    )
+    await sendSupportChatMessage("hi", "existing")
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(JSON.parse(init!.body as string)).not.toHaveProperty("visitor_name")
+  })
+
+  it("attaches the access_token as a Bearer header when the visitor is logged in", async () => {
+    localStorage.setItem("access_token", "tok123")
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ session_id: "acct-session", message: makeMessage() }, { status: 201 }),
+    )
+    await sendSupportChatMessage("hi", null)
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    const headers = new Headers(init!.headers)
+    expect(headers.get("Authorization")).toBe("Bearer tok123")
+  })
+
+  it("does NOT persist the account-bound session_id to localStorage when logged in", async () => {
+    // The account's session_id is resumed via fetchMySupportChatSession
+    // (auth header), never via this key — writing it here too would
+    // let it leak into the anonymous flow after logout (localStorage
+    // access_token/refresh_token/role get cleared, this key wouldn't)
+    // and let the next visitor on a shared computer silently resume
+    // this account's support thread. See lib/api.ts's clearAuth.
+    localStorage.setItem("access_token", "tok123")
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ session_id: "acct-session", message: makeMessage() }, { status: 201 }),
+    )
+    await sendSupportChatMessage("hi", null)
+
+    expect(getStoredSupportChatSessionId()).toBeNull()
+  })
+
+  it("does persist the session_id to localStorage when logged out", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ session_id: "anon-session", message: makeMessage() }, { status: 201 }),
+    )
+    await sendSupportChatMessage("hi", null)
+
+    expect(getStoredSupportChatSessionId()).toBe("anon-session")
+  })
+
+  it("sends no Authorization header when logged out", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ session_id: "s1", message: makeMessage() }, { status: 201 }),
+    )
+    await sendSupportChatMessage("hi", null)
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    const headers = new Headers(init!.headers)
+    expect(headers.has("Authorization")).toBe(false)
+  })
+})
+
+describe("fetchMySupportChatSession", () => {
+  it("returns null without calling fetch when logged out", async () => {
+    const result = await fetchMySupportChatSession()
+    expect(result).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("returns the session and messages when logged in with an existing thread", async () => {
+    localStorage.setItem("access_token", "tok123")
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ session_id: "acct-session", messages: [makeMessage({ id: 3 })] }),
+    )
+    const result = await fetchMySupportChatSession()
+
+    expect(result).toEqual({ session_id: "acct-session", messages: [makeMessage({ id: 3 })] })
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    const headers = new Headers(init!.headers)
+    expect(headers.get("Authorization")).toBe("Bearer tok123")
+  })
+
+  it("returns null on a 404 (no session yet) instead of throwing", async () => {
+    localStorage.setItem("access_token", "tok123")
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, { status: 404 }))
+    await expect(fetchMySupportChatSession()).resolves.toBeNull()
+  })
+
+  it("returns null on a network error instead of throwing", async () => {
+    localStorage.setItem("access_token", "tok123")
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("network down"))
+    await expect(fetchMySupportChatSession()).resolves.toBeNull()
   })
 })
 

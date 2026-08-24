@@ -1,24 +1,33 @@
-// ─── Anonymous website support chat: REST history/send + WebSocket live push ──
+// ─── Website support chat: REST history/send + WebSocket live push ────────────
 //
 // Backend contract (apps.support_chat):
 //   POST /api/v1/support-chat/messages/                  { session_id?, text } → { session_id, message }
+//   GET  /api/v1/support-chat/mine/                       logged-in only → { session_id, messages } | 404
 //   GET  /api/v1/support-chat/{session_id}/messages/      → SupportChatMessage[]
 //   WS   /ws/support-chat/{session_id}/                   recv-only: staff replies
 //
-// No auth at all — unlike lib/chat.ts, there's no JWT in play. The only
-// "credential" is session_id itself, minted by the backend on first
-// send and persisted in localStorage so the widget resumes the same
-// thread across reloads.
+// Works both logged-out and logged-in. Logged-out: the only "credential"
+// is session_id itself, minted by the backend on first send and
+// persisted in localStorage so the widget resumes the same thread
+// across reloads. Logged-in: sendSupportChatMessage attaches whatever
+// access_token is in localStorage (if any) so the backend can link the
+// session to the account instead — see fetchMySupportChatSession for
+// the read side. The token check here is a soft hint only, never a
+// hard gate: unlike lib/api.ts's authFetch, this never retries via
+// refresh or redirects to /auth/login on failure — a background chat
+// widget must not be able to yank the visitor off whatever page
+// they're on just because their access token happened to be stale.
 //
 // SSR-safe — only call from "use client" components.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 const SESSION_STORAGE_KEY = "support_chat_session_id"
 
-// Backend enforces the same cap (apps.support_chat.models.
-// SUPPORT_CHAT_MESSAGE_MAX_LENGTH) — mirrored here so the input can
-// cut a paste off client-side instead of only failing after submit.
+// Both mirror the backend's caps (apps.support_chat.models) so the
+// inputs can cut a paste off client-side instead of only failing
+// after submit.
 export const SUPPORT_CHAT_MESSAGE_MAX_LENGTH = 2000
+export const VISITOR_NAME_MAX_LENGTH = 100
 
 export interface SupportChatMessage {
   id: number
@@ -44,6 +53,33 @@ export function clearStoredSupportChatSessionId(): void {
   localStorage.removeItem(SESSION_STORAGE_KEY)
 }
 
+function authHeaderIfLoggedIn(): Record<string, string> {
+  if (typeof window === "undefined") return {}
+  const token = localStorage.getItem("access_token")
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// Logged-in only. Resumes the account's one support-chat session
+// without needing a localStorage-persisted session_id at all — the
+// point being a logged-in visitor's thread survives switching devices/
+// browsers, unlike the anonymous flow's localStorage-only model.
+// Returns null on ANY failure (401 from a stale token, 404 meaning no
+// session yet, a network error) — the caller falls back to treating
+// this as a fresh anonymous-looking session, never throws/redirects.
+export async function fetchMySupportChatSession(): Promise<
+  { session_id: string; messages: SupportChatMessage[] } | null
+> {
+  const headers = authHeaderIfLoggedIn()
+  if (!headers.Authorization) return null
+  try {
+    const res = await fetch(`${API_BASE}/support-chat/mine/`, { headers })
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
+}
+
 export async function fetchSupportChatHistory(sessionId: string): Promise<SupportChatMessage[]> {
   const res = await fetch(`${API_BASE}/support-chat/${encodeURIComponent(sessionId)}/messages/`)
   if (!res.ok) {
@@ -59,17 +95,41 @@ export async function fetchSupportChatHistory(sessionId: string): Promise<Suppor
 export async function sendSupportChatMessage(
   text: string,
   sessionId: string | null,
+  visitorName?: string,
 ): Promise<{ session_id: string; message: SupportChatMessage }> {
+  // When logged in, the backend resolves the session by account and
+  // ignores session_id entirely (apps.support_chat.views.
+  // _get_or_create_session) — still sent for the logged-out case,
+  // harmless to include either way. visitor_name is only meaningful
+  // on a brand new anonymous session — the backend ignores it once a
+  // session already exists (see _get_or_create_session), so there's
+  // no need for the caller to condition on that here too.
+  const authHeader = authHeaderIfLoggedIn()
   const res = await fetch(`${API_BASE}/support-chat/messages/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sessionId ? { session_id: sessionId, text } : { text }),
+    headers: { "Content-Type": "application/json", ...authHeader },
+    body: JSON.stringify({
+      ...(sessionId ? { session_id: sessionId } : {}),
+      ...(visitorName ? { visitor_name: visitorName } : {}),
+      text,
+    }),
   })
   if (!res.ok) {
     throw new Error("Failed to send message")
   }
   const data = await res.json()
-  storeSupportChatSessionId(data.session_id)
+  // Only for the logged-out flow — an authenticated send's session_id
+  // is account-bound (see apps.support_chat.views._get_or_create_
+  // session), not something to resume anonymously. Writing it here too
+  // would leak that account's session_id into the anonymous flow: on
+  // logout (which clears the auth tokens but wouldn't otherwise touch
+  // this key), the very next visitor on a shared/public computer would
+  // silently resume and both read AND append to the previous user's
+  // support thread. See also clearStoredSupportChatSessionId, called
+  // from every logout path as defense in depth.
+  if (!authHeader.Authorization) {
+    storeSupportChatSessionId(data.session_id)
+  }
   return data
 }
 

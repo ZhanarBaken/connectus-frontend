@@ -4,6 +4,7 @@
 import { MOCK_MENTORS, getMockMentor, getMockServices, MOCK_ORDERS, MOCK_STUDENT_PROFILE } from "./mocks"
 import { AdminConversation, AdminDispute, AdminMentorProfile, Dispute, Mentor, MentorCard, MentorProfile, Order, OrderStatus, PayoutCategory, SiteSettings, StudentProfile } from "@/types"
 import { localeFromPathname, withLocalePrefix } from "./i18n/pathname"
+import { clearStoredSupportChatSessionId } from "./supportChat"
 
 const USE_MOCKS = false
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -918,6 +919,14 @@ export function clearAuth() {
   localStorage.removeItem("access_token")
   localStorage.removeItem("refresh_token")
   localStorage.removeItem("role")
+  // A logged-in visitor's support-chat session_id is account-bound
+  // (apps.support_chat.views._get_or_create_session) — leaving it in
+  // localStorage after logout would let the next person on a shared/
+  // public computer silently resume (and append to) this account's
+  // support thread once they open the widget as "anonymous". See
+  // lib/supportChat.ts's sendSupportChatMessage for the write side of
+  // this same guard.
+  clearStoredSupportChatSessionId()
 }
 
 // Single in-flight refresh promise so concurrent 401s share one refresh call.
