@@ -39,7 +39,13 @@ function TgLoginContent() {
         localStorage.setItem("role", me.role)
         setStatus("success")
         setTimeout(() => {
-          if (me.role === "mentor") {
+          if (me.role === "admin") {
+            // CRM is a separate root layout outside the locale-routing
+            // tree (see app/crm/layout.tsx) — a plain navigation, not
+            // next-intl's locale-aware router.push, is the correct way
+            // to leave this tree, same as the email/password login page.
+            window.location.href = "/crm"
+          } else if (me.role === "mentor") {
             router.push("/mentor/dashboard")
           } else {
             router.push("/student/dashboard")
