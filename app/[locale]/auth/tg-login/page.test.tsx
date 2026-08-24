@@ -65,6 +65,40 @@ describe("TgLoginPage", () => {
     expect(localStorage.getItem("role")).toBe("student")
   })
 
+  it("sends an admin straight to /crm instead of a dashboard", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams("token=abc") as ReturnType<typeof useSearchParams>,
+    )
+    vi.mocked(api.telegramLogin).mockResolvedValue({ user_id: 1, access: "acc", refresh: "ref" })
+    vi.mocked(api.fetchMe).mockResolvedValue({ role: "admin" } as never)
+
+    const originalLocation = window.location
+    // jsdom's window.location isn't directly assignable and throws a
+    // "not implemented: navigation" error on a real href set — swap in a
+    // plain writable stand-in so we can assert the redirect target.
+    Object.defineProperty(window, "location", {
+      writable: true,
+      configurable: true,
+      value: { ...originalLocation, href: "" },
+    })
+
+    render(<TgLoginPage />)
+    expect(await screen.findByText("Вход выполнен!")).toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(1500)
+
+    expect(window.location.href).toBe("/crm")
+    expect(push).not.toHaveBeenCalled()
+
+    Object.defineProperty(window, "location", {
+      writable: true,
+      configurable: true,
+      value: originalLocation,
+    })
+    vi.useRealTimers()
+  })
+
   it("shows an error screen with a fallback-to-login CTA when login fails", async () => {
     vi.mocked(useSearchParams).mockReturnValue(
       new URLSearchParams("token=bad") as ReturnType<typeof useSearchParams>,

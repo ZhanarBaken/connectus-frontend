@@ -35,6 +35,13 @@ export default function CRMShell({ children }: { children: React.ReactNode }) {
     setReady(true)
   }, [router])
 
+  const handleLogout = () => {
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("refresh_token")
+    localStorage.removeItem("role")
+    router.replace("/")
+  }
+
   if (!ready) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -69,6 +76,14 @@ export default function CRMShell({ children }: { children: React.ReactNode }) {
             )
           })}
         </nav>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="mt-auto flex items-center gap-2.5 px-3 py-2 mx-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+        >
+          <Icon name="logout" size={18} />
+          Выйти
+        </button>
       </aside>
 
       {/* Main content */}
