@@ -14,6 +14,7 @@ const NAV = [
   { href: "/crm/disputes", label: "Споры", icon: "gavel" },
   { href: "/crm/users", label: "Пользователи", icon: "people" },
   { href: "/crm/chats", label: "Чаты", icon: "chat" },
+  { href: "/crm/support-chat", label: "Чат поддержки", icon: "support_agent" },
   { href: "/crm/settings", label: "Настройки", icon: "settings" },
 ]
 
