@@ -194,16 +194,10 @@ export default function MentorPage({ params }: Props) {
 
   // Split services. Mentors can list any number of paid consultations now
   // (no more singleton). "support" (long-running mentorship) is sold
-  // through chat, not this one-click flow. PayoutCategory only has
-  // "paid_consultation" and "support" now (the old retired categories —
-  // consultation/primary_consultation/delivery/milestone — were fully
-  // migrated off and deleted), so paidServices is always empty; kept as
-  // a bucket in case a third live category is ever added.
+  // through chat, not this one-click flow. PayoutCategory only has these
+  // two live categories now.
   const consultationServices = mentor.services.filter(
     (s) => s.payout_category === "paid_consultation"
-  )
-  const paidServices = mentor.services.filter(
-    (s) => s.payout_category !== "paid_consultation" && s.payout_category !== "support"
   )
   const supportServices = mentor.services.filter((s) => s.payout_category === "support")
 
@@ -220,13 +214,6 @@ export default function MentorPage({ params }: Props) {
     !consultationOrder
       ? "none"
       : (consultationOrder.order_status as "pending_payment" | "in_progress")
-
-  // Track which paid services have already been ordered
-  const orderedPaidIds = new Set(
-    orders
-      .filter((o) => o.order_status !== "cancelled")
-      .map((o) => o.mentor_service)
-  )
 
   return (
     <div className="bg-white min-h-screen">
@@ -598,63 +585,6 @@ export default function MentorPage({ params }: Props) {
                         <p className="text-xs text-red-500 mt-2">{requestSupportError.message}</p>
                       )}
                     </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Paid services */}
-            {paidServices.length > 0 && (
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">{t("paidServicesTitle")}</h2>
-                <p className="text-sm text-gray-500 mb-4">
-                  {t("paidServicesSubtitle")}
-                </p>
-                <div className="space-y-3">
-                  {paidServices.map((service) => {
-                    const isOrdered = orderedPaidIds.has(service.id)
-                    return (
-                      <div
-                        key={service.id}
-                        className="border rounded-2xl p-5 transition-all border-gray-200 hover:border-gray-300"
-                      >
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900">
-                              {service.title}
-                            </h3>
-                            {service.description && (
-                              <p className="text-sm mt-1 text-gray-500 break-words">
-                                {service.description}
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-400 mt-2 inline-flex items-center gap-1">
-                              <Icon name="schedule" size={12} />
-                              {t("durationMinutes", { minutes: String(service.duration_minutes) })}
-                            </p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-2xl font-bold text-gray-900">
-                              {Number(service.client_price).toLocaleString("ru-RU")} ₸
-                            </div>
-                            {isOrdered ? (
-                              <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
-                                <Icon name="check" size={12} />
-                                {t("ordered")}
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => setBookingService(service)}
-                                disabled={orderingServiceId === service.id || isMentorViewer}
-                                className="mt-1 text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-                              >
-                                {orderingServiceId === service.id ? t("ordering") : t("signUp")}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
                     )
                   })}
                 </div>
