@@ -52,7 +52,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     mentor: 5,
     mentor_service: 1,
     service_title: "Проверка эссе",
-    payout_category: "delivery",
+    payout_category: "paid_consultation",
     subtotal: "20000",
     total_price: "20000",
     platform_fee: "5000",

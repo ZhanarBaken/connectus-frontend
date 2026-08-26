@@ -32,7 +32,7 @@ const mockServices: Record<number, MentorService[]> = {
       client_price: "80.00",
       currency: "KZT",
       duration_minutes: 60,
-      payout_category: "delivery",
+      payout_category: "paid_consultation",
       grade_min: null,
       grade_max: null,
       meetings_min: null,

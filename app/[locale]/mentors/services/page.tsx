@@ -17,8 +17,6 @@ import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
 
-// "consultation" (the retired free-intro category) never appears here —
-// the backend blocks creating/editing into it and no longer surfaces it.
 type FormCategory = "paid_consultation" | "support" | "other"
 
 interface FormState {
@@ -308,7 +306,7 @@ export default function MentorServicesPage() {
   const consultations = services.filter((s) => s.payout_category === "paid_consultation")
   const supports = services.filter((s) => s.payout_category === "support")
   const other = services.filter(
-    (s) => s.payout_category !== "paid_consultation" && s.payout_category !== "support" && s.payout_category !== "consultation"
+    (s) => s.payout_category !== "paid_consultation" && s.payout_category !== "support"
   )
 
   return (

@@ -387,14 +387,14 @@ describe("MentorPage — request support when Intro Call is disabled", () => {
 
 describe("MentorPage — booking failure self-heals stale buttons", () => {
   it("refetches orders after createOrder rejects inside the booking modal", async () => {
-    const service = makeService({ payout_category: "delivery", price: "20000" })
+    const service = makeService({ payout_category: "paid_consultation", price: "20000", client_price: "20000" })
     vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [service] }))
     vi.mocked(fetchOrders).mockResolvedValue([])
     vi.mocked(createOrder).mockRejectedValue(new Error("Slot no longer available"))
 
     await renderMentorPage("3")
 
-    const bookButton = await screen.findByRole("button", { name: "Записаться" })
+    const bookButton = await screen.findByRole("button", { name: /Заказать консультацию за 20.*000/ })
     fireEvent.click(bookButton)
 
     // Navigate to a future month so every visible day cell is bookable

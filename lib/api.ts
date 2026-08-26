@@ -606,15 +606,6 @@ export async function confirmOrderPayment(id: number): Promise<Order> {
   return res.json()
 }
 
-export async function confirmConsultation(id: number): Promise<Order> {
-  const res = await authFetch(`${BASE_URL}/orders/${id}/confirm_consultation/`, { method: "POST" })
-  if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.detail || "Failed to confirm consultation")
-  }
-  return res.json()
-}
-
 export async function confirmIntroCall(id: number): Promise<Order> {
   const res = await authFetch(`${BASE_URL}/orders/${id}/confirm_intro_call/`, { method: "POST" })
   if (!res.ok) {

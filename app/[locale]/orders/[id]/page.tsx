@@ -15,6 +15,7 @@ import { Avatar } from "@/components/Avatar"
 import ChatPanel from "@/components/ChatPanel"
 import ChatOverlay from "@/components/ChatOverlay"
 import SupportChatActions from "@/components/SupportChatActions"
+import StartCallButton from "@/components/StartCallButton"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
 const STATUS_KEY: Record<string, string> = {
@@ -378,23 +379,12 @@ export default function OrderPage({ params }: Props) {
 
   if (!order) return null
 
-  // Chat is available whenever the backend has created a Conversation
-  // (happens after the mentor confirms a free consultation).
+  // Chat is available whenever the backend has created a Conversation.
   const canChat = order.conversation_id !== null
-  // Free intro consultation skips payment / dispute / review. Paid
-  // consultation (10 000 ₸) and other paid services follow the regular
-  // paid flow, so we key off the category, not the price.
-  const isFreeIntro = order.payout_category === "consultation"
-  const isAnyConsultation =
-    order.payout_category === "consultation" ||
-    order.payout_category === "primary_consultation" ||
-    order.payout_category === "paid_consultation"
-  // Free-intro categories only (unlike isAnyConsultation, excludes
-  // paid_consultation — that one IS reviewable per the backend, see
-  // apps.reviews.serializers.ReviewCreateSerializer.validate_order).
-  const isFreeConsultation =
-    order.payout_category === "consultation" ||
-    order.payout_category === "primary_consultation"
+  // PayoutCategory only has "support" and "paid_consultation" now, so
+  // "not support" and "is a consultation" are the same condition —
+  // kept as isSupport (rather than two flags) since that's what most
+  // branches below actually key off.
   const isSupport = order.payout_category === "support"
   // A free 15-minute intro call, not the paid support engagement itself
   // — same three-field test as the backend's _is_intro_call_order. The
@@ -437,17 +427,32 @@ export default function OrderPage({ params }: Props) {
   // Hoisted so it can be passed to both the Mini App overlay and the
   // desktop inline chat card without duplicating this block — same
   // component every other mentor-facing chat surface uses.
-  const chatHeaderAction = role === "mentor" && order ? (
-    <SupportChatActions
-      studentId={order.student}
-      engagementId={liveEngagementId}
-      onActionPosted={() => {
-        setInvoiceChatRefetchSignal((n) => n + 1)
-        if (order.support_engagement !== null) {
-          fetchSupportTasks(order.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
-        }
-      }}
-    />
+  const otherPartyName = role === "mentor"
+    ? (order?.student_info?.full_name || t("applicantDefault"))
+    : (mentor?.full_name || t("mentorDefault"))
+
+  const chatHeaderAction = order ? (
+    <>
+      {role === "mentor" && (
+        <SupportChatActions
+          studentId={order.student}
+          engagementId={liveEngagementId}
+          onActionPosted={() => {
+            setInvoiceChatRefetchSignal((n) => n + 1)
+            if (order.support_engagement !== null) {
+              fetchSupportTasks(order.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
+            }
+          }}
+        />
+      )}
+      {order.conversation_id && (
+        <StartCallButton
+          conversationId={order.conversation_id}
+          otherPartyName={otherPartyName}
+          otherPartyOnline={otherPartyOnline}
+        />
+      )}
+    </>
   ) : null
 
   return (
@@ -512,7 +517,7 @@ export default function OrderPage({ params }: Props) {
                     <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
                   )}
                 </div>
-                {role === "mentor" && !isFreeIntro && !isSupportIntroCall && (
+                {role === "mentor" && !isSupportIntroCall && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">{t("mentorPayout")}</span>
                     <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>
@@ -651,19 +656,18 @@ export default function OrderPage({ params }: Props) {
             )}
 
 
-            {/* Mentor: complete any in_progress order — except support
-                installments, which complete automatically (paying the
-                next one, or ending the engagement) instead of through a
-                manual step; see apps.orders.services on the backend. */}
+            {/* Mentor: complete an in_progress paid_consultation order —
+                except support installments, which complete automatically
+                (paying the next one, or ending the engagement) instead
+                of through a manual step; see apps.orders.services on
+                the backend. */}
             {role === "mentor" && order.order_status === "in_progress" && !isSupport && (
               <div className="bg-white border border-indigo-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">
-                  {isAnyConsultation ? t("completeConsultationTitle") : t("completeServiceTitle")}
+                  {t("completeConsultationTitle")}
                 </h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                  {isAnyConsultation
-                    ? t("completeConsultationBody")
-                    : t("completeServiceBody")}
+                  {t("completeConsultationBody")}
                 </p>
                 {completeError && (
                   <p className="text-xs text-red-600 mb-3">{completeError}</p>
@@ -673,11 +677,7 @@ export default function OrderPage({ params }: Props) {
                   disabled={completing}
                   className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {completing
-                    ? t("completing")
-                    : isAnyConsultation
-                      ? t("completeConsultationCta")
-                      : t("completeServiceCta")}
+                  {completing ? t("completing") : t("completeConsultationCta")}
                 </button>
               </div>
             )}
@@ -685,14 +685,14 @@ export default function OrderPage({ params }: Props) {
             {/* Student: in progress notice — skipped for consultations,
                 where chat being always-open already makes this
                 redundant. */}
-            {role !== "mentor" && order.order_status === "in_progress" && !isAnyConsultation && (
+            {role !== "mentor" && order.order_status === "in_progress" && isSupport && (
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
                 <h3 className="font-semibold text-blue-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="hourglass_top" size={16} className="text-blue-600" />
                   {t("inProgressTitle")}
                 </h3>
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  {isSupport ? t("inProgressBodySupport") : t("inProgressBody")}
+                  {t("inProgressBodySupport")}
                 </p>
               </div>
             )}
@@ -838,8 +838,11 @@ export default function OrderPage({ params }: Props) {
             )}
 
             {/* Completed — shown to both sides with dispute timer.
-                Hidden for any consultation (intro contact, no dispute). */}
-            {order.order_status === "completed" && !isAnyConsultation && (
+                Support-only (preserving prior behavior — paid_consultation
+                orders never showed this banner even though the backend
+                does allow disputing them; not something this refactor
+                changes). */}
+            {order.order_status === "completed" && isSupport && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
                 <h3 className="font-semibold text-green-800 mb-1 text-sm inline-flex items-center gap-1.5">
                   <Icon name="check_circle" size={16} className="text-green-600" filled />
@@ -859,13 +862,12 @@ export default function OrderPage({ params }: Props) {
               </div>
             )}
 
-            {/* Review form — student only. Free-intro consultations are
-                intro contact, not work, so never reviewable. Everything
-                else needs order_status "completed" — except support
-                engagements, which run for months, so the backend (see
+            {/* Review form — student only. Needs order_status "completed"
+                — except support engagements, which run for months, so
+                the backend (see
                 apps.reviews.serializers.ReviewCreateSerializer.validate_order)
                 allows reviewing while still "in_progress" too. */}
-            {role !== "mentor" && !isFreeConsultation
+            {role !== "mentor"
               && (order.order_status === "completed" || (isSupport && order.order_status === "in_progress")) && (
               <ReviewForm
                 orderId={order.id}
@@ -875,8 +877,9 @@ export default function OrderPage({ params }: Props) {
               />
             )}
 
-            {/* Student: open dispute — only for paid deliverable orders */}
-            {role !== "mentor" && order.order_status === "completed" && !isAnyConsultation && disputeWindowOpen && disputeTimeRemainingMs && (
+            {/* Student: open dispute — support-only, see the completed-
+                banner comment above for why paid_consultation is excluded. */}
+            {role !== "mentor" && order.order_status === "completed" && isSupport && disputeWindowOpen && disputeTimeRemainingMs && (
               <div className="bg-white border border-red-100 rounded-2xl p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">{t("somethingWrongTitle")}</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mb-4">
