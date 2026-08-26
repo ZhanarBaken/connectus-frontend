@@ -52,12 +52,16 @@ describe("CRMMentorsPage", () => {
     vi.clearAllMocks()
   })
 
-  it("loads the 'submitted' filter by default", async () => {
-    vi.mocked(fetchAdminMentors).mockResolvedValue([])
+  it("loads every mentor (no filter param) and defaults to the 'Все' tab", async () => {
+    const approved = makeMentor({ id: 1, is_submitted: false, is_approved: true })
+    const pending = makeMentor({ id: 2, full_name: "Бекзат Смагулов", is_submitted: true, is_approved: false })
+    vi.mocked(fetchAdminMentors).mockResolvedValue([approved, pending])
+
     render(<CRMMentorsPage />)
 
-    expect(await screen.findByText("Нет менторов в этой категории")).toBeInTheDocument()
-    expect(fetchAdminMentors).toHaveBeenCalledWith("submitted")
+    expect(await screen.findByText("Айгерим Ержанова")).toBeInTheDocument()
+    expect(screen.getByText("Бекзат Смагулов")).toBeInTheDocument()
+    expect(fetchAdminMentors).toHaveBeenCalledWith()
   })
 
   it("shows an error banner when the fetch fails", async () => {
@@ -67,22 +71,53 @@ describe("CRMMentorsPage", () => {
     expect(await screen.findByText("Не удалось загрузить менторов")).toBeInTheDocument()
   })
 
-  it("re-fetches with the new filter when switching tabs", async () => {
-    const user = userEvent.setup()
-    vi.mocked(fetchAdminMentors).mockResolvedValue([])
+  it("flags a pending mentor with a review badge even on the 'Все' tab", async () => {
+    vi.mocked(fetchAdminMentors).mockResolvedValue([
+      makeMentor({ id: 1, is_submitted: true, is_approved: false }),
+    ])
     render(<CRMMentorsPage />)
-    await screen.findByText("Нет менторов в этой категории")
 
-    await user.click(screen.getByRole("button", { name: "Все" }))
-    expect(fetchAdminMentors).toHaveBeenCalledWith("all")
-
-    await user.click(screen.getByRole("button", { name: "Заблокированные" }))
-    expect(fetchAdminMentors).toHaveBeenCalledWith("banned")
+    expect(await screen.findByText("⏳ на проверке")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Одобрить" })).toBeInTheDocument()
   })
 
-  it("approves a mentor and removes them from the submitted list", async () => {
+  it("switches tabs client-side without re-fetching", async () => {
     const user = userEvent.setup()
-    vi.mocked(fetchAdminMentors).mockResolvedValue([makeMentor({ id: 1 })])
+    vi.mocked(fetchAdminMentors).mockResolvedValue([
+      makeMentor({ id: 1, full_name: "На проверке Мент", is_submitted: true, is_approved: false }),
+      makeMentor({ id: 2, full_name: "Забаненный Мент", is_banned: true, is_submitted: false, is_approved: true }),
+    ])
+    render(<CRMMentorsPage />)
+    await screen.findByText("На проверке Мент")
+
+    await user.click(screen.getByRole("button", { name: /^На проверку/ }))
+    expect(screen.getByText("На проверке Мент")).toBeInTheDocument()
+    expect(screen.queryByText("Забаненный Мент")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /^Заблокированные/ }))
+    expect(screen.getByText("Забаненный Мент")).toBeInTheDocument()
+    expect(screen.queryByText("На проверке Мент")).not.toBeInTheDocument()
+
+    // Only the initial mount fetch — tab switches are pure client filtering.
+    expect(fetchAdminMentors).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows an amber dot on the 'На проверку' tab when something is pending", async () => {
+    vi.mocked(fetchAdminMentors).mockResolvedValue([
+      makeMentor({ id: 1, is_submitted: true, is_approved: false }),
+    ])
+    render(<CRMMentorsPage />)
+
+    const tab = await screen.findByRole("button", { name: /^На проверку/ })
+    expect(tab.querySelector(".bg-amber-500")).not.toBeNull()
+  })
+
+  it("approves a mentor and refetches the list", async () => {
+    const user = userEvent.setup()
+    const pending = makeMentor({ id: 1, is_submitted: true, is_approved: false })
+    vi.mocked(fetchAdminMentors)
+      .mockResolvedValueOnce([pending])
+      .mockResolvedValueOnce([{ ...pending, is_approved: true }])
     vi.mocked(approveMentor).mockResolvedValue(undefined)
 
     render(<CRMMentorsPage />)
@@ -91,12 +126,17 @@ describe("CRMMentorsPage", () => {
     await user.click(screen.getByRole("button", { name: "Одобрить" }))
 
     expect(approveMentor).toHaveBeenCalledWith(1)
-    expect(await screen.findByText("Нет менторов в этой категории")).toBeInTheDocument()
+    await waitFor(() => expect(fetchAdminMentors).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText("одобрен")).toBeInTheDocument()
+    expect(screen.queryByText("⏳ на проверке")).not.toBeInTheDocument()
   })
 
-  it("rejects a mentor and removes them from the submitted list", async () => {
+  it("rejects a mentor and refetches the list", async () => {
     const user = userEvent.setup()
-    vi.mocked(fetchAdminMentors).mockResolvedValue([makeMentor({ id: 1 })])
+    const pending = makeMentor({ id: 1, is_submitted: true, is_approved: false })
+    vi.mocked(fetchAdminMentors)
+      .mockResolvedValueOnce([pending])
+      .mockResolvedValueOnce([])
     vi.mocked(rejectMentor).mockResolvedValue(undefined)
 
     render(<CRMMentorsPage />)
@@ -110,7 +150,10 @@ describe("CRMMentorsPage", () => {
 
   it("bans a mentor after entering a reason and flips the badge to blocked", async () => {
     const user = userEvent.setup()
-    vi.mocked(fetchAdminMentors).mockResolvedValue([makeMentor({ id: 1, is_submitted: false, is_approved: true })])
+    const mentor = makeMentor({ id: 1, is_submitted: false, is_approved: true })
+    vi.mocked(fetchAdminMentors)
+      .mockResolvedValueOnce([mentor])
+      .mockResolvedValueOnce([{ ...mentor, is_banned: true }])
     vi.mocked(banMentor).mockResolvedValue(undefined)
 
     render(<CRMMentorsPage />)
@@ -125,17 +168,23 @@ describe("CRMMentorsPage", () => {
   })
 
   it("shows the empty state for the current category, not a global empty state", async () => {
-    vi.mocked(fetchAdminMentors).mockResolvedValue([])
+    vi.mocked(fetchAdminMentors).mockResolvedValue([
+      makeMentor({ id: 1, is_submitted: false, is_approved: true }),
+    ])
     render(<CRMMentorsPage />)
+    await screen.findByText("Айгерим Ержанова")
+
+    await userEvent.setup().click(screen.getByRole("button", { name: /^На проверку/ }))
 
     expect(await screen.findByText("Нет менторов в этой категории")).toBeInTheDocument()
   })
 
-  it("unbans a banned mentor and flips the badge back to normal", async () => {
+  it("unbans a banned mentor and refetches the list", async () => {
     const user = userEvent.setup()
-    vi.mocked(fetchAdminMentors).mockResolvedValue([
-      makeMentor({ id: 1, is_banned: true, is_submitted: false, is_approved: true }),
-    ])
+    const banned = makeMentor({ id: 1, is_banned: true, is_submitted: false, is_approved: true })
+    vi.mocked(fetchAdminMentors)
+      .mockResolvedValueOnce([banned])
+      .mockResolvedValueOnce([{ ...banned, is_banned: false }])
     vi.mocked(unbanMentor).mockResolvedValue(undefined)
 
     render(<CRMMentorsPage />)
