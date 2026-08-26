@@ -31,6 +31,7 @@ describe("CRMShell", () => {
     localStorage.setItem("role", "admin")
     localStorage.setItem("access_token", "tok")
     localStorage.setItem("refresh_token", "reftok")
+    localStorage.setItem("support_chat_session_id", "acct-session")
 
     render(<CRMShell>content</CRMShell>)
 
@@ -40,6 +41,19 @@ describe("CRMShell", () => {
     expect(localStorage.getItem("access_token")).toBeNull()
     expect(localStorage.getItem("refresh_token")).toBeNull()
     expect(localStorage.getItem("role")).toBeNull()
+    expect(localStorage.getItem("support_chat_session_id")).toBeNull()
     expect(replace).toHaveBeenCalledWith("/")
+  })
+
+  it("shows a nav link to the support-chat CRM section for admins", async () => {
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+    } as unknown as ReturnType<typeof useRouter>)
+    localStorage.setItem("role", "admin")
+
+    render(<CRMShell>content</CRMShell>)
+
+    const link = await screen.findByRole("link", { name: /Чат поддержки/ })
+    expect(link).toHaveAttribute("href", "/crm/support-chat")
   })
 })

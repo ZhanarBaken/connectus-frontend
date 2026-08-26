@@ -2,8 +2,9 @@
 // Switch USE_MOCKS to false when backend is ready
 
 import { MOCK_MENTORS, getMockMentor, getMockServices, MOCK_ORDERS, MOCK_STUDENT_PROFILE } from "./mocks"
-import { AdminConversation, AdminDispute, AdminMentorProfile, Dispute, Mentor, MentorCard, MentorProfile, Order, OrderStatus, PayoutCategory, SiteSettings, StudentProfile } from "@/types"
+import { AdminConversation, AdminDispute, AdminMentorProfile, AdminOrder, AdminSupportChatSession, Dispute, Mentor, MentorCard, MentorProfile, Order, OrderStatus, PayoutCategory, SiteSettings, StudentProfile } from "@/types"
 import { localeFromPathname, withLocalePrefix } from "./i18n/pathname"
+import { clearStoredSupportChatSessionId } from "./supportChat"
 
 const USE_MOCKS = false
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -918,6 +919,14 @@ export function clearAuth() {
   localStorage.removeItem("access_token")
   localStorage.removeItem("refresh_token")
   localStorage.removeItem("role")
+  // A logged-in visitor's support-chat session_id is account-bound
+  // (apps.support_chat.views._get_or_create_session) — leaving it in
+  // localStorage after logout would let the next person on a shared/
+  // public computer silently resume (and append to) this account's
+  // support thread once they open the widget as "anonymous". See
+  // lib/supportChat.ts's sendSupportChatMessage for the write side of
+  // this same guard.
+  clearStoredSupportChatSessionId()
 }
 
 // Single in-flight refresh promise so concurrent 401s share one refresh call.
@@ -1609,6 +1618,25 @@ export async function rejectOrderPayment(id: number, reason: string): Promise<Or
   return res.json()
 }
 
+export async function fetchAdminOrders(): Promise<AdminOrder[]> {
+  const res = await authFetch(`${BASE_URL}/orders/admin/`)
+  if (!res.ok) throw new Error("Failed to fetch orders")
+  return res.json()
+}
+
+export async function adminCancelOrder(id: number, reason: string): Promise<Order> {
+  const res = await authFetch(`${BASE_URL}/orders/${id}/admin-cancel/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.reason || err.detail || "Не удалось отменить заказ")
+  }
+  return res.json()
+}
+
 export async function fetchAdminDisputes(): Promise<AdminDispute[]> {
   const res = await authFetch(`${BASE_URL}/orders/disputes/`)
   if (!res.ok) throw new Error("Failed to fetch disputes")
@@ -1682,6 +1710,37 @@ export async function fetchAdminConversations(): Promise<AdminConversation[]> {
   return res.json()
 }
 
+export async function fetchAdminSupportChatSessions(): Promise<AdminSupportChatSession[]> {
+  const res = await authFetch(`${BASE_URL}/support-chat/admin/sessions/`)
+  if (!res.ok) throw new Error("Failed to fetch support chat sessions")
+  return res.json()
+}
+
+export async function fetchAdminSupportChatMessages(
+  sessionId: string,
+): Promise<import("@/lib/supportChat").SupportChatMessage[]> {
+  const res = await authFetch(`${BASE_URL}/support-chat/admin/sessions/${sessionId}/messages/`)
+  if (!res.ok) throw new Error("Failed to fetch support chat messages")
+  return res.json()
+}
+
+export async function sendAdminSupportChatReply(
+  sessionId: string,
+  text: string,
+): Promise<import("@/lib/supportChat").SupportChatMessage> {
+  const res = await authFetch(`${BASE_URL}/support-chat/admin/sessions/${sessionId}/reply/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const first = Object.values(err)[0]
+    throw new Error(Array.isArray(first) ? String(first[0]) : String(first ?? "Не удалось отправить ответ"))
+  }
+  return res.json()
+}
+
 export async function fetchAdminSettings(): Promise<SiteSettings> {
   const res = await authFetch(`${BASE_URL}/settings/admin/`)
   if (!res.ok) throw new Error("Failed to fetch settings")
@@ -1707,6 +1766,28 @@ export async function fetchChatMessages(conversationId: number): Promise<import(
   if (!res.ok) throw new Error("Failed to fetch messages")
   const data = await res.json()
   return data.results ?? data
+}
+
+// ─── Video calls (apps.calls) ──────────────────────────────────────────────
+
+/**
+ * Starts a Jitsi call for this conversation, or — if the other
+ * participant already started one — joins it (same endpoint, same
+ * shape either way; see apps.calls.views.StartCallView).
+ */
+export async function startCall(conversationId: number): Promise<import("@/types").CallStartResponse> {
+  const res = await authFetch(`${BASE_URL}/calls/${conversationId}/start/`, { method: "POST" })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || firstErrorMessage(err) || "Failed to start the call")
+  }
+  return res.json()
+}
+
+/** Client-reported call end — best-effort, fire-and-forget by callers. */
+export async function endCall(callSessionId: number): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/calls/${callSessionId}/end/`, { method: "POST" })
+  if (!res.ok) throw new Error("Failed to end the call")
 }
 
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {

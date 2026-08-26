@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import Icon from "@/components/Icon"
+import { clearStoredSupportChatSessionId } from "@/lib/supportChat"
 
 const NAV = [
   { href: "/crm", label: "Дашборд", icon: "dashboard", exact: true },
@@ -13,6 +14,7 @@ const NAV = [
   { href: "/crm/disputes", label: "Споры", icon: "gavel" },
   { href: "/crm/users", label: "Пользователи", icon: "people" },
   { href: "/crm/chats", label: "Чаты", icon: "chat" },
+  { href: "/crm/support-chat", label: "Чат поддержки", icon: "support_agent" },
   { href: "/crm/settings", label: "Настройки", icon: "settings" },
 ]
 
@@ -39,6 +41,10 @@ export default function CRMShell({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     localStorage.removeItem("role")
+    // Same account-bound-session cleanup as Header.tsx's handleLogout —
+    // an admin may have browsed the public site (and the widget) under
+    // this account before landing in CRM.
+    clearStoredSupportChatSessionId()
     router.replace("/")
   }
 

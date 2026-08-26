@@ -286,11 +286,20 @@ export interface ChatMessage {
   sender: number | null
   sender_email: string | null
   is_system?: boolean
-  kind?: "text" | "support_invoice" | "support_task"
+  kind?: "text" | "support_invoice" | "support_task" | "call_started" | "call_ended"
   text: string
   created_at: string
   attachments?: ChatAttachment[]
   related_task?: ChatRelatedTask | null
+}
+
+// ─── Video calls (apps.calls) ──────────────────────────────────────────────
+
+export interface CallStartResponse {
+  call_session_id: number
+  room_name: string
+  jitsi_domain: string
+  jwt: string
 }
 
 // ─── CRM admin types ──────────────────────────────────────────────────────────
@@ -366,6 +375,32 @@ export interface AdminDispute {
   refund_amount: string | null
   // Only set when the disputed order is a support-engagement installment.
   support_engagement: SupportEngagement | null
+}
+
+// Order + the cross-order context the CRM Kanban board needs (mentor
+// identity, both emails for search, the linked dispute if any) that the
+// plain student/mentor-facing Order has no reason to carry.
+export interface AdminOrder extends Order {
+  mentor_info: {
+    id: number
+    full_name: string
+    profile_photo: string | null
+  }
+  student_email: string
+  mentor_email: string
+  // Set only when order_status is "disputed".
+  dispute_id: number | null
+}
+
+export interface AdminSupportChatSession {
+  session_id: string
+  visitor_name: string
+  user: number | null
+  user_email: string | null
+  user_role: "admin" | "mentor" | "student" | null
+  created_at: string
+  last_message_at: string | null
+  last_message_text: string
 }
 
 export interface AdminConversation {

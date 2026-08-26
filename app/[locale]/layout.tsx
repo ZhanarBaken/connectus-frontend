@@ -9,6 +9,7 @@ import { routing } from "@/i18n/routing"
 import "../globals.css"
 import AnalyticsInit from "@/components/AnalyticsInit"
 import Header from "@/components/Header"
+import SupportChatWidget from "@/components/SupportChatWidget"
 import TelegramAutoLogin from "@/components/TelegramAutoLogin"
 
 export async function generateMetadata({
@@ -75,6 +76,7 @@ export default async function LocaleLayout({
           <TelegramAutoLogin />
           <Header />
           {children}
+          <SupportChatWidget />
         </NextIntlClientProvider>
       </body>
     </html>

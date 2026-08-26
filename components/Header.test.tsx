@@ -120,6 +120,7 @@ describe("Header", () => {
     localStorage.setItem("role", "student")
     localStorage.setItem("access_token", "abc")
     localStorage.setItem("refresh_token", "def")
+    localStorage.setItem("support_chat_session_id", "acct-session")
     const user = userEvent.setup()
     renderHeader()
 
@@ -129,6 +130,9 @@ describe("Header", () => {
     expect(localStorage.getItem("access_token")).toBeNull()
     expect(localStorage.getItem("refresh_token")).toBeNull()
     expect(localStorage.getItem("role")).toBeNull()
+    // Account-bound support-chat session must not survive logout — see
+    // lib/supportChat.ts's sendSupportChatMessage for why.
+    expect(localStorage.getItem("support_chat_session_id")).toBeNull()
     expect(push).toHaveBeenCalledWith("/")
   })
 
