@@ -20,6 +20,8 @@ import {
   setDocumentStatus,
   fetchDocumentComments,
   postDocumentComment,
+  fetchMentorNotes,
+  createMentorNote,
   fetchMentorServices,
   endSupportEngagement,
   fetchSupportTasks,
@@ -126,6 +128,7 @@ async function renderOrderPage(id: string) {
 function setupCommonMocks() {
   vi.mocked(authFetch).mockResolvedValue(okJson({ id: 1, email: "mentor@test.com" }))
   vi.mocked(fetchOrderDocuments).mockResolvedValue([])
+  vi.mocked(fetchMentorNotes).mockResolvedValue([])
   vi.mocked(fetchSupportTasks).mockResolvedValue([])
   vi.mocked(fetchEngagementDocuments).mockResolvedValue([])
   vi.mocked(fetchEngagementSchedule).mockResolvedValue([])
@@ -504,6 +507,101 @@ describe("OrderPage — mentor: complete order", () => {
     expect(screen.queryByText("Завершить услугу")).not.toBeInTheDocument()
   })
 
+})
+
+describe("OrderPage — mentor: consultation notes", () => {
+  beforeEach(() => {
+    localStorage.setItem("access_token", "fake-token")
+    localStorage.setItem("role", "mentor")
+    vi.mocked(fetchMentorServices).mockResolvedValue([])
+  })
+
+  it("loads and shows existing notes for a completed paid_consultation order", async () => {
+    const order = makeOrder({ order_status: "completed", payout_category: "paid_consultation" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentorNotes).mockResolvedValue([
+      { id: 1, text: "Обсудили эссе", created_at: "2026-07-05T10:00:00Z" },
+    ])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Обсудили эссе")).toBeInTheDocument()
+    expect(fetchMentorNotes).toHaveBeenCalledWith(42)
+  })
+
+  it("submits a new note and prepends it to the list", async () => {
+    const user = userEvent.setup()
+    const order = makeOrder({ order_status: "completed", payout_category: "paid_consultation" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentorNotes).mockResolvedValue([])
+    vi.mocked(createMentorNote).mockResolvedValue({
+      id: 2, text: "Новая заметка", created_at: "2026-07-06T10:00:00Z",
+    })
+
+    await renderOrderPage("42")
+    await screen.findByPlaceholderText("Например: договорились обсудить эссе на следующей неделе")
+
+    await user.type(
+      screen.getByPlaceholderText("Например: договорились обсудить эссе на следующей неделе"),
+      "Новая заметка",
+    )
+    await user.click(screen.getByRole("button", { name: "Добавить заметку" }))
+
+    await waitFor(() => expect(createMentorNote).toHaveBeenCalledWith(42, "Новая заметка"))
+    expect(await screen.findByText("Новая заметка")).toBeInTheDocument()
+  })
+
+  it("does not show the notes panel for an in_progress order", async () => {
+    const order = makeOrder({ order_status: "in_progress", payout_category: "paid_consultation" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Аружан")
+    expect(fetchMentorNotes).not.toHaveBeenCalled()
+    expect(screen.queryByText("Заметки о консультации")).not.toBeInTheDocument()
+  })
+
+  it("shows the notes panel for a completed free intro call (support, no engagement/installment yet)", async () => {
+    const order = makeOrder({
+      order_status: "completed", payout_category: "support",
+      support_engagement: null, installment_number: null,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentorNotes).mockResolvedValue([])
+
+    await renderOrderPage("42")
+
+    expect(await screen.findByText("Заметки о консультации")).toBeInTheDocument()
+    expect(fetchMentorNotes).toHaveBeenCalledWith(42)
+  })
+
+  it("does not show the notes panel for a completed support engagement session (not a free intro call)", async () => {
+    const order = makeOrder({
+      order_status: "completed", payout_category: "support",
+      support_engagement: 5, installment_number: 1,
+    })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Аружан")
+    expect(fetchMentorNotes).not.toHaveBeenCalled()
+    expect(screen.queryByText("Заметки о консультации")).not.toBeInTheDocument()
+  })
+
+  it("does not show the notes panel to the student", async () => {
+    localStorage.setItem("role", "student")
+    const order = makeOrder({ order_status: "completed", payout_category: "paid_consultation" })
+    vi.mocked(fetchOrder).mockResolvedValue(order)
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+
+    await renderOrderPage("42")
+
+    await screen.findByText("Первичная консультация")
+    expect(fetchMentorNotes).not.toHaveBeenCalled()
+    expect(screen.queryByText("Заметки о консультации")).not.toBeInTheDocument()
+  })
 })
 
 describe("OrderPage — mentor: link to the unified client window", () => {

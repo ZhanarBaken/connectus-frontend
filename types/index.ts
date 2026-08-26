@@ -266,6 +266,12 @@ export interface OrderDocumentComment {
   created_at: string
 }
 
+export interface MentorConsultationNote {
+  id: number
+  text: string
+  created_at: string
+}
+
 export interface ChatAttachment {
   id: number
   original_filename: string

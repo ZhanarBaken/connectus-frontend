@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
-import { fetchOrder, fetchMentor, fetchMentorClient, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, endSupportEngagement, fetchSupportTasks, updateSupportTask, deleteSupportTask, fetchEngagementSchedule, confirmIntroCall, declineIntroCall } from "@/lib/api"
+import { fetchOrder, fetchMentor, fetchMentorClient, completeOrder, cancelOrder, rescheduleOrder, createDispute, authFetch, fetchOrderDocuments, uploadOrderDocument, deleteOrderDocument, setDocumentStatus, fetchDocumentComments, postDocumentComment, endSupportEngagement, fetchSupportTasks, updateSupportTask, deleteSupportTask, fetchEngagementSchedule, confirmIntroCall, declineIntroCall, fetchMentorNotes, createMentorNote } from "@/lib/api"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { translateFileUploadErrorMessage } from "@/lib/fileUploadErrors"
-import { Order, Mentor, OrderDocument, OrderDocumentComment, SupportTask, EngagementScheduleEntry } from "@/types"
+import { Order, Mentor, OrderDocument, OrderDocumentComment, SupportTask, EngagementScheduleEntry, MentorConsultationNote } from "@/types"
 import ReviewForm from "@/components/ReviewForm"
 import BackButton from "@/components/BackButton"
 import BookingCalendar from "@/components/BookingCalendar"
@@ -111,6 +111,14 @@ export default function OrderPage({ params }: Props) {
   const [loadingCommentsDocId, setLoadingCommentsDocId] = useState<number | null>(null)
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [postingCommentDocId, setPostingCommentDocId] = useState<number | null>(null)
+  // Mentor-private notes about a completed consultation — only fetched
+  // when eligible (see the eligibility check next to fetchMentorNotes
+  // below), mirroring apps.orders.serializers.MentorConsultationNoteWriteSerializer.validate.
+  const [mentorNotes, setMentorNotes] = useState<MentorConsultationNote[]>([])
+  const [notesLoadError, setNotesLoadError] = useState(false)
+  const [noteDraft, setNoteDraft] = useState("")
+  const [savingNote, setSavingNote] = useState(false)
+  const [noteError, setNoteError] = useState("")
   const [tasks, setTasks] = useState<SupportTask[]>([])
   const [tasksLoadError, setTasksLoadError] = useState(false)
   const [schedule, setSchedule] = useState<EngagementScheduleEntry[]>([])
@@ -203,6 +211,15 @@ export default function OrderPage({ params }: Props) {
         }
         // Load order documents
         fetchOrderDocuments(found.id).then(setOrderDocs).catch(() => setDocsLoadError(true))
+        // Mentor-private consultation notes — same eligibility rule as
+        // the backend (completed + paid_consultation or a free intro call).
+        const isIntroCall = found.payout_category === "support"
+          && found.support_engagement === null
+          && found.installment_number === null
+        if (r === "mentor" && found.order_status === "completed"
+          && (found.payout_category === "paid_consultation" || isIntroCall)) {
+          fetchMentorNotes(found.id).then(setMentorNotes).catch(() => setNotesLoadError(true))
+        }
         if (found.support_engagement !== null) {
           fetchSupportTasks(found.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
           fetchEngagementSchedule(found.support_engagement)
@@ -362,6 +379,24 @@ export default function OrderPage({ params }: Props) {
       setDisputeError(err instanceof Error ? err.message : t("errorDispute"))
     } finally {
       setDisputing(false)
+    }
+  }
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!order) return
+    const text = noteDraft.trim()
+    if (!text) return
+    setSavingNote(true)
+    setNoteError("")
+    try {
+      const note = await createMentorNote(order.id, text)
+      setMentorNotes((prev) => [note, ...prev])
+      setNoteDraft("")
+    } catch (err: unknown) {
+      setNoteError(err instanceof Error && err.message ? err.message : t("notesCreateError"))
+    } finally {
+      setSavingNote(false)
     }
   }
 
@@ -924,6 +959,58 @@ export default function OrderPage({ params }: Props) {
                       </button>
                     </div>
                   </form>
+                )}
+              </div>
+            )}
+
+            {/* Mentor-private notes about a completed consultation —
+                never visible to the student or admin (see
+                apps.orders.models.MentorConsultationNote). */}
+            {role === "mentor" && order.order_status === "completed"
+              && (order.payout_category === "paid_consultation" || isSupportIntroCall) && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 mb-1">
+                  <Icon name="sticky_note_2" size={16} className="text-gray-400" />
+                  {t("notesTitle")}
+                </h3>
+                <p className="text-[11px] text-gray-400 mb-3">{t("notesSubtitle")}</p>
+
+                {notesLoadError && (
+                  <p className="text-xs text-red-600 mb-2">{t("notesLoadError")}</p>
+                )}
+
+                <form onSubmit={handleAddNote} className="space-y-2 mb-3">
+                  <textarea
+                    value={noteDraft}
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                    placeholder={t("notesPlaceholder")}
+                    rows={2}
+                    maxLength={3000}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+                  />
+                  {noteError && (
+                    <p className="text-xs text-red-600">{noteError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={savingNote || !noteDraft.trim()}
+                    className="w-full border border-gray-200 text-gray-700 text-sm font-medium py-2 rounded-xl hover:border-indigo-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                  >
+                    {savingNote ? t("notesAdding") : t("notesAdd")}
+                  </button>
+                </form>
+
+                {mentorNotes.length > 0 ? (
+                  <div className="space-y-2">
+                    {mentorNotes.map((note) => (
+                      <div key={note.id} className="text-xs bg-gray-50 rounded-lg px-3 py-2">
+                        <p className="text-gray-700 whitespace-pre-wrap break-words">{note.text}</p>
+                        <p className="text-[10px] text-gray-400 mt-1">{formatDate(note.created_at)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  !notesLoadError && <p className="text-xs text-gray-400">{t("notesEmpty")}</p>
                 )}
               </div>
             )}

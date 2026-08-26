@@ -747,6 +747,31 @@ export async function postDocumentComment(
   return res.json()
 }
 
+export async function fetchMentorNotes(
+  orderId: number,
+): Promise<import("@/types").MentorConsultationNote[]> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/notes/`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.results ?? data
+}
+
+export async function createMentorNote(
+  orderId: number,
+  text: string,
+): Promise<import("@/types").MentorConsultationNote> {
+  const res = await authFetch(`${BASE_URL}/orders/${orderId}/notes/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "Не удалось сохранить заметку")
+  }
+  return res.json()
+}
+
 // ─── Disputes ───────────────────────────────────────────────────────────────
 
 export async function createDispute(orderId: number, reason: string): Promise<Dispute> {
@@ -1050,18 +1075,6 @@ export async function telegramStart(
     throw new Error(err.detail || "Не удалось начать авторизацию через Telegram")
   }
   return res.json()
-}
-
-export async function setUserRole(role: "student" | "mentor"): Promise<void> {
-  const res = await authFetch(`${BASE_URL}/auth/me/role/`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || "Не удалось установить роль")
-  }
 }
 
 // Keeps the backend's record of the user's site language in sync so
