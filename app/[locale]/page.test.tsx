@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import * as api from "@/lib/api"
+import { useRouter } from "@/i18n/navigation"
 import { MentorCard } from "@/types"
 import HomePage from "./page"
 
@@ -51,8 +52,40 @@ function makeMentor(overrides: Partial<MentorCard> = {}): MentorCard {
 }
 
 describe("HomePage (landing)", () => {
+  const replace = vi.fn()
+
   beforeEach(() => {
     vi.mocked(api.fetchMentors).mockReset()
+    localStorage.clear()
+    replace.mockClear()
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(),
+      replace,
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+      prefetch: vi.fn(),
+    } as unknown as ReturnType<typeof useRouter>)
+  })
+
+  it("redirects a logged-in mentor straight to their dashboard", async () => {
+    localStorage.setItem("role", "mentor")
+    localStorage.setItem("access_token", "fake-token")
+    vi.mocked(api.fetchMentors).mockResolvedValue([])
+    const ui = await HomePage()
+    render(ui)
+
+    expect(replace).toHaveBeenCalledWith("/mentor/dashboard")
+  })
+
+  it("does not redirect a student or a logged-out visitor", async () => {
+    localStorage.setItem("role", "student")
+    localStorage.setItem("access_token", "fake-token")
+    vi.mocked(api.fetchMentors).mockResolvedValue([])
+    const ui = await HomePage()
+    render(ui)
+
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it("renders without crashing when the backend is unreachable", async () => {
