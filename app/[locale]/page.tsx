@@ -4,7 +4,6 @@ import { countryLabel } from "@/lib/countries"
 import { MentorCard } from "@/types"
 import LandingHero from "@/components/LandingHero"
 import LandingSections from "@/components/LandingSections"
-import MentorRedirect from "@/components/MentorRedirect"
 
 // Render on each request — backend isn't reachable at Vercel build
 // time, so static prerendering would fail with ECONNREFUSED.
@@ -89,7 +88,6 @@ export default async function HomePage() {
 
   return (
     <main className="bg-white">
-      <MentorRedirect />
       <LandingHero mentors={mentors} />
       <LandingSections categories={categories} mentors={mentors} />
     </main>

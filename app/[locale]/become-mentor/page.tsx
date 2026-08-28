@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
-import MentorRedirect from "@/components/MentorRedirect"
 import FaqList from "@/components/FaqList"
 import Icon from "@/components/Icon"
 import ScrollReveal from "@/components/ScrollReveal"
@@ -48,8 +47,6 @@ export default function BecomeMentorPage() {
 
   return (
     <main className="bg-white">
-      <MentorRedirect />
-
       {/* ── Hero ───────────────────────────────────────────── */}
       <section className="bg-gray-900 text-white pt-24 pb-28 px-4 relative overflow-hidden">
         <div

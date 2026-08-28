@@ -1,6 +1,5 @@
 import { fetchMentors } from "@/lib/api"
 import MentorsList from "@/components/MentorsList"
-import MentorRedirect from "@/components/MentorRedirect"
 
 // Render on each request — backend isn't reachable at Vercel build
 // time, so static prerendering would fail with ECONNREFUSED.
@@ -14,10 +13,5 @@ export default async function MentorsPage() {
   } catch {
     loadError = true
   }
-  return (
-    <>
-      <MentorRedirect />
-      <MentorsList mentors={mentors} loadError={loadError} />
-    </>
-  )
+  return <MentorsList mentors={mentors} loadError={loadError} />
 }
