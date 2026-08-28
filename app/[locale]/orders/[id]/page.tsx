@@ -15,7 +15,6 @@ import { Avatar } from "@/components/Avatar"
 import ChatPanel from "@/components/ChatPanel"
 import ChatOverlay from "@/components/ChatOverlay"
 import SupportChatActions from "@/components/SupportChatActions"
-import StartCallButton from "@/components/StartCallButton"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 
 const STATUS_KEY: Record<string, string> = {
@@ -478,13 +477,6 @@ export default function OrderPage({ params }: Props) {
               fetchSupportTasks(order.support_engagement).then(setTasks).catch(() => setTasksLoadError(true))
             }
           }}
-        />
-      )}
-      {order.conversation_id && (
-        <StartCallButton
-          conversationId={order.conversation_id}
-          otherPartyName={otherPartyName}
-          otherPartyOnline={otherPartyOnline}
         />
       )}
     </>
