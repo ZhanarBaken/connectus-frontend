@@ -9,6 +9,7 @@ import { routing } from "@/i18n/routing"
 import "../globals.css"
 import AnalyticsInit from "@/components/AnalyticsInit"
 import Header from "@/components/Header"
+import MentorAreaGuard from "@/components/MentorAreaGuard"
 import SupportChatWidget from "@/components/SupportChatWidget"
 import TelegramAutoLogin from "@/components/TelegramAutoLogin"
 
@@ -74,6 +75,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <AnalyticsInit />
           <TelegramAutoLogin />
+          <MentorAreaGuard />
           <Header />
           {children}
           <SupportChatWidget />

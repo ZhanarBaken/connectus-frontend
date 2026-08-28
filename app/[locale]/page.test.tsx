@@ -53,6 +53,7 @@ function makeMentor(overrides: Partial<MentorCard> = {}): MentorCard {
 describe("HomePage (landing)", () => {
   beforeEach(() => {
     vi.mocked(api.fetchMentors).mockReset()
+    localStorage.clear()
   })
 
   it("renders without crashing when the backend is unreachable", async () => {
