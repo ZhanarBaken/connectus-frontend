@@ -14,7 +14,6 @@ import Icon from "./Icon"
 
 const KIND_ICON: Record<string, string> = {
   "order.created": "shopping_cart",
-  "consultation.confirmed": "check_circle",
   "order.completed": "task_alt",
   "review.new": "star",
   "review.reply": "reply",

@@ -2,7 +2,7 @@ export type Role = "admin" | "mentor" | "student"
 
 export type ExpertiseArea = "admission" | "documents" | "scholarships" | "visa"
 
-export type PayoutCategory = "consultation" | "primary_consultation" | "delivery" | "milestone" | "support" | "paid_consultation"
+export type PayoutCategory = "support" | "paid_consultation"
 
 export type OrderStatus =
   | "draft"
@@ -266,6 +266,12 @@ export interface OrderDocumentComment {
   created_at: string
 }
 
+export interface MentorConsultationNote {
+  id: number
+  text: string
+  created_at: string
+}
+
 export interface ChatAttachment {
   id: number
   original_filename: string
@@ -434,7 +440,6 @@ export interface SiteSettings {
   support_url: string
   payment_account_details: string
   whatsapp_number: string
-  consultation_complete_chat_message: string
   // Email: verify
   verify_email_subject: string
   verify_email_heading: string
@@ -443,10 +448,6 @@ export interface SiteSettings {
   password_reset_email_subject: string
   password_reset_email_heading: string
   password_reset_email_body: string
-  // Email: consultation complete (to student)
-  consultation_complete_email_subject: string
-  consultation_complete_email_heading: string
-  consultation_complete_email_body: string
   // Email: order created (to mentor)
   order_created_email_subject: string
   order_created_email_heading: string
@@ -455,10 +456,6 @@ export interface SiteSettings {
   order_completed_email_subject: string
   order_completed_email_heading: string
   order_completed_email_body: string
-  // Email: consultation confirmed (to student)
-  consultation_confirmed_email_subject: string
-  consultation_confirmed_email_heading: string
-  consultation_confirmed_email_body: string
   // Email: review reply (to student)
   review_reply_email_subject: string
   review_reply_email_heading: string

@@ -32,7 +32,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     mentor: 3,
     mentor_service: 10,
     service_title: "Первичная консультация",
-    payout_category: "primary_consultation",
+    payout_category: "paid_consultation",
     subtotal: "5000.00",
     total_price: "5000.00",
     platform_fee: "500.00",

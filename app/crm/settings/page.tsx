@@ -137,9 +137,6 @@ export default function CRMSettingsPage() {
                   onChange={(v) => set("dispute_window_hours", parseInt(v) || 24)}
                 />
               </Field>
-              <Field label="Сообщение в чат при завершении консультации" hint="Системное сообщение в чат">
-                <Textarea rows={2} value={val("consultation_complete_chat_message")} onChange={(v) => set("consultation_complete_chat_message", v)} />
-              </Field>
             </Section>
           )}
 
@@ -255,18 +252,6 @@ export default function CRMSettingsPage() {
                 set={set}
               />
               <EmailGroup
-                label="Консультация завершена — студенту"
-                hint="{mentor_name}, {mentor_page_url}"
-                fields={[
-                  { key: "consultation_complete_email_subject", label: "Тема" },
-                  { key: "consultation_complete_email_heading", label: "Заголовок" },
-                ]}
-                bodyKey="consultation_complete_email_body"
-                bodyLabel="Тело письма"
-                val={val}
-                set={set}
-              />
-              <EmailGroup
                 label="Новый заказ — ментору"
                 hint="{student_name}, {service_title}, {total_price}"
                 fields={[
@@ -286,18 +271,6 @@ export default function CRMSettingsPage() {
                   { key: "order_completed_email_heading", label: "Заголовок" },
                 ]}
                 bodyKey="order_completed_email_body"
-                bodyLabel="Тело письма"
-                val={val}
-                set={set}
-              />
-              <EmailGroup
-                label="Консультация подтверждена — студенту"
-                hint="{mentor_name}, {order_url}"
-                fields={[
-                  { key: "consultation_confirmed_email_subject", label: "Тема" },
-                  { key: "consultation_confirmed_email_heading", label: "Заголовок" },
-                ]}
-                bodyKey="consultation_confirmed_email_body"
                 bodyLabel="Тело письма"
                 val={val}
                 set={set}
