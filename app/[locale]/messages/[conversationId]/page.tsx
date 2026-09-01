@@ -10,6 +10,7 @@ import BackButton from "@/components/BackButton"
 import { Avatar } from "@/components/Avatar"
 import Icon from "@/components/Icon"
 import ChatPanel from "@/components/ChatPanel"
+import StartCallButton from "@/components/StartCallButton"
 
 interface Props {
   params: Promise<{ conversationId: string }>
@@ -30,6 +31,7 @@ export default function ConversationPage({ params }: Props) {
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [otherPartyOnline, setOtherPartyOnline] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem("access_token")
@@ -69,6 +71,14 @@ export default function ConversationPage({ params }: Props) {
           <ChatPanel
             conversationId={conversation.id}
             currentUserId={currentUserId}
+            onOtherPartyOnlineChange={setOtherPartyOnline}
+            headerAction={(
+              <StartCallButton
+                conversationId={conversation.id}
+                otherPartyName={otherPartyName}
+                otherPartyOnline={otherPartyOnline}
+              />
+            )}
             leadingHeaderAction={isInTelegram && (
               <button
                 type="button"

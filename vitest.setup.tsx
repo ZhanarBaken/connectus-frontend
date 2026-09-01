@@ -94,6 +94,17 @@ vi.mock("next-intl/server", async (importOriginal) => {
   }
 })
 
+// CallProvider (video calls) opens a real WebSocket and requires a real
+// React context — same "mock the infra away" treatment as next-intl
+// above, so the ~90 existing page tests that render pages directly
+// (no provider tree) don't all need wrapping just because a page now
+// renders a StartCallButton somewhere in its tree.
+vi.mock("@/components/CallProvider", () => ({
+  __esModule: true,
+  default: ({ children }: { children: ReactNode }) => children,
+  useCall: () => ({ startCall: vi.fn() }),
+}))
+
 // @/i18n/navigation isn't a re-export of next/navigation — it's
 // next-intl's locale-aware wrapper, which needs routing config this test
 // environment doesn't provide. Mirror the plain next/navigation mock

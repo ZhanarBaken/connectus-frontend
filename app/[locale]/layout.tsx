@@ -8,6 +8,7 @@ import { IconFontHead } from "@/components/IconFontHead"
 import { routing } from "@/i18n/routing"
 import "../globals.css"
 import AnalyticsInit from "@/components/AnalyticsInit"
+import CallProvider from "@/components/CallProvider"
 import Header from "@/components/Header"
 import MentorAreaGuard from "@/components/MentorAreaGuard"
 import SupportChatWidget from "@/components/SupportChatWidget"
@@ -76,9 +77,11 @@ export default async function LocaleLayout({
           <AnalyticsInit />
           <TelegramAutoLogin />
           <MentorAreaGuard />
-          <Header />
-          {children}
-          <SupportChatWidget />
+          <CallProvider>
+            <Header />
+            {children}
+            <SupportChatWidget />
+          </CallProvider>
         </NextIntlClientProvider>
       </body>
     </html>

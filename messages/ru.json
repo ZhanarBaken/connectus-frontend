@@ -1434,6 +1434,17 @@
   "Common": {
     "back": "Назад"
   },
+  "Calls": {
+    "startCall": "Позвонить",
+    "otherPartyOffline": "Собеседник сейчас офлайн",
+    "incomingCall": "Входящий видеозвонок",
+    "unknownCaller": "Собеседник",
+    "accept": "Принять",
+    "decline": "Отклонить",
+    "connecting": "Подключение...",
+    "connectError": "Не удалось подключиться к звонку",
+    "close": "Закрыть"
+  },
   "MentorStatusBanner": {
     "underReviewBody": "<strong>Профиль на проверке.</strong> Обычно одобряем в течение 24 часов — мы напишем в Telegram как только всё готово."
   },

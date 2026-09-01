@@ -1434,6 +1434,17 @@
   "Common": {
     "back": "Back"
   },
+  "Calls": {
+    "startCall": "Call",
+    "otherPartyOffline": "The other person is offline right now",
+    "incomingCall": "Incoming video call",
+    "unknownCaller": "Someone",
+    "accept": "Accept",
+    "decline": "Decline",
+    "connecting": "Connecting...",
+    "connectError": "Failed to connect to the call",
+    "close": "Close"
+  },
   "MentorStatusBanner": {
     "underReviewBody": "<strong>Profile under review.</strong> We usually approve within 24 hours — we'll message you on Telegram as soon as it's ready."
   },

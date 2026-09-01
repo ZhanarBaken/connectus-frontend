@@ -1434,6 +1434,17 @@
   "Common": {
     "back": "Артқа"
   },
+  "Calls": {
+    "startCall": "Қоңырау шалу",
+    "otherPartyOffline": "Әңгімелесуші қазір оффлайн",
+    "incomingCall": "Кіріс бейне қоңырау",
+    "unknownCaller": "Әңгімелесуші",
+    "accept": "Қабылдау",
+    "decline": "Бас тарту",
+    "connecting": "Қосылуда...",
+    "connectError": "Қоңырауға қосылу мүмкін болмады",
+    "close": "Жабу"
+  },
   "MentorStatusBanner": {
     "underReviewBody": "<strong>Профиль тексерілуде.</strong> Әдетте 24 сағат ішінде мақұлдаймыз — дайын болғанда Telegram-ға жазамыз."
   },
