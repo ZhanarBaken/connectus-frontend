@@ -1779,13 +1779,26 @@ export async function fetchChatMessages(conversationId: number): Promise<import(
  * participant already started one — joins it (same endpoint, same
  * shape either way; see apps.calls.views.StartCallView).
  */
-export async function startCall(conversationId: number): Promise<import("@/types").CallStartResponse> {
-  const res = await authFetch(`${BASE_URL}/calls/${conversationId}/start/`, { method: "POST" })
+export async function startCall(conversationId: number, options?: { requestId: string; signal: AbortSignal }): Promise<import("@/types").CallStartResponse | { status: "preparing"; retry_after: number }> {
+  const res = await authFetch(`${BASE_URL}/calls/${conversationId}/start/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options ? { request_id: options.requestId } : {}),
+    signal: options?.signal,
+  })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || firstErrorMessage(err) || "Failed to start the call")
   }
   return res.json()
+}
+
+export async function cancelCallPreparation(conversationId: number, requestId: string): Promise<void> {
+  const res = await authFetch(`${BASE_URL}/calls/${conversationId}/cancel-preparation/`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ request_id: requestId }),
+  })
+  if (!res.ok) throw new Error("Failed to cancel preparation")
 }
 
 /** Client-reported call end — best-effort, fire-and-forget by callers. */
