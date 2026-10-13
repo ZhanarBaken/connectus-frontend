@@ -1435,6 +1435,8 @@
     "back": "Back"
   },
   "Calls": {
+    "preparing": "Please wait, preparing your video call…",
+    "cancelPreparation": "Cancel",
     "startCall": "Call",
     "otherPartyOffline": "The other person is offline right now",
     "incomingCall": "Incoming video call",

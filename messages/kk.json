@@ -1435,6 +1435,8 @@
     "back": "Артқа"
   },
   "Calls": {
+    "preparing": "Күте тұрыңыз, бейнеқоңырауды дайындап жатырмыз…",
+    "cancelPreparation": "Бас тарту",
     "startCall": "Қоңырау шалу",
     "otherPartyOffline": "Әңгімелесуші қазір оффлайн",
     "incomingCall": "Кіріс бейне қоңырау",

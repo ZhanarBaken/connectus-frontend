@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
-import { startCall as startCallApi, endCall as endCallApi, getFreshAccessToken } from "@/lib/api"
+import { startCall as startCallApi, endCall as endCallApi, cancelCallPreparation, getFreshAccessToken } from "@/lib/api"
 import Icon from "@/components/Icon"
 import VideoCallOverlay from "@/components/VideoCallOverlay"
 
@@ -41,6 +41,26 @@ export function useCall(): CallContextValue {
 // scope, see the video call plan), so without a timeout the ring
 // modal would otherwise stay up forever.
 const RING_TIMEOUT_MS = 45_000
+const PREPARATION_TIMEOUT_MS = 5 * 60_000
+
+interface Preparation {
+  conversationId: number
+  requestId: string
+  controller: AbortController
+}
+
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) { resolve(); return }
+    const finish = () => {
+      clearTimeout(timer)
+      signal.removeEventListener("abort", finish)
+      resolve()
+    }
+    const timer = setTimeout(finish, ms)
+    signal.addEventListener("abort", finish, { once: true })
+  })
+}
 
 function buildNotificationsWsUrl(token: string): string | null {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -77,6 +97,29 @@ export default function CallProvider({ children }: { children: React.ReactNode }
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null)
   const [accepting, setAccepting] = useState(false)
   const [acceptError, setAcceptError] = useState(false)
+  const [preparing, setPreparing] = useState(false)
+  const preparationRef = useRef<Preparation | null>(null)
+
+  const cancelPreparation = useCallback(() => {
+    const pending = preparationRef.current
+    preparationRef.current = null
+    setPreparing(false)
+    if (pending) {
+      pending.controller.abort()
+      void cancelCallPreparation(pending.conversationId, pending.requestId).catch(() => {
+        // Server reservations also expire after 90 seconds.
+      })
+    }
+  }, [])
+
+  useEffect(() => () => {
+    const pending = preparationRef.current
+    if (pending) {
+      pending.controller.abort()
+      preparationRef.current = null
+      void cancelCallPreparation(pending.conversationId, pending.requestId).catch(() => {})
+    }
+  }, [])
   const ringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Read inside the WS onmessage closure below, which is created once
   // (effect has an empty dep array) — a plain `activeCall` read there
@@ -127,7 +170,7 @@ export default function CallProvider({ children }: { children: React.ReactNode }
           // caller (v1 scope); this just avoids surfacing a stale
           // ring modal for a call that may be long over by the time
           // the current one ends.
-          if (activeCallRef.current) return
+          if (activeCallRef.current || preparationRef.current) return
           const { conversation_id, call_session_id, room_name, caller_name } = data.payload
           if (!conversation_id || !call_session_id || !room_name) return
           clearRingTimer()
@@ -175,17 +218,48 @@ export default function CallProvider({ children }: { children: React.ReactNode }
   // error UI in the right place (inline on the button vs. in the ring
   // modal).
   const startCall = useCallback(async (conversationId: number, otherPartyName: string) => {
-    const res = await startCallApi(conversationId)
+    if (preparationRef.current || activeCallRef.current) return
+    const pending: Preparation = {
+      conversationId, requestId: crypto.randomUUID(), controller: new AbortController(),
+    }
+    preparationRef.current = pending
+    setPreparing(true)
     clearRingTimer()
-    setIncomingCall(null)
-    setActiveCall({
-      conversationId,
-      callSessionId: res.call_session_id,
-      roomName: res.room_name,
-      jitsiDomain: res.jitsi_domain,
-      jwt: res.jwt,
-      displayName: otherPartyName,
-    })
+    const deadline = Date.now() + PREPARATION_TIMEOUT_MS
+    const timeout = setTimeout(() => pending.controller.abort(), PREPARATION_TIMEOUT_MS)
+    try {
+      while (Date.now() < deadline && !pending.controller.signal.aborted) {
+        const res = await startCallApi(conversationId, {
+          requestId: pending.requestId, signal: pending.controller.signal,
+        })
+        if (preparationRef.current !== pending) return
+        if (pending.controller.signal.aborted) throw new Error("Video preparation timed out")
+        if ("status" in res && res.status === "preparing") {
+          await pause(3000, pending.controller.signal)
+          continue
+        }
+        if (!("jwt" in res)) throw new Error("Invalid call response")
+        setIncomingCall(null)
+        const call = {
+          conversationId, callSessionId: res.call_session_id, roomName: res.room_name,
+          jitsiDomain: res.jitsi_domain, jwt: res.jwt, displayName: otherPartyName,
+        }
+        activeCallRef.current = call
+        setActiveCall(call)
+        return
+      }
+      if (preparationRef.current === pending) throw new Error("Video preparation timed out")
+    } catch (error) {
+      if (preparationRef.current !== pending) return
+      void cancelCallPreparation(conversationId, pending.requestId).catch(() => {})
+      throw error
+    } finally {
+      clearTimeout(timeout)
+      if (preparationRef.current === pending) {
+        preparationRef.current = null
+        setPreparing(false)
+      }
+    }
   }, [])
 
   const handleAccept = async () => {
@@ -225,6 +299,18 @@ export default function CallProvider({ children }: { children: React.ReactNode }
   return (
     <CallContext.Provider value={{ startCall }}>
       {children}
+
+      {preparing && (
+        <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-label={t("preparing")} className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-10 h-10 mx-auto mb-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <p role="status" className="text-gray-900">{t("preparing")}</p>
+            <button type="button" onClick={cancelPreparation} className="mt-6 px-5 py-2 border rounded-xl text-gray-700">
+              {t("cancelPreparation")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {incomingCall && !activeCall && (
         <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4">

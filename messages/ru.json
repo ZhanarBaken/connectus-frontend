@@ -1435,6 +1435,8 @@
     "back": "Назад"
   },
   "Calls": {
+    "preparing": "Подождите, подготавливаем видеосвязь…",
+    "cancelPreparation": "Отменить",
     "startCall": "Позвонить",
     "otherPartyOffline": "Собеседник сейчас офлайн",
     "incomingCall": "Входящий видеозвонок",
