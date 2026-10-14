@@ -1445,7 +1445,10 @@
     "decline": "Отклонить",
     "connecting": "Подключение...",
     "connectError": "Не удалось подключиться к звонку",
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "preparingHint": "Обычно это занимает около минуты.",
+    "videoCall": "Видеозвонок",
+    "backToChat": "Вернуться в чат"
   },
   "MentorStatusBanner": {
     "underReviewBody": "<strong>Профиль на проверке.</strong> Обычно одобряем в течение 24 часов — мы напишем в Telegram как только всё готово."

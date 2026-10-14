@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import VideoCallOverlay from "@/components/VideoCallOverlay"
 
 // jsdom never actually executes an injected <script src="..."> tag, so
@@ -44,7 +44,7 @@ function getInjectedScript(): HTMLScriptElement {
 // this triggers a React state update outside RTL's own event helpers.
 function finishScriptLoad() {
   ;(window as unknown as { JitsiMeetExternalAPI: unknown }).JitsiMeetExternalAPI = MockJitsiApi
-  getInjectedScript().onload?.(new Event("load"))
+  fireEvent.load(getInjectedScript())
 }
 
 describe("VideoCallOverlay", () => {
@@ -87,7 +87,7 @@ describe("VideoCallOverlay", () => {
     expect(screen.getByText("Подключение...")).toBeInTheDocument()
   })
 
-  it("initializes JitsiMeetExternalAPI with the room/jwt/displayName once the script loads", async () => {
+  it("initializes JitsiMeetExternalAPI with the room, JWT, locale and embedded browser settings once the script loads", async () => {
     render(
       <VideoCallOverlay
         jitsiDomain="meet.test.local"
@@ -104,8 +104,10 @@ describe("VideoCallOverlay", () => {
     expect(MockJitsiApi.lastArgs[1]).toMatchObject({
       roomName: "call-42",
       jwt: "jwt-value",
-      userInfo: { displayName: "Ирина" },
+      lang: "ru",
+      configOverwrite: { deeplinking: { disabled: true } },
     })
+    expect(MockJitsiApi.lastArgs[1]).not.toHaveProperty("userInfo")
     await waitFor(() => {
       expect(screen.queryByText("Подключение...")).not.toBeInTheDocument()
     })
@@ -154,7 +156,7 @@ describe("VideoCallOverlay", () => {
         onEnd={vi.fn()}
       />,
     )
-    getInjectedScript().onerror?.(new Event("error"))
+    fireEvent.error(getInjectedScript())
     await waitFor(() => {
       expect(screen.getByText("Не удалось подключиться к звонку")).toBeInTheDocument()
     })
@@ -176,6 +178,33 @@ describe("VideoCallOverlay", () => {
     const instance = MockJitsiApi.lastInstance!
     unmount()
     expect(instance.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it("allows a new attempt after an external script error", async () => {
+    const props = { jitsiDomain: "meet.test.local", roomName: "call-1", jwt: "token", displayName: "Ирина", onEnd: vi.fn() }
+    const first = render(<VideoCallOverlay {...props} />)
+    const failedScript = getInjectedScript()
+    fireEvent.error(failedScript)
+    await screen.findByRole("alert")
+    first.unmount()
+    render(<VideoCallOverlay {...props} />)
+    expect(getInjectedScript()).not.toBe(failedScript)
+    finishScriptLoad()
+    await waitFor(() => expect(MockJitsiApi.lastInstance).not.toBeNull())
+  })
+
+  it("bounds a stalled download and ignores a late load after closing", () => {
+    vi.useFakeTimers()
+    try {
+      const view = render(<VideoCallOverlay jitsiDomain="meet.test.local" roomName="call-1" jwt="token" displayName="Ирина" onEnd={vi.fn()} />)
+      const script = getInjectedScript()
+      act(() => { vi.advanceTimersByTime(20_000) })
+      expect(screen.getByRole("alert")).toBeInTheDocument()
+      view.unmount()
+      ;(window as unknown as { JitsiMeetExternalAPI: unknown }).JitsiMeetExternalAPI = MockJitsiApi
+      fireEvent.load(script)
+      expect(MockJitsiApi.lastInstance).toBeNull()
+    } finally { vi.useRealTimers() }
   })
 
   it("reuses an already-injected script tag for a second overlay instead of injecting a duplicate", () => {

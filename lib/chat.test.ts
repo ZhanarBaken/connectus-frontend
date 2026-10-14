@@ -240,6 +240,17 @@ describe("connectChat", () => {
     expect(onMessage).not.toHaveBeenCalled()
   })
 
+  it("ignores call lifecycle events instead of rendering empty messages", async () => {
+    const onMessage = vi.fn()
+    connectChat(1, { onMessage })
+    await flushMicrotasks()
+    const ws = FakeWebSocket.instances[0]
+    for (const type of ["call_started", "call_ended"]) {
+      ws.onmessage?.({ data: JSON.stringify({ type, call_session_id: 42, room_name: "room" }) })
+    }
+    expect(onMessage).not.toHaveBeenCalled()
+  })
+
   it("routes presence payloads to onPresenceChange instead of onMessage", async () => {
     const onMessage = vi.fn()
     const onPresenceChange = vi.fn()

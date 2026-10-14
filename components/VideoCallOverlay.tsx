@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import Icon from "@/components/Icon"
+import CallDialog from "@/components/CallDialog"
 
 // Loaded from the self-hosted Jitsi domain itself (not npm) — the
 // External API script must come from that server, so there's no real
@@ -19,7 +20,8 @@ interface JitsiMeetExternalAPIConstructor {
     roomName: string
     jwt: string
     parentNode: HTMLElement
-    userInfo: { displayName: string }
+    lang: string
+    configOverwrite: { deeplinking: { disabled: boolean } }
     width: string
     height: string
   }): JitsiMeetExternalAPIInstance
@@ -47,6 +49,7 @@ interface Props {
 // to keep alive in the background the way chat's online-dot/preview do.
 export default function VideoCallOverlay({ jitsiDomain, roomName, jwt, displayName, onEnd }: Props) {
   const t = useTranslations("Calls")
+  const locale = useLocale()
   const containerRef = useRef<HTMLDivElement>(null)
   const apiRef = useRef<JitsiMeetExternalAPIInstance | null>(null)
   const [connecting, setConnecting] = useState(true)
@@ -54,21 +57,35 @@ export default function VideoCallOverlay({ jitsiDomain, roomName, jwt, displayNa
 
   useEffect(() => {
     let cancelled = false
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
+    let failed = false
+    let script: HTMLScriptElement | null = null
+    const fail = () => {
+      if (cancelled) return
+      failed = true
+      setLoadError(true)
+      setConnecting(false)
+      // A failed tag never fires load again. Let the next attempt download it.
+      if (!window.JitsiMeetExternalAPI) script?.remove()
+    }
+    const timeout = setTimeout(fail, 20_000)
 
     const init = () => {
-      if (cancelled || !containerRef.current) return
+      if (cancelled || failed || apiRef.current || !containerRef.current) return
+      clearTimeout(timeout)
       const JitsiMeetExternalAPI = window.JitsiMeetExternalAPI
       if (!JitsiMeetExternalAPI) {
-        setLoadError(true)
+        fail()
         return
       }
       const api = new JitsiMeetExternalAPI(jitsiDomain, {
         roomName,
         jwt,
         parentNode: containerRef.current,
-        userInfo: { displayName },
+        // The JWT carries our own name. displayName is the OTHER participant,
+        // used only in this overlay's header, never as our Jitsi identity.
+        lang: locale,
+        // Keep mobile clients in this embedded call instead of opening an app.
+        configOverwrite: { deeplinking: { disabled: true } },
         width: "100%",
         height: "100%",
       })
@@ -81,27 +98,27 @@ export default function VideoCallOverlay({ jitsiDomain, roomName, jwt, displayNa
       api.addListener("readyToClose", onEnd)
     }
 
-    let script = document.getElementById(SCRIPT_ELEMENT_ID) as HTMLScriptElement | null
-    let attachedLoadListener: HTMLScriptElement | null = null
+    script = document.getElementById(SCRIPT_ELEMENT_ID) as HTMLScriptElement | null
     if (window.JitsiMeetExternalAPI) {
       init()
-    } else if (script) {
-      script.addEventListener("load", init)
-      attachedLoadListener = script
     } else {
-      script = document.createElement("script")
-      script.id = SCRIPT_ELEMENT_ID
-      script.src = `https://${jitsiDomain}/external_api.js`
-      script.async = true
-      script.onload = init
-      script.onerror = () => setLoadError(true)
-      document.body.appendChild(script)
+      const isNew = !script
+      if (!script) {
+        script = document.createElement("script")
+        script.id = SCRIPT_ELEMENT_ID
+        script.src = `https://${jitsiDomain}/external_api.js`
+        script.async = true
+      }
+      script.addEventListener("load", init)
+      script.addEventListener("error", fail)
+      if (isNew) document.body.appendChild(script)
     }
 
     return () => {
       cancelled = true
-      document.body.style.overflow = previousOverflow
-      attachedLoadListener?.removeEventListener("load", init)
+      clearTimeout(timeout)
+      script?.removeEventListener("load", init)
+      script?.removeEventListener("error", fail)
       apiRef.current?.dispose()
       apiRef.current = null
     }
@@ -109,16 +126,16 @@ export default function VideoCallOverlay({ jitsiDomain, roomName, jwt, displayNa
     // re-init the Jitsi iframe mid-call whenever the parent re-renders
     // with a new onEnd identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jitsiDomain, roomName, jwt, displayName])
+  }, [jitsiDomain, roomName, jwt, locale])
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black flex flex-col h-[100dvh]">
+    <CallDialog label={t("videoCall")} onDismiss={onEnd} fullscreen>
       <div className="flex items-center justify-between px-4 py-3 bg-black/80 flex-shrink-0">
-        <span className="text-white text-sm font-medium truncate">{displayName}</span>
+        <span className="text-white text-sm font-medium min-w-0 truncate">{displayName}</span>
         <button
           type="button"
           onClick={onEnd}
-          className="text-white/70 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors [-webkit-tap-highlight-color:transparent]"
+          className="text-white/70 hover:text-white min-h-11 min-w-11 shrink-0 inline-flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors [-webkit-tap-highlight-color:transparent]"
           aria-label={t("close")}
         >
           <Icon name="close" size={22} />
@@ -126,8 +143,9 @@ export default function VideoCallOverlay({ jitsiDomain, roomName, jwt, displayNa
       </div>
       <div className="relative flex-1 min-h-0">
         {loadError ? (
-          <div className="absolute inset-0 flex items-center justify-center text-white text-sm px-6 text-center">
-            {t("connectError")}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-white text-sm px-6 text-center">
+            <p role="alert">{t("connectError")}</p>
+            <button type="button" onClick={onEnd} className="min-h-11 rounded-xl border border-white/40 px-5 py-2.5 hover:bg-white/10">{t("backToChat")}</button>
           </div>
         ) : (
           <>
@@ -141,6 +159,6 @@ export default function VideoCallOverlay({ jitsiDomain, roomName, jwt, displayNa
           </>
         )}
       </div>
-    </div>
+    </CallDialog>
   )
 }
