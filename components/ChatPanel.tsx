@@ -488,7 +488,7 @@ export default function ChatPanel({
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder={t("messagePlaceholder")}
-            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+            className="flex-1 min-w-0 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
             disabled={!wsConnected || sending}
           />
           <button

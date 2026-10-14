@@ -126,3 +126,11 @@ vi.mock("@/i18n/navigation", () => ({
   redirect: vi.fn(),
   getPathname: vi.fn((x: { href: string }) => x.href),
 }))
+
+// jsdom has no native dialog top layer; browser checks exercise focus/inert behavior.
+Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+  configurable: true, value: function(this: HTMLDialogElement) { this.setAttribute("open", "") },
+})
+Object.defineProperty(HTMLDialogElement.prototype, "close", {
+  configurable: true, value: function(this: HTMLDialogElement) { this.removeAttribute("open") },
+})

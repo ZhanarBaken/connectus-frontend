@@ -259,6 +259,9 @@ export function connectChat(
           handlers.onPresenceChange?.(Boolean(data.online))
           return
         }
+        // Call lifecycle events share this socket, but are not chat messages.
+        // Rendering them as messages produces an undefined id and Invalid Date.
+        if (!data || typeof data.id !== "number" || typeof data.text !== "string" || typeof data.created_at !== "string") return
         const msg = data as WsMessageEvent
         handlers.onMessage({
           id: msg.id,

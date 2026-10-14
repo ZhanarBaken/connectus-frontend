@@ -317,6 +317,18 @@ describe("on-demand video calls", () => {
     expect(screen.queryByTestId("video-overlay")).not.toBeInTheDocument()
   })
 
+  it("Escape cancels preparation and restores background scrolling", async () => {
+    vi.mocked(startCallApi).mockResolvedValue({ status: "preparing", retry_after: 3 })
+    const overflow = document.body.style.overflow
+    render(<CallProvider><DirectCaller conversationId={3} name="Мария" /></CallProvider>)
+    await act(async () => { fireEvent.click(screen.getByText("Direct call")) })
+    expect(document.body.style.overflow).toBe("hidden")
+    await act(async () => { fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true, bubbles: false })) })
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(cancelCallPreparation).toHaveBeenCalledTimes(1)
+    expect(document.body.style.overflow).toBe(overflow)
+  })
+
   it("coalesces double clicks before the first response", async () => {
     vi.mocked(startCallApi).mockResolvedValue({ status: "preparing", retry_after: 3 })
     const { unmount } = render(<CallProvider><DirectCaller conversationId={3} name="Мария" /></CallProvider>)

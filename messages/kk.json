@@ -1445,7 +1445,10 @@
     "decline": "Бас тарту",
     "connecting": "Қосылуда...",
     "connectError": "Қоңырауға қосылу мүмкін болмады",
-    "close": "Жабу"
+    "close": "Жабу",
+    "preparingHint": "Бұл әдетте бір минуттай уақыт алады.",
+    "videoCall": "Бейнеқоңырау",
+    "backToChat": "Чатқа оралу"
   },
   "MentorStatusBanner": {
     "underReviewBody": "<strong>Профиль тексерілуде.</strong> Әдетте 24 сағат ішінде мақұлдаймыз — дайын болғанда Telegram-ға жазамыз."

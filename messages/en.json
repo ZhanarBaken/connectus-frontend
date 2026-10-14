@@ -1445,7 +1445,10 @@
     "decline": "Decline",
     "connecting": "Connecting...",
     "connectError": "Failed to connect to the call",
-    "close": "Close"
+    "close": "Close",
+    "preparingHint": "This usually takes about a minute.",
+    "videoCall": "Video call",
+    "backToChat": "Back to chat"
   },
   "MentorStatusBanner": {
     "underReviewBody": "<strong>Profile under review.</strong> We usually approve within 24 hours — we'll message you on Telegram as soon as it's ready."

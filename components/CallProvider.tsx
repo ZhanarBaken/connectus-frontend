@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { startCall as startCallApi, endCall as endCallApi, cancelCallPreparation, getFreshAccessToken } from "@/lib/api"
 import Icon from "@/components/Icon"
 import VideoCallOverlay from "@/components/VideoCallOverlay"
+import CallDialog from "@/components/CallDialog"
 
 interface ActiveCall {
   conversationId: number
@@ -104,6 +105,7 @@ export default function CallProvider({ children }: { children: React.ReactNode }
     const pending = preparationRef.current
     preparationRef.current = null
     setPreparing(false)
+    setIncomingCall(null)
     if (pending) {
       pending.controller.abort()
       void cancelCallPreparation(pending.conversationId, pending.requestId).catch(() => {
@@ -281,18 +283,12 @@ export default function CallProvider({ children }: { children: React.ReactNode }
   }
 
   const handleCallEnd = useCallback(() => {
-    setActiveCall((current) => {
-      if (current) {
-        // Best-effort — a failed "end" POST just means ended_at stays
-        // null server-side (see apps.calls.views.EndCallView's own
-        // docstring), not something worth blocking the UI on. Still
-        // worth a console line so a real pattern of failures is
-        // visible during development/staging rather than fully silent.
-        endCallApi(current.callSessionId).catch((err) => {
-          console.warn("Failed to report call end", err)
-        })
-      }
-      return null
+    const current = activeCallRef.current
+    if (!current) return
+    activeCallRef.current = null
+    setActiveCall(null)
+    void endCallApi(current.callSessionId).catch((err) => {
+      console.warn("Failed to report call end", err)
     })
   }, [])
 
@@ -301,31 +297,29 @@ export default function CallProvider({ children }: { children: React.ReactNode }
       {children}
 
       {preparing && (
-        <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" aria-label={t("preparing")} className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+        <CallDialog label={t("preparing")} onDismiss={cancelPreparation}>
             <div className="w-10 h-10 mx-auto mb-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
             <p role="status" className="text-gray-900">{t("preparing")}</p>
-            <button type="button" onClick={cancelPreparation} className="mt-6 px-5 py-2 border rounded-xl text-gray-700">
+            <p className="mt-2 text-sm text-gray-500">{t("preparingHint")}</p>
+            <button type="button" onClick={cancelPreparation} className="mt-6 min-h-11 px-5 py-2 border rounded-xl text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
               {t("cancelPreparation")}
             </button>
-          </div>
-        </div>
+        </CallDialog>
       )}
 
-      {incomingCall && !activeCall && (
-        <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+      {incomingCall && !activeCall && !preparing && (
+        <CallDialog label={t("incomingCall")} onDismiss={handleDecline}>
             <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
               <Icon name="videocam" size={28} className="text-indigo-600" />
             </div>
             <p className="text-sm text-gray-500 mb-1">{t("incomingCall")}</p>
-            <p className="text-lg font-semibold text-gray-900 mb-6 truncate">{incomingCall.callerName}</p>
-            <div className="flex gap-3">
+            <p className="text-lg font-semibold text-gray-900 mb-6 break-words">{incomingCall.callerName}</p>
+            <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={handleDecline}
                 disabled={accepting}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 min-w-0 min-h-11 px-3 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 {t("decline")}
               </button>
@@ -333,7 +327,7 @@ export default function CallProvider({ children }: { children: React.ReactNode }
                 type="button"
                 onClick={handleAccept}
                 disabled={accepting}
-                className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="flex-1 min-w-0 min-h-11 px-3 py-2.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
               >
                 {accepting ? t("connecting") : t("accept")}
               </button>
@@ -341,8 +335,7 @@ export default function CallProvider({ children }: { children: React.ReactNode }
             {acceptError && (
               <p className="text-xs text-red-600 mt-3">{t("connectError")}</p>
             )}
-          </div>
-        </div>
+        </CallDialog>
       )}
 
       {activeCall && (
