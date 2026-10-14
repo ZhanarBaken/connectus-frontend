@@ -87,7 +87,7 @@ describe("VideoCallOverlay", () => {
     expect(screen.getByText("Подключение...")).toBeInTheDocument()
   })
 
-  it("initializes JitsiMeetExternalAPI with the room/jwt/displayName once the script loads", async () => {
+  it("initializes JitsiMeetExternalAPI with the room, JWT, locale and embedded browser settings once the script loads", async () => {
     render(
       <VideoCallOverlay
         jitsiDomain="meet.test.local"
@@ -105,6 +105,7 @@ describe("VideoCallOverlay", () => {
       roomName: "call-42",
       jwt: "jwt-value",
       lang: "ru",
+      configOverwrite: { deeplinking: { disabled: true } },
     })
     expect(MockJitsiApi.lastArgs[1]).not.toHaveProperty("userInfo")
     await waitFor(() => {

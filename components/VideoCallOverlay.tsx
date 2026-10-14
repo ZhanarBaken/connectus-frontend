@@ -21,6 +21,7 @@ interface JitsiMeetExternalAPIConstructor {
     jwt: string
     parentNode: HTMLElement
     lang: string
+    configOverwrite: { deeplinking: { disabled: boolean } }
     width: string
     height: string
   }): JitsiMeetExternalAPIInstance
@@ -83,6 +84,8 @@ export default function VideoCallOverlay({ jitsiDomain, roomName, jwt, displayNa
         // The JWT carries our own name. displayName is the OTHER participant,
         // used only in this overlay's header, never as our Jitsi identity.
         lang: locale,
+        // Keep mobile clients in this embedded call instead of opening an app.
+        configOverwrite: { deeplinking: { disabled: true } },
         width: "100%",
         height: "100%",
       })
