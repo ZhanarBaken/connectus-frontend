@@ -18,6 +18,7 @@ import { inputClass, selectClass } from "@/lib/formStyles"
 import AvatarCropperModal from "@/components/AvatarCropperModal"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
+import StudentDesiredCountries from "@/components/StudentDesiredCountries"
 import Field from "@/components/Field"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -81,6 +82,9 @@ export default function StudentOnboarding() {
   const [graduationYear, setGraduationYear] = useState("")
   const [desiredMajor, setDesiredMajor] = useState("")
   const [desiredCountries, setDesiredCountries] = useState("")
+  const [desiredCountriesEdited, setDesiredCountriesEdited] = useState(false)
+  const [desiredCountryCodes, setDesiredCountryCodes] = useState<string[]>([])
+  const [desiredCountryCodesEdited, setDesiredCountryCodesEdited] = useState(false)
   const [examResults, setExamResults] = useState("")
   const [gpa, setGpa] = useState("")
 
@@ -99,6 +103,8 @@ export default function StudentOnboarding() {
             return
           }
           setProfilePhoto(profile.profile_photo ?? null)
+          setDesiredCountries(profile.desired_countries ?? "")
+          setDesiredCountryCodes(profile.desired_country_codes ?? [])
         } catch {
           // Non-fatal — onboarding continues with empty photo state.
         }
@@ -203,11 +209,12 @@ export default function StudentOnboarding() {
         full_name: fullName,
         date_of_birth: dateOfBirth || null,
         current_school_or_university: school,
-        school_grade: schoolGrade,
+        school_grade_code: schoolGrade,
         city: city,
         school_graduation_year: graduationYear ? Number(graduationYear) : null,
         desired_major: desiredMajor,
-        desired_countries: desiredCountries,
+        ...(desiredCountriesEdited ? { desired_countries: desiredCountries } : {}),
+        ...(desiredCountryCodesEdited ? { desired_country_codes: desiredCountryCodes } : {}),
         exam_results: examResults,
         gpa: gpa,
       },
@@ -406,30 +413,30 @@ export default function StudentOnboarding() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div data-field="school_grade">
-                  <Field label={t("currentStatusLabel")} required error={fieldErrors.school_grade}>
+                <div data-field="school_grade_code">
+                  <Field label={t("currentStatusLabel")} required error={fieldErrors.school_grade_code}>
                     <select
                       value={schoolGrade}
                       onChange={(e) => setSchoolGrade(e.target.value)}
-                      className={fieldErrors.school_grade
+                      className={fieldErrors.school_grade_code
                         ? `${selectClass} border-red-300 focus:ring-red-100 focus:border-red-400`
                         : selectClass}
                     >
                       <option value="">{t("choosePlaceholder")}</option>
                       <optgroup label={t("groupSchool")}>
-                        <option value="11 класс">{t("grade11")}</option>
-                        <option value="12 класс">{t("grade12")}</option>
-                        <option value="10 класс">{t("grade10")}</option>
-                        <option value="9 класс">{t("grade9")}</option>
-                        <option value="8 класс">{t("grade8")}</option>
-                        <option value="7 класс">{t("grade7")}</option>
-                        <option value="6 класс">{t("grade6")}</option>
-                        <option value="5 класс">{t("grade5")}</option>
+                        <option value="grade_11">{t("grade11")}</option>
+                        <option value="grade_12">{t("grade12")}</option>
+                        <option value="grade_10">{t("grade10")}</option>
+                        <option value="grade_9">{t("grade9")}</option>
+                        <option value="grade_8">{t("grade8")}</option>
+                        <option value="grade_7">{t("grade7")}</option>
+                        <option value="grade_6">{t("grade6")}</option>
+                        <option value="grade_5">{t("grade5")}</option>
                       </optgroup>
                       <optgroup label={t("groupOther")}>
-                        <option value="Уже окончил(а) школу">{t("alreadyGraduated")}</option>
-                        <option value="Студент вуза">{t("universityStudent")}</option>
-                        <option value="Колледж / училище">{t("college")}</option>
+                        <option value="graduated">{t("alreadyGraduated")}</option>
+                        <option value="university">{t("universityStudent")}</option>
+                        <option value="college">{t("college")}</option>
                       </optgroup>
                     </select>
                   </Field>
@@ -497,12 +504,20 @@ export default function StudentOnboarding() {
                       />
                     </Field>
                   </div>
+                  <div data-field="desired_country_codes">
+                    <Field label={t("desiredCountriesLabel")} error={fieldErrors.desired_country_codes}>
+                      <StudentDesiredCountries value={desiredCountryCodes} onChange={(codes) => {
+                        setDesiredCountryCodes(codes)
+                        setDesiredCountryCodesEdited(true)
+                      }} />
+                    </Field>
+                  </div>
                   <div data-field="desired_countries">
                     <Field label={t("desiredCountriesLabel")} error={fieldErrors.desired_countries}>
                       <input
                         type="text"
                         value={desiredCountries}
-                        onChange={(e) => setDesiredCountries(e.target.value)}
+                        onChange={(e) => { setDesiredCountries(e.target.value); setDesiredCountriesEdited(true) }}
                         placeholder={t("desiredCountriesPlaceholder")}
                         className={fieldErrors.desired_countries
                           ? `${inputClass} border-red-300 focus:ring-red-100 focus:border-red-400`

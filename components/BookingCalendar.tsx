@@ -4,17 +4,23 @@ import { useState, useEffect, useMemo } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/api"
 import {
+  bookingInstant,
+  dateInZone,
+  formatZonedInstant,
+  type ScheduleSlotInstants,
   formatDateISO,
   formatFullDateLabel,
   formatMonthYearLabel,
   getMonthGrid,
 } from "@/lib/schedule"
 import Icon from "./Icon"
+import { useScheduleTimeZone } from "@/lib/useScheduleTimeZone"
+import ScheduleTimezoneNotice from "@/components/ScheduleTimezoneNotice"
 
 interface Props {
   mentorId: number
   durationMinutes: number
-  onSelect: (date: string, time: string) => void
+  onSelect: (date: string, time: string, instant: string) => void
   onCancel: () => void
 }
 
@@ -37,6 +43,8 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [slotsError, setSlotsError] = useState("")
   const [timezone, setTimezone] = useState("")
+  const [instants, setInstants] = useState<Record<string, string>>()
+  const { timeZone: userZone, preferenceLoadError, retry } = useScheduleTimeZone()
 
   // Map {YYYY-MM-DD: hasSlots} for the currently visible month. Drives
   // the dot indicator under each date cell. Fetched once per month
@@ -70,7 +78,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
     let cancelled = false
     fetchMentorAvailabilityOverview(mentorId, fromDate, toDate, durationMinutes)
       .then((res) => {
-        if (!cancelled) setOverview(res.dates)
+        if (!cancelled) { setOverview(res.dates); setTimezone(res.timezone) }
       })
       .catch(() => {
         if (!cancelled) setOverview({})
@@ -90,7 +98,10 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
     fetchMentorAvailability(mentorId, selectedDate, durationMinutes)
       .then((res) => {
         if (cancelled) return
-        setSlots(res.slots)
+        const instantMap = (res as typeof res & ScheduleSlotInstants).slot_instants
+        setSlots(res.slots.filter((time) => bookingInstant(selectedDate, time, res.timezone, instantMap)))
+        setInstants(instantMap)
+        setSelectedTime(null)
         setTimezone(res.timezone)
       })
       .catch((err) => {
@@ -109,11 +120,12 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
 
   const handleConfirm = () => {
     if (selectedDate && selectedTime) {
-      onSelect(selectedDate, selectedTime)
+      const instant = bookingInstant(selectedDate, selectedTime, timezone, instants)
+      if (instant) onSelect(selectedDate, selectedTime, instant)
     }
   }
 
-  const today = formatDateISO(new Date())
+  const today = timezone ? dateInZone(new Date(), timezone) : formatDateISO(new Date())
 
   const monthLabel = useMemo(
     () => formatMonthYearLabel(visibleMonth.year, visibleMonth.month, locale, t.raw("monthsLong")),
@@ -134,6 +146,8 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
           {t("durationLabel", { minutes: durationMinutes })}{timezone ? ` · ${timezone}` : ""}
         </p>
       </div>
+
+      <ScheduleTimezoneNotice error={preferenceLoadError} timeZone={userZone} retry={retry} />
 
       {/* Month navigation */}
       <div className="px-5 py-3 flex items-center justify-between border-b border-gray-50">
@@ -254,6 +268,11 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
                   }`}
                 >
                   {time}
+                  {userZone && userZone !== timezone && selectedDate && (
+                    <span className="block text-[10px] font-normal">
+                      {formatZonedInstant(bookingInstant(selectedDate, time, timezone, instants)!, userZone, locale)}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -262,7 +281,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
       )}
 
       {/* Confirm */}
-      {selectedDate && selectedTime && (
+      {selectedDate && selectedTime && !slotsLoading && !slotsError && slots.includes(selectedTime) && (
         <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
           <button
             onClick={handleConfirm}

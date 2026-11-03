@@ -1,3 +1,5 @@
+import { LegalConsentError } from "@/lib/legalConsent"
+import { legalConsents } from "@/test/fixtures/legalConsent"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -20,12 +22,12 @@ vi.mock("@/components/DataConsentModal", () => ({
     onCancel,
   }: {
     open: boolean
-    onConsent: () => void
+    onConsent: (consents: typeof legalConsents) => void
     onCancel: () => void
   }) =>
     open ? (
       <div>
-        <button onClick={onConsent}>consent-yes</button>
+        <button onClick={() => onConsent(legalConsents)}>consent-yes</button>
         <button onClick={onCancel}>consent-no</button>
       </div>
     ) : null,
@@ -466,6 +468,7 @@ describe("TelegramAutoLogin", () => {
       })
 
       const user = userEvent.setup()
+      await user.click(screen.getByRole("button", { name: /Узбекистан/ }))
       await user.click(screen.getByRole("button", { name: /абитуриент или родитель/ }))
 
       // Consent modal must be shown before any second login call fires.
@@ -475,6 +478,7 @@ describe("TelegramAutoLogin", () => {
       await user.click(screen.getByText("consent-yes"))
 
       await waitFor(() => {
+        expect(telegramMiniAppLogin).toHaveBeenCalledWith("raw-init-data", "student", { country: "UZ", locale: "ru" }, legalConsents)
         expect(telegramMiniAppLogin).toHaveBeenCalledTimes(2)
       })
       await waitFor(() => {
@@ -483,6 +487,21 @@ describe("TelegramAutoLogin", () => {
       await waitFor(() => {
         expect(push).toHaveBeenCalledWith("/onboarding/student")
       })
+    })
+
+    it("requires a second explicit payload when signup documents are stale", async () => {
+      await renderAtRolePicker()
+      vi.mocked(telegramMiniAppLogin).mockRejectedValueOnce(new LegalConsentError())
+      const user = userEvent.setup()
+      await user.click(screen.getByRole("button", { name: "Я ментор" }))
+      await user.click(screen.getByText("consent-yes"))
+      await screen.findByText("consent-yes")
+      expect(telegramMiniAppLogin).toHaveBeenCalledTimes(2)
+      expect(telegramMiniAppLogin).toHaveBeenLastCalledWith("raw-init-data", "mentor", { country: "KZ", locale: "ru" }, legalConsents)
+      vi.mocked(telegramMiniAppLogin).mockResolvedValueOnce({ ok: true, user_id: 2, created: true, access: "new-access", refresh: "new-refresh" })
+      await user.click(screen.getByText("consent-yes"))
+      await waitFor(() => expect(telegramMiniAppLogin).toHaveBeenCalledTimes(3))
+      expect(telegramMiniAppLogin).toHaveBeenLastCalledWith("raw-init-data", "mentor", { country: "KZ", locale: "ru" }, legalConsents)
     })
 
     it("cancelling consent does not submit a role and returns to the picker", async () => {

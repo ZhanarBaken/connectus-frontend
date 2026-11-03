@@ -18,6 +18,10 @@ export type OrderStatus =
 export type PaymentStatus = "unpaid" | "paid" | "refunded" | "partially_refunded"
 
 export interface User {
+  country?: string
+  country_declared_at?: string | null
+  locale?: "ru" | "en" | "kk"
+  time_zone?: string
   id: number
   email: string
   role: Role
@@ -162,10 +166,12 @@ export interface StudentProfile {
   // school_graduation_year are the 5 fields the onboarding form
   // requires (see is_profile_complete below) — the rest are optional.
   school_grade: string
+  school_grade_code?: string
   city: string
   school_graduation_year: number | null
   desired_major: string
   desired_countries: string
+  desired_country_codes?: string[]
   exam_results: string
   gpa: string
   profile_photo: string | null
@@ -198,8 +204,16 @@ export interface Order {
   student_info: OrderStudentInfo
   mentor: number
   mentor_service: number
-  service_title: string
+  service_title: string | null
   payout_category: PayoutCategory
+  // Optional during rollout; null means the historical agreement is unknown.
+  // Never copy current catalog values into these snapshots on the client.
+  currency?: string | null
+  service_title_snapshot?: string | null
+  service_duration_minutes_snapshot?: number | null
+  payout_category_snapshot?: PayoutCategory | null
+  commission_rate_snapshot?: string | null
+  commission_policy_snapshot?: string | null
   // Full price of the service at order time. Always equals total_price.
   subtotal: string
   total_price: string

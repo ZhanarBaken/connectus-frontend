@@ -1,3 +1,4 @@
+import { legalDocuments, legalConsents } from "@/test/fixtures/legalConsent"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -11,6 +12,7 @@ vi.mock("@/lib/api", () => ({
 
 function settings(overrides: Partial<PublicSettings> = {}): PublicSettings {
   return {
+    legal_documents: legalDocuments,
     dispute_window_hours: 48,
     support_dispute_window_hours: 168,
     support_intro_call_response_deadline_hours: 24,
@@ -48,13 +50,16 @@ describe("DataConsentModal", () => {
     expect(screen.getByRole("button", { name: "Я даю согласие" })).toBeDisabled()
   })
 
-  it("renders the consent text once loaded and enables the consent button", async () => {
+  it("renders all exact texts and requires each explicit acceptance", async () => {
     vi.mocked(fetchPublicSettings).mockResolvedValue(settings())
     render(<DataConsentModal open onConsent={vi.fn()} onCancel={vi.fn()} />)
     await waitFor(() =>
       expect(screen.getByText("Согласен на обработку данных.")).toBeInTheDocument(),
     )
-    expect(screen.getByRole("button", { name: "Я даю согласие" })).not.toBeDisabled()
+    expect(screen.getByText("Existing terms text")).toBeInTheDocument()
+    expect(screen.getByText("Existing privacy text")).toBeInTheDocument()
+    expect(screen.getAllByRole("checkbox")).toHaveLength(3)
+    expect(screen.getByRole("button", { name: "Я даю согласие" })).toBeDisabled()
   })
 
   it("shows an error state and lets the user retry", async () => {
@@ -76,7 +81,7 @@ describe("DataConsentModal", () => {
   })
 
   it("shows a not-yet-published message when the text is empty", async () => {
-    vi.mocked(fetchPublicSettings).mockResolvedValue(settings({ data_consent_text: "" }))
+    vi.mocked(fetchPublicSettings).mockResolvedValue(settings({ legal_documents: { ...legalDocuments, data_consent: null } }))
     render(<DataConsentModal open onConsent={vi.fn()} onCancel={vi.fn()} />)
     await waitFor(() =>
       expect(
@@ -91,11 +96,10 @@ describe("DataConsentModal", () => {
     const onConsent = vi.fn()
     vi.mocked(fetchPublicSettings).mockResolvedValue(settings())
     render(<DataConsentModal open onConsent={onConsent} onCancel={vi.fn()} />)
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Я даю согласие" })).not.toBeDisabled(),
-    )
+    await screen.findByText("Existing terms text")
+    for (const checkbox of screen.getAllByRole("checkbox")) await user.click(checkbox)
     await user.click(screen.getByRole("button", { name: "Я даю согласие" }))
-    expect(onConsent).toHaveBeenCalledTimes(1)
+    expect(onConsent).toHaveBeenCalledWith(legalConsents)
   })
 
   it("calls onCancel from the Отмена button and the close icon", async () => {

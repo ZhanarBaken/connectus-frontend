@@ -1,3 +1,4 @@
+import { formatMoney, LEGACY_ORDER_CURRENCY } from "@/lib/money"
 import { AdminOrder } from "@/types"
 import { Avatar } from "@/components/Avatar"
 
@@ -28,9 +29,9 @@ export function OrderCard({ order, onOpenPayment, onOpenDispute }: OrderCardProp
           </p>
           <p className="text-xs text-gray-400 truncate">{order.mentor_info.full_name}</p>
         </div>
-        <span className="text-xs font-bold text-gray-900 shrink-0">{order.total_price} ₸</span>
+        <span className="text-xs font-bold text-gray-900 shrink-0">{formatMoney(order.total_price, order.currency ?? LEGACY_ORDER_CURRENCY)}</span>
       </div>
-      <p className="text-xs text-gray-500 truncate mb-2">{order.service_title}</p>
+      <p className="text-xs text-gray-500 truncate mb-2">{order.service_title_snapshot ?? order.service_title ?? "—"}</p>
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-gray-300">#{order.id}</span>
         {order.order_status === "pending_payment" && (

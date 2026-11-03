@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 // Deliberately using next/navigation's plain useRouter here, not
 // next-intl's locale-aware one from @/i18n/navigation. Telegram's
 // start_param deep link is constructed by the backend (separate repo),
@@ -13,8 +13,10 @@ import { useTranslations } from "next-intl"
 // localePrefix: "as-needed".
 import { useRouter } from "next/navigation"
 import { telegramMiniAppLogin, fetchMe } from "@/lib/api"
+import { LegalConsentError, type LegalConsents } from "@/lib/legalConsent"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import DataConsentModal from "@/components/DataConsentModal"
+import CountrySelect from "@/components/CountrySelect"
 
 // Telegram signup only ever offers these two — never "admin" — so this
 // stays narrower than the shared Role type from @/types.
@@ -110,6 +112,9 @@ type AuthStage = "idle" | "checking" | "needsRole" | "done"
 // can pick student/mentor without ever seeing the email/password form.
 export default function TelegramAutoLogin() {
   const t = useTranslations("TelegramAutoLogin")
+  const tLegal = useTranslations("DataConsentModal")
+  const locale = useLocale()
+  const [country, setCountry] = useState("KZ")
   // The login effect below reads translations from inside a closure that
   // must not re-run just because `t`'s reference changed (see tRef use
   // below) — otherwise a locale switch mid-flight (this component is
@@ -139,6 +144,7 @@ export default function TelegramAutoLogin() {
   const [error, setError] = useState("")
   const [pendingRole, setPendingRole] = useState<TelegramRole | null>(null)
   const [consentOpen, setConsentOpen] = useState(false)
+  const [consentError, setConsentError] = useState("")
   // Guard against re-running the initial auto-login when state updates
   // trigger a re-render mid-flight. A ref instead of state because
   // nothing in the UI depends on this flag.
@@ -219,11 +225,11 @@ export default function TelegramAutoLogin() {
     // not re-run just because the user switched locale mid-flight.
   }, [isInTelegram, initData, router, submittingRole])
 
-  const handlePickRole = async (role: TelegramRole) => {
+  const handlePickRole = async (role: TelegramRole, consents: LegalConsents) => {
     setSubmittingRole(role)
     setError("")
     try {
-      const result = await telegramMiniAppLogin(initData, role)
+      const result = await telegramMiniAppLogin(initData, role, { country, locale }, consents)
       if (result.ok) {
         localStorage.setItem("access_token", result.access)
         localStorage.setItem("refresh_token", result.refresh)
@@ -241,6 +247,12 @@ export default function TelegramAutoLogin() {
         setError(t("errorAccountCreateFailed"))
       }
     } catch (e: unknown) {
+      if (e instanceof LegalConsentError) {
+        setPendingRole(role)
+        setConsentError(tLegal("changed"))
+        setConsentOpen(true)
+        return
+      }
       setError(e instanceof Error && e.message ? e.message : t("errorRegisterGeneric"))
     } finally {
       setSubmittingRole(null)
@@ -260,9 +272,11 @@ export default function TelegramAutoLogin() {
     <>
     <DataConsentModal
       open={consentOpen}
-      onConsent={() => {
+      error={consentError}
+      onConsent={(consents) => {
+        setConsentError("")
         setConsentOpen(false)
-        if (pendingRole) void handlePickRole(pendingRole)
+        if (pendingRole) void handlePickRole(pendingRole, consents)
         setPendingRole(null)
       }}
       onCancel={() => {
@@ -286,6 +300,9 @@ export default function TelegramAutoLogin() {
               {t("chooseRoleSubtitle")}
             </p>
 
+            <div className="mb-6">
+              <CountrySelect value={country} onChange={setCountry} />
+            </div>
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => { setPendingRole("student"); setConsentOpen(true) }}

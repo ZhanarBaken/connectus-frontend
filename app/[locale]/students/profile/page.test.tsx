@@ -103,7 +103,7 @@ describe("StudentProfilePage (app/students/profile)", () => {
       mockRouter()
     })
 
-    it("prefills the form fields from the fetched profile", async () => {
+    it("prefills a legacy label-only response using the stable grade code", async () => {
       vi.mocked(fetchStudentProfile).mockResolvedValue(makeStudentProfile())
       render(<StudentProfilePage />)
 
@@ -112,6 +112,15 @@ describe("StudentProfilePage (app/students/profile)", () => {
       expect(screen.getByDisplayValue("НИШ Алматы")).toBeInTheDocument()
       expect(screen.getByDisplayValue("Алматы")).toBeInTheDocument()
       expect(screen.getByDisplayValue("2026")).toBeInTheDocument()
+      expect(screen.getByRole("combobox")).toHaveValue("grade_11")
+    })
+
+    it("prefills the stable grade code from an upgraded response", async () => {
+      const profile = { ...makeStudentProfile({ school_grade: "Студент вуза" }), school_grade_code: "university" }
+      vi.mocked(fetchStudentProfile).mockResolvedValue(profile)
+      render(<StudentProfilePage />)
+      await screen.findByDisplayValue("Данияр Сериков")
+      expect(screen.getByRole("combobox")).toHaveValue("university")
     })
 
     it("shows an error banner when the profile fails to load", async () => {
@@ -128,6 +137,27 @@ describe("StudentProfilePage (app/students/profile)", () => {
 
       const submit = await screen.findByRole("button", { name: "Сохранить" })
       expect(submit).toBeDisabled()
+    })
+
+    it("keeps unknown legacy text visible when structured selections change", async () => {
+      const user = userEvent.setup()
+      const profile = {
+        ...makeStudentProfile({ desired_countries: "Atlantis? undecided" }),
+        desired_country_codes: ["US", "CA"],
+      }
+      vi.mocked(fetchStudentProfile).mockResolvedValue(profile)
+      vi.mocked(authFetch).mockResolvedValue(jsonResponse(makeStudentProfile()))
+      render(<StudentProfilePage />)
+      expect(await screen.findByDisplayValue("Atlantis? undecided")).toBeInTheDocument()
+      await user.click(screen.getByRole("button", { name: /США/ }))
+      await user.click(screen.getByRole("button", { name: "Сохранить" }))
+      await waitFor(() => {
+        const patch = vi.mocked(authFetch).mock.calls.find(([, init]) => init?.method === "PATCH")
+        const body = JSON.parse(String(patch?.[1]?.body))
+        expect(body.desired_country_codes).toEqual(["CA"])
+        expect(body).not.toHaveProperty("desired_countries")
+      })
+      expect(screen.getByDisplayValue("Atlantis? undecided")).toBeInTheDocument()
     })
 
     it("saves the profile and shows a success confirmation", async () => {
@@ -150,6 +180,10 @@ describe("StudentProfilePage (app/students/profile)", () => {
         expect(patchCall).toBeDefined()
         const body = JSON.parse(String(patchCall?.[1]?.body))
         expect(body.full_name).toBe("Данияр Ахметов")
+        expect(body.school_grade_code).toBe("grade_11")
+        expect(body).not.toHaveProperty("school_grade")
+        expect(body).not.toHaveProperty("desired_countries")
+        expect(body).not.toHaveProperty("desired_country_codes")
       })
       expect(await screen.findByText("Сохранено")).toBeInTheDocument()
     })

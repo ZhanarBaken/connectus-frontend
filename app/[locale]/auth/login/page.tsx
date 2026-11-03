@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import {
-  login, fetchMe, resendVerification, googleAuth, telegramStart,
+  login, fetchMe, resendVerification, googleAuth, telegramLoginStart,
   AccountNotFoundError, GoogleEmailTakenError, GoogleAuthNotConfiguredError,
 } from "@/lib/api"
 import { promptGoogleCredential, GoogleSignInUnavailableError } from "@/lib/googleSignIn"
@@ -28,7 +28,7 @@ function LoginForm() {
   // dead-end becomes a one-tap recovery.
   const [accountNotFound, setAccountNotFound] = useState(false)
   const [loading, setLoading] = useState(false)
-  // Set once telegramStart() succeeds so we can offer a manual link —
+  // Set once telegramLoginStart() succeeds so we can offer a manual link —
   // on desktop, `window.location.href = bot_url` is often intercepted
   // by an installed Telegram Desktop app, which opens the app but never
   // actually navigates this tab away, leaving the button stuck forever
@@ -151,7 +151,7 @@ function LoginForm() {
     setError("")
     setTelegramRedirectUrl(null)
     try {
-      const data = await telegramStart("student", locale)
+      const data = await telegramLoginStart(locale)
       localStorage.setItem("tg_signup_token", data.token)
       setTelegramRedirectUrl(data.bot_url)
       window.location.href = data.bot_url

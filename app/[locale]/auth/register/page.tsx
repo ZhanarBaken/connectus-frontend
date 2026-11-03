@@ -8,6 +8,7 @@ import {
   register, resendVerification, updateUnverifiedEmail, googleAuth, telegramStart, fetchMe,
   GoogleEmailTakenError, GoogleAuthNotConfiguredError,
 } from "@/lib/api"
+import { LegalConsentError, type LegalConsents } from "@/lib/legalConsent"
 import { promptGoogleCredential, GoogleSignInUnavailableError } from "@/lib/googleSignIn"
 import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { track } from "@/lib/analytics"
@@ -50,6 +51,7 @@ type Role = "student" | "mentor"
 
 function RegisterForm() {
   const t = useTranslations("Auth.Register")
+  const tLegal = useTranslations("DataConsentModal")
   const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -95,11 +97,11 @@ function RegisterForm() {
   const [correctingEmail, setCorrectingEmail] = useState(false)
   const [correctEmailError, setCorrectEmailError] = useState("")
   const [emailCorrected, setEmailCorrected] = useState(false)
-  // PD consent — Закон РК №94-V requires an explicit, informed act of
-  // consent before we process any personal data. Once given in this
-  // session, all three signup flows (email/Google/Telegram) can run
-  // without re-asking; closing the page resets the state.
-  const [consentGiven, setConsentGiven] = useState(false)
+  // Keep explicit document evidence in memory for this site language.
+  // The server rechecks current versions on every signup attempt.
+  const [consentGiven, setConsentGiven] = useState<LegalConsents | null>(null)
+  const [consentLocale, setConsentLocale] = useState(locale)
+  const [consentError, setConsentError] = useState("")
   const [consentModalOpen, setConsentModalOpen] = useState(false)
   const [pendingAuth, setPendingAuth] = useState<PendingAuth>(null)
   // Hide Google button inside Telegram WebView — Google's SDK refuses
@@ -140,18 +142,28 @@ function RegisterForm() {
     track("signup_form_started", { role })
   }
 
+  const handleLegalError = (error: unknown, auth: PendingAuth) => {
+    if (!(error instanceof LegalConsentError)) return false
+    setConsentGiven(null)
+    setPendingAuth(auth)
+    setConsentError(tLegal("changed"))
+    setConsentModalOpen(true)
+    return true
+  }
+
   // Inner registration logic. Split from `handleSubmit` so the consent
   // modal can call this directly once the user gives consent.
-  const doEmailRegister = async () => {
+  const doEmailRegister = async (consents: LegalConsents) => {
     setError("")
     setLoading(true)
     try {
-      await register(email, password, role, agreedToTerms, country)
+      await register(email, password, role, agreedToTerms, country, locale, consents)
       // Save role so login can route correctly later (also returned by /auth/me)
       localStorage.setItem("pending_role", role)
       track("signup_form_submitted", { role })
       setRegistered(true)
     } catch (e: unknown) {
+      if (handleLegalError(e, "email")) return
       setError(e instanceof Error ? translateRegisterErrorMessage(e.message, t) : t("errorGeneric"))
     } finally {
       setLoading(false)
@@ -160,15 +172,15 @@ function RegisterForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!consentGiven) {
+    if (!consentGiven || consentLocale !== locale) {
       setPendingAuth("email")
       setConsentModalOpen(true)
       return
     }
-    void doEmailRegister()
+    void doEmailRegister(consentGiven)
   }
 
-  const doGoogleRegister = async () => {
+  const doGoogleRegister = async (consents: LegalConsents) => {
     // Belt-and-braces: useTelegramWebApp may not have settled yet
     // when the user taps very fast on first paint, so the button
     // visibility gate could miss. Re-check synchronously off the
@@ -184,7 +196,7 @@ function RegisterForm() {
     setError("")
     try {
       const credential = await promptGoogleCredential(clientId)
-      const data = await googleAuth(credential, role, country)
+      const data = await googleAuth(credential, role, country, locale, consents)
       localStorage.setItem("access_token", data.access)
       localStorage.setItem("refresh_token", data.refresh)
       const me = await fetchMe(data.access)
@@ -202,6 +214,7 @@ function RegisterForm() {
         router.push("/onboarding/student")
       }
     } catch (e: unknown) {
+      if (handleLegalError(e, "google")) return
       if (e instanceof GoogleEmailTakenError) {
         setError(t("errorGoogleEmailTaken"))
       } else if (e instanceof GoogleAuthNotConfiguredError) {
@@ -218,24 +231,25 @@ function RegisterForm() {
 
   const handleGoogleRegister = () => {
     handleFirstInteraction()
-    if (!consentGiven) {
+    if (!consentGiven || consentLocale !== locale) {
       setPendingAuth("google")
       setConsentModalOpen(true)
       return
     }
-    void doGoogleRegister()
+    void doGoogleRegister(consentGiven)
   }
 
-  const doTelegramRegister = async () => {
+  const doTelegramRegister = async (consents: LegalConsents) => {
     setLoading(true)
     setError("")
     setTelegramRedirectUrl(null)
     try {
-      const data = await telegramStart(role, locale, country)
+      const data = await telegramStart(role, locale, country, consents)
       localStorage.setItem("tg_signup_token", data.token)
       setTelegramRedirectUrl(data.bot_url)
       window.location.href = data.bot_url
     } catch (e: unknown) {
+      if (handleLegalError(e, "telegram")) return
       setError(e instanceof Error ? e.message : t("errorTelegramGeneric"))
     } finally {
       setLoading(false)
@@ -244,31 +258,33 @@ function RegisterForm() {
 
   const handleTelegramRegister = () => {
     handleFirstInteraction()
-    if (!consentGiven) {
+    if (!consentGiven || consentLocale !== locale) {
       setPendingAuth("telegram")
       setConsentModalOpen(true)
       return
     }
-    void doTelegramRegister()
+    void doTelegramRegister(consentGiven)
   }
 
   // Resumes whichever signup flow opened the consent modal. Switch
   // form (over the PendingAuth union) so TypeScript flags any flow
   // added later that forgets to wire up its resume path.
-  const handleConsentGiven = () => {
-    setConsentGiven(true)
+  const handleConsentGiven = (consents: LegalConsents) => {
+    setConsentGiven(consents)
+    setConsentLocale(locale)
+    setConsentError("")
     setConsentModalOpen(false)
     const auth = pendingAuth
     setPendingAuth(null)
     switch (auth) {
       case "email":
-        void doEmailRegister()
+        void doEmailRegister(consents)
         break
       case "google":
-        void doGoogleRegister()
+        void doGoogleRegister(consents)
         break
       case "telegram":
-        void doTelegramRegister()
+        void doTelegramRegister(consents)
         break
       case null:
         // No flow was pending — modal was confirmed without a CTA
@@ -679,6 +695,7 @@ function RegisterForm() {
 
       <DataConsentModal
         open={consentModalOpen}
+        error={consentError}
         onConsent={handleConsentGiven}
         onCancel={handleConsentCancel}
       />

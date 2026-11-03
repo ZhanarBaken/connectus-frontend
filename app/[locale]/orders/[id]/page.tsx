@@ -1,5 +1,10 @@
 "use client"
 
+import { useScheduleTimeZone } from "@/lib/useScheduleTimeZone"
+import ScheduleTimezoneNotice from "@/components/ScheduleTimezoneNotice"
+import { formatZonedInstant } from "@/lib/schedule"
+
+import { formatMoney, LEGACY_ORDER_CURRENCY } from "@/lib/money"
 import { useState, useEffect, useRef, use } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
@@ -52,6 +57,7 @@ export default function OrderPage({ params }: Props) {
   const locale = useLocale()
   const router = useRouter()
   useStudentOnboardingGate()
+  const { timeZone: userZone, preferenceLoadError, retry } = useScheduleTimeZone()
   const [order, setOrder] = useState<Order | null>(null)
   const [mentor, setMentor] = useState<Mentor | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
@@ -289,13 +295,10 @@ export default function OrderPage({ params }: Props) {
     }
   }
 
-  const handleReschedule = async (date: string, time: string) => {
+  const handleReschedule = async (_date: string, _time: string, scheduledAt: string) => {
     if (!order) return
     setRescheduling(true)
     setRescheduleError("")
-    // Backend SCHEDULE_TIMEZONE is Asia/Almaty (+05:00, no DST) — same
-    // hardcoded offset the booking flow on the mentor page uses.
-    const scheduledAt = `${date}T${time}:00+05:00`
     try {
       const updated = await rescheduleOrder(order.id, scheduledAt)
       setOrder(updated)
@@ -414,6 +417,11 @@ export default function OrderPage({ params }: Props) {
 
   if (!order) return null
 
+  // Legacy contracts have no captured duration; only the live service can
+  // supply the operational fallback. Do not invent a default duration.
+  const rescheduleDuration = order.service_duration_minutes_snapshot ??
+    mentor?.services.find((service) => service.id === order.mentor_service)?.duration_minutes
+
   // Chat is available whenever the backend has created a Conversation.
   const canChat = order.conversation_id !== null
   // PayoutCategory only has "support" and "paid_consultation" now, so
@@ -505,7 +513,7 @@ export default function OrderPage({ params }: Props) {
               the natural left-sidebar layout on lg+. */}
           <div className={`space-y-4 ${isInTelegram ? "order-2 lg:order-1 lg:col-span-1" : "lg:col-span-1"}`}>
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h1 className="text-lg font-bold text-gray-900 mb-1">{order.service_title}</h1>
+              <h1 className="text-lg font-bold text-gray-900 mb-1">{order.service_title_snapshot ?? order.service_title ?? "—"}</h1>
               <p className="text-sm text-gray-400 mb-4">{t("orderNumber", { id: String(order.id) })}</p>
 
               <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -549,26 +557,25 @@ export default function OrderPage({ params }: Props) {
                   {isSupportIntroCall ? (
                     <span className="text-xs font-medium text-gray-500">{t("freeAmount")}</span>
                   ) : (
-                    <span className="font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
+                    <span className="font-bold text-gray-900">{formatMoney(order.total_price, order.currency ?? LEGACY_ORDER_CURRENCY)}</span>
                   )}
                 </div>
                 {role === "mentor" && !isSupportIntroCall && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">{t("mentorPayout")}</span>
-                    <span className="font-semibold text-green-600">{Number(order.mentor_payout_amount).toLocaleString("ru-RU")} ₸</span>
+                    <span className="font-semibold text-green-600">{formatMoney(order.mentor_payout_amount, order.currency ?? LEGACY_ORDER_CURRENCY)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">{t("date")}</span>
                   <span className="text-gray-600">{formatDate(order.created_at)}</span>
                 </div>
+                {order.scheduled_at && <ScheduleTimezoneNotice error={preferenceLoadError} timeZone={userZone} retry={retry} />}
                 {order.scheduled_at && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">{t("scheduledAt")}</span>
                     <span className="text-gray-600">
-                      {new Date(order.scheduled_at).toLocaleString(locale, {
-                        day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
-                      })}
+                      {formatZonedInstant(order.scheduled_at, userZone || "UTC", locale, "long")}
                     </span>
                   </div>
                 )}
@@ -770,7 +777,7 @@ export default function OrderPage({ params }: Props) {
                 <div>
                   <h3 className="font-semibold text-yellow-800 mb-1">{t("pendingPaymentTitle")}</h3>
                   <p className="text-xs text-yellow-700 leading-relaxed">
-                    {t("pendingPaymentBody", { amount: `${Number(order.total_price).toLocaleString("ru-RU")} ₸` })}
+                    {t("pendingPaymentBody", { amount: formatMoney(order.total_price, order.currency ?? LEGACY_ORDER_CURRENCY) })}
                   </p>
                 </div>
 
@@ -1118,7 +1125,7 @@ export default function OrderPage({ params }: Props) {
                         </span>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="font-medium text-gray-900">
-                            {Number(entry.amount).toLocaleString("ru-RU")} ₸
+                            {formatMoney(entry.amount, order.currency ?? LEGACY_ORDER_CURRENCY)}
                           </span>
                           <span className={`px-1.5 py-0.5 rounded-full border ${STATUS_STYLE[entry.status] || "bg-gray-50 text-gray-500 border-gray-200"}`}>
                             {STATUS_KEY[entry.status] ? tStatus(STATUS_KEY[entry.status]) : entry.status}
@@ -1538,12 +1545,12 @@ export default function OrderPage({ params }: Props) {
                 <div className="bg-white rounded-2xl border border-gray-200 py-10 flex justify-center">
                   <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
                 </div>
+              ) : rescheduleDuration == null ? (
+                <p className="text-sm text-red-600">{t("rescheduleError")}</p>
               ) : (
                 <BookingCalendar
                   mentorId={order.mentor}
-                  durationMinutes={
-                    mentor?.services.find((s) => s.id === order.mentor_service)?.duration_minutes ?? 60
-                  }
+                  durationMinutes={rescheduleDuration}
                   onSelect={handleReschedule}
                   onCancel={() => setRescheduleModalOpen(false)}
                 />

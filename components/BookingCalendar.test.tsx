@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import BookingCalendar from "./BookingCalendar"
-import { fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/api"
+import { fetchMe, fetchMentorAvailability, fetchMentorAvailabilityOverview } from "@/lib/api"
 import { formatDateISO } from "@/lib/schedule"
 
 vi.mock("@/lib/api", () => ({
+  fetchMe: vi.fn(),
   fetchMentorAvailability: vi.fn(),
   fetchMentorAvailabilityOverview: vi.fn(),
 }))
@@ -35,6 +36,7 @@ function findEnabledDateButton(day: number): HTMLElement {
 
 describe("BookingCalendar", () => {
   beforeEach(() => {
+    vi.mocked(fetchMe).mockResolvedValue({ time_zone: "" } as Awaited<ReturnType<typeof fetchMe>>)
     // shouldAdvanceTime keeps setTimeout/setInterval firing against real
     // wall-clock progress (so testing-library's `waitFor` polling still
     // works) while `Date`/`performance.now()` stay pinned to TODAY.
@@ -168,7 +170,7 @@ describe("BookingCalendar", () => {
     const confirmButton = await screen.findByText("Записаться на 09:00")
     fireEvent.click(confirmButton)
 
-    expect(onSelect).toHaveBeenCalledWith(JULY_20, "09:00")
+    expect(onSelect).toHaveBeenCalledWith(JULY_20, "09:00", `${JULY_20}T09:00:00+05:00`)
   })
 
   it("shows an availability dot for dates the overview marks as free", async () => {
@@ -195,4 +197,19 @@ describe("BookingCalendar", () => {
     await user.click(next)
     expect(next).toBeDisabled()
   })
+  it("passes the server instant unchanged for a mentor abroad", async () => {
+    const response = {
+      date: JULY_20, timezone: "America/New_York", duration_minutes: 60,
+      slots: ["09:00"], slot_instants: { "09:00": "2026-07-20T13:00:00Z" },
+    }
+    vi.mocked(fetchMentorAvailability).mockResolvedValue(response)
+    const onSelect = vi.fn()
+    render(<BookingCalendar mentorId={1} durationMinutes={60} onSelect={onSelect} onCancel={vi.fn()} />)
+    fireEvent.click(findEnabledDateButton(20))
+    const slot = await screen.findByText("09:00")
+    fireEvent.click(slot)
+    fireEvent.click(await screen.findByText("Записаться на 09:00"))
+    expect(onSelect).toHaveBeenCalledWith(JULY_20, "09:00", "2026-07-20T13:00:00Z")
+  })
+
 })

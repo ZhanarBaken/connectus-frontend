@@ -1,10 +1,11 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
-import { telegramFinalize, fetchMe } from "@/lib/api"
+import { telegramFinalize, fetchMe, AccountNotFoundError } from "@/lib/api"
+import { LegalConsentError } from "@/lib/legalConsent"
 import Icon from "@/components/Icon"
 import Logo from "@/components/Logo"
 
@@ -12,15 +13,22 @@ type Status = "loading" | "success" | "error"
 
 function TgCallbackContent() {
   const t = useTranslations("Auth.TgCallback")
+  const tLegal = useTranslations("DataConsentModal")
   const params = useSearchParams()
   const router = useRouter()
   const [status, setStatus] = useState<Status>("loading")
   const [error, setError] = useState("")
+  const [signupRestart, setSignupRestart] = useState(false)
+  const attempted = useRef(false)
+  const signupToken = useRef<string | null>(null)
 
   useEffect(() => {
+    if (attempted.current) return
+    attempted.current = true
     const urlToken = params.get("token")
     const savedToken = localStorage.getItem("tg_signup_token")
-    const token = urlToken || savedToken
+    const token = signupToken.current || urlToken || savedToken
+    signupToken.current = token
 
     if (!token) {
       setError(t("errorNoToken"))
@@ -28,10 +36,10 @@ function TgCallbackContent() {
       return
     }
 
-    localStorage.removeItem("tg_signup_token")
-
+    setStatus("loading")
     telegramFinalize(token)
       .then(async (data) => {
+        localStorage.removeItem("tg_signup_token")
         localStorage.setItem("access_token", data.access)
         localStorage.setItem("refresh_token", data.refresh)
 
@@ -52,6 +60,13 @@ function TgCallbackContent() {
         }, 1500)
       })
       .catch((err: unknown) => {
+        if (err instanceof LegalConsentError || err instanceof AccountNotFoundError) {
+          localStorage.removeItem("tg_signup_token")
+          setError(tLegal("restartTelegram"))
+          setStatus("error")
+          setSignupRestart(true)
+          return
+        }
         setError(err instanceof Error ? err.message : t("errorGeneric"))
         setStatus("error")
       })
@@ -96,10 +111,12 @@ function TgCallbackContent() {
               <h1 className="text-xl font-bold text-gray-900 mb-2">{t("errorTitle")}</h1>
               <p className="text-gray-500 text-sm mb-6">{error}</p>
               <button
-                onClick={() => router.push("/auth/login")}
+                onClick={() => {
+                  router.push(signupRestart ? "/auth/register" : "/auth/login")
+                }}
                 className="w-full border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:border-gray-300 transition-colors text-sm"
               >
-                {t("retry")}
+                {signupRestart ? tLegal("restartSignup") : t("retry")}
               </button>
             </div>
           )}

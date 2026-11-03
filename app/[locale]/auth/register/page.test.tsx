@@ -1,3 +1,5 @@
+import { legalDocuments, legalConsents } from "@/test/fixtures/legalConsent"
+import { LegalConsentError } from "@/lib/legalConsent"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
@@ -24,6 +26,8 @@ async function giveConsent(user: ReturnType<typeof userEvent.setup>) {
   // The consent modal fetches its text lazily once opened.
   await screen.findByText("Я даю согласие")
   const consentBtn = await screen.findByRole("button", { name: "Я даю согласие" })
+  await screen.findByText("Existing terms text")
+  for (const checkbox of screen.getAllByRole("checkbox").slice(1)) await user.click(checkbox)
   await vi.waitFor(() => expect(consentBtn).not.toBeDisabled())
   await user.click(consentBtn)
 }
@@ -44,6 +48,7 @@ describe("RegisterPage", () => {
     vi.mocked(api.fetchMe).mockReset()
     vi.mocked(api.fetchPublicSettings).mockReset()
     vi.mocked(api.fetchPublicSettings).mockResolvedValue({
+      legal_documents: legalDocuments,
       dispute_window_hours: 48,
       support_dispute_window_hours: 168,
       support_intro_call_response_deadline_hours: 24,
@@ -128,7 +133,7 @@ describe("RegisterPage", () => {
     await giveConsent(user)
 
     expect(await screen.findByText("Проверь почту")).toBeInTheDocument()
-    expect(api.register).toHaveBeenCalledWith("student@example.com", "supersecretpw123", "student", true, "KZ")
+    expect(api.register).toHaveBeenCalledWith("student@example.com", "supersecretpw123", "student", true, "KZ", "ru", legalConsents)
   })
 
   it("passes the chosen country to whichever signup method is used", async () => {
@@ -146,7 +151,7 @@ describe("RegisterPage", () => {
     await giveConsent(user)
 
     await screen.findByText("Проверь почту")
-    expect(api.register).toHaveBeenCalledWith("student@example.com", "supersecretpw123", "student", true, "UZ")
+    expect(api.register).toHaveBeenCalledWith("student@example.com", "supersecretpw123", "student", true, "UZ", "ru", legalConsents)
   })
 
   it("does not re-show the consent modal on a second signup flow in the same session", async () => {
@@ -164,6 +169,25 @@ describe("RegisterPage", () => {
 
     // fetchPublicSettings should only have been called once (modal opened once)
     expect(api.fetchPublicSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it("refetches changed documents and requires fresh acceptance before retrying", async () => {
+    vi.mocked(api.register).mockRejectedValueOnce(new LegalConsentError()).mockResolvedValueOnce({ id: 1 })
+    const user = userEvent.setup()
+    render(<RegisterPage />)
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "student@example.com")
+    await user.type(screen.getByPlaceholderText("Минимум 12 символов"), "supersecretpw123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "Создать аккаунт через email" }))
+    await giveConsent(user)
+    await screen.findByRole("alert")
+    expect(api.register).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(api.fetchPublicSettings).toHaveBeenCalledTimes(2))
+    expect(screen.getByRole("button", { name: "Я даю согласие" })).toBeDisabled()
+    await giveConsent(user)
+    await screen.findByText("Проверь почту")
+    expect(api.register).toHaveBeenCalledTimes(2)
   })
 
   it("shows a server error message when registration fails", async () => {
@@ -228,7 +252,7 @@ describe("RegisterPage", () => {
     await giveConsent(user)
 
     await vi.waitFor(() => {
-      expect(api.telegramStart).toHaveBeenCalledWith("student", "ru", "KZ")
+      expect(api.telegramStart).toHaveBeenCalledWith("student", "ru", "KZ", legalConsents)
     })
   })
 

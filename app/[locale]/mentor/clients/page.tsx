@@ -1,18 +1,20 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { fetchMentorClients, type MentorClient, type MentorClients } from "@/lib/api"
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { Avatar } from "@/components/Avatar"
 import BackButton from "@/components/BackButton"
+import { studentDesiredCountriesSummary } from "@/lib/studentEducation"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
 
 type Tab = "active" | "inactive"
 
-function ClientRow({ client }: { client: MentorClient }) {
+function ClientRow({ client }: { client: MentorClient & { desired_country_codes?: string[]; desired_countries?: string } }) {
+  const locale = useLocale()
   return (
     <Link
       href={`/mentor/clients/${client.id}`}
@@ -30,6 +32,9 @@ function ClientRow({ client }: { client: MentorClient }) {
           <p className="text-xs text-gray-400 truncate">
             {[client.current_school_or_university, client.city].filter(Boolean).join(" · ")}
           </p>
+          {studentDesiredCountriesSummary(client, locale) && (
+            <p className="text-xs text-gray-500">{studentDesiredCountriesSummary(client, locale)}</p>
+          )}
         </div>
         <Icon name="arrow_forward_ios" size={16} className="text-gray-300 flex-shrink-0" />
       </div>

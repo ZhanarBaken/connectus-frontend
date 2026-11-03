@@ -1,3 +1,4 @@
+import { checkLegalConsentError, type LegalConsents, type LegalDocuments } from "./legalConsent"
 // ─── API client ──────────────────────────────────────────────────────────────
 // Switch USE_MOCKS to false when backend is ready
 
@@ -107,6 +108,9 @@ async function readCooldown(res: Response, fallbackMessage: string): Promise<Coo
 // ─── Public settings ────────────────────────────────────────────────────────
 
 export interface PublicSettings {
+  legal_documents?: LegalDocuments
+  market?: string
+  currency?: string
   dispute_window_hours: number
   // Longer, separately configured window for support-category orders —
   // see Order.is_disputable on the backend.
@@ -289,6 +293,10 @@ export async function fetchMentorEarnings(): Promise<MentorEarnings> {
 }
 
 export interface MentorClient {
+  school_grade?: string
+  school_grade_code?: string
+  desired_countries?: string
+  desired_country_codes?: string[]
   id: number
   full_name: string
   current_school_or_university: string
@@ -898,7 +906,7 @@ export async function confirmPasswordReset(token: string, password: string): Pro
 // telegramStart/googleAuth below, there's no country-agnostic login path
 // reusing this function that a hardcoded default could clobber.
 export async function register(
-  email: string, password: string, role: string, agreedToTerms: boolean, country: string = "KZ",
+  email: string, password: string, role: string, agreedToTerms: boolean, country: string = "KZ", locale: string = "ru", legalConsents?: LegalConsents,
 ) {
   if (USE_MOCKS) {
     return { id: 1, email, role }
@@ -907,10 +915,11 @@ export async function register(
   const res = await fetch(`${BASE_URL}/auth/register/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, role, agreed_to_terms: agreedToTerms, country }),
+    body: JSON.stringify({ email, password, role, agreed_to_terms: agreedToTerms, country, locale, legal_consents: legalConsents }),
   })
   if (!res.ok) {
     const data = await res.json()
+    checkLegalConsentError(data)
     const first = Object.values(data)[0]
     const msg = Array.isArray(first) ? first[0] : String(first)
     throw new Error(msg)
@@ -1061,9 +1070,10 @@ export async function getFreshAccessToken(): Promise<string | null> {
 // lets the backend's own default apply rather than this function
 // silently forcing one.
 export async function telegramStart(
-  role: string, locale: string, country?: string,
+  role: string, locale: string, country?: string, legalConsents?: LegalConsents,
 ): Promise<{ token: string; bot_url: string }> {
-  const body: Record<string, string> = { role, locale }
+  const body: Record<string, unknown> = { role, locale }
+  if (legalConsents) body.legal_consents = legalConsents
   if (country) body.country = country
   const res = await fetch(`${BASE_URL}/auth/telegram/start/`, {
     method: "POST",
@@ -1072,7 +1082,22 @@ export async function telegramStart(
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
+    checkLegalConsentError(err)
     throw new Error(err.detail || "Не удалось начать авторизацию через Telegram")
+  }
+  return res.json()
+}
+
+// Browser login uses the bot transport without authorizing account creation.
+export async function telegramLoginStart(locale: string): Promise<{ token: string; bot_url: string }> {
+  const res = await fetch(`${BASE_URL}/auth/telegram/start/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role: "student", locale, login_only: true }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || "")
   }
   return res.json()
 }
@@ -1117,14 +1142,17 @@ export type TelegramMiniAppLoginResult =
 export async function telegramMiniAppLogin(
   initData: string,
   role?: "student" | "mentor",
+  preferences?: { country: string; locale: string },
+  legalConsents?: LegalConsents,
 ): Promise<TelegramMiniAppLoginResult> {
   const res = await fetch(`${BASE_URL}/auth/telegram/miniapp/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(role ? { init_data: initData, role } : { init_data: initData }),
+    body: JSON.stringify(role ? { init_data: initData, role, ...preferences, legal_consents: legalConsents } : { init_data: initData }),
   })
   if (res.status === 400) {
     const err = await res.json().catch(() => ({}))
+    checkLegalConsentError(err)
     if (err.detail === "role_required") {
       return { ok: false, reason: "role_required" }
     }
@@ -1134,20 +1162,23 @@ export async function telegramMiniAppLogin(
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
+    checkLegalConsentError(err)
     throw new Error(err.detail || "")
   }
   const data = await res.json()
   return { ok: true, ...data }
 }
 
-export async function telegramFinalize(token: string): Promise<{ user_id: number; created: boolean; access: string; refresh: string }> {
+export async function telegramFinalize(token: string, legalConsents?: LegalConsents): Promise<{ user_id: number; created: boolean; access: string; refresh: string }> {
   const res = await fetch(`${BASE_URL}/auth/telegram/finalize/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, legal_consents: legalConsents }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
+    checkLegalConsentError(err)
+    if (err.code === "account_not_found") throw new AccountNotFoundError(err.detail || "")
     throw new Error(err.detail || "Не удалось завершить авторизацию через Telegram")
   }
   return res.json()
@@ -1235,11 +1266,13 @@ export class GoogleAuthNotConfiguredError extends Error {
 // page calls this with neither (existing-user login, where the backend
 // treats a missing role as "not a signup" and ignores country entirely).
 export async function googleAuth(
-  idToken: string, role?: string, country?: string,
+  idToken: string, role?: string, country?: string, locale?: string, legalConsents?: LegalConsents,
 ): Promise<{ access: string; refresh: string; created?: boolean }> {
-  const body: Record<string, string> = { id_token: idToken }
+  const body: Record<string, unknown> = { id_token: idToken }
+  if (legalConsents) body.legal_consents = legalConsents
   if (role) body.role = role
   if (country) body.country = country
+  if (locale) body.locale = locale
   const res = await fetch(`${BASE_URL}/auth/google/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1253,6 +1286,7 @@ export async function googleAuth(
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
+    checkLegalConsentError(err)
     if (err.code === "account_not_found") {
       throw new AccountNotFoundError(err.detail || "")
     }
@@ -1820,4 +1854,18 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
   const newToken = await refreshAccessToken()
   res = await fetch(input, { ...init, headers: buildHeaders(newToken) })
   return res
+}
+
+export async function updateAccountPreferences(preferences: {
+  country?: string
+  locale?: "ru" | "en" | "kk"
+  time_zone?: string
+}): Promise<import("@/types").User> {
+  const res = await authFetch(`${BASE_URL}/auth/me/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(preferences),
+  })
+  if (!res.ok) throw new Error("Account preferences update failed")
+  return res.json()
 }

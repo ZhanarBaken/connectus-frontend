@@ -190,6 +190,7 @@ describe("StudentOnboarding", () => {
   })
 
   it("submits the completed profile and redirects to the student dashboard", async () => {
+    vi.mocked(api.fetchStudentProfile).mockResolvedValue(makeProfile({ desired_countries: "Atlantis? undecided" }))
     vi.mocked(api.fetchMe).mockResolvedValue(makeUser({ email: "student@example.com", email_verified: true }))
     vi.mocked(api.authFetch).mockResolvedValue(jsonResponse(makeProfile()))
     const user = userEvent.setup()
@@ -199,7 +200,7 @@ describe("StudentOnboarding", () => {
     await user.type(screen.getByPlaceholderText("Айгерим Бекова"), "Aigerim Bekova")
     const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement
     await user.type(dateInput, "2008-05-01")
-    await user.selectOptions(screen.getByRole("combobox"), "11 класс")
+    await user.selectOptions(screen.getByRole("combobox"), "grade_11")
     await user.type(screen.getByPlaceholderText("Алматы"), "Алматы")
     await user.type(screen.getByPlaceholderText("2026"), "2026")
 
@@ -209,7 +210,10 @@ describe("StudentOnboarding", () => {
       const patchCall = vi.mocked(api.authFetch).mock.calls.find(([, init]) => init?.method === "PATCH")
       expect(patchCall).toBeDefined()
       const body = JSON.parse(String(patchCall?.[1]?.body))
-      expect(body).toMatchObject({ full_name: "Aigerim Bekova", city: "Алматы" })
+      expect(body).toMatchObject({ full_name: "Aigerim Bekova", city: "Алматы", school_grade_code: "grade_11" })
+      expect(body).not.toHaveProperty("school_grade")
+      expect(body).not.toHaveProperty("desired_countries")
+      expect(body).not.toHaveProperty("desired_country_codes")
     })
     expect(push).toHaveBeenCalledWith("/student/dashboard")
   })
@@ -227,7 +231,7 @@ describe("StudentOnboarding", () => {
     await user.type(screen.getByPlaceholderText("Айгерим Бекова"), "Aigerim Bekova")
     const dateInput2 = document.querySelector('input[type="date"]') as HTMLInputElement
     await user.type(dateInput2, "2008-05-01")
-    await user.selectOptions(screen.getByRole("combobox"), "11 класс")
+    await user.selectOptions(screen.getByRole("combobox"), "grade_11")
     await user.type(screen.getByPlaceholderText("Алматы"), "Алматы")
     await user.type(screen.getByPlaceholderText("2026"), "2026")
     await user.click(screen.getByRole("button", { name: "Готово →" }))
@@ -248,7 +252,7 @@ describe("StudentOnboarding", () => {
     await user.type(screen.getByPlaceholderText("Айгерим Бекова"), "Aigerim Bekova")
     const dateInput3 = document.querySelector('input[type="date"]') as HTMLInputElement
     await user.type(dateInput3, "2008-05-01")
-    await user.selectOptions(screen.getByRole("combobox"), "11 класс")
+    await user.selectOptions(screen.getByRole("combobox"), "grade_11")
     await user.type(screen.getByPlaceholderText("Алматы"), "Алматы")
     await user.type(screen.getByPlaceholderText("2026"), "2026")
     await user.click(screen.getByRole("button", { name: "Готово →" }))
@@ -272,7 +276,7 @@ describe("StudentOnboarding", () => {
     await user.type(screen.getByPlaceholderText("Айгерим Бекова"), "Aigerim Bekova")
     const dateInput4 = document.querySelector('input[type="date"]') as HTMLInputElement
     await user.type(dateInput4, "2008-05-01")
-    await user.selectOptions(screen.getByRole("combobox"), "11 класс")
+    await user.selectOptions(screen.getByRole("combobox"), "grade_11")
     await user.type(screen.getByPlaceholderText("Алматы"), "Алматы")
     await user.type(screen.getByPlaceholderText("2026"), "2026")
     await user.click(screen.getByRole("button", { name: "Готово →" }))

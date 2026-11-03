@@ -7,14 +7,18 @@ import { fetchMentorUpcomingBookings, fetchMyMentorSchedule, saveMyMentorSchedul
 import { useMentorOnboardingGate } from "@/lib/useMentorOnboardingGate"
 import { translateScheduleErrorMessage } from "@/lib/scheduleErrors"
 import {
+  formatZonedInstant,
   emptyWeekSchedule,
   flatToWeekSchedule,
   formatDateISO,
   weekScheduleToFlat,
+  type MentorSchedule,
   type ScheduleBlock,
   type TimeSlot,
   type WeekSchedule,
 } from "@/lib/schedule"
+import { useScheduleTimeZone } from "@/lib/useScheduleTimeZone"
+import ScheduleTimezoneNotice from "@/components/ScheduleTimezoneNotice"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
@@ -44,7 +48,9 @@ export default function MentorSchedulePage() {
 
   const [weekSchedule, setWeekSchedule] = useState<WeekSchedule>(emptyWeekSchedule())
   const [blockedDates, setBlockedDates] = useState<ScheduleBlock[]>([])
+  const { timeZone: userZone, preferenceLoadError, retry } = useScheduleTimeZone()
   const [timezone, setTimezone] = useState("")
+  const [exceptions, setExceptions] = useState<MentorSchedule["exceptions"]>()
 
   const [upcomingBookings, setUpcomingBookings] = useState<MentorUpcomingBooking[]>([])
   const [bookingsLoading, setBookingsLoading] = useState(true)
@@ -67,6 +73,7 @@ export default function MentorSchedulePage() {
         setWeekSchedule(flatToWeekSchedule(schedule.weekly))
         setBlockedDates(schedule.blocks)
         setTimezone(schedule.timezone)
+        setExceptions(schedule.exceptions)
       })
       .catch((err) =>
         setError(err instanceof Error ? translateScheduleErrorMessage(err.message, t) : t("loadError")),
@@ -149,10 +156,13 @@ export default function MentorSchedulePage() {
     setError("")
     setSaved(false)
     try {
-      await saveMyMentorSchedule({
+      const payload = {
+        timezone,
+        ...(exceptions ? { exceptions } : {}),
         weekly: weekScheduleToFlat(weekSchedule),
         blocks: blockedDates,
-      })
+      }
+      await saveMyMentorSchedule(payload)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -187,8 +197,17 @@ export default function MentorSchedulePage() {
           {t("pageSubtitle")}
         </p>
         {timezone && (
-          <p className="text-xs text-gray-400 mb-8">{t("timezoneLabel", { timezone })}</p>
+          <label className="block text-xs text-gray-500 mb-8">
+            {t("timezoneLabel", { timezone })}
+            <input aria-label={t("timezoneLabel", { timezone })} value={timezone} onChange={(e) => setTimezone(e.target.value)}
+              list="schedule-timezones" className="block mt-2 rounded border border-gray-200 p-2 text-sm" />
+            <datalist id="schedule-timezones">
+              {["Asia/Almaty", "Europe/Berlin", "Europe/London", "America/New_York", "Asia/Tokyo", "UTC"].map((zone) => <option key={zone} value={zone} />)}
+            </datalist>
+          </label>
         )}
+
+        <ScheduleTimezoneNotice error={preferenceLoadError} timeZone={userZone} retry={retry} />
 
         {/* ── Upcoming bookings — who's actually booked into the
             availability below, without opening each client. ────── */}
@@ -215,9 +234,7 @@ export default function MentorSchedulePage() {
                     <p className="text-xs text-gray-400 truncate">{b.service_title}</p>
                   </div>
                   <span className="text-sm font-medium text-gray-700 flex-shrink-0">
-                    {new Date(b.scheduled_at).toLocaleString(locale, {
-                      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                    })}
+                    {formatZonedInstant(b.scheduled_at, userZone || "UTC", locale)}
                   </span>
                 </Link>
               ))}

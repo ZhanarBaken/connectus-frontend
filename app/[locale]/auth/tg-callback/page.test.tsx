@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event"
+import { LegalConsentError } from "@/lib/legalConsent"
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { useSearchParams } from "next/navigation"
@@ -116,4 +118,18 @@ describe("TgCallbackPage", () => {
 
     expect(await screen.findByText("Ссылка устарела")).toBeInTheDocument()
   })
+  it("restarts signup instead of retrying a token consumed on stale consent", async () => {
+    const user = userEvent.setup()
+    localStorage.setItem("tg_signup_token", "consumed-token")
+    vi.mocked(api.telegramFinalize).mockRejectedValue(new LegalConsentError())
+    render(<TgCallbackPage />)
+    const restart = await screen.findByRole("button", { name: "Начать регистрацию заново" })
+    expect(localStorage.getItem("tg_signup_token")).toBeNull()
+    expect(api.telegramFinalize).toHaveBeenCalledTimes(1)
+    await user.click(restart)
+    expect(push).toHaveBeenCalledWith("/auth/register")
+    expect(api.telegramFinalize).toHaveBeenCalledTimes(1)
+    expect(localStorage.getItem("access_token")).toBeNull()
+  })
+
 })

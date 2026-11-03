@@ -1,5 +1,6 @@
 "use client"
 
+import { formatMoney, LEGACY_ORDER_CURRENCY } from "@/lib/money"
 import { useEffect, useState } from "react"
 import { confirmOrderPayment, rejectOrderPayment, fetchOrderDocuments } from "@/lib/api"
 import { AdminOrder, OrderDocument } from "@/types"
@@ -61,7 +62,7 @@ export function PaymentConfirmModal({ order, onClose, onConfirmed, onRejected }:
       <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-gray-900 mb-1">Подтверждение оплаты</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Заказ #{order.id} · {order.student_info?.full_name || `Студент #${order.student}`} · {order.total_price} ₸
+          Заказ #{order.id} · {order.student_info?.full_name || `Студент #${order.student}`} · {formatMoney(order.total_price, order.currency ?? LEGACY_ORDER_CURRENCY)}
         </p>
 
         {order.payment_instructions && (

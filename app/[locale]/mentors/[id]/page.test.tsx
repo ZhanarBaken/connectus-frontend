@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import MentorPage from "./page"
 import {
+  fetchMe,
   fetchMentor,
   createOrder,
   requestSupport,
@@ -129,6 +130,7 @@ async function renderMentorPage(id: string) {
 }
 
 beforeEach(() => {
+  vi.mocked(fetchMe).mockResolvedValue({ time_zone: "" } as Awaited<ReturnType<typeof fetchMe>>)
   vi.clearAllMocks()
   localStorage.clear()
   localStorage.setItem("access_token", "fake-token")

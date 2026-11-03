@@ -29,6 +29,7 @@ export interface MentorSchedule {
   timezone: string
   weekly: ScheduleWindow[]
   blocks: ScheduleBlock[]
+  exceptions?: { date: string; start_time: string; end_time: string }[]
 }
 
 // ─── Editor-friendly shape (with explicit per-day enabled toggle) ───────────
@@ -185,4 +186,32 @@ export function formatShortDateLabel(
 ): string {
   if (locale === 'kk') return `${date.getDate()} ${monthsShort[date.getMonth()]} ${date.getFullYear()}`
   return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+
+/** Additive API fields let older Almaty-only servers keep working. */
+export interface ScheduleSlotInstants {
+  slot_instants?: Record<string, string>
+}
+
+export function bookingInstant(date: string, time: string, zone: string, instants?: Record<string, string>): string | undefined {
+  if (instants) return instants[time]
+  // Legacy API responses predate per-mentor zones and only used Almaty.
+  if (zone === "Asia/Almaty") return `${date}T${time}:00+05:00`
+  return undefined
+}
+
+export function formatZonedInstant(instant: string, zone: string, locale: string, month: "short" | "long" = "short"): string {
+  return new Date(instant).toLocaleString(locale, {
+    timeZone: zone, day: "numeric", month, hour: "2-digit", minute: "2-digit",
+  }) + ` · ${zone}`
+}
+
+
+export function dateInZone(instant: Date, zone: string): string {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(instant)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)!.value
+  return `${part("year")}-${part("month")}-${part("day")}`
 }
