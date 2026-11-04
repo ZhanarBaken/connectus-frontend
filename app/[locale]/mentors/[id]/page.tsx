@@ -1,5 +1,6 @@
 "use client"
 
+import { formatMoney } from "@/lib/money"
 import { useState, useEffect, use } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
@@ -352,7 +353,7 @@ export default function MentorPage({ params }: Props) {
                 each gets its own card, but only one active order across
                 ALL of them is allowed at a time. */}
             {consultationServices.map((consultationService) => {
-              const fullPrice = Number(consultationService.client_price ?? 0)
+              const fullPrice = consultationService.client_price
               // Does the mentor-wide active order belong to THIS card, or
               // to a different consultation service of the same mentor?
               const isThisOrder = consultationOrder?.mentor_service === consultationService.id
@@ -364,7 +365,7 @@ export default function MentorPage({ params }: Props) {
                   <div className="flex justify-between items-start gap-4">
                     <h2 className="text-2xl font-bold mb-2">{consultationService.title || t("consultationTitleDefault")}</h2>
                     <div className="text-2xl font-bold flex-shrink-0">
-                      {fullPrice === 0 ? t("free") : `${fullPrice.toLocaleString("ru-RU")} ₸`}
+                      {fullPrice !== null && Number(fullPrice) === 0 ? t("free") : formatMoney(fullPrice, consultationService.currency)}
                     </div>
                   </div>
                   <p className="text-indigo-100 text-sm leading-relaxed mb-5 max-w-xl whitespace-pre-line break-words">
@@ -451,9 +452,9 @@ export default function MentorPage({ params }: Props) {
                       >
                         {orderingServiceId === consultationService.id
                           ? t("ordering")
-                          : fullPrice === 0
+                          : fullPrice !== null && Number(fullPrice) === 0
                           ? t("orderFree")
-                          : t("orderConsultationFor", { price: fullPrice.toLocaleString("ru-RU") })}
+                          : t("orderConsultationFor", { price: formatMoney(fullPrice, consultationService.currency) })}
                       </button>
                     )}
                     {!mentor.is_accepting_bookings && consultationStatus === "none" && (
@@ -497,7 +498,7 @@ export default function MentorPage({ params }: Props) {
                           <div className="text-2xl font-bold text-gray-900">
                             {service.is_price_negotiable || service.client_price === null
                               ? t("negotiablePrice")
-                              : `${Number(service.client_price).toLocaleString("ru-RU")} ₸`}
+                              : formatMoney(service.client_price, service.currency)}
                           </div>
                           {service.intro_call_enabled && (
                             <span className="inline-flex items-center gap-1 mt-1 text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-medium">
@@ -673,16 +674,12 @@ export default function MentorPage({ params }: Props) {
               <BookingCalendar
                 mentorId={mentor.id}
                 durationMinutes={bookingIsIntroCall ? introCallDurationMinutes : bookingService.duration_minutes}
-                onSelect={async (date, time) => {
+                onSelect={async (_date, _time, scheduledAt) => {
                   const serviceId = bookingService.id
                   setBookingService(null)
                   setBookingIsIntroCall(false)
                   setOrderingServiceId(serviceId)
                   setOrderError("")
-                  // Backend SCHEDULE_TIMEZONE is Asia/Almaty (+05:00, no
-                  // DST). Hardcoded so a student in another browser TZ
-                  // still books the mentor's local slot correctly.
-                  const scheduledAt = `${date}T${time}:00+05:00`
                   try {
                     const created = await createOrder(serviceId, scheduledAt)
                     router.push(`/orders/${created.id}`)

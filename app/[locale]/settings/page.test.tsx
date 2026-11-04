@@ -13,6 +13,7 @@ vi.mock("@/lib/api", async () => {
     updateMentorProfile: vi.fn(),
     fetchStudentProfile: vi.fn(),
     fetchMe: vi.fn(),
+    updateAccountPreferences: vi.fn(),
     telegramLinkStart: vi.fn(),
     telegramLinkFinalize: vi.fn(),
     telegramUnlink: vi.fn(),
@@ -29,6 +30,7 @@ import {
   updateMentorProfile,
   fetchStudentProfile,
   fetchMe,
+  updateAccountPreferences,
   telegramLinkStart,
   telegramLinkFinalize,
   telegramUnlink,
@@ -158,6 +160,21 @@ describe("SettingsPage", () => {
       mockRouter()
       vi.mocked(fetchMe).mockResolvedValue(makeUser({ role: "mentor" }))
       vi.mocked(fetchMentorProfile).mockResolvedValue(makeMentorProfile())
+    })
+
+    it("saves account preferences and retains the returned account on the page", async () => {
+      const user = userEvent.setup()
+      vi.mocked(updateAccountPreferences).mockResolvedValue(makeUser({
+        country: "KZ", country_declared_at: "2026-11-03T00:00:00Z",
+        time_zone: "Asia/Almaty", locale: "ru",
+      }))
+      render(<SettingsPage />)
+      await user.type(await screen.findByLabelText("Часовой пояс"), "Asia/Almaty")
+      await user.click(screen.getByRole("button", { name: "Сохранить часовой пояс" }))
+      expect(updateAccountPreferences).toHaveBeenCalledWith({ time_zone: "Asia/Almaty" })
+      expect(await screen.findByRole("status")).toHaveTextContent("Предпочтения сохранены")
+      expect(screen.getByLabelText("Часовой пояс")).toHaveValue("Asia/Almaty")
+      expect(screen.getByRole("button", { name: "Сохранить часовой пояс" })).toBeDisabled()
     })
 
     it("renders the visibility and accepting-bookings toggles as on by default", async () => {

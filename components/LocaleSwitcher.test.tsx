@@ -13,6 +13,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 describe("LocaleSwitcher", () => {
   beforeEach(() => {
     localStorage.clear()
+    window.history.replaceState(null, "", "/")
     vi.mocked(usePathname).mockReturnValue("/mentors")
     vi.mocked(api.updateUserLocale).mockClear()
   })
@@ -47,6 +48,24 @@ describe("LocaleSwitcher", () => {
     await user.click(screen.getByText("KZ"))
 
     expect(replace).toHaveBeenCalledWith("/mentors", { locale: "kk" })
+  })
+
+  it("preserves role and repeated query parameters during locale navigation", async () => {
+    window.history.replaceState(null, "", "/ru/auth/register?role=mentor&tag=a&tag=b")
+    vi.mocked(usePathname).mockReturnValue("/auth/register")
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({ replace } as unknown as ReturnType<typeof useRouter>)
+    render(<LocaleSwitcher />)
+    await userEvent.click(screen.getByText("EN"))
+    expect(replace).toHaveBeenCalledWith("/auth/register?role=mentor&tag=a&tag=b", { locale: "en" })
+  })
+
+  it("does not navigate when the current language is clicked", async () => {
+    const replace = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({ replace } as unknown as ReturnType<typeof useRouter>)
+    render(<LocaleSwitcher />)
+    await userEvent.click(screen.getByText("RU"))
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it("applies a custom className to the wrapper", () => {

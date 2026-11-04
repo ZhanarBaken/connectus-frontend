@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import {
   fetchMentorProfile, updateMentorProfile,
-  fetchMe,
+  fetchMe, updateAccountPreferences,
   telegramLinkStart, telegramLinkFinalize, telegramUnlink,
   googleLink, googleUnlink,
   setEmail, changeEmail,
@@ -19,6 +19,7 @@ import { useTelegramWebApp } from "@/lib/useTelegramWebApp"
 import { useStudentOnboardingGate } from "@/lib/useStudentOnboardingGate"
 import { User } from "@/types"
 import { SUPPORT_EMAIL, SUPPORT_TELEGRAM_URL } from "@/lib/contacts"
+import AccountPreferences from "@/components/AccountPreferences"
 import BackButton from "@/components/BackButton"
 import Icon from "@/components/Icon"
 
@@ -420,6 +421,12 @@ export default function SettingsPage() {
             </button>
           </div>
         )}
+        {me && <AccountPreferences me={me} onUpdate={async (preferences) => {
+          const updated = await updateAccountPreferences(preferences)
+          setMe(updated)
+          return updated
+        }} />}
+
         {me && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-5">{t("connectedAccountsTitle")}</h2>

@@ -1,5 +1,6 @@
 "use client"
 
+import { formatMoney, LEGACY_ORDER_CURRENCY } from "@/lib/money"
 import { useState, useEffect } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
@@ -135,7 +136,7 @@ export default function OrdersPage() {
               >
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
-                    {order.service_title}
+                    {order.service_title_snapshot ?? order.service_title ?? "—"}
                   </h3>
                   <p className="text-sm text-gray-500 mt-0.5 truncate">
                     {mentorNames[order.mentor] || t("mentorDefault")}
@@ -153,7 +154,7 @@ export default function OrdersPage() {
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[order.order_status]}`}>
                     {tStatus(STATUS_KEY[order.order_status])}
                   </span>
-                  <span className="text-lg font-bold text-gray-900">{Number(order.total_price).toLocaleString("ru-RU")} ₸</span>
+                  <span className="text-lg font-bold text-gray-900">{formatMoney(order.total_price, order.currency ?? LEGACY_ORDER_CURRENCY)}</span>
                 </div>
               </Link>
             ))}

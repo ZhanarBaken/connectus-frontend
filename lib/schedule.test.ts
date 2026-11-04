@@ -204,3 +204,29 @@ describe("DAY_LABELS / DAY_LABELS_FULL", () => {
     expect(DAY_LABELS_FULL[6]).toBe("Воскресенье")
   })
 })
+
+import { bookingInstant, dateInZone, formatZonedInstant } from "./schedule"
+
+describe("schedule instants", () => {
+  it("uses server UTC instants for international schedules", () => {
+    expect(bookingInstant("2027-07-05", "09:00", "America/New_York", { "09:00": "2027-07-05T13:00:00Z" })).toBe("2027-07-05T13:00:00Z")
+  })
+  it("does not invent an offset or fill missing server slots", () => {
+    expect(bookingInstant("2027-10-31", "02:30", "Europe/Berlin", {})).toBeUndefined()
+    expect(bookingInstant("2027-07-05", "09:00", "America/New_York")).toBeUndefined()
+    expect(bookingInstant("2027-07-05", "09:00", "Asia/Almaty", {})).toBeUndefined()
+  })
+  it("preserves the legacy Almaty API contract", () => {
+    expect(bookingInstant("2027-07-05", "09:00", "Asia/Almaty")).toBe("2027-07-05T09:00:00+05:00")
+  })
+  it("shows the same instant with an explicit user zone and date", () => {
+    expect(formatZonedInstant("2027-07-05T01:00:00Z", "America/New_York", "en")).toContain("Jul 4")
+    expect(formatZonedInstant("2027-07-05T01:00:00Z", "Asia/Almaty", "en")).toContain("Asia/Almaty")
+  })
+})
+
+it("uses the mentor's calendar date across international midnight", () => {
+  const now = new Date("2027-07-05T01:00:00Z")
+  expect(dateInZone(now, "America/New_York")).toBe("2027-07-04")
+  expect(dateInZone(now, "Asia/Almaty")).toBe("2027-07-05")
+})

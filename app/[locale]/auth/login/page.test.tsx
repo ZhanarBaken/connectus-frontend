@@ -7,14 +7,14 @@ import LoginPage from "./page"
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>()
-  return { ...actual, telegramStart: vi.fn() }
+  return { ...actual, telegramLoginStart: vi.fn() }
 })
 
 describe("LoginPage", () => {
   beforeEach(() => {
     localStorage.clear()
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
-    vi.mocked(api.telegramStart).mockReset()
+    vi.mocked(api.telegramLoginStart).mockReset()
   })
 
   it("does not show the session-expired notice by default", () => {
@@ -36,15 +36,15 @@ describe("LoginPage", () => {
     expect(screen.getByPlaceholderText("••••••••••••")).toBeInTheDocument()
   })
 
-  it("passes the current locale to telegramStart when logging in via Telegram", async () => {
-    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=signup_tok123" })
+  it("passes the current locale to telegramLoginStart when logging in via Telegram", async () => {
+    vi.mocked(api.telegramLoginStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=signup_tok123" })
     const user = userEvent.setup()
     render(<LoginPage />)
 
     await user.click(screen.getByRole("button", { name: "Войти через Telegram" }))
 
     await vi.waitFor(() => {
-      expect(api.telegramStart).toHaveBeenCalledWith("student", "ru")
+      expect(api.telegramLoginStart).toHaveBeenCalledWith("ru")
     })
   })
 
@@ -53,8 +53,8 @@ describe("LoginPage", () => {
   // if `window.location.href = bot_url` didn't actually navigate away
   // (e.g. an installed Telegram Desktop app intercepting the link
   // without unloading the tab, or an extension silently blocking it).
-  it("shows a manual fallback link and re-enables the rest of the form after a successful telegramStart", async () => {
-    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=login_tok123" })
+  it("shows a manual fallback link and re-enables the rest of the form after a successful telegramLoginStart", async () => {
+    vi.mocked(api.telegramLoginStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=login_tok123" })
     const user = userEvent.setup()
     render(<LoginPage />)
 
@@ -70,7 +70,7 @@ describe("LoginPage", () => {
   })
 
   it("disables the Telegram button itself once a redirect is pending, so a stuck navigation can't be retried into a second, orphaning token", async () => {
-    vi.mocked(api.telegramStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=login_tok123" })
+    vi.mocked(api.telegramLoginStart).mockResolvedValue({ token: "tok123", bot_url: "https://t.me/bot?start=login_tok123" })
     const user = userEvent.setup()
     render(<LoginPage />)
 

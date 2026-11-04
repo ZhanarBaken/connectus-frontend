@@ -80,6 +80,19 @@ describe("OrderKanbanBoard", () => {
     expect(await screen.findByText("Не удалось загрузить заказы")).toBeInTheDocument()
   })
 
+  it("uses the booked title and does not relabel unsupported currency as KZT", async () => {
+    vi.mocked(fetchAdminOrders).mockResolvedValue([makeAdminOrder({
+      service_title: "Current catalog title",
+      service_title_snapshot: "Booked title",
+      currency: "USD",
+    })])
+    render(<OrderKanbanBoard />)
+    const card = await screen.findByTestId("order-card-1")
+    expect(card).toHaveTextContent("Booked title")
+    expect(card).not.toHaveTextContent("Current catalog title")
+    expect(card).not.toHaveTextContent("₸")
+  })
+
   it("groups orders into the right columns", async () => {
     vi.mocked(fetchAdminOrders).mockResolvedValue([
       makeAdminOrder({ id: 1, order_status: "pending_payment" }),

@@ -855,7 +855,7 @@
       "alreadyActiveConsultation": "You already have an active consultation with this mentor →",
       "ordering": "Ordering...",
       "orderFree": "Order for free",
-      "orderConsultationFor": "Order the consultation for {price} ₸",
+      "orderConsultationFor": "Order the consultation for {price}",
       "notAcceptingRequests": "The mentor isn't accepting requests right now",
       "supportTitle": "Ongoing support",
       "supportSubtitle": "A long-term program — price and timeline are discussed with the mentor",
@@ -1461,7 +1461,17 @@
     "retry": "Try again",
     "notPublished": "The consent text hasn't been published yet. Please contact support.",
     "cancel": "Cancel",
-    "consent": "I give my consent"
+    "consent": "I give my consent",
+    "terms": "Terms of use",
+    "privacy": "Privacy policy",
+    "data_consent": "Data processing consent",
+    "accept_terms": "I accept the terms of use",
+    "accept_privacy": "I acknowledge the privacy policy",
+    "accept_data_consent": "I consent to data processing",
+    "documentLanguage": "Document language: {language}",
+    "changed": "The documents have changed. Review the current texts and confirm each document again.",
+    "restartTelegram": "The documents have changed or need confirmation. Restart signup, review the current texts and confirm each document.",
+    "restartSignup": "Restart signup"
   },
   "CountryPickerModal": {
     "title": "Choose a country",
@@ -1579,5 +1589,20 @@
       "title": "Platform rules",
       "empty": "The rules haven't been published yet."
     }
+  },
+  "AccountPreferences": {
+    "title": "Account preferences",
+    "countryUnknown": "Select your country and save to confirm where you live.",
+    "timeZone": "Time zone",
+    "timeZoneHelp": "Time zone used to display times, for example Asia/Almaty. Changes apply after saving.",
+    "saved": "Preferences saved",
+    "saveError": "Could not save preferences. Check your entries and try again.",
+    "invalidTimeZone": "Enter a valid IANA time zone, for example Asia/Almaty.",
+    "saveCountry": "Save country",
+    "saveTimeZone": "Save time zone"
+  },
+  "ScheduleTimezone": {
+    "unavailable": "Could not load your saved time zone. Browser time zone shown: {timeZone}.",
+    "retry": "Try again"
   }
 }

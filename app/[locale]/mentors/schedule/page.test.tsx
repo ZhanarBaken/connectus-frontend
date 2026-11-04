@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { useRouter } from "@/i18n/navigation"
 import MentorSchedulePage from "./page"
-import { fetchMyMentorSchedule, saveMyMentorSchedule, fetchMentorProfile, fetchMentorUpcomingBookings } from "@/lib/api"
+import { fetchMe, fetchMyMentorSchedule, saveMyMentorSchedule, fetchMentorProfile, fetchMentorUpcomingBookings } from "@/lib/api"
 import type { MentorSchedule } from "@/lib/schedule"
 import type { MentorProfile } from "@/types"
 
@@ -18,6 +18,7 @@ function makeSchedule(overrides: Partial<MentorSchedule> = {}): MentorSchedule {
 }
 
 beforeEach(() => {
+  vi.mocked(fetchMe).mockResolvedValue({ time_zone: "" } as Awaited<ReturnType<typeof fetchMe>>)
   vi.clearAllMocks()
   localStorage.clear()
   vi.mocked(fetchMentorProfile).mockRejectedValue(new Error("403"))
@@ -130,6 +131,7 @@ describe("MentorSchedulePage — mentor view", () => {
     fireEvent.click(saveButton)
 
     await waitFor(() => expect(saveMyMentorSchedule).toHaveBeenCalledWith({
+      timezone: "Asia/Almaty",
       weekly: [{ weekday: 0, start_time: "10:00", end_time: "18:00" }],
       blocks: [],
     }))
@@ -162,6 +164,16 @@ describe("MentorSchedulePage — upcoming bookings", () => {
     render(<MentorSchedulePage />)
 
     expect(await screen.findByText("Пока никто не записан")).toBeInTheDocument()
+  })
+
+  it("displays booked UTC instants in the explicit account timezone", async () => {
+    vi.mocked(fetchMe).mockResolvedValue({ time_zone: "America/New_York" } as Awaited<ReturnType<typeof fetchMe>>)
+    vi.mocked(fetchMentorUpcomingBookings).mockResolvedValue([{
+      order_id: 42, scheduled_at: "2026-08-10T06:00:00Z", service_title: "Call",
+      student_id: 51, student_name: "Student", order_status: "draft", payout_category: "support",
+    }])
+    render(<MentorSchedulePage />)
+    expect(await screen.findByText(/02:00.*America\/New_York/)).toBeInTheDocument()
   })
 
   it("lists an upcoming booking with student name, service and time", async () => {

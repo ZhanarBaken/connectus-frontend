@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation"
 import OrderPage from "./page"
 import { translateInvoiceErrorMessage } from "@/lib/supportInvoiceErrors"
 import {
+  fetchMe,
   fetchOrder,
   fetchMentor,
   completeOrder,
@@ -56,6 +57,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     mentor: 3,
     mentor_service: 10,
     service_title: "Первичная консультация",
+    service_duration_minutes_snapshot: 60,
     payout_category: "paid_consultation",
     subtotal: "10000.00",
     total_price: "10000.00",
@@ -153,6 +155,7 @@ function setupCommonMocks() {
 }
 
 beforeEach(() => {
+  vi.mocked(fetchMe).mockResolvedValue({ time_zone: "" } as Awaited<ReturnType<typeof fetchMe>>)
   vi.clearAllMocks()
   localStorage.clear()
   sessionStorage.clear()
@@ -255,6 +258,23 @@ describe("OrderPage — student view", () => {
     expect(screen.getByText("Данияр Сериков")).toBeInTheDocument()
   })
 
+  it("prefers immutable order terms to live catalog display values", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({
+      scheduled_at: "2026-08-15T10:00:00+05:00",
+      service_title_snapshot: "Agreed consultation",
+      service_duration_minutes_snapshot: 90,
+      currency: "KZT",
+    }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    await renderOrderPage("42")
+    expect(await screen.findByText("Agreed consultation")).toBeInTheDocument()
+    expect(screen.queryByText("Первичная консультация")).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Перенести" }))
+    await waitFor(() => expect(fetchMentorAvailabilityOverview).toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), expect.anything(), 90,
+    ))
+  })
+
   it("redirects a student with an incomplete profile to the onboarding wizard (useStudentOnboardingGate)", async () => {
     const replace = vi.fn()
     vi.mocked(useRouter).mockReturnValue({
@@ -334,6 +354,42 @@ describe("OrderPage — student view", () => {
     fireEvent.click(button)
 
     expect(await screen.findByText("Выбери новое время")).toBeInTheDocument()
+  })
+
+  it("shows booked time in the saved account zone without changing the instant", async () => {
+    vi.mocked(fetchMe).mockResolvedValue({ time_zone: "America/New_York" } as Awaited<ReturnType<typeof fetchMe>>)
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({ scheduled_at: "2026-08-10T06:00:00Z" }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    await renderOrderPage("42")
+    expect(await screen.findByText(/02:00.*America\/New_York/)).toBeInTheDocument()
+    expect(rescheduleOrder).not.toHaveBeenCalled()
+  })
+
+  it("does not invent a reschedule duration for an unknown legacy service", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({ service_duration_minutes_snapshot: null, scheduled_at: "2027-07-05T09:00:00Z" }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor())
+    await renderOrderPage("42")
+    fireEvent.click(await screen.findByRole("button", { name: "Перенести" }))
+    await screen.findByText("Выбери новое время")
+    expect(fetchMentorAvailabilityOverview).not.toHaveBeenCalled()
+  })
+
+  it("uses the current service duration only for a legacy null snapshot", async () => {
+    vi.mocked(fetchOrder).mockResolvedValue(makeOrder({
+      service_duration_minutes_snapshot: null, scheduled_at: "2027-07-05T09:00:00Z",
+    }))
+    vi.mocked(fetchMentor).mockResolvedValue(makeMentor({ services: [{
+      id: 10, title: "Current service", description: "", price: "5000", client_price: "5500",
+      currency: "KZT", duration_minutes: 120, payout_category: "paid_consultation",
+      grade_min: null, grade_max: null, meetings_min: null, meetings_max: null,
+      duration_months_min: null, duration_months_max: null, is_price_negotiable: false,
+      intro_call_enabled: false, is_active: true,
+    }] }))
+    await renderOrderPage("42")
+    fireEvent.click(await screen.findByRole("button", { name: "Перенести" }))
+    await waitFor(() => expect(fetchMentorAvailabilityOverview).toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), expect.anything(), 120,
+    ))
   })
 
   describe("completing a reschedule via the calendar", () => {

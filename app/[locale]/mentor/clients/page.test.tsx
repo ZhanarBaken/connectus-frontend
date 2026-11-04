@@ -108,6 +108,13 @@ describe("MentorClientsPage", () => {
       mockRouter()
     })
 
+    it("shows structured countries and preserves legacy student country text", async () => {
+      const student = { ...makeClient(), desired_country_codes: ["US", "CA"], desired_countries: "Atlantis? undecided" }
+      vi.mocked(fetchMentorClients).mockResolvedValue(makeClients({ active: [student] }))
+      render(<MentorClientsPage />)
+      expect(await screen.findByText(/США.*Канада.*Atlantis\? undecided/)).toBeInTheDocument()
+    })
+
     it("shows an error state when the fetch fails", async () => {
       vi.mocked(fetchMentorClients).mockRejectedValue(new Error("Не удалось загрузить список клиентов"))
       render(<MentorClientsPage />)

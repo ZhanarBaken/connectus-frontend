@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, use } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter, Link } from "@/i18n/navigation"
 import {
   authFetch, fetchMentorClient, fetchMentorClientTasks, fetchMentorClientDocuments,
@@ -16,6 +16,7 @@ import BackButton from "@/components/BackButton"
 import ChatOverlay from "@/components/ChatOverlay"
 import ChatPanel from "@/components/ChatPanel"
 import DatePicker from "@/components/DatePicker"
+import { studentDesiredCountriesSummary } from "@/lib/studentEducation"
 import Icon from "@/components/Icon"
 import MentorStatusBanner from "@/components/MentorStatusBanner"
 import SupportChatActions from "@/components/SupportChatActions"
@@ -54,6 +55,7 @@ export default function MentorClientWindowPage({ params }: Props) {
   useMentorOnboardingGate()
   const { isInTelegram, webApp } = useTelegramWebApp()
 
+  const locale = useLocale()
   const [client, setClient] = useState<MentorClient | null>(null)
   const [clientError, setClientError] = useState("")
   const [loading, setLoading] = useState(true)
@@ -182,6 +184,9 @@ export default function MentorClientWindowPage({ params }: Props) {
               <p className="text-sm text-gray-400 truncate">
                 {[client.current_school_or_university, client.city].filter(Boolean).join(" · ")}
               </p>
+          {studentDesiredCountriesSummary(client, locale) && (
+            <p className="text-xs text-gray-500">{studentDesiredCountriesSummary(client, locale)}</p>
+          )}
             </div>
           </div>
         </div>
