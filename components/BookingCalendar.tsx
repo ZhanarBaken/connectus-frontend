@@ -256,12 +256,12 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
               {t("noSlotsForDate")}
             </p>
           ) : (
-            <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
               {slots.map((time) => (
                 <button
                   key={time}
                   onClick={() => setSelectedTime(time)}
-                  className={`py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`min-w-0 px-1 py-2 rounded-lg text-sm font-medium transition-all ${
                     selectedTime === time
                       ? "bg-gray-900 text-white"
                       : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100"
@@ -269,7 +269,7 @@ export default function BookingCalendar({ mentorId, durationMinutes, onSelect, o
                 >
                   {time}
                   {userZone && userZone !== timezone && selectedDate && (
-                    <span className="block text-[10px] font-normal">
+                    <span className="block min-w-0 [overflow-wrap:anywhere] text-[10px] font-normal">
                       {formatZonedInstant(bookingInstant(selectedDate, time, timezone, instants)!, userZone, locale)}
                     </span>
                   )}

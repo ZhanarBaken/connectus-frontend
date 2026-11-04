@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, Suspense } from "react"
+import { REGISTRATION_LOCALE_CHANGE, readRegistrationLocaleDraft, saveRegistrationLocaleDraft, clearRegistrationLocaleDraft } from "@/lib/registrationLocaleDraft"
 import { useSearchParams } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
@@ -73,11 +74,11 @@ function RegisterForm() {
       desc: t("roleMentorDesc"),
     },
   ]
-  const [step, setStep] = useState<1 | 2>(skipRolePicker ? 2 : 1)
-  const [role, setRole] = useState<Role>(roleParam === "mentor" ? "mentor" : "student")
-  const [country, setCountry] = useState("KZ")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [step, setStep] = useState<1 | 2>(() => readRegistrationLocaleDraft(locale)?.step ?? (skipRolePicker ? 2 : 1))
+  const [role, setRole] = useState<Role>(() => readRegistrationLocaleDraft(locale)?.role ?? (roleParam === "mentor" ? "mentor" : "student"))
+  const [country, setCountry] = useState(() => readRegistrationLocaleDraft(locale)?.country ?? "KZ")
+  const [email, setEmail] = useState(() => readRegistrationLocaleDraft(locale)?.email ?? "")
+  const [password, setPassword] = useState(() => readRegistrationLocaleDraft(locale)?.password ?? "")
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
@@ -88,7 +89,7 @@ function RegisterForm() {
   // actually navigates this tab away, leaving the button stuck forever
   // with no feedback if we don't clear `loading` and give a fallback.
   const [telegramRedirectUrl, setTelegramRedirectUrl] = useState<string | null>(null)
-  const [registered, setRegistered] = useState(false)
+  const [registered, setRegistered] = useState(() => readRegistrationLocaleDraft(locale)?.registered ?? false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
   const [resendError, setResendError] = useState("")
@@ -107,6 +108,30 @@ function RegisterForm() {
   // Hide Google button inside Telegram WebView — Google's SDK refuses
   // to render in embedded browsers, so the button would just dead-end.
   const { isInTelegram } = useTelegramWebApp()
+
+  // Consume after commit so Strict Mode's repeated initial render sees the same
+  // handoff. Ordinary unmounts never save a draft.
+  useEffect(() => { clearRegistrationLocaleDraft() }, [])
+  useEffect(() => {
+    const saveDraft = (event: Event) => {
+      const nextLocale = (event as CustomEvent<string>).detail
+      saveRegistrationLocaleDraft(nextLocale, {
+        step, role, country, email, password: registered ? "" : password, registered,
+      })
+    }
+    window.addEventListener(REGISTRATION_LOCALE_CHANGE, saveDraft)
+    return () => window.removeEventListener(REGISTRATION_LOCALE_CHANGE, saveDraft)
+  }, [step, role, country, email, password, registered])
+
+  // Also reset consent if React retains this component across the locale change.
+  if (consentLocale !== locale) {
+    setConsentLocale(locale)
+    setAgreedToTerms(false)
+    setConsentGiven(null)
+    setConsentModalOpen(false)
+    setConsentError("")
+    setPendingAuth(null)
+  }
 
   // Inside a Telegram Mini App, the email/password form is dead weight —
   // we already have a signed initData payload from Telegram. Trigger the
@@ -161,6 +186,7 @@ function RegisterForm() {
       // Save role so login can route correctly later (also returned by /auth/me)
       localStorage.setItem("pending_role", role)
       track("signup_form_submitted", { role })
+      setPassword("")
       setRegistered(true)
     } catch (e: unknown) {
       if (handleLegalError(e, "email")) return

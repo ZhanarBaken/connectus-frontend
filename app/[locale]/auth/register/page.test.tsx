@@ -1,8 +1,12 @@
+import { StrictMode } from "react"
 import { legalDocuments, legalConsents } from "@/test/fixtures/legalConsent"
 import { LegalConsentError } from "@/lib/legalConsent"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import * as intl from "next-intl"
+import LocaleSwitcher from "@/components/LocaleSwitcher"
+import { usePathname } from "@/i18n/navigation"
 import { useSearchParams } from "next/navigation"
 import { useRouter } from "@/i18n/navigation"
 import * as api from "@/lib/api"
@@ -37,6 +41,9 @@ describe("RegisterPage", () => {
   const replace = vi.fn()
 
   beforeEach(() => {
+    vi.spyOn(intl, "useLocale").mockReturnValue("ru")
+    vi.mocked(usePathname).mockReturnValue("/auth/register")
+    window.history.replaceState(null, "", "/ru/auth/register")
     localStorage.clear()
     push.mockClear()
     replace.mockClear()
@@ -68,6 +75,177 @@ describe("RegisterPage", () => {
       prefetch: vi.fn(),
     } as unknown as ReturnType<typeof useRouter>)
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
+  })
+
+  it("retains a manually selected mentor draft on a locale remount, resets consent, and consumes the draft once", async () => {
+    const user = userEvent.setup()
+    const view = render(<><LocaleSwitcher /><RegisterPage /></>)
+    await user.click(screen.getByText("Я ментор"))
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.click(screen.getByText(/Узбекистан/))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "mentor@example.com")
+    await user.type(screen.getByPlaceholderText("Минимум 12 символов"), "supersecretpw123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByText("EN"))
+    view.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    const translated = render(<RegisterPage />)
+    expect(screen.getByText("ментор")).toBeInTheDocument()
+    expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("mentor@example.com")
+    expect(screen.getByPlaceholderText("Минимум 12 символов")).toHaveValue("supersecretpw123")
+    expect(screen.getByText(/Uzbekistan/)).toHaveTextContent("✓")
+    expect(screen.getByRole("checkbox")).not.toBeChecked()
+    expect(screen.getByRole("button", { name: "Создать аккаунт через email" })).toBeDisabled()
+    expect(JSON.stringify(localStorage)).not.toContain("supersecretpw123")
+    expect(JSON.stringify(sessionStorage)).not.toContain("supersecretpw123")
+    expect(window.location.href).not.toContain("supersecretpw123")
+    translated.unmount()
+    render(<RegisterPage />)
+    expect(screen.getByText("Кто ты?")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("")
+    expect(screen.getByPlaceholderText("Минимум 12 символов")).toHaveValue("")
+  })
+
+  it("preserves the destination handoff when its switcher commits before the suspended form", async () => {
+    const user = userEvent.setup()
+    const source = render(<><LocaleSwitcher /><RegisterPage /></>)
+    await user.click(screen.getByText("Я ментор"))
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "delayed@example.com")
+    await user.type(screen.getByPlaceholderText("Минимум 12 символов"), "supersecretpw123")
+    await user.click(screen.getByText("EN"))
+    source.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    window.history.replaceState(null, "", "/en/auth/register")
+    // The header commits while the form's Suspense boundary is still pending.
+    const destination = render(<StrictMode><LocaleSwitcher /></StrictMode>)
+    expect(screen.queryByPlaceholderText("you@example.com")).not.toBeInTheDocument()
+    destination.rerender(<StrictMode><LocaleSwitcher /><RegisterPage /></StrictMode>)
+    expect(screen.getByText("ментор")).toBeInTheDocument()
+    expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("delayed@example.com")
+    expect(screen.getByPlaceholderText("Минимум 12 символов")).toHaveValue("supersecretpw123")
+    destination.unmount()
+    render(<RegisterPage />)
+    expect(screen.getByText("Кто ты?")).toBeInTheDocument()
+  })
+
+  it("keeps the handoff when the source header rerenders while locale navigation is pending", async () => {
+    const user = userEvent.setup()
+    const source = render(<><LocaleSwitcher /><RegisterPage /></>)
+    await user.click(screen.getByText("Я ментор"))
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "pending@example.com")
+    await user.type(screen.getByPlaceholderText("Минимум 12 символов"), "supersecretpw123")
+    await user.click(screen.getByText("EN"))
+    // The source locale is still RU while a header update commits.
+    source.rerender(<><LocaleSwitcher className="header-updated" /><RegisterPage /></>)
+    source.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    window.history.replaceState(null, "", "/en/auth/register")
+    const destination = render(<StrictMode><LocaleSwitcher /></StrictMode>)
+    destination.rerender(<StrictMode><LocaleSwitcher /><RegisterPage /></StrictMode>)
+    expect(screen.getByText("ментор")).toBeInTheDocument()
+    expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("pending@example.com")
+    expect(screen.getByPlaceholderText("Минимум 12 символов")).toHaveValue("supersecretpw123")
+  })
+
+  it.each([
+    { locale: "en", pathname: "/auth/login", query: "" },
+    { locale: "kk", pathname: "/auth/register", query: "" },
+    { locale: "en", pathname: "/auth/register", query: "?role=student" },
+  ])("discards a pending handoff on unrelated destination $locale$pathname$query", async ({ locale, pathname, query }) => {
+    const user = userEvent.setup()
+    const source = render(<><LocaleSwitcher /><RegisterPage /></>)
+    await user.click(screen.getByText("Я ментор"))
+    await user.click(screen.getByText("EN"))
+    source.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue(locale)
+    vi.mocked(usePathname).mockReturnValue(pathname)
+    window.history.replaceState(null, "", `/${locale}${pathname}${query}`)
+    const unrelated = render(<LocaleSwitcher />)
+    unrelated.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    window.history.replaceState(null, "", "/en/auth/register")
+    render(<RegisterPage />)
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    expect(screen.getByText("абитуриент")).toBeInTheDocument()
+  })
+
+  it("preserves step 1 and the chosen role across a Strict Mode locale remount", async () => {
+    const user = userEvent.setup()
+    const view = render(<><LocaleSwitcher /><RegisterPage /></>)
+    await user.click(screen.getByText("Я ментор"))
+    await user.click(screen.getByText("EN"))
+    view.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    render(<StrictMode><RegisterPage /></StrictMode>)
+    expect(screen.getByText("Кто ты?")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    expect(screen.getByText("ментор")).toBeInTheDocument()
+  })
+
+  it("discards an interrupted locale handoff when navigating away before returning to signup", async () => {
+    const user = userEvent.setup()
+    const view = render(<><LocaleSwitcher /><RegisterPage /></>)
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "stale@example.com")
+    await user.click(screen.getByText("EN"))
+    vi.mocked(usePathname).mockReturnValue("/auth/login")
+    view.rerender(<LocaleSwitcher />)
+    view.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    render(<RegisterPage />)
+    expect(screen.getByText("Кто ты?")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("")
+  })
+
+  it("clears accepted legal documents and terms when the mounted form changes locale", async () => {
+    vi.mocked(api.register).mockRejectedValue(new Error("Try again"))
+    const user = userEvent.setup()
+    const view = render(<RegisterPage />)
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "student@example.com")
+    await user.type(screen.getByPlaceholderText("Минимум 12 символов"), "supersecretpw123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "Создать аккаунт через email" }))
+    await giveConsent(user)
+    await screen.findByText("Try again")
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    view.rerender(<RegisterPage />)
+    expect(screen.getByRole("checkbox")).not.toBeChecked()
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "Создать аккаунт через email" }))
+    expect(await screen.findByRole("button", { name: "Я даю согласие" })).toBeDisabled()
+    expect(api.register).toHaveBeenCalledTimes(1)
+  })
+
+  it("preserves the registered screen and corrected email across a locale remount", async () => {
+    vi.mocked(api.register).mockResolvedValue({ id: 1 })
+    vi.mocked(api.updateUnverifiedEmail).mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    const view = render(<><LocaleSwitcher /><RegisterPage /></>)
+    await user.click(screen.getByRole("button", { name: "Продолжить →" }))
+    await user.type(screen.getByPlaceholderText("you@example.com"), "typo@example.com")
+    await user.type(screen.getByPlaceholderText("Минимум 12 символов"), "supersecretpw123")
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "Создать аккаунт через email" }))
+    await giveConsent(user)
+    await screen.findByText("Проверь почту")
+    await user.click(screen.getByRole("button", { name: "Опечатался в email? Исправить" }))
+    await user.type(screen.getByPlaceholderText("correct@example.com"), "fixed@example.com")
+    await user.click(screen.getByRole("button", { name: "Сохранить" }))
+    await screen.findByText("fixed@example.com")
+    await user.click(screen.getByText("EN"))
+    view.unmount()
+    vi.mocked(intl.useLocale).mockReturnValue("en")
+    render(<RegisterPage />)
+    expect(screen.getByText("Проверь почту")).toBeInTheDocument()
+    expect(screen.getByText("fixed@example.com")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Отправить письмо повторно" }))
+    expect(api.resendVerification).toHaveBeenCalledWith("fixed@example.com")
+    expect(api.register).toHaveBeenCalledTimes(1)
   })
 
   it("skips the role picker and preselects mentor when linked with ?role=mentor", () => {
